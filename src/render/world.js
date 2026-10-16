@@ -1,5 +1,6 @@
 import { clamp, lerp, hex2rgb } from '../core/util.js';
 import { drawPerson } from './people.js';
+import { drawVehicle, vehicleSize } from './vehicles.js';
 
 const BAYER = [0, 8, 2, 10, 12, 4, 14, 6, 3, 11, 1, 9, 15, 7, 13, 5].map((v) => (v + 0.5) / 16);
 
@@ -48,6 +49,18 @@ function cv(w, h) {
   c.height = Math.max(1, Math.ceil(h));
   return c;
 }
+
+// Gatans geometri i pixlar under husets markplan (gy). Scenen reserverar STREET.H så att hela gatan syns ovanför dockan.
+export const STREET = {
+  walk: 5, // trottoaren närmast huset: gy..gy+5
+  roadTop: 7,
+  roadBot: 35,
+  laneFar: 26, // hjulens underkant i det bortre körfältet (fordon åt vänster)
+  laneNear: 34, // ... och i det närmre (fordon åt höger)
+  walk2: 37, // förgrundstrottoaren där fotgängarna går
+  pedY: 42,
+  H: 46,
+};
 
 const CAR_COLORS = ['#e8504a', '#4a90e0', '#f2c84a', '#6cc86a', '#e8e8f0', '#2a2f3c', '#c860c8', '#f2883a', '#3fb8a8', '#8a92a8'];
 
@@ -233,20 +246,35 @@ export class World {
     // bilar och fotgängare
     this.nextCar -= dt;
     if (this.nextCar <= 0) {
-      this.nextCar = 3 + Math.random() * 7;
+      this.nextCar = 3.5 + Math.random() * 7;
       const dir = Math.random() < 0.5 ? 1 : -1;
       const era = this.year < 1991 ? 0 : this.year < 2004 ? 1 : 2;
       const roll = Math.random();
-      const type = roll < 0.12 ? 'bus' : roll < 0.25 ? 'van' : roll < 0.38 ? 'truck' : 'car';
-      this.cars.push({ x: dir > 0 ? -50 : this.W + 50, dir, v: (22 + Math.random() * 18) * (type === 'bus' ? 0.75 : 1), color: CAR_COLORS[Math.floor(Math.random() * CAR_COLORS.length)], type, era });
+      const type = roll < 0.1 ? 'bus' : roll < 0.22 ? 'van' : roll < 0.32 ? 'truck' : 'car';
+      const c = { x: 0, dir, v: (34 + Math.random() * 24) * (type === 'bus' ? 0.8 : type === 'truck' ? 0.9 : 1), color: CAR_COLORS[Math.floor(Math.random() * CAR_COLORS.length)], type, era };
+      const len = vehicleSize(c).w;
+      c.x = dir > 0 ? -len - 2 : this.W + len + 2;
+      // håll avstånd till bilen framför i samma körfält
+      const entry = dir > 0 ? -2 : this.W + 2;
+      let ahead = null;
+      for (const o of this.cars) {
+        if (o.dir !== dir) continue;
+        const gap = dir > 0 ? o.x - entry : entry - o.x;
+        if (gap < 160 && (!ahead || gap < ahead.gap)) ahead = { gap, v: o.v };
+      }
+      if (ahead && ahead.gap < 8) this.nextCar = 0.7;
+      else {
+        if (ahead) c.v = Math.min(c.v, ahead.v);
+        this.cars.push(c);
+      }
     }
     for (const c of this.cars) c.x += c.dir * c.v * dt;
-    this.cars = this.cars.filter((c) => c.x > -70 && c.x < this.W + 70);
+    this.cars = this.cars.filter((c) => (c.dir > 0 ? c.x < this.W + 4 : c.x > -4));
     this.nextPed -= dt;
     if (this.nextPed <= 0) {
-      this.nextPed = 5 + Math.random() * 9;
+      this.nextPed = 4 + Math.random() * 8;
       const dir = Math.random() < 0.5 ? 1 : -1;
-      this.peds.push({ x: dir > 0 ? -12 : this.W + 12, dir, v: 9 + Math.random() * 8, t: 0, look: { skin: Math.floor(Math.random() * 5), hair: Math.floor(Math.random() * 7), hairColor: Math.floor(Math.random() * 9), shirt: Math.floor(Math.random() * 12), pants: Math.floor(Math.random() * 4), acc: Math.random() < 0.3 ? 3 : 0 } });
+      this.peds.push({ x: dir > 0 ? -12 : this.W + 12, dir, v: 10 + Math.random() * 8, t: 0, look: { skin: Math.floor(Math.random() * 5), hair: Math.floor(Math.random() * 7), hairColor: Math.floor(Math.random() * 9), shirt: Math.floor(Math.random() * 12), pants: Math.floor(Math.random() * 4), acc: Math.random() < 0.3 ? 3 : 0 } });
     }
     for (const p of this.peds) {
       p.x += p.dir * p.v * dt;
@@ -401,34 +429,48 @@ export class World {
     const gy = this.groundY;
     const W = this.W;
     const H = this.H;
+    const S = STREET;
     const winter = this.month === 11 || this.month <= 1;
     const snowy = this.weather.type === 'snow' && this.weather.amt > 0.3;
-    // trottoar
-    ctx.fillStyle = winter && snowy ? '#d8dcea' : '#a4a4b4';
-    ctx.fillRect(0, gy, W, 8);
-    ctx.fillStyle = winter && snowy ? '#f0f4ff' : '#c0c0d0';
+    const walkA = winter && snowy ? '#d8dcea' : '#a4a4b4';
+    const walkB = winter && snowy ? '#f0f4ff' : '#c0c0d0';
+    // trottoar närmast huset
+    ctx.fillStyle = walkA;
+    ctx.fillRect(0, gy, W, S.walk);
+    ctx.fillStyle = walkB;
     ctx.fillRect(0, gy, W, 1);
     ctx.fillStyle = 'rgba(0,0,0,0.12)';
-    for (let x = 0; x < W; x += 14) ctx.fillRect(x, gy + 1, 1, 7);
+    for (let x = 0; x < W; x += 14) ctx.fillRect(x, gy + 1, 1, S.walk - 1);
+    // kantsten
     ctx.fillStyle = '#6a6a7a';
-    ctx.fillRect(0, gy + 8, W, 2);
+    ctx.fillRect(0, gy + S.walk, W, 2);
     ctx.fillStyle = '#8a8a9a';
-    ctx.fillRect(0, gy + 8, W, 1);
+    ctx.fillRect(0, gy + S.walk, W, 1);
     // väg
     ctx.fillStyle = '#3a3c4a';
-    ctx.fillRect(0, gy + 10, W, 26);
+    ctx.fillRect(0, gy + S.roadTop, W, S.roadBot - S.roadTop);
     ctx.fillStyle = '#464858';
-    ctx.fillRect(0, gy + 10, W, 1);
+    ctx.fillRect(0, gy + S.roadTop, W, 1);
+    ctx.fillStyle = '#34364a';
+    for (let x = 0; x < W; x += 11) ctx.fillRect(x + ((x * 5) % 7), gy + S.roadTop + 4 + ((x * 3) % 18), 2, 1);
     ctx.fillStyle = '#d8c860';
-    for (let x = 0; x < W; x += 24) ctx.fillRect(x, gy + 22, 12, 1);
+    for (let x = 0; x < W; x += 28) ctx.fillRect(x, gy + 21, 14, 1);
     ctx.fillStyle = '#6a6a7a';
-    ctx.fillRect(0, gy + 36, W, 2);
-    ctx.fillStyle = winter && snowy ? '#d8dcea' : '#9a9aaa';
-    ctx.fillRect(0, gy + 38, W, 8);
+    ctx.fillRect(0, gy + S.roadBot, W, 2);
+    // förgrundstrottoar
+    ctx.fillStyle = winter && snowy ? '#e4e8f4' : '#a8a8b8';
+    ctx.fillRect(0, gy + S.roadBot + 2, W, S.H - S.roadBot - 2 - 1);
+    ctx.fillStyle = walkB;
+    ctx.fillRect(0, gy + S.roadBot + 2, W, 1);
+    ctx.fillStyle = 'rgba(0,0,0,0.12)';
+    for (let x = 0; x < W; x += 18) ctx.fillRect(x, gy + S.roadBot + 3, 1, S.H - S.roadBot - 5);
+    ctx.fillStyle = '#7a7a8a';
+    ctx.fillRect(0, gy + S.H - 1, W, 1);
+    // gräs
     ctx.fillStyle = winter ? '#dfe6f4' : '#4a8a4a';
-    ctx.fillRect(0, gy + 46, W, Math.max(0, H - gy - 46));
+    ctx.fillRect(0, gy + S.H, W, Math.max(0, H - gy - S.H));
     ctx.fillStyle = winter ? '#c8d0e4' : '#3a7a3a';
-    for (let x = 0; x < W; x += 9) ctx.fillRect(x, gy + 48 + ((x * 7) % 9), 2, 1);
+    for (let x = 0; x < W; x += 9) ctx.fillRect(x, gy + S.H + 2 + ((x * 7) % 9), 2, 1);
     void sky;
   }
 
@@ -481,64 +523,16 @@ export class World {
       ctx.fillStyle = night > 0.3 ? '#fff4c0' : '#d8d8e0';
       ctx.fillRect(x - 6, gy - 36, 4, 2);
     }
-    // bilar
-    for (const c of this.cars) this.drawCar(ctx, c, gy + 22 + (c.dir > 0 ? 4 : -9));
+    // fordon: bortre körfältet först, sedan det närmre
+    const cars = this.cars.slice().sort((p, q) => this.laneY(p) - this.laneY(q));
+    for (const c of cars) drawVehicle(ctx, c, gy + this.laneY(c));
+    // fotgängare på förgrundstrottoaren, framför allt annat
+    for (const p of this.peds) drawPerson(ctx, p.x, gy + STREET.pedY, p.look, 'walk', Math.floor(p.t) % 4, p.dir, {});
   }
 
-  drawPeds(ctx) {
-    const gy = this.groundY;
-    for (const p of this.peds) drawPerson(ctx, p.x, gy + 5, p.look, 'walk', Math.floor(p.t) % 4, p.dir, { noShadow: false });
-  }
-
-  drawCar(ctx, c, y) {
-    const x = Math.round(c.x);
-    const d = c.dir;
-    const R = (dx, dy, w, h, col) => {
-      ctx.fillStyle = col;
-      ctx.fillRect(d > 0 ? x + dx : x - dx - w, y + dy, w, h);
-    };
-    if (c.type === 'bus') {
-      R(0, -12, 44, 12, '#f2c84a');
-      R(0, -12, 44, 2, '#ffe080');
-      R(0, -3, 44, 2, '#c8a020');
-      for (let i = 0; i < 6; i++) R(3 + i * 7, -10, 5, 4, '#9fd6ff');
-      R(38, -10, 5, 6, '#9fd6ff');
-      R(4, 0, 6, 3, '#1a1a22');
-      R(32, 0, 6, 3, '#1a1a22');
-    } else if (c.type === 'truck') {
-      R(0, -13, 28, 13, '#e8e8f0');
-      R(0, -13, 28, 2, '#fff');
-      R(28, -9, 12, 9, c.color);
-      R(34, -8, 5, 4, '#9fd6ff');
-      R(3, 0, 6, 3, '#1a1a22');
-      R(30, 0, 6, 3, '#1a1a22');
-    } else if (c.type === 'van') {
-      R(0, -10, 28, 10, c.color);
-      R(0, -10, 28, 2, 'rgba(255,255,255,.3)');
-      R(18, -8, 8, 4, '#9fd6ff');
-      R(3, 0, 5, 3, '#1a1a22');
-      R(20, 0, 5, 3, '#1a1a22');
-    } else {
-      const era = c.era;
-      if (era === 0) {
-        R(0, -6, 26, 6, c.color);
-        R(5, -10, 14, 4, c.color);
-        R(7, -9, 10, 3, '#9fd6ff');
-      } else if (era === 1) {
-        R(0, -6, 26, 6, c.color);
-        R(4, -10, 16, 4, c.color);
-        R(8, -9, 11, 3, '#9fd6ff');
-        R(0, -6, 26, 1, 'rgba(255,255,255,.3)');
-      } else {
-        R(0, -7, 28, 7, c.color);
-        R(5, -11, 15, 4, c.color);
-        R(8, -10, 11, 3, '#9fd6ff');
-        R(0, -7, 28, 1, 'rgba(255,255,255,.35)');
-      }
-      R(3, 0, 5, 3, '#1a1a22');
-      R(19, 0, 5, 3, '#1a1a22');
-      R(25, -4, 2, 2, '#fff4c0');
-    }
+  // Fordonets markyta relativt gy. Fordon åt höger kör närmast kameran.
+  laneY(c) {
+    return c.dir > 0 ? STREET.laneNear : STREET.laneFar;
   }
 
   drawWeather(ctx) {

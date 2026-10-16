@@ -63,8 +63,7 @@ async function emitDev() {
   await mkdir(resolve(root, 'dist/dev'), { recursive: true });
   for (const f of files) {
     const out = await build({ entryPoints: [resolve(root, 'src/dev', f)], bundle: true, write: false, format: 'iife', target: 'es2020' });
-    const css = await readFile(resolve(root, 'src/style.css'), 'utf8').catch(() => '');
-    await writeFile(resolve(root, 'dist/dev', f.replace('.js', '.html')), `<!doctype html><meta charset="utf-8"><style>${css}</style><body><div id="app"></div><script>${out.outputFiles[0].text.replace(/<\/script/gi, '<\\/script')}</script>`);
+    await writeFile(resolve(root, 'dist/dev', f.replace('.js', '.html')), `<!doctype html><meta charset="utf-8"><style>body{margin:0;background:#1b1d28}</style><body><div id="app"></div><script>${out.outputFiles[0].text.replace(/<\/script/gi, '<\\/script')}</script>`);
   }
 }
 

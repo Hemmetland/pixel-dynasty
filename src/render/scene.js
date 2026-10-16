@@ -1,5 +1,6 @@
 import { clamp } from '../core/util.js';
-import { World } from './world.js';
+import { World, STREET } from './world.js';
+import { vehicleSize } from './vehicles.js';
 import { makeLayout, drawShell, eraOf, PITCH, INT_H } from './building.js';
 import { drawPerson } from './people.js';
 import { drawTextOutlined, drawText, textWidth } from './font.js';
@@ -8,6 +9,7 @@ import { drawCat } from './props.js';
 import { yearOf, dateOf } from '../sim/const.js';
 
 const SCALES = [0.6, 0.75, 0.9, 1, 1.5, 2, 2.5, 3, 4, 5, 6];
+const STREET_SLACK = 26;
 
 // Mjuk, pixelerad ellipsglöd (staplade ellipser, additivt läge förutsätts).
 function glow(ctx, cx, cy, rx, ry, rgb, alpha, steps = 5) {
@@ -100,9 +102,10 @@ export class Scene {
     const bw = L.W;
     const bh = L.H + 14;
     const availW = vw * (vw < 700 ? 0.96 : 0.84);
-    const availH = vh - this.insets.top - this.insets.bottom - 12;
+    // Hela gatan (STREET.H) ska synas ovanför dockan, som själv har ca 28 px luft i sin nedre marginal.
+    const availH = vh - this.insets.top - this.insets.bottom + STREET_SLACK;
     let s = SCALES[0];
-    for (const c of SCALES) if (bw * c <= availW && bh * c <= availH) s = c;
+    for (const c of SCALES) if (bw * c <= availW && (bh + STREET.H) * c <= availH) s = c;
     this.scale = s;
     this.iw = Math.ceil(vw / s);
     this.ih = Math.ceil(vh / s);
@@ -114,13 +117,13 @@ export class Scene {
     this.objB = cv(this.iw, this.ih);
     this.bgA = cv(this.iw, this.ih);
     this.bgB = cv(this.iw, this.ih);
-    let gyScreen = vh - this.insets.bottom - 30;
+    let gyScreen = vh - this.insets.bottom + STREET_SLACK - STREET.H * s;
     if (vh > vw * 1.15) {
-      // Stående skärm: centrera byggnaden i det lediga området.
-      const free = vh - this.insets.top - this.insets.bottom;
-      gyScreen = this.insets.top + (free + bh * s) / 2 - 20;
+      // Stående skärm: centrera byggnad och gata i det lediga området.
+      const free = vh - this.insets.top - this.insets.bottom + STREET_SLACK;
+      gyScreen = this.insets.top + (free - (bh + STREET.H) * s) / 2 + bh * s;
     }
-    this.groundY = Math.round(Math.min(gyScreen / s, this.ih - 52));
+    this.groundY = Math.round(Math.min(gyScreen / s, this.ih - STREET.H - 2));
     this.world.resize(this.iw, this.ih, this.groundY);
     if (this.G) this.world.setYear(yearOf(this.G.t));
   }
@@ -495,7 +498,7 @@ export class Scene {
     wd.drawLitWindows(ctx, night);
     ctx.globalCompositeOperation = 'source-over';
 
-    // förgrund 1: mark, träd, fotgängare (bakom huset)
+    // förgrund 1: mark och träd (bakom huset)
     const clearA = () => {
       A.setTransform(1, 0, 0, 1, 0, 0);
       A.globalCompositeOperation = 'source-over';
@@ -504,7 +507,6 @@ export class Scene {
     clearA();
     wd.drawGround(A);
     wd.drawTrees(A);
-    wd.drawPeds(A);
     tint(this.objA, this.objB, ambient);
     // förgrund 2: huset med människor
     clearA();
@@ -512,7 +514,7 @@ export class Scene {
     A.drawImage(st.layer, cx - st.w / 2, gy - st.h);
     this.drawDynamic(A, cx, gy, night);
     tint(this.objA, this.objB, ambientB);
-    // förgrund 3: gata (bilar, lyktstolpar)
+    // förgrund 3: gata (lyktstolpar, bilar, fotgängare)
     clearA();
     wd.drawStreetFront(A, night);
     tint(this.objA, this.objB, ambient);
@@ -659,9 +661,16 @@ export class Scene {
     // billyktor
     if (night > 0.12) {
       for (const c of this.world.cars) {
-        const x = Math.round(c.x) + (c.dir > 0 ? 26 : -26);
-        const y = gy + 22 + (c.dir > 0 ? 4 : -9) - 4;
-        glow(ctx, x + c.dir * 8, y + 1, 12, 5, '255,244,190', 0.35 * night, 3);
+        const len = vehicleSize(c).w;
+        const y = gy + this.world.laneY(c);
+        const front = Math.round(c.x) + c.dir * (len - 1);
+        const rear = Math.round(c.x);
+        const lampY = y - (c.type === 'bus' ? 7 : c.type === 'truck' ? 9 : 8);
+        glow(ctx, front + c.dir * 14, lampY + 1, 26, 7, '255,244,190', 0.34 * night, 4);
+        glow(ctx, front + c.dir * 4, lampY, 6, 4, '255,250,215', 0.45 * night, 3);
+        glow(ctx, rear - c.dir * 2, lampY, 5, 3, '255,60,60', 0.35 * night, 3);
+        // ljus på asfalten framför bilen
+        glow(ctx, front + c.dir * 22, y - 1, 24, 4, '255,240,180', 0.14 * night, 3);
       }
     }
     // solnedgångsglöd
