@@ -67,11 +67,30 @@ async function emitDev() {
   }
 }
 
+// Ljuslabbet (WebGL-jämförelse): dist/lab.html (fristående) och dist/lab-artifact.html (fragment).
+async function emitLab() {
+  const out = await build({ entryPoints: [resolve(root, 'src/lab/gl-lab.js')], bundle: true, write: false, format: 'iife', target: 'es2020', minify: !dev, legalComments: 'none' });
+  const css = await transform(await readFile(resolve(root, 'src/lab/lab.css'), 'utf8'), { loader: 'css', minify: !dev });
+  const code = out.outputFiles[0].text.replace(/<\/script/gi, '<\\/script');
+  const frag = `<title>Pixel Dynasty Ljuslabb</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="${FONTS}">
+<style>${css.code}</style>
+<div id="app"></div>
+<script>${code}</script>
+`;
+  await writeFile(resolve(root, 'dist/lab-artifact.html'), frag);
+  await writeFile(resolve(root, 'dist/lab.html'), `<!doctype html>\n<html lang="sv">\n<head>\n<meta charset="utf-8">\n<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">\n${frag}</head>\n</html>\n`);
+  console.log(`✔ dist/lab.html + dist/lab-artifact.html (${(Buffer.byteLength(frag) / 1024).toFixed(0)} kB)`);
+}
+
 async function emit() {
   const parts = await bundle();
   await mkdir(resolve(root, 'dist'), { recursive: true });
   await writeFile(resolve(root, 'dist/index.html'), document_(parts));
   await writeFile(resolve(root, 'dist/artifact.html'), fragment(parts));
+  await emitLab();
   if (dev || process.argv.includes('--with-dev')) await emitDev();
   const kb = (Buffer.byteLength(fragment(parts)) / 1024).toFixed(0);
   console.log(`✔ dist/index.html + dist/artifact.html (${kb} kB)`);

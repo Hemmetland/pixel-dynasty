@@ -3,7 +3,7 @@ import { SAVE_VERSION } from '../sim/state.js';
 const KEY = 'pixel-dynasty-save-v1';
 const SKEY = 'pixel-dynasty-settings-v1';
 
-export const DEFAULT_SETTINGS = { lang: null, music: true, sfx: true, musicVol: 0.5, sfxVol: 0.7, crt: false, reduced: false, menuPause: true, tutorial: true, speed: 2 };
+export const DEFAULT_SETTINGS = { lang: null, music: true, sfx: true, musicVol: 0.5, sfxVol: 0.7, crt: false, hd: false, reduced: false, menuPause: true, tutorial: true, speed: 2 };
 
 export function loadSettings() {
   try {

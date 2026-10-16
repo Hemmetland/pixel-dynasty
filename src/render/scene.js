@@ -7,6 +7,7 @@ import { drawTextOutlined, drawText, textWidth } from './font.js';
 import { TOPIC } from '../data/topics.js';
 import { drawCat } from './props.js';
 import { yearOf, dateOf } from '../sim/const.js';
+import { glMethods } from './gl/scene-gl.js';
 
 const SCALES = [0.6, 0.75, 0.9, 1, 1.5, 2, 2.5, 3, 4, 5, 6];
 const STREET_SLACK = 26;
@@ -58,6 +59,10 @@ export class Scene {
     this.vw = 0;
     this.vh = 0;
     this.shake = 0;
+    this.glCanvas = null;
+    this.glfx = null;
+    this.glOn = false;
+    this.glLayers = null;
     this.todLock = null;
     this.dprScale = 1;
     this.cat = { x: 20, state: 'sit', timer: 3, dir: 1, target: null, frame: 0, kind: 0 };
@@ -113,6 +118,7 @@ export class Scene {
     this.canvas.height = this.ih;
     this.canvas.style.width = this.iw * s + 'px';
     this.canvas.style.height = this.ih * s + 'px';
+    this.sizeGL();
     this.objA = cv(this.iw, this.ih);
     this.objB = cv(this.iw, this.ih);
     this.bgA = cv(this.iw, this.ih);
@@ -434,7 +440,7 @@ export class Scene {
     if (!G || !this.L) return;
     this.time += dt;
     const d = dateOf(G.t);
-    this.world.update(dt, { speed: this.speed, paused: this.paused, month: d.month, reduced: this.reduced, todLock: this.todLock });
+    this.world.update(dt, { speed: this.speed, paused: this.paused, month: d.month, reduced: this.reduced, todLock: this.todLock, weatherLock: this.weatherLock });
     this.updateActors(dt);
     this.updateCat(dt);
     this.updateFx(dt);
@@ -449,6 +455,10 @@ export class Scene {
     const L = this.L;
     if (!G || !L || !this.objA) return;
     this.buildStatics();
+    if (this.glOn) {
+      this.drawGL();
+      if (!this.dual) return;
+    }
     const ctx = this.ctx;
     const A = this.objA.getContext('2d');
     const B = this.objB.getContext('2d');
@@ -737,3 +747,5 @@ export class Scene {
     return null;
   }
 }
+
+Object.assign(Scene.prototype, glMethods);

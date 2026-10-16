@@ -199,6 +199,12 @@ export class World {
     }
     // väder
     const wz = this.weather;
+    if (o.weatherLock) {
+      wz.type = o.weatherLock.type;
+      wz.target = o.weatherLock.amt;
+      wz.timer = 99;
+      if (o.weatherLock.snap) wz.amt = o.weatherLock.amt;
+    }
     wz.timer -= dt;
     if (wz.timer <= 0) {
       const winter = this.month === 11 || this.month <= 1;

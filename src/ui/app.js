@@ -57,7 +57,13 @@ export const app = {
   applySettings() {
     const s = this.settings;
     this.root.classList.toggle('crt', !!s.crt);
-    if (this.scene) this.scene.reduced = !!s.reduced;
+    if (this.scene) {
+      this.scene.reduced = !!s.reduced;
+      if (!!s.hd !== this.scene.glOn && !this.scene.setGL(!!s.hd) && s.hd) {
+        s.hd = false;
+        toast(t('set.hdFail'), 'info');
+      }
+    }
     sfx.setVolume?.(s.sfx ? s.sfxVol : 0);
     music.setVolume?.(s.music ? s.musicVol : 0);
     saveSettings(s);

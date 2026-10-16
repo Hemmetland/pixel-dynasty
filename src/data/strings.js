@@ -414,6 +414,8 @@ export const STRINGS = {
   'set.musicVol': ['Musikvolym', 'Music volume'],
   'set.sfx': ['Ljudeffekter', 'Sound effects'],
   'set.sfxVol': ['Effektvolym', 'Effects volume'],
+  'set.hd': ['HD-ljus (WebGL, beta)', 'HD lighting (WebGL, beta)'],
+  'set.hdFail': ['Din webbläsare kan inte köra WebGL2, så HD-ljus är avstängt.', 'Your browser cannot run WebGL2, so HD lighting stays off.'],
   'set.crt': ['Retro-skärmeffekt', 'Retro scanlines'],
   'set.reduced': ['Minska rörelse', 'Reduce motion'],
   'set.menuPause': ['Pausa när menyer är öppna', 'Pause while menus are open'],

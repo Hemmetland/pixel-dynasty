@@ -122,7 +122,7 @@ regWin({
     return `
       <div class="row" style="justify-content:space-between;padding:9px 0;border-bottom:1px dashed var(--line)"><span>${icon('globe')} ${t('set.lang')}</span><div class="seg"><button class="${s.lang === 'sv' || (!s.lang && document.documentElement.lang === 'sv') ? 'on' : ''}" data-act="set-lang" data-l="sv">Svenska</button><button class="${s.lang === 'en' || (!s.lang && document.documentElement.lang === 'en') ? 'on' : ''}" data-act="set-lang" data-l="en">English</button></div></div>
       ${tog('music', 'set.music')}${slider('musicVol', 'set.musicVol', s.music)}${tog('sfx', 'set.sfx')}${slider('sfxVol', 'set.sfxVol', s.sfx)}
-      ${tog('crt', 'set.crt')}${tog('reduced', 'set.reduced')}${tog('menuPause', 'set.menuPause')}${tog('tutorial', 'set.tutorial')}
+      ${tog('hd', 'set.hd')}${tog('crt', 'set.crt')}${tog('reduced', 'set.reduced')}${tog('menuPause', 'set.menuPause')}${tog('tutorial', 'set.tutorial')}
       ${G ? `<div class="lbl" style="margin:16px 0 8px">${t('set.saveData')}</div>
       <div class="row wrap" style="gap:8px"><button class="btn" data-act="set-export">${icon('copy')}${t('set.export')}</button><button class="btn" data-act="set-import">${icon('upload')}${t('set.import')}</button></div>
       <textarea class="input" id="set-code" rows="3" placeholder="${t('set.codePh')}" style="height:auto;padding:10px;margin-top:10px;font-size:11px;font-family:ui-monospace,monospace">${esc(SET.code)}</textarea>
