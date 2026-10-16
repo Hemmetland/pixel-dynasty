@@ -65,7 +65,7 @@ Referensens glaspaneler, uppbyggda av riktigt spelstate (inget påhittat):
 
 - Jämför mot referensbeskrivningen (`ART_DIRECTION.md`) dag, skymning och natt, med och utan HD-ljus (`gl=1`).
 - `node build.mjs --with-dev` bygger även `dist/dev/*.html` (egna testsidor i `src/dev/`). `node test/scene-shot.mjs` tar skärmdumpar av scenen
-  (se skriptet för parametrar). Länka `node_modules` från huvudcheckouten för playwright-core och eslint.
+  (se skriptet för parametrar). Kör `npm install` för playwright-core och eslint.
 - Kör `npx eslint src test build.mjs`, `node test/features.mjs`, `node test/keys.mjs --missing` (de 18 dynamiska prefixen är kända), och bygg innan du
   lämnar in. Inga konsolfel. Prestanda: höll sig scenens ritning under ca 16 ms/bildruta för skärm 1080p utan WebGL; nya detaljer ska ritas i
   det statiska lagret (`buildStatics`) när de inte rör sig.

@@ -1,9 +1,9 @@
-# Pixel Dynasty (game/)
+# Pixel Dynasty
 
 A studio tycoon in vanilla JavaScript (ES modules), canvas pixel art and HTML/CSS UI, bundled by esbuild into one HTML file.
-This folder is independent of the Next.js budget app in the repo root; ignore the root Next.js notes when working here.
+Standalone repository (it started as the `game/` folder of Hemmetland/budgetverktyg and was split out with its history).
 
-## Commands (run in game/)
+## Commands
 - `npm install` once. `npm run build` writes `dist/index.html` (standalone) and `dist/artifact.html` (fragment). `npm run watch` rebuilds on save.
 - `node build.mjs --with-dev` also builds the test pages in `src/dev/` to `dist/dev/`.
 - `npm run lint`, `npm test` (sim API tests), `npm run pacing` (progression measured with bots; also `node test/sim.mjs -v`).

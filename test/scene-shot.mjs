@@ -2,7 +2,7 @@
 // node test/scene-shot.mjs <ut-prefix> [bredd] [höjd] [nivåer=1,2] [tod=0.5] [väder=clear|rain|snow] [gl=0|1] [år=1990]
 // Miljövariabler: NOHUD=1 döljer gränssnittet, EXTRA="js" körs i sidan efter uppsättningen (window.__pd.scene m.m.),
 //                 WAIT=ms väntetid före varje bild (standard 1200, höj för gl=1 i headless utan GPU).
-// Kräver playwright-core (länka node_modules från huvudcheckouten om den saknas): ln -s <huvud>/game/node_modules node_modules
+// Kräver playwright-core (npm install) och en Chromium; sökvägen till den står längst ner i launch().
 import { chromium } from 'playwright-core';
 import { resolve } from 'node:path';
 const [, , out = '.shots/scene', w = '1280', h = '720', tiers = '1,2', tod = '0.5', weather = 'clear', gl = '0', year = '1990'] = process.argv;
