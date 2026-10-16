@@ -16,6 +16,8 @@ const diff = opt('diff', 'normal');
 const verbose = args.includes('-v');
 const quiet = args.includes('-q');
 const casual = args.includes('--casual');
+// --mid: en genomsnittlig spelare som ibland väljer bra tema/genre och ibland chansar.
+const mid = args.includes('--mid');
 
 function skillSum(G) {
   let d = 0, t = 0;
@@ -49,10 +51,10 @@ function chooseProject(G) {
     const have = Math.min(sk.d, sk.t) * 0.8;
     if (have >= par * 0.95) scope = id;
   }
-  if (casual) {
+  if (casual || (mid && Math.random() < 0.5)) {
     const tp = G.u.topics[Math.floor(Math.random() * G.u.topics.length)];
     const ge = G.u.genres[Math.floor(Math.random() * G.u.genres.length)];
-    return { title: 'Game ' + (G.games.length + 1), topic: tp, genre: ge, platform: plat.id, scope: G.u.scopes.includes('medium') && sk.d > 25 ? 'medium' : 'small', audience: 'everyone' };
+    return { title: 'Game ' + (G.games.length + 1), topic: tp, genre: ge, platform: plat.id, scope: casual ? (G.u.scopes.includes('medium') && sk.d > 25 ? 'medium' : 'small') : scope, audience: 'everyone' };
   }
   // bästa kända tema/genre
   let best = null;
@@ -75,7 +77,7 @@ function handlePending(G) {
     const p = G.pending[0];
     if (p.type === 'phase') {
       const J = G.job;
-      if (!casual) S.setPhaseFocus(G, p.phase, S.idealFocus(G, J.genre, p.phase, J.genre2));
+      if (!casual && (!mid || Math.random() < 0.6)) S.setPhaseFocus(G, p.phase, S.idealFocus(G, J.genre, p.phase, J.genre2));
       G.pending.shift();
     } else if (p.type === 'report') {
       const g = S.releaseGame(G);
