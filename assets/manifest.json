@@ -1,1 +1,6 @@
-{ "sprites": {} }
+{
+  "sprites": {
+    "bg.skyline-dusk": { "file": "pixellab/backgrounds/skyline-dusk.png", "fw": 512, "fh": 256, "ax": 0, "ay": 0, "note": "PixelLab create_image_pixen, titelskärm i skymning (luftskepp)" },
+    "bg.skyline-night": { "file": "pixellab/backgrounds/skyline-night.png", "fw": 512, "fh": 256, "ax": 0, "ay": 0, "note": "PixelLab create_image_pixen, titelskärm på natten (neon)" }
+  }
+}

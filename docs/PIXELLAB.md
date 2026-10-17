@@ -39,6 +39,9 @@ PixelLab-token får aldrig klistras in i chatten eller sparas i repot.
    t.ex. `car.1.png`, varianter `car.1_v0.png`, `car.1_v1.png`), kör `node build.mjs --with-dev` och sedan `node tools/import-assets.mjs`. Verktyget beskär
    genomskinliga kanter (`crop` i manifestet, filen rörs inte), sätter ankare efter måttstocken, bevarar dina egna fält (prompt, seed, kostnad) och varnar för
    sprites som avviker mycket från måttstocken. Därefter `node build.mjs` och titta med `node test/scene-shot.mjs`.
+   **Helbakgrunder:** nyckel `bg.<namn>` (t.ex. `bg.skyline-dusk`). `World.backdrop` pekar ut nyckeln och ersätter då himmel, stadssilhuett och tända fönster
+   (`drawBackdropCover` i `sprites.js`: ritas 1:1 med foten vid markens kant, speglas åt sidorna, tonas ut uppåt, `World.backdropDx` flyttar i sidled).
+   Idag används den bara på titelskärmen (`showTitle`, `?title=dusk|night` tvingar, annars efter klockan); i spelet byter himlen med tiden på dygnet och måste ritas i kod.
 5. Måttstock i scenen (pixelkonstens egna pixlar): en våning är 48 px hög invändigt, en person ca 30 px, en bil 52–60 px lång, bussen 100.
    Sidovy med snitt genom huset, ljus uppifrån vänster. Spegla åt vänster i koden, generera bara en riktning (öster).
 
@@ -56,3 +59,18 @@ PixelLab-token får aldrig klistras in i chatten eller sparas i repot.
 
 Personernas animationer är det svåraste (sittande vid skrivbordet i profil). Prova `animate_character` med egen beskrivning (v3) och jämför
 med de procedurella: byt bara om det blir tydligt bättre. Normalkartor (`create_normal_map`, 0,5 kredit) kan ge HD-ljuset riktig relief.
+
+## Importerade tillgångar (första satsen, `assets/pixellab/`)
+
+Spelet bäddar bara in det som står i `assets/manifest.json`; resten av `assets/pixellab/` är råmaterial.
+
+| Fil | Status |
+|---|---|
+| `backgrounds/skyline-dusk.png`, `skyline-night.png` (512x256) | **Används**: titelskärmens bakgrund (`bg.skyline-dusk` med luftskepp, `bg.skyline-night` med neon). |
+| `backgrounds/window-view.png` | Ej använd än (tänkt som utsikt genom fönster i våningarna). |
+| `props/*.png` (64x64, snett ovanifrån) | Ej i scenen: scenen är sidovy med 48 px per våning, rekvisitan är ritad i 3/4-perspektiv med annan pixeltäthet och skulle se klistrad ut. Bra som illustrationer i fönster (anläggningar, butik). |
+| `characters/*.png` (64x64) | Ej i scenen: fem olika personer i porträttstil, inte ett pose-ark. Behövs som en person med gång/sitta/skriva/kaffe/prata i profil, ca 30 px hög. |
+| `ui/nav-*.png` (32x32) | Ej kopplade än (dockan använder vektorikoner). `nav-building` föreställer inte en byggnad, `logo-nexus` har oläslig text. |
+
+Om (nästa sats): generera om rekvisita och personer i den skala och vy scenen använder, se `docs/ASSET_SPECS.md` och `docs/PIXELLAB_PROMPTS.md`
+(sidovy rakt framifrån, `create_map_object`/`create_character` med `view: 'side'`, målmått per sprite i specen, transparent bakgrund, samma palett överallt).

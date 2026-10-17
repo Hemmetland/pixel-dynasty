@@ -161,8 +161,13 @@ export function showTitle(app) {
   G.t = 12;
   G.job = { kind: 'demo' };
   app.scene.setGame(G);
-  app.scene.world.tod = 0.745;
-  app.scene.todLock = null;
+  // PixelLab-bakgrunder: skymning på dagen, neonstad på kvällen/natten (?title=dusk|night väljer själv)
+  const hr = new Date().getHours();
+  const night = /[?&]title=night/.test(location.search) || (!/[?&]title=dusk/.test(location.search) && (hr >= 20 || hr < 5));
+  app.scene.world.backdrop = night ? 'bg.skyline-night' : 'bg.skyline-dusk';
+  app.scene.world.backdropDx = night ? 0 : -48; // luftskeppet bredvid titeln, inte bakom den
+  app.scene.world.tod = night ? 0.93 : 0.745;
+  app.scene.todLock = night ? 0.93 : null;
   app.scene.paused = true;
   app.G = null;
   const w = app.root.clientWidth;

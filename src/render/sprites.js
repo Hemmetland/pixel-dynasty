@@ -64,3 +64,61 @@ export function drawSprite(ctx, name, x, y, o = {}) {
 
 // Genväg för möbler: sprite 'prop.<namn>' vid (x, golvlinje).
 export const spr = (ctx, name, x, fy, o) => (sprites.size ? drawSprite(ctx, 'prop.' + name, x, fy, o) : false);
+
+// Helbakgrund (t.ex. 'bg.skyline-dusk'): ritas 1:1 med nederkanten vid markens kant, speglas åt sidorna så att den räcker över bredden,
+// (dx flyttar bilden i sidled, t.ex. så att luftskeppet hamnar bredvid titeln) och tonas ut uppåt i bildens toppfärg om scenen är högre än bilden. Det färdiga lagret sparas tills måtten ändras.
+const covers = new Map();
+export function drawBackdropCover(ctx, name, W, bottomY, dx = 0) {
+  const s = sprites.get(name);
+  if (!s || W <= 0 || bottomY <= 0) return false;
+  const key = `${version}|${W}|${bottomY}|${dx}`;
+  let e = covers.get(name);
+  if (!e || e.key !== key) {
+    const c = e ? e.c : document.createElement('canvas');
+    c.width = W;
+    c.height = bottomY;
+    const g = c.getContext('2d');
+    let off = bottomY - s.fh;
+    if (off < 0) off = Math.min(0, off + 48); // låg scen: låt upp till 48 px av bildens fot gömmas bakom marken
+    const x0 = Math.round((W - s.fw) / 2) + dx;
+    // toppfärg: medelvärdet av de översta raderna
+    const a = document.createElement('canvas');
+    a.width = a.height = 1;
+    const ag = a.getContext('2d');
+    ag.drawImage(s.c, 0, 0, s.fw, 4, 0, 0, 1, 1);
+    const [r, gr, b] = ag.getImageData(0, 0, 1, 1).data;
+    const art = document.createElement('canvas');
+    art.width = W;
+    art.height = bottomY;
+    const ig = art.getContext('2d');
+    const n0 = -Math.ceil(Math.max(0, x0) / s.fw);
+    for (let n = n0; x0 + n * s.fw < W; n++) {
+      const x = x0 + n * s.fw;
+      if (n % 2 !== 0) {
+        ig.save();
+        ig.translate(x + s.fw, off);
+        ig.scale(-1, 1);
+        ig.drawImage(s.c, 0, 0);
+        ig.restore();
+      } else ig.drawImage(s.c, x, off);
+    }
+    if (off > 0) {
+      g.fillStyle = `rgb(${r},${gr},${b})`;
+      g.fillRect(0, 0, W, off + 24);
+      const f = ig.createLinearGradient(0, off, 0, off + 24);
+      f.addColorStop(0, 'rgba(0,0,0,1)');
+      f.addColorStop(1, 'rgba(0,0,0,0)');
+      ig.globalCompositeOperation = 'destination-out';
+      ig.fillStyle = f;
+      ig.fillRect(0, off, W, 24);
+      ig.fillStyle = '#000';
+      ig.fillRect(0, 0, W, off);
+      ig.globalCompositeOperation = 'source-over';
+    }
+    g.drawImage(art, 0, 0);
+    e = { c, key };
+    covers.set(name, e);
+  }
+  ctx.drawImage(e.c, 0, 0);
+  return true;
+}

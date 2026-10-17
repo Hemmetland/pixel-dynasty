@@ -225,13 +225,14 @@ export const glMethods = {
     wd.drawSky(clear(R.sky));
     gl.upload('sky', R.sky.c);
     // skyline och tända fönster ändras bara när staden byggs om
-    if (R.bgFor !== wd.layers || R.bgGy !== gy) {
+    if (R.bgFor !== wd.layers || R.bgGy !== gy || R.bgBack !== wd.backdrop) {
       wd.drawBackdrop(clear(R.bg));
       gl.upload('bg', R.bg.c);
       wd.drawLitWindows(clear(R.emis), 1);
       gl.upload('emis', R.emis.c);
       R.bgFor = wd.layers;
       R.bgGy = gy;
+      R.bgBack = wd.backdrop;
     }
     // mark och träd ändras med årstid och väder
     const wz = wd.weather;

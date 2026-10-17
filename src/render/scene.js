@@ -80,6 +80,8 @@ export class Scene {
 
   setGame(G) {
     this.G = G;
+    this.world.backdrop = null;
+    this.world.backdropDx = 0;
     if (!G) return;
     this.rebuildLayout(true);
   }

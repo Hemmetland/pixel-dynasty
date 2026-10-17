@@ -2,6 +2,7 @@ import { clamp, lerp, hex2rgb } from '../core/util.js';
 import { drawPerson } from './people.js';
 import { randomLook } from '../sim/people.js';
 import { drawVehicle, vehicleSize } from './vehicles.js';
+import { drawBackdropCover } from './sprites.js';
 
 const BAYER = [0, 8, 2, 10, 12, 4, 14, 6, 3, 11, 1, 9, 15, 7, 13, 5].map((v) => (v + 0.5) / 16);
 
@@ -72,6 +73,8 @@ export class World {
     this.W = 0;
     this.H = 0;
     this.groundY = 0;
+    this.backdropDx = 0;
+    this.backdrop = null; // sprite-nyckel (t.ex. 'bg.skyline-dusk') som ersätter himmel och stadssilhuett
     this.year = 1980;
     this.eraKey = -1;
     this.sky = null;
@@ -299,6 +302,11 @@ export class World {
 
   // ── Ritning ──
   drawSky(ctx) {
+    if (this.backdrop && drawBackdropCover(ctx, this.backdrop, this.W, this.groundY + 2, this.W >= 480 ? this.backdropDx : 0)) {
+      this.sun = null;
+      this.moon = null;
+      return;
+    }
     const s = skyAt(this.tod);
     const key = Math.round(this.tod * 360) + (this.weather.type === 'clear' ? 0 : 1000);
     if (key !== this.skyKey) {
@@ -411,6 +419,7 @@ export class World {
 
   // Stadssilhuett + träd + mark bakom byggnaden (ritas på objektlagret)
   drawBackdrop(ctx) {
+    if (this.backdrop) return;
     const gy = this.groundY;
     const lyr = this.layers;
     for (let i = 0; i < lyr.length; i++) {
@@ -425,7 +434,7 @@ export class World {
     ctx.fillRect(0, gy - 60, this.W, 60);
   }
   drawLitWindows(ctx, night) {
-    if (night < 0.05) return;
+    if (night < 0.05 || this.backdrop) return;
     const gy = this.groundY;
     ctx.globalAlpha = clamp(night * 1.2, 0, 1);
     for (let i = 0; i < this.layers.length; i++) ctx.drawImage(this.layers[i].lit, 0, gy - this.layers[i].H - 6 + i * 4);
