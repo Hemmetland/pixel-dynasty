@@ -61,3 +61,25 @@ kontorsstol, golvlampa, sidobord, småväxter. **Bakgrunder:** lila solnedgångs
 Allt i spelet ritas i kod. Struktur (rum, möbler, växter, neon, ljus, skuggor, glöd, reflektioner) och karaktärsdetaljer
 (accessoarer, kläder, animationer) går att nå nära referensen. Illustratörsnivå i varje enskild pixel kräver riktig handritad
 eller AI-genererad spritekonst som levereras som separata transparenta PNG-filer (en bild per sprite/animationsruta).
+
+## Ny referens: "PixelForge Studios" (docs/reference/pixelforge-heart.png)
+
+Användaren lade senare in en andra, rikare referensbild: `docs/reference/pixelforge-heart.png`. **Titta på den direkt** (den är en riktig bildfil, öppna den med
+Read-verktyget). Den ersätter inte beskrivningen ovan men pekar ut slutmålet. Det viktigaste i den:
+
+- **Ett enda hus som växer.** Garage och ett sovrum ("Sovrum (Start)") nere till vänster är början, därefter lobby med glasentré, och ovanpå det
+  fyra våningar med många rum, takterrass med växter, skyltar och en helikopter. Rummen är **avdelningar med namnskylt**: VD, Mötesrum, Forskning,
+  Server & Online, Koncept & Design, Programmering, Art & Animation, Ljud & Musik, Test & QA, Utveckling av hårdvara, Konsol & Spelportar, MMORPG / Servrar,
+  Paus & Lounge, Kök & Matsal, Träning & Hälsa, Toaletter. Varje rum är fullt av detaljer som visar vad avdelningen gör (modeller, kodskärmar,
+  mixerbord, serverrack, tavla med idéer, biljardbord, löpband) och av människor som jobbar där. Rummen har egen ljusfärg (blått i forskning och serverrum,
+  varmt i kök, grönt i sovrum), växter överallt och synlig skyline med solnedgång bakom.
+- **Idé för spelet:** avdelningarna är de rum man bygger och bemannar. De kan knytas till spelets system: Koncept & Design (design), Programmering (teknik),
+  Art & Animation (grafik), Ljud & Musik (ljud), Test & QA (buggar), Forskning (forskningspoäng), Server & Online (online-spel), Utveckling av hårdvara och
+  Konsol & Spelportar (egna motorer och plattformar), Träning & Hälsa (kurser och humör), Paus & Lounge, Kök (humör), Mötesrum (kickoff vid ny fas), VD (ledning).
+  Byggnaden kan visa hela huset från början med olåsta rum som mörka byggplatser ("att hyra") så att man ser vart man är på väg.
+- **Gränssnitt:** överst studiolinje med logotyp och slogan ("Small ideas. Big worlds."), pengar med inkomst per dag, anställda, rykte (stjärnbetyg), datum med
+  tidsålder och hastighetsknappar. Vänster: panelen "Aktuella mål" med framsteg (t.ex. "Släpp spelet Skyward, forskningsfas 2/3", "Bygg ut kontoret till nivå 3 2/4 rum",
+  "Tjäna $1 000 000 $342 750 / $1 000 000"). Höger: "Pågående projekt" (namn, genre, framsteg i procent, budget, team 6/8, släppdatum), "Marknaden" (plattformars andelar
+  i procent) och "Nyheter". Nere: navigering med åtta flikar (Översikt, Projekt, Personal, Forskning, Företag, Ekonomi, Marknad, Inställningar), "Nästa steg"-lista för
+  nybörjare (Anställ första medarbetaren, Köp 2 datorer, Starta ditt första spel) och klockpanel med dag och tid.
+- **Gata och omgivning:** lastbil med företagslogotyp, träd, lyktstolpar och en kuliss av skyline i flera lager.
