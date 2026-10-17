@@ -87,9 +87,9 @@ export function expectedRevenue(G, J) {
   return forecast(G, { t: G.t, platform: J.platform, scope: J.scope, score, hype: 0, topic: J.topic, genre: J.genre, genre2: J.genre2, audience: J.audience, chain: J.chain }, { noise: false });
 }
 // Kampanjer och mässmontrar kostar minst sin andel av den väntade intäkten (annars betalade de sig hundratals gånger
-// om när försäljningen växer snabbare än penningvärdet). Alla fem kostar ungefär en tiondel av vad spelet drar in och
-// betalar sig 6–9 gånger om, så länge hypen inte redan slår i taket (100): det som går över är bortkastat.
-const MKT_SHARE = { press: 0.01, ads: 0.02, tv: 0.04, online: 0.06, influencer: 0.09 };
+// om när försäljningen växer snabbare än penningvärdet). Alla fem kostar ungefär en tjugondel av vad spelet drar in och
+// betalar sig 10–20 gånger om, så länge hypen inte redan slår i taket (100): det som går över är bortkastat.
+const MKT_SHARE = { press: 0.005, ads: 0.01, tv: 0.02, online: 0.03, influencer: 0.045 };
 export function promoPrice(G, base, share) {
   const J = G.job && G.job.kind === 'game' ? G.job : null;
   return Math.max(base * moneyScale(yearOf(G.t)), J ? share * expectedRevenue(G, J) : 0);

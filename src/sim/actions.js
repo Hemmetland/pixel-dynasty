@@ -43,7 +43,7 @@ export function patchGame(G, id) {
 }
 // Mässan
 export function expoCost(G, level) {
-  return level ? Math.round(promoPrice(G, [0, 1500, 6000][level], [0, 0.015, 0.04][level]) / 50) * 50 : 0;
+  return level ? Math.round(promoPrice(G, [0, 1500, 6000][level], [0, 0.0075, 0.02][level]) / 50) * 50 : 0;
 }
 export function resolveExpo(G, promptId, level) {
   const i = G.pending.findIndex((p) => p.id === promptId && p.type === 'expo');
