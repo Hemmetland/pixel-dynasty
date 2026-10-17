@@ -35,6 +35,10 @@ PixelLab-token får aldrig klistras in i chatten eller sparas i repot.
    (`fw`/`fh` = en rutas storlek, `frames` = rutor sida vid sida, `ax`/`ay` = ankarpunkt). Måtten att sikta på står i `docs/ASSET_SPECS.md` och bilderna
    av dagens procedurella grafik i `assets/baked/` (bra som `style_images` och som kontroll: lägg en baked-fil i manifestet så ser du exakt samma bild).
    Nya sprite-nycklar för personer, byggnadsdelar och UI kräver en liten kodkrok vardera; lägg dem när tillgångarna finns.
+   **Importera nya filer med ett kommando:** lägg PNG-filerna som `assets/props/<namn>.png` (blir `prop.<namn>`) och `assets/vehicles/<namn>.png` (blir `veh.<namn>`,
+   t.ex. `car.1.png`, varianter `car.1_v0.png`, `car.1_v1.png`), kör `node build.mjs --with-dev` och sedan `node tools/import-assets.mjs`. Verktyget beskär
+   genomskinliga kanter (`crop` i manifestet, filen rörs inte), sätter ankare efter måttstocken, bevarar dina egna fält (prompt, seed, kostnad) och varnar för
+   sprites som avviker mycket från måttstocken. Därefter `node build.mjs` och titta med `node test/scene-shot.mjs`.
 5. Måttstock i scenen (pixelkonstens egna pixlar): en våning är 48 px hög invändigt, en person ca 30 px, en bil 52–60 px lång, bussen 100.
    Sidovy med snitt genom huset, ljus uppifrån vänster. Spegla åt vänster i koden, generera bara en riktning (öster).
 

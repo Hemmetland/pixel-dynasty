@@ -15,12 +15,14 @@ export function registerSprites(pack) {
         const img = new Image();
         img.onload = () => {
           const e = (pack.sprites && pack.sprites[name]) || {};
-          const fw = e.fw || img.width;
-          const fh = e.fh || img.height;
+          // crop [x, y, w, h] beskär genomskinliga kanter utan att röra originalfilen
+          const [cx, cy, cw, ch] = e.crop || [0, 0, img.width, img.height];
+          const fw = e.fw || cw;
+          const fh = e.fh || ch;
           const c = document.createElement('canvas');
-          c.width = img.width;
-          c.height = img.height;
-          c.getContext('2d').drawImage(img, 0, 0);
+          c.width = cw;
+          c.height = ch;
+          c.getContext('2d').drawImage(img, cx, cy, cw, ch, 0, 0, cw, ch);
           sprites.set(name, { c, fw, fh, ax: e.ax ?? Math.round(fw / 2), ay: e.ay ?? fh, frames: e.frames || 1 });
           const base = name.split('#')[0];
           if (name.includes('#')) variants.set(base, (variants.get(base) || 0) + 1);
