@@ -10,10 +10,10 @@ import { REVIEWERS } from '../data/reviews.js';
 import { EV } from '../data/events.js';
 import { reviewTexts, phaseCats, idealFocus, SCOPE_CAP, softCap } from '../sim/score.js';
 import { setPhaseFocus } from '../sim/dev.js';
-import { resolveEvent } from '../sim/events.js';
+import { resolveEvent, previewFx } from '../sim/events.js';
 import { AWARD_CATS } from '../sim/awards.js';
 import { resolveExpo, expoCost } from '../sim/actions.js';
-import { lang } from '../core/i18n.js';
+import { lang, Lf } from '../core/i18n.js';
 import { fmtNum, clamp } from '../core/util.js';
 import { focusHTML, bindFocus } from './focus.js';
 import { SCOPES } from '../sim/const.js';
@@ -243,21 +243,42 @@ function insightRow(x, rep, J) {
 }
 
 // ── Händelser ─────────────────────────────────────────────────────
+// {name} = personen händelsen gäller, {title} = spelet (släppt eller pågående). Gamla sparfiler saknar dem och får en allmän text.
+function eventVars(G, p) {
+  const s = G.staff.find((x) => x.id === p.who);
+  const g = G.games.find((x) => x.id === p.game) || (G.job && G.job.kind === 'game' ? G.job : null);
+  return { name: s ? esc(s.name) : t('ev.someone'), title: g && g.title ? `<i>${esc(g.title)}</i>` : t('ev.lastGame') };
+}
+const capFirst = (s) => s.charAt(0).toUpperCase() + s.slice(1);
+const evText = (o, vars) => capFirst(Lf(o, vars));
+// Säkra effekter som små brickor på knappen; slumpgrenar visas som en tärning.
+const previewChips = (G, fx, p) =>
+  previewFx(G, fx, { who: p.who, game: p.game })
+    .filter((o) => o.k !== 'text')
+    .map(fxChip)
+    .join('');
 function eventPrompt(app, G, p, finish) {
   const ev = EV[p.ev];
   if (!ev) return finish();
+  const vars = eventVars(G, p);
   const choices = ev.choices
-    .map((c, i) => `<button class="choice" data-act="ev-pick" data-i="${i}"><b>${L(c.label)}</b>${c.hint ? `<span class="muted">${L(c.hint)}</span>` : ''}</button>`)
+    .map((c, i) => {
+      const chips = previewChips(G, c.fx, p);
+      return `<button class="choice" data-act="ev-pick" data-i="${i}"><b>${L(c.label)}</b>${c.hint ? `<span class="muted">${L(c.hint)}</span>` : ''}${chips ? `<span class="fxrow">${chips}</span>` : ''}</button>`;
+    })
     .join('');
   UI.modal(`
     <div class="win-head"><div class="wi" style="--wc:var(--warn)">${icon(ev.kind === 'dev' ? 'wrench' : 'mail')}</div><h2>${L(ev.title)}<div class="sub">${t(ev.kind === 'dev' ? 'ev.dev' : 'ev.studio')}</div></h2></div>
-    <div class="win-body" id="ev-body"><p class="evtext">${L(ev.body)}</p><div class="choices">${choices}</div></div>`,
+    <div class="win-body" id="ev-body"><p class="evtext">${evText(ev.body, vars)}</p><div class="choices">${choices}</div></div>`,
     (el) => {
       act('ev-pick', (b) => {
-        const out = resolveEvent(G, p.id, +b.dataset.i);
+        const ch = ev.choices[+b.dataset.i];
+        const out = resolveEvent(G, p.id, +b.dataset.i) || [];
         sfx.play('click');
-        const chips = (out || []).map(fxChip).join('');
-        $('#ev-body', el).innerHTML = `<p class="evtext">${L(ev.choices[+b.dataset.i].label)}</p><div class="row wrap" style="gap:8px;margin:14px 0">${chips || `<span class="muted">${t('ev.nothing')}</span>`}</div><div class="row"><span class="sp"></span><button class="btn primary" data-act="ev-ok">${t('ui.continue')}${icon('arrow')}</button></div>`;
+        // vad som hände: utfallstexten (sista, så att en slumpgren vinner över valets egen text), annars valet
+        const res = out.filter((o) => o.k === 'text').pop();
+        const chips = out.filter((o) => o.k !== 'text').map(fxChip).join('');
+        $('#ev-body', el).innerHTML = (res ? `<div class="evchoice muted">${L(ch.label)}</div><p class="evtext">${evText(res.v, vars)}</p>` : `<p class="evtext">${L(ch.label)}</p>`) + `<div class="row wrap" style="gap:8px;margin:14px 0">${chips || `<span class="muted">${t('ev.nothing')}</span>`}</div><div class="row"><span class="sp"></span><button class="btn primary" data-act="ev-ok">${t('ui.continue')}${icon('arrow')}</button></div>`;
         act('ev-ok', () => {
           app.promptActive = false;
           UI.closeModal();
@@ -269,12 +290,19 @@ function eventPrompt(app, G, p, finish) {
   );
   sfx.play('notify');
 }
+const FX_TIP = { money: 'hud.money', rp: 'hud.rp', fans: 'hud.fans', hype: 'stat.hype', design: 'stat.design', tech: 'stat.tech', bugs: 'stat.bugs', mood: 'ev.fx.mood', sales: 'ev.fx.sales', staff: 'ev.fx.staff', raise: 'ev.fx.raiseTip', risk: 'ev.fx.riskTip' };
 function fxChip(o) {
-  const map = { money: ['money', 'var(--money)'], rp: ['flask', 'var(--rp)'], fans: ['heart', 'var(--fans)'], hype: ['fire', 'var(--hot)'], design: ['bulb', 'var(--design)'], tech: ['cpu', 'var(--tech)'], bugs: ['bug', 'var(--bug)'], mood: ['coffee', 'var(--warn)'], sales: ['chart', 'var(--accent)'], staff: ['team', 'var(--bug)'] };
+  const map = { money: ['money', 'var(--money)'], rp: ['flask', 'var(--rp)'], fans: ['heart', 'var(--fans)'], hype: ['fire', 'var(--hot)'], design: ['bulb', 'var(--design)'], tech: ['cpu', 'var(--tech)'], bugs: ['bug', 'var(--bug)'], mood: ['coffee', 'var(--warn)'], sales: ['chart', 'var(--accent)'], staff: ['team', 'var(--bug)'], raise: ['money', 'var(--warn)'], crunch: ['hourglass', 'var(--warn)'], risk: ['dice', 'var(--accent)'] };
   const [ic, col] = map[o.k] || ['info', 'var(--accent)'];
-  const v = typeof o.v === 'number' ? (o.k === 'money' ? (o.v > 0 ? '+' : '') + money(o.v) : (o.v > 0 ? '+' : '') + fmtNum(o.v)) : o.v;
-  const bad = (typeof o.v === 'number' && ((o.k === 'bugs' && o.v > 0) || (o.k !== 'bugs' && o.v < 0))) || (typeof o.v === 'string' && o.v.startsWith('-') && o.k !== 'bugs');
-  return `<span class="chip c" style="--c:${bad ? 'var(--bug)' : col}">${icon(ic)}<b class="num">${v}</b></span>`;
+  let v = typeof o.v === 'number' ? (o.k === 'money' ? (o.v > 0 ? '+' : '') + money(o.v) : (o.v > 0 ? '+' : '') + fmtNum(o.v)) : o.v;
+  let tip = FX_TIP[o.k] ? t(FX_TIP[o.k]) : '';
+  if (o.k === 'raise') v = t('ev.fx.raise', { v: o.v });
+  else if (o.k === 'crunch') {
+    v = t('ev.fx.crunch', { n: o.v });
+    tip = t('ev.fx.crunchTip', { n: o.v });
+  } else if (o.k === 'risk') v = t('ev.fx.risk');
+  const bad = (typeof o.v === 'number' && o.k !== 'crunch' && ((o.k === 'bugs' && o.v > 0) || (o.k !== 'bugs' && o.v < 0))) || (typeof o.v === 'string' && o.v.startsWith('-') && o.k !== 'bugs');
+  return `<span class="chip c" style="--c:${bad ? 'var(--bug)' : col}"${tip ? ` data-tip="${esc(tip)}"` : ''}>${icon(ic)}<b class="num">${v}</b></span>`;
 }
 
 // ── Priser ────────────────────────────────────────────────────────

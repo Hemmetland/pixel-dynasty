@@ -8,105 +8,144 @@ import { earn, spend } from './studio.js';
 import { parPerTick } from './score.js';
 import { note } from './news.js';
 
+// Vem och vad händelsen handlar om väljs när den dras, så att texten och effekten gäller samma person och spel.
+// needs: 'staff' = en anställd (inte grundaren), 'game' = senaste släppta spelet, 'oldGame' = studions bästa äldre spel.
+function eventContext(G, ev) {
+  const ctx = {};
+  const needs = ev.needs || [];
+  if (needs.includes('staff')) {
+    const cand = G.staff.filter((s) => !s.isFounder);
+    if (cand.length) ctx.who = pick(G, cand).id;
+  }
+  if (needs.includes('game') && G.games.length) ctx.game = G.games[G.games.length - 1].id;
+  if (needs.includes('oldGame') && G.games.length) {
+    const old = G.games.slice(0, -1);
+    const best = (old.length ? old : G.games).reduce((a, g) => (g.score > a.score ? g : a));
+    ctx.game = best.id;
+  }
+  return ctx;
+}
+// Samma händelse kommer tidigast efter 36 veckor (studio) eller 40 veckor (under utveckling).
+const COOLDOWN = { studio: 36, dev: 40 };
+const fresh = (G, e) => G.t - (G.flags['ev_' + e.id] ?? -999) > COOLDOWN[e.kind];
 export function rollStudioEvent(G, force) {
   if (G.pending.length || (!force && (G.games.length < 1 || !chance(G, 0.17)))) return false;
-  const pool = EVENTS.filter((e) => e.kind === 'studio' && e.when(G) && G.t - (G.flags['ev_' + e.id] ?? -999) > 36);
+  const pool = EVENTS.filter((e) => e.kind === 'studio' && e.when(G) && fresh(G, e));
   if (!pool.length) return false;
   const ev = weighted(G, pool, (e) => e.weight);
   G.flags['ev_' + ev.id] = G.t;
-  G.pending.push({ type: 'event', id: G.uid++, ev: ev.id });
+  G.pending.push({ type: 'event', id: G.uid++, ev: ev.id, ...eventContext(G, ev) });
   return true;
 }
 export function rollDevEvent(G) {
   const J = G.job;
   if (!J || J.kind !== 'game' || J.state !== 'dev' || J.phase >= 3 || G.pending.length) return false;
   if (J.events >= 3 || J.ticks < 12 || !chance(G, 0.075 / (SCOPE_TEMPO[J.scope] || 1))) return false;
-  const pool = EVENTS.filter((e) => e.kind === 'dev' && e.when(G));
+  const pool = EVENTS.filter((e) => e.kind === 'dev' && e.when(G) && fresh(G, e));
   if (!pool.length) return false;
   const ev = weighted(G, pool, (e) => e.weight);
   J.events++;
-  G.pending.push({ type: 'event', id: G.uid++, ev: ev.id });
+  G.flags['ev_' + ev.id] = G.t;
+  G.pending.push({ type: 'event', id: G.uid++, ev: ev.id, ...eventContext(G, ev) });
   return true;
 }
 
-// Tillämpa effekter, returnera lista med förändringar för visning.
-export function applyFx(G, fx, out = []) {
+const pct = (x) => (x > 0 ? '+' : '') + Math.round(x * 100) + '%';
+// Tillämpa effekter, returnera lista med förändringar för visning. ctx = { who, game } från händelsen.
+// dry = true ändrar ingenting och ger bara de säkra effekterna (förhandsvisning); slumpgrenar blir { k: 'risk' }.
+export function applyFx(G, fx, out = [], ctx = {}, dry = false) {
   const year = yearOf(G.t);
   const ms = moneyScale(year);
   const J = G.job && G.job.kind === 'game' ? G.job : null;
   if (fx.money) {
     const v = Math.round((fx.money * ms) / 10) * 10;
-    if (v > 0) earn(G, v, 'events');
-    else spend(G, -v, 'events');
+    if (!dry) {
+      if (v > 0) earn(G, v, 'events');
+      else spend(G, -v, 'events');
+    }
     out.push({ k: 'money', v });
   }
   if (fx.rp) {
-    G.rp = Math.max(0, G.rp + fx.rp);
+    if (!dry) G.rp = Math.max(0, G.rp + fx.rp);
     out.push({ k: 'rp', v: fx.rp });
   }
   if (fx.fans) {
-    G.fans = Math.max(0, G.fans + fx.fans);
+    if (!dry) G.fans = Math.max(0, G.fans + fx.fans);
     out.push({ k: 'fans', v: fx.fans });
   }
+  // fansRel = andel av nuvarande fans (minst 25 åt något håll), så att sena händelser märks även för stora studior
+  if (fx.fansRel) {
+    const v = Math.sign(fx.fansRel) * Math.max(25, Math.round(G.fans * Math.abs(fx.fansRel)));
+    if (!dry) G.fans = Math.max(0, G.fans + v);
+    out.push({ k: 'fans', v });
+  }
   if (fx.hype) {
-    if (J) J.hype = clamp(J.hype + fx.hype, 0, 100);
+    if (J && !dry) J.hype = clamp(J.hype + fx.hype, 0, 100);
     out.push({ k: 'hype', v: fx.hype });
   }
   if (fx.hypeNext) {
-    G.flags.hypeNext = (G.flags.hypeNext || 0) + fx.hypeNext;
+    if (!dry) G.flags.hypeNext = (G.flags.hypeNext || 0) + fx.hypeNext;
     out.push({ k: 'hype', v: fx.hypeNext });
   }
   if (J) {
     const parTotal = parPerTick(G, J) * J.devTicks;
-    if (fx.D) J.D += fx.D * parTotal;
-    if (fx.T) J.T += fx.T * parTotal;
-    if (fx.D) out.push({ k: 'design', v: Math.round(fx.D * 100) + '%' });
-    if (fx.T) out.push({ k: 'tech', v: Math.round(fx.T * 100) + '%' });
+    if (fx.D && !dry) J.D += fx.D * parTotal;
+    if (fx.T && !dry) J.T += fx.T * parTotal;
+    if (fx.D) out.push({ k: 'design', v: pct(fx.D) });
+    if (fx.T) out.push({ k: 'tech', v: pct(fx.T) });
     if (fx.bugs) {
-      J.bugs += fx.bugs * SCOPES[J.scope].bugs;
+      if (!dry) J.bugs += fx.bugs * SCOPES[J.scope].bugs;
       out.push({ k: 'bugs', v: Math.round(fx.bugs * SCOPES[J.scope].bugs) });
     }
     if (fx.bugsFrac) {
       const d = J.bugs * fx.bugsFrac;
-      J.bugs = Math.max(0, J.bugs + d);
+      if (!dry) J.bugs = Math.max(0, J.bugs + d);
       out.push({ k: 'bugs', v: Math.round(d) });
     }
     if (fx.crunch) {
-      J.crunch = true;
-      J.crunchTicks = fx.crunch * 4;
+      if (!dry) {
+        J.crunch = true;
+        J.crunchTicks = fx.crunch * 4;
+      }
+      out.push({ k: 'crunch', v: fx.crunch });
     }
   }
   if (fx.mood) {
-    for (const s of G.staff) s.mood = clamp(s.mood + fx.mood, 0, 100);
+    if (!dry) for (const s of G.staff) s.mood = clamp(s.mood + fx.mood, 0, 100);
     out.push({ k: 'mood', v: fx.mood });
   }
   if (fx.salesMult) {
-    G.flags.salesQ = G.flags.salesQ || [];
-    G.flags.salesQ.push(fx.salesMult);
-    out.push({ k: 'sales', v: Math.round((fx.salesMult - 1) * 100) + '%' });
+    if (!dry) (G.flags.salesQ = G.flags.salesQ || []).push(fx.salesMult);
+    out.push({ k: 'sales', v: pct(fx.salesMult - 1) });
   }
-  if (fx.loseStaff) {
+  // personen händelsen gäller (ctx.who), annars någon slumpad som inte är grundare
+  const target = () => {
     const cand = G.staff.filter((s) => !s.isFounder);
-    if (cand.length) {
-      const s = pick(G, cand);
+    return cand.find((s) => s.id === ctx.who) || (cand.length ? pick(G, cand) : null);
+  };
+  if (fx.loseStaff && G.staff.some((s) => !s.isFounder)) {
+    if (!dry) {
+      const s = target();
       G.staff = G.staff.filter((x) => x !== s);
       note(G, 'news.staffLeft', { name: s.name }, 'bad');
-      out.push({ k: 'staff', v: -1 });
     }
+    out.push({ k: 'staff', v: -1 });
   }
-  if (fx.raiseRandom) {
-    const cand = G.staff.filter((s) => !s.isFounder);
-    if (cand.length) {
-      const s = pick(G, cand);
+  if (fx.raiseRandom && G.staff.some((s) => !s.isFounder)) {
+    if (!dry) {
+      const s = target();
       s.salary = Math.round((s.salary * 1.15) / 10) * 10;
       s.mood = clamp(s.mood + 15, 0, 100);
     }
+    out.push({ k: 'raise', v: '+15%' });
   }
-  if (fx.rand) {
+  if (fx.res) out.push({ k: 'text', v: fx.res });
+  if (fx.rand && dry) out.push({ k: 'risk' });
+  else if (fx.rand) {
     let r = rnd(G);
     for (const [p, sub] of fx.rand) {
       if (r < p) {
-        applyFx(G, sub, out);
+        applyFx(G, sub, out, ctx);
         break;
       }
       r -= p;
@@ -122,8 +161,11 @@ export function resolveEvent(G, promptId, idx) {
   const ev = EV[pr.ev];
   const ch = ev.choices[idx];
   G.pending.splice(i, 1);
-  const out = applyFx(G, ch.fx, []);
+  const out = applyFx(G, ch.fx, [], { who: pr.who, game: pr.game });
   G.stats.events++;
   emit('eventResolved', { ev, idx, out });
   return out;
 }
+
+// Säkra effekter av ett val, utan att något ändras (för knapparna i händelserutan)
+export const previewFx = (G, fx, ctx) => applyFx(G, fx, [], ctx, true);
