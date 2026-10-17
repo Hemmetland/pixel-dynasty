@@ -63,10 +63,31 @@ S.cancelProject(G);
 // lån
 ok(S.takeLoan(G, 20000) > 0, 'ta lån');
 ok(S.repayLoan(G, 10000) > 0, 'betala tillbaka');
-// kontor
+// kontor: pengar och fans räcker inte längre, det krävs också spel, team, betyg och rätt år (avsiktlig ändring)
 G.money = 1e8; G.fans = 1e6;
-while (S.canUpgradeOffice(G) === true) S.upgradeOffice(G);
-ok(G.office.tier === 5, 'kontor tier 5');
+ok(S.canUpgradeOffice(G) !== true, 'kontor: pengar och fans räcker inte (saknas: ' + S.canUpgradeOffice(G) + ')');
+ok(S.officeReqs(G).length === 6 && S.officeReqs(G).every((r) => typeof r.ok === 'boolean'), 'kontor: sex krav med status');
+const GX = JSON.parse(JSON.stringify(G));
+GX.office.tier = 0;
+GX.t = 48 * 20;
+GX.games = Array.from({ length: 60 }, (_, i) => ({ ...GX.games[0], id: 7000 + i, score: 9 }));
+GX.staff = Array.from({ length: 36 }, (_, i) => ({ ...GX.staff[0], id: 6000 + i }));
+ok(S.canUpgradeOffice(GX) === true && S.upgradeOffice(GX) && GX.office.tier === 1, 'kontor: alla krav uppfyllda ger nivå 1');
+GX.games = GX.games.slice(0, 3);
+ok(S.canUpgradeOffice(GX) === 'games', 'kontor: för få spel blockerar (' + S.canUpgradeOffice(GX) + ')');
+GX.games = Array.from({ length: 60 }, (_, i) => ({ ...GX.games[0], id: 7100 + i, score: 4 }));
+ok(S.canUpgradeOffice(GX) === 'avg', 'kontor: dåligt snittbetyg blockerar (' + S.canUpgradeOffice(GX) + ')');
+GX.games.forEach((g) => { g.score = 9; });
+GX.t = 48 * 3;
+ok(S.canUpgradeOffice(GX) === 'year', 'kontor: för tidigt år blockerar (' + S.canUpgradeOffice(GX) + ')');
+GX.t = 48 * 20;
+GX.staff = GX.staff.slice(0, 2);
+ok(S.canUpgradeOffice(GX) === 'staff', 'kontor: för litet team blockerar (' + S.canUpgradeOffice(GX) + ')');
+GX.staff = Array.from({ length: 36 }, (_, i) => ({ ...G.staff[0], id: 6100 + i }));
+GX.t = 48 * 35;
+while (S.canUpgradeOffice(GX) === true) S.upgradeOffice(GX);
+ok(GX.office.tier === 5, 'kontor tier 5 när alla krav är uppfyllda');
+G.office.tier = 5;
 // alla händelser
 for (const ev of EVENTS) {
   G.pending = [];

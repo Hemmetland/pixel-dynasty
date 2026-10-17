@@ -7,7 +7,10 @@ import { DIFFICULTY } from './state.js';
 import { earn } from './studio.js';
 import { platFit } from './score.js';
 
-export const unitRev = (year) => 400 * Math.pow(1.04, year - 1980);
+// Försäljning per enhet och år. Bas och årlig tillväxt är de två reglagen för hur snabbt kassan växer.
+export const UNIT_REV_BASE = 340;
+export const UNIT_REV_GROWTH = 1.04;
+export const unitRev = (year) => UNIT_REV_BASE * Math.pow(UNIT_REV_GROWTH, year - 1980);
 
 export function trendMult(G, topic, genre) {
   const tr = G.market.trend;

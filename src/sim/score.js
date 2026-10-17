@@ -126,7 +126,9 @@ export function freshness(G, job) {
 function roundHalf(x) {
   return Math.round(x * 2) / 2;
 }
-const SCOPE_CAP = { small: 8.2, medium: 9.0, large: 9.6, aaa: 10 };
+// Betygstak per storlek (se "Små spel kan aldrig bli mästerverk" nedan). Taket styr också hur mycket
+// de första åren ger: ett litet spel landar kring 6–7 och första "succén" (7,5+) kommer med kontoret.
+const SCOPE_CAP = { small: 6.9, medium: 8.7, large: 9.2, aaa: 10 };
 
 export function evaluate(G, job) {
   const year = yearOf(G.t);

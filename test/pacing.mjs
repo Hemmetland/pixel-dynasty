@@ -50,4 +50,23 @@ for (const r of res) {
   const m = (y) => { const a = r.at(y); return a ? '$' + Math.round(a.money / 1000) + 'k' : '-'; };
   console.log(`${String(r.seed).padEnd(5)} ${String(r.over ?? '-').padEnd(5)} ${r.tierYear.slice(1).map((y) => String(y ?? '-').padEnd(5)).join(' ')} | ${fa.padEnd(10)} | ${m(1981).padEnd(10)} ${m(1983).padEnd(5)} ${m(1985).padEnd(5)} ${m(1990).padEnd(5)} ${m(2000)}`);
 }
+// Sammanfattning mot målen: median per nivå, kassa vid årsskiften, första spelens snittbetyg, konkurser.
+{
+  const cash = (y) => med(res.map((r) => r.at(y)?.money));
+  const firstAvg = res.map((r) => { const f = r.rel.slice(0, 6); return f.length ? f.reduce((a, x) => a + x.score, 0) / f.length : null; }).filter((x) => x != null);
+  const overs = res.map((r) => r.over).filter((x) => x != null).sort((a, b) => a - b);
+  const k = (v) => (v == null ? '-' : v >= 1e6 ? (v / 1e6).toFixed(1) + 'M' : Math.round(v / 1000) + 'k');
+  const reach5 = res.filter((r) => r.tierYear[5] != null && r.tierYear[5] <= 2018).length;
+  console.log(`summary: cash med @1985 ${k(cash(1985))} @1990 ${k(cash(1990))} @2000 ${k(cash(2000))} | first6 avg ${firstAvg.length ? (firstAvg.reduce((a, x) => a + x, 0) / firstAvg.length).toFixed(2) : '-'} | tier5<=2018 ${reach5}/${N} | bankrupt<1990 ${overs.filter((y) => y < 1990).length} median bankrupt year ${overs.length ? overs[Math.floor(overs.length / 2)] : '-'}`);
+}
+if (args.includes('--curve')) {
+  const k2 = (v) => (v == null ? '-' : v >= 1e6 ? (v / 1e6).toFixed(1) + 'M' : Math.round(v / 1000) + 'k');
+  const ys = [];
+  for (let y = 1982; y <= 2020; y += 2) ys.push(y);
+  console.log('curve year  ' + ys.map((y) => String(y).padEnd(7)).join(''));
+  console.log('cash med    ' + ys.map((y) => k2(med(res.map((r) => r.at(y)?.money))).padEnd(7)).join(''));
+  console.log('fans med    ' + ys.map((y) => k2(med(res.map((r) => r.at(y)?.fans))).padEnd(7)).join(''));
+  console.log('games med   ' + ys.map((y) => String(med(res.map((r) => r.at(y)?.games)) ?? '-').padEnd(7)).join(''));
+  console.log('staff med   ' + ys.map((y) => String(med(res.map((r) => r.at(y)?.staff)) ?? '-').padEnd(7)).join(''));
+}
 console.log(`median tier years: ${[1, 2, 3, 4, 5].map((t) => 't' + t + '=' + (med(res.map((r) => r.tierYear[t])) ?? '-')).join('  ')}  bankrupt: ${res.filter((r) => r.over).length}/${N}`);

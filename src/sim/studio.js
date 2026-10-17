@@ -4,23 +4,30 @@ import { yearOf, moneyScale } from './const.js';
 import { t } from '../core/i18n.js';
 
 // ── Kontor ───────────────────────────────────────────────────────
+// Att flytta till ett större kontor är en milstolpe. Utöver pengar (cost) krävs:
+//   fans  = fans, så att studion har en publik som bär det större kontoret
+//   games = antal utgivna spel (erfarenhet), staff = antal anställda inkl. grundaren (de nya
+//   skrivborden ska verkligen behövas), avg = snittbetyg på de senaste OFFICE_AVG_N spelen,
+//   year  = tidigast det här året (branschens takt, hindrar att man rusar förbi sin tid).
+// Alla krav och kostnader för kontoren står i den här tabellen, så att takten är lätt att justera.
+export const OFFICE_AVG_N = 4;
 export const TIERS = [
-  { id: 0, key: 'garage', floors: 1, desks: 2, slots: 1, deskPerFloor: 2, cost: 0, rent: 0, fans: 0,
+  { id: 0, key: 'garage', floors: 1, desks: 2, slots: 1, deskPerFloor: 2, cost: 0, rent: 0, fans: 0, games: 0, staff: 0, avg: 0, year: 0,
     name: { sv: 'Garaget', en: 'The Garage' },
     desc: { sv: 'Där alla stora drömmar börjar. Kallt på vintern.', en: 'Where all big dreams begin. Cold in winter.' } },
-  { id: 1, key: 'office', floors: 1, desks: 5, slots: 2, deskPerFloor: 5, cost: 16000, rent: 450, fans: 0,
+  { id: 1, key: 'office', floors: 1, desks: 5, slots: 2, deskPerFloor: 5, cost: 22000, rent: 700, fans: 0, games: 5, staff: 2, avg: 5.5, year: 1982,
     name: { sv: 'Litet kontor', en: 'Small Office' },
     desc: { sv: 'Ett riktigt kontor med skyltfönster. Plats för fem.', en: 'A real office with a street sign. Room for five.' } },
-  { id: 2, key: 'floors2', floors: 2, desks: 10, slots: 4, deskPerFloor: 5, cost: 85000, rent: 2600, fans: 600,
+  { id: 2, key: 'floors2', floors: 2, desks: 10, slots: 4, deskPerFloor: 5, cost: 250000, rent: 6000, fans: 5000, games: 13, staff: 5, avg: 7, year: 1987,
     name: { sv: 'Tvåvåningsstudio', en: 'Two-Floor Studio' },
     desc: { sv: 'Tak över huvudet, lab och ett kaffehörn värt namnet.', en: 'A roof, a lab and a coffee corner worth the name.' } },
-  { id: 3, key: 'floors3', floors: 3, desks: 15, slots: 6, deskPerFloor: 5, cost: 420000, rent: 10500, fans: 6000,
+  { id: 3, key: 'floors3', floors: 3, desks: 15, slots: 6, deskPerFloor: 5, cost: 1600000, rent: 30000, fans: 45000, games: 24, staff: 10, avg: 7.5, year: 1994,
     name: { sv: 'Studiohuset', en: 'Studio House' },
     desc: { sv: 'Glasfasad, takterrass och en ordentlig logotyp.', en: 'Glass facade, roof terrace and a proper logo.' } },
-  { id: 4, key: 'floors4', floors: 4, desks: 24, slots: 8, deskPerFloor: 6, cost: 2200000, rent: 44000, fans: 60000,
+  { id: 4, key: 'floors4', floors: 4, desks: 24, slots: 8, deskPerFloor: 6, cost: 8000000, rent: 60000, fans: 230000, games: 35, staff: 15, avg: 7.5, year: 2002,
     name: { sv: 'Spelfabriken', en: 'The Game Factory' },
     desc: { sv: 'Fyra våningar av kreativt kaos.', en: 'Four floors of creative chaos.' } },
-  { id: 5, key: 'floors6', floors: 4, desks: 36, slots: 12, deskPerFloor: 9, cost: 11000000, rent: 185000, fans: 500000,
+  { id: 5, key: 'floors6', floors: 4, desks: 36, slots: 12, deskPerFloor: 9, cost: 25000000, rent: 100000, fans: 750000, games: 44, staff: 24, avg: 8, year: 2011,
     name: { sv: 'Dynasti-tornet', en: 'Dynasty Tower' },
     desc: { sv: 'Ett torn med ditt namn på. Du har gjort det.', en: 'A tower with your name on it. You made it.' } },
 ];
@@ -89,12 +96,31 @@ export function buildFacility(G, id) {
 export function nextTier(G) {
   return TIERS[G.office.tier + 1] || null;
 }
+// Snittbetyget på de senaste spelen (0 om inga spel är utgivna).
+export function avgRecentScore(G, n = OFFICE_AVG_N) {
+  const g = (G.games || []).slice(-n);
+  return g.length ? g.reduce((s, x) => s + x.score, 0) / g.length : 0;
+}
+// Alla krav för nästa kontor, i den ordning de visas: { id, have, need, ok }. Krav som är 0 hoppas över.
+export function officeReqs(G, n = nextTier(G)) {
+  if (!n) return [];
+  return [
+    { id: 'games', have: (G.games || []).length, need: n.games },
+    { id: 'staff', have: G.staff.length, need: n.staff },
+    { id: 'avg', have: avgRecentScore(G), need: n.avg },
+    { id: 'fans', have: G.fans, need: n.fans },
+    { id: 'year', have: yearOf(G.t), need: n.year },
+    { id: 'money', have: G.money, need: n.cost },
+  ]
+    .filter((r) => r.need > 0)
+    .map((r) => ({ ...r, ok: r.have >= r.need - (r.id === 'avg' ? 0.005 : 0) }));
+}
+// true om kontoret kan byggas ut, annars id på det första kravet som saknas ('max' om toppen är nådd).
 export function canUpgradeOffice(G) {
   const n = nextTier(G);
   if (!n) return 'max';
-  if (G.fans < n.fans) return 'fans';
-  if (G.money < n.cost) return 'money';
-  return true;
+  const miss = officeReqs(G, n).find((r) => !r.ok);
+  return miss ? miss.id : true;
 }
 export function upgradeOffice(G) {
   const ok = canUpgradeOffice(G);

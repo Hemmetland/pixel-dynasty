@@ -18,6 +18,10 @@ const quiet = args.includes('-q');
 const casual = args.includes('--casual');
 // --mid: en genomsnittlig spelare som ibland väljer bra tema/genre och ibland chansar.
 const mid = args.includes('--mid');
+// --bd: skriv ut årets pengar per kategori (för balansarbete)
+const bd = args.includes('--bd');
+const acc = {};
+let lastMonthRef = null;
 
 function skillSum(G) {
   let d = 0, t = 0;
@@ -153,13 +157,26 @@ while (S.yearOf(G.t) < endYear && !G.over) {
   handlePending(G);
   if (G.t % 2 === 0 && G.tick === 0) manage(G);
   S.stepTick(G);
+  if (bd && G.lastMonth !== lastMonthRef) {
+    lastMonthRef = G.lastMonth;
+    for (const [k, v] of Object.entries(G.lastMonth.breakdown)) acc[k] = (acc[k] || 0) + v;
+  }
   const y = S.yearOf(G.t);
   if (y !== lastYear && G.t % 48 === 0 && !quiet) {
     lastYear = y;
+    if (bd) {
+      console.log('   bd ' + Object.entries(acc).map(([k, v]) => k + ' ' + Math.round(v / 1000) + 'k').join(' | '));
+      for (const k of Object.keys(acc)) delete acc[k];
+    }
     const last = G.games.slice(-6);
     const avg = last.length ? (last.reduce((a, g) => a + g.score, 0) / last.length).toFixed(1) : '-';
     const rev = G.games.reduce((a, g) => a + (g.weekly.slice(-48).reduce((x, y2) => x + y2, 0)), 0);
-    console.log(`${y} $${Math.round(G.money).toLocaleString()} fans ${Math.round(G.fans).toLocaleString()} staff ${G.staff.length} tier ${G.office.tier} games ${G.games.length} avg(6) ${avg} yrRev $${Math.round(rev).toLocaleString()} res ${G.research.done.length} loans ${Math.round(S.loanTotal(G))}`);
+    let gate = '';
+    if (verbose) {
+      const n = S.nextTier(G);
+      if (n) gate = ' | next: ' + S.officeReqs(G, n).map((r) => (r.ok ? '+' : '-') + r.id + ' ' + (r.id === 'avg' ? r.have.toFixed(1) : Math.round(r.have)) + '/' + r.need).join(' ');
+    }
+    console.log(`${y} $${Math.round(G.money).toLocaleString()} fans ${Math.round(G.fans).toLocaleString()} staff ${G.staff.length} tier ${G.office.tier} games ${G.games.length} avg(6) ${avg} yrRev $${Math.round(rev).toLocaleString()} res ${G.research.done.length} loans ${Math.round(S.loanTotal(G))}${gate}`);
   }
 }
 const dt = Date.now() - t0;

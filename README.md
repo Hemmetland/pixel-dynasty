@@ -24,7 +24,9 @@ Kortkommandon: `Mellanslag` paus, `1` `2` `3` fart, `N` nytt spel, `M` meny, `Es
    eller ner resultatet. Du lär dig tema/genre-kombinationer och genrernas idealfokus av erfarenhet.
 4. **Försäljning** rullar in vecka för vecka beroende på betyg, hype, fans, plattformens marknadsandel och trender.
 5. **Bygg ut**: forska fram nya teman, genrer och teknik, anställ och utbilda, bygg anläggningar och flytta till
-   större kontor. Ta uppdrag när kassan sinar, bygg egna motorer, släpp uppföljare och patchar.
+   större kontor. Ett större kontor måste förtjänas: det kräver utgivna spel, bra snittbetyg, fans, ett team som
+   fyller skrivborden, rätt år och pengar (se Studio-fönstret, som visar framstegen). Ta uppdrag när kassan sinar,
+   bygg egna motorer, släpp uppföljare och patchar.
 6. **Priser och mässor**: spelmässa varje sommar och prisgala varje december. Konkurrenter släpper egna spel.
 7. Är kassan negativ tre månader i rad får du ett sista räddningslån. Tackar du nej går studion i konkurs.
 
@@ -52,6 +54,35 @@ node build.mjs --with-dev             # bygger även dist/dev/*.html (rooms, pro
 
 ## Balans
 
-`node test/sim.mjs --seed=1` spelar 1980–2020 med en optimerande bot. `--casual` är en slarvigare spelare.
+`node test/sim.mjs --seed=1` spelar 1980–2020 med en optimerande bot (`-v` visar varje utgivning och vilka
+kontorskrav som återstår, `--bd` visar årets pengar per kategori). `--mid` är en medelspelare, `--casual` en slarvigare.
+`node test/pacing.mjs --seeds=12 [--mid|--casual] [--diff=relaxed|normal|hardcore] [--curve]` kör flera seeds och
+sammanfattar när kontoren byggs ut, kassan vid årsskiften och konkurser.
 Siffrorna för pengar, betyg och försäljning ligger i `src/sim/` (`const.js`, `score.js`, `sales.js`, `dev.js`).
 Ett första litet spel av grundaren ger i snitt ca 6 i betyg. Stora spel kräver riktiga team.
+
+### Takten i Normal
+
+Att flytta till ett större kontor är en milstolpe. Alla krav och kostnader står i en tabell, `TIERS` i `src/sim/studio.js`:
+
+| Nivå | Kontor | Kostnad | Hyra/mån | Spel | Team | Snittbetyg (4 senaste) | Fans | Tidigast |
+|---|---|---|---|---|---|---|---|---|
+| 1 | Litet kontor | $22k | $700 | 5 | 2 | 5,5 | – | 1982 |
+| 2 | Tvåvåningsstudio | $250k | $6k | 13 | 5 | 7,0 | 5k | 1987 |
+| 3 | Studiohuset | $1,6M | $30k | 24 | 10 | 7,5 | 45k | 1994 |
+| 4 | Spelfabriken | $8M | $60k | 35 | 15 | 7,5 | 230k | 2002 |
+| 5 | Dynasti-tornet | $25M | $100k | 44 | 24 | 8,0 | 750k | 2011 |
+
+Hyran är i 1980 års pengar och följer inflationen (`moneyScale`). `year` är en golvgräns, så att ingen kan rusa förbi sin tid;
+för en skicklig spelare är det oftast golvet och pengarna som avgör, för en svagare spelare fans, betyg och kassa.
+Kraven visas med framsteg i Studio-fönstret (`canUpgradeOffice(G)` ger id på första saknade krav, `officeReqs(G)` alla krav).
+Befintliga sparfiler behåller sitt kontor, de nya kraven gäller bara nästa steg (inga nya fält i sparfilen).
+
+Övriga justeringar för takten: betygstaken per storlek (`SCOPE_CAP` i `score.js`: litet 6,9, medel 8,7, stort 9,2) så att de
+första åren landar kring 6–7 i betyg, försäljning per enhet (`UNIT_REV_BASE` 340 i `sales.js`) och svårighetsgraden Svår
+(`DIFFICULTY.hardcore`: försäljning 0,93, löner 1,06).
+
+Mätt med optimerande boten (48+ seeds, Normal; årtalet är nivån vid årsskiftet, bygget sker alltså året innan): nivå 1–5
+1983, 1988, 1995, 2003 och 2012, över 95 % når tornet före 2018, första sex spelen snittar ca 6,8 och kassan vid
+1985/1990/2000 ligger kring $0,4M/$2,0M/$26M. Medelboten ligger 0–3 år efter (mest för nivå 4 och 5) och slarvboten går
+i konkurs i median 1997. Före ändringen blev nivå 1–5 klara 1980, 1983, 1986, 1993 och 2003.

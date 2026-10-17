@@ -10,7 +10,7 @@ export const SAVE_VERSION = 3;
 export const DIFFICULTY = {
   relaxed: { money: 90000, sales: 1.15, bugs: 0.8, wage: 0.9 },
   normal: { money: 60000, sales: 1.0, bugs: 1.0, wage: 1.0 },
-  hardcore: { money: 40000, sales: 0.88, bugs: 1.2, wage: 1.1 },
+  hardcore: { money: 40000, sales: 0.93, bugs: 1.2, wage: 1.06 },
 };
 export const ARCHETYPES = {
   designer: { d: 19, t: 10, s: 10, r: 9, money: 0, hype: 0 },

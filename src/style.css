@@ -486,6 +486,13 @@ input[type='range']::-moz-range-thumb { width: 18px; height: 18px; border-radius
 .bprev { display: grid; place-items: center; background: #101530; border-bottom: 1px solid var(--line); overflow: hidden; }
 .bprev img { image-rendering: pixelated; max-width: 100%; height: auto; }
 .bprev.dim img { filter: saturate(0.6) brightness(0.8); }
+/* Krav för nästa kontor (Studio-fönstret) */
+.reqs { display: grid; gap: 9px; margin: 12px 0 14px; }
+.rq .rq-r { display: flex; align-items: center; gap: 8px; margin-bottom: 4px; font-size: 12.5px; }
+.rq .rq-i { color: var(--warn); }
+.rq.ok .rq-i, .rq.ok .rq-v { color: var(--good); }
+.rq .rq-n { font-weight: 600; }
+.rq .rq-v { font-size: 12px; color: var(--muted); }
 .fac .fi { width: 40px; height: 40px; border-radius: 12px; display: grid; place-items: center; background: color-mix(in srgb, var(--c) 16%, transparent); color: var(--c); box-shadow: inset 0 0 0 1px color-mix(in srgb, var(--c) 36%, transparent); flex: none; }
 .fac .fi .ic { width: 22px; height: 22px; }
 .fac .fe { margin-top: 10px; padding: 8px 10px; border-radius: 9px; background: color-mix(in srgb, var(--c) 9%, transparent); font-size: 12px; display: flex; gap: 7px; align-items: center; color: var(--text); }
