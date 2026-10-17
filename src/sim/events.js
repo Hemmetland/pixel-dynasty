@@ -6,6 +6,7 @@ import { SCOPES, yearOf, moneyScale } from './const.js';
 import { SCOPE_TEMPO } from './tempo.js';
 import { earn, spend } from './studio.js';
 import { parPerTick } from './score.js';
+import { rpPerWeek } from './research.js';
 import { note } from './news.js';
 
 export function rollStudioEvent(G, force) {
@@ -29,24 +30,45 @@ export function rollDevEvent(G) {
   return true;
 }
 
+// Insatserna växer med studion så att valen betyder något även sent: pengar mot senaste årets försäljning (i årets
+// penningvärde), fans mot fanskaran och RP mot forskningstakten. Under referensnivån är k = 1, så de första åren är
+// oförändrade. Kring 2010 är k ungefär 18 för pengar och 40 för fans.
+export function fxScale(G) {
+  const rev12 = G.hist.revenue.slice(-12).reduce((s, x) => s + x.v, 0);
+  const k = (v, ref) => Math.max(1, Math.pow(Math.max(0, v) / ref, 0.7));
+  return { money: k(rev12, 60000 * moneyScale(yearOf(G.t))), fans: k(G.fans, 2000), rp: k(rpPerWeek(G), 8) };
+}
+// Snittprognosen för de senaste spelen (förskott som är en andel av nästa spels intäkter).
+const recentTotal = (G) => {
+  const gs = G.games.slice(-3);
+  return gs.length ? gs.reduce((s, g) => s + (g.total || 0), 0) / gs.length : 0;
+};
+
 // Tillämpa effekter, returnera lista med förändringar för visning.
 export function applyFx(G, fx, out = []) {
   const year = yearOf(G.t);
   const ms = moneyScale(year);
   const J = G.job && G.job.kind === 'game' ? G.job : null;
-  if (fx.money) {
-    const v = Math.round((fx.money * ms) / 10) * 10;
+  const k = fxScale(G);
+  if (fx.money || fx.advanceRev) {
+    let v = (fx.money || 0) * ms * k.money;
+    if (fx.advanceRev) v = Math.max(v, fx.advanceRev * recentTotal(G));
+    // En dålig utgång tar aldrig mer än en tiondel av kassan, utöver grundbeloppet.
+    if (v < 0) v = -Math.min(-v, Math.max(-fx.money * ms, G.money * 0.1));
+    v = Math.round(v / 10) * 10;
     if (v > 0) earn(G, v, 'events');
     else spend(G, -v, 'events');
     out.push({ k: 'money', v });
   }
   if (fx.rp) {
-    G.rp = Math.max(0, G.rp + fx.rp);
-    out.push({ k: 'rp', v: fx.rp });
+    const v = Math.round(fx.rp * k.rp);
+    G.rp = Math.max(0, G.rp + v);
+    out.push({ k: 'rp', v });
   }
   if (fx.fans) {
-    G.fans = Math.max(0, G.fans + fx.fans);
-    out.push({ k: 'fans', v: fx.fans });
+    const v = Math.round(fx.fans * k.fans);
+    G.fans = Math.max(0, G.fans + v);
+    out.push({ k: 'fans', v });
   }
   if (fx.hype) {
     if (J) J.hype = clamp(J.hype + fx.hype, 0, 100);
