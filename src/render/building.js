@@ -4,6 +4,7 @@ import { drawText, textWidth, fitText } from './font.js';
 import * as P from './props.js';
 import { layoutV2, drawShellV2, hasV2 } from './rooms.js';
 import './tier4.js';
+import './tier5.js';
 
 export const PITCH = 44;
 export const INT_H = 40;
