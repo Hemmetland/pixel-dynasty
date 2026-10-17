@@ -6,7 +6,7 @@ import { yearOf, wageIndex } from './const.js';
 import { TRAIN_TEMPO } from './tempo.js';
 import { DIFFICULTY, nextId } from './state.js';
 import { tr } from './tr.js';
-import { capacity, facLevel } from './studio.js';
+import { capacity, facLevel, spend } from './studio.js';
 
 export const SPECS = {
   designer: { d: 1.45, t: 0.75, s: 1, r: 0.9, name: { sv: 'Speldesigner', en: 'Game Designer' } },
@@ -127,8 +127,7 @@ export function hire(G, id) {
   if (!c) return false;
   if (!canHire(G)) return tr(G, 'err.capacity');
   if (G.money < c.fee) return tr(G, 'err.money');
-  G.money -= c.fee;
-  G.month.expense += c.fee;
+  spend(G, c.fee, 'hiring');
   G.candidates = G.candidates.filter((x) => x.id !== id);
   c.hired = G.t;
   const st = { ...c };
@@ -142,8 +141,7 @@ export function fire(G, id) {
   const st = G.staff.find((s) => s.id === id);
   if (!st || st.isFounder) return false;
   const sev = st.salary;
-  G.money -= sev;
-  G.month.expense += sev;
+  spend(G, sev, 'severance');
   G.staff = G.staff.filter((s) => s.id !== id);
   emit('fired', st);
   return true;
@@ -187,8 +185,7 @@ export function train(G, id, skill) {
   if (ok !== true) return false;
   const cost = trainCost(G, st);
   if (G.money < cost) return tr(G, 'err.money');
-  G.money -= cost;
-  G.month.expense += cost;
+  spend(G, cost, 'training');
   const weeks = trainWeeks(G);
   st.trainUntil = G.t + weeks;
   st.trainSkill = skill;

@@ -51,7 +51,7 @@ export function runAwards(G) {
     for (const c of wins) {
       const def = AWARD_CATS.find((a) => a.id === c.id);
       const fans = Math.round((300 + G.fans * 0.06) * def.reward);
-      const money = Math.round((8000 + G.money * 0.01) * def.reward);
+      const money = Math.round((8000 + Math.max(0, G.money) * 0.01) * def.reward); // ingen negativ prissumma vid skuld
       G.fans += fans;
       earn(G, money, 'awards');
       G.awards.push({ year, cat: c.id, title: c.nominees[0].title });

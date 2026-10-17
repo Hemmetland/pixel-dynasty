@@ -404,6 +404,9 @@ export const STRINGS = {
   'fin.c.engines': ['Motorer', 'Engines'],
   'fin.c.office': ['Kontor', 'Office'],
   'fin.c.patches': ['Patchar', 'Patches'],
+  'fin.c.hiring': ['Rekrytering', 'Hiring'],
+  'fin.c.severance': ['Avgångsvederlag', 'Severance'],
+  'fin.c.training': ['Utbildning', 'Training'],
 
   // ── Bibliotek ──
   'lib.title': ['Spel', 'Games'],

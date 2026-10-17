@@ -49,7 +49,7 @@ regWin({
       .map(([k, v]) => `<div class="kv"><span>${t('fin.c.' + k)}</span><b class="${v >= 0 ? 'up' : 'down'}">${v >= 0 ? '+' : ''}${money(v)}</b></div>`)
       .join('');
     const burn = payroll(G) + rentOf(G) + facUpkeep(G) + loanInterest(G);
-    const runway = burn > 0 ? G.money / burn : 99;
+    const runway = burn > 0 ? Math.max(0, G.money / burn) : 99; // i skuld finns ingen marginal kvar
     const room = Math.max(0, loanLimit(G) - loanTotal(G));
     const step = Math.max(1000, Math.round((20000 * moneyScale(yearOf(G.t))) / 2000) * 1000);
     return `
