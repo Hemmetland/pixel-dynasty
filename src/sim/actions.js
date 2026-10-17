@@ -46,11 +46,12 @@ export function expoCost(G, level) {
 export function resolveExpo(G, promptId, level) {
   const i = G.pending.findIndex((p) => p.id === promptId && p.type === 'expo');
   if (i < 0) return false;
-  G.pending.splice(i, 1);
   const J = G.job;
-  if (level > 0 && J && J.kind === 'game') {
-    const c = expoCost(G, level);
-    if (G.money < c) return t('err.money');
+  const go = level > 0 && J && J.kind === 'game';
+  const c = go ? expoCost(G, level) : 0;
+  if (go && G.money < c) return t('err.money'); // prompten ligger kvar så att ett annat val går att göra
+  G.pending.splice(i, 1);
+  if (go) {
     spend(G, c, 'marketing');
     J.cost += c;
     const add = level === 1 ? 9 : 20;

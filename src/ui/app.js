@@ -78,7 +78,9 @@ export const app = {
     buildHUD(this.root);
     buildDock();
     initUICore(this.root);
-    UI.overlay = $('#overlay', this.root);
+    UI.modalOn = false;
+    this.promptActive = false;
+    this.menuChanged();
     setHUDVisible(this.mode === 'play');
     fitHUD();
     UI.refresh();
@@ -121,6 +123,7 @@ export const app = {
       if (this.mode !== 'play') return;
       const tag = (e.target.tagName || '').toLowerCase();
       if (tag === 'input' || tag === 'textarea') return;
+      if (this.promptActive && /^(escape|m|n)$/i.test(e.key)) return; // prompten måste besvaras
       if (e.key === 'Escape') UI.close();
       else if (e.key === ' ') {
         e.preventDefault();
@@ -283,6 +286,8 @@ export const app = {
     this.lastMoney = G.money;
     this.lastRp = G.rp;
     this.lastFans = G.fans;
+    this.promptActive = false;
+    UI.closeModal();
     if (fresh) saveGame(G);
     music.setEra?.(1980 + Math.floor(G.t / 48));
     music.start?.();
@@ -307,6 +312,7 @@ export const app = {
   toTitle() {
     if (this.G && !this.G.over) saveGame(this.G);
     UI.close(true);
+    this.promptActive = false;
     UI.closeModal();
     this.mode = 'title';
     this.G = null;
@@ -332,6 +338,11 @@ export const app = {
           if (G.pending.length) break;
         }
       } else this.acc = Math.min(this.acc, TICK);
+      // En prompt vars modal försvunnit (utan finish) får inte låsa spelet; den visas igen nedan
+      if (this.promptActive && !UI.modalOn) {
+        this.promptActive = false;
+        this.menuChanged();
+      }
       if (G.pending.length && !this.promptActive && !UI.modalOn) {
         showPrompt(this, G.pending[0]);
       }

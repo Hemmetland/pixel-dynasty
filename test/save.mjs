@@ -17,6 +17,12 @@ await page.waitForTimeout(5000);
 await page.evaluate(() => { window.__pd.turbo = 1; window.__pd.setSpeed(0); });
 const before = await page.evaluate(() => ({ t: window.__pd.G.t, money: Math.round(window.__pd.G.money), games: window.__pd.G.games.length }));
 console.log('before reload', before);
+// Besvara väntande prompter (årsrapporten vid t=48) först; M öppnar inte menyn under en prompt
+for (let i = 0; i < 6 && (await page.evaluate(() => window.__pd.promptActive)); i++) {
+  if (await page.$('[data-act="yr-ok"]')) await page.click('[data-act="yr-ok"]');
+  else await page.evaluate(() => { window.__pd.G.pending.shift(); window.__ui.closeModal(); });
+  await page.waitForTimeout(250);
+}
 await page.keyboard.press('m'); await page.waitForTimeout(400);
 await page.screenshot({ path: '.shots-save/menu.png' });
 await page.click('[data-act="mn-set"]'); await page.waitForTimeout(400);

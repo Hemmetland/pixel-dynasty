@@ -23,7 +23,7 @@ export const UI = {
   overlay: null,
   open(id, arg, opts = {}) {
     const def = wins.get(id);
-    if (!def) return;
+    if (!def || this.app?.promptActive) return; // ett fönster skulle skriva över prompten
     const can = def.canOpen ? def.canOpen(this.app.G) : true;
     if (can !== true) {
       if (typeof can === 'string') toast(can, 'bad');

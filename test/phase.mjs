@@ -21,7 +21,16 @@ for (let i = 0; i < 60; i++) { await page.waitForTimeout(250); if (await page.$(
 await page.evaluate(() => { window.__pd.turbo = 1; });
 await page.waitForTimeout(500);
 await page.screenshot({ path: '.shots/phase2.png' });
+// Esc/M/N under en prompt får inte stänga den och låsa simuleringen (promptActive kvar utan modal)
+await page.keyboard.press('Escape'); await page.keyboard.press('m'); await page.keyboard.press('n'); await page.waitForTimeout(200);
+const kept = await page.evaluate(() => ({ modal: window.__ui.modalOn, cur: window.__ui.cur, go: !!document.querySelector('[data-act="p-go"]') }));
+if (!kept.modal || kept.cur || !kept.go) errors.push('fail: prompt lost after Esc/M/N ' + JSON.stringify(kept));
 await page.click('[data-act="p-ideal"]').catch(() => {});
 await page.waitForTimeout(300);
+const t0 = await page.evaluate(() => { window.__pd.turbo = 10; return window.__pd.G.t; });
+await page.waitForTimeout(800);
+const t1 = await page.evaluate(() => window.__pd.G.t);
+console.log('after Esc/M/N on the phase prompt:', JSON.stringify(kept), '| t', t0, '->', t1);
+if (!(t1 > t0)) errors.push('fail: time does not advance after answering the prompt');
 console.log(errors.length ? errors.join('\n') : 'no console errors');
 await browser.close();
