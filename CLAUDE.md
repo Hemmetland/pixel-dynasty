@@ -18,6 +18,6 @@ This folder is independent of the Next.js budget app in the repo root; ignore th
 - `docs/ART_DIRECTION.md` the visual target (user's reference image described in text). `docs/STUDIO_V2_SPEC.md` layout, look and HUD contracts.
 
 ## Rules
-- Everything is procedural: no image or audio files and no runtime dependencies. All visible text goes through `t()` in both languages.
+- Everything is procedural: no image or audio files (exception: the PixelLab PNGs in `assets/pixellab/`, not yet used by the build) and no runtime dependencies. All visible text goes through `t()` in both languages.
 - Keep `src/sim` free of DOM and keep results deterministic per seed; old saves (localStorage `pixel-dynasty-save-v1`) must keep loading.
 - Before finishing a change: `npm run lint`, `npm test`, `node test/keys.mjs --missing` (18 known dynamic prefixes), rebuild.

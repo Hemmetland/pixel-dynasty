@@ -1,0 +1,110 @@
+{
+ "skyline-dusk": {
+  "dir": "backgrounds",
+  "file": "skyline-dusk.png"
+ },
+ "skyline-night": {
+  "dir": "backgrounds",
+  "file": "skyline-night.png"
+ },
+ "window-view": {
+  "dir": "backgrounds",
+  "file": "window-view.png"
+ },
+ "code": {
+  "dir": "characters",
+  "file": "code.png"
+ },
+ "drink-coffee": {
+  "dir": "characters",
+  "file": "drink-coffee.png"
+ },
+ "sit": {
+  "dir": "characters",
+  "file": "sit.png"
+ },
+ "talk": {
+  "dir": "characters",
+  "file": "talk.png"
+ },
+ "walk": {
+  "dir": "characters",
+  "file": "walk.png"
+ },
+ "coffee-cup": {
+  "dir": "props",
+  "file": "coffee-cup.png"
+ },
+ "desk-lamp": {
+  "dir": "props",
+  "file": "desk-lamp.png"
+ },
+ "desk": {
+  "dir": "props",
+  "file": "desk.png"
+ },
+ "floor-lamp": {
+  "dir": "props",
+  "file": "floor-lamp.png"
+ },
+ "laptop": {
+  "dir": "props",
+  "file": "laptop.png"
+ },
+ "monitor": {
+  "dir": "props",
+  "file": "monitor.png"
+ },
+ "office-chair": {
+  "dir": "props",
+  "file": "office-chair.png"
+ },
+ "plant": {
+  "dir": "props",
+  "file": "plant.png"
+ },
+ "server-rack": {
+  "dir": "props",
+  "file": "server-rack.png"
+ },
+ "side-table": {
+  "dir": "props",
+  "file": "side-table.png"
+ },
+ "sofa": {
+  "dir": "props",
+  "file": "sofa.png"
+ },
+ "vending-machine": {
+  "dir": "props",
+  "file": "vending-machine.png"
+ },
+ "whiteboard": {
+  "dir": "props",
+  "file": "whiteboard.png"
+ },
+ "logo-nexus": {
+  "dir": "ui",
+  "file": "logo-nexus.png"
+ },
+ "nav-building": {
+  "dir": "ui",
+  "file": "nav-building.png"
+ },
+ "nav-settings": {
+  "dir": "ui",
+  "file": "nav-settings.png"
+ },
+ "nav-stats": {
+  "dir": "ui",
+  "file": "nav-stats.png"
+ },
+ "nav-team": {
+  "dir": "ui",
+  "file": "nav-team.png"
+ },
+ "nav-upgrades": {
+  "dir": "ui",
+  "file": "nav-upgrades.png"
+ }
+}
