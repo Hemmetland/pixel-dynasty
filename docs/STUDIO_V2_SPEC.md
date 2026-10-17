@@ -79,3 +79,22 @@ Referensens glaspaneler, uppbyggda av riktigt spelstate (inget påhittat):
   lämnar in. Inga konsolfel. Prestanda: höll sig scenens ritning under ca 16 ms/bildruta för skärm 1080p utan WebGL; nya detaljer ska ritas i
   det statiska lagret (`buildStatics`) när de inte rör sig.
 - Allt som är synligt ska fungera på svenska och engelska, och på mobil (≤760 px).
+
+## 6. Nivå 4, "Modern" (`src/render/tier4.js`, `src/render/tier4-props.js`)
+
+Glas- och stålhuset (nivå 4) är byggt med rumssystemet och är mallen för hur en nivå får en egen identitet utan att röra de andra:
+
+- **Kontrakt:** 4 våningar, 24 skrivbord (sex per våning, öppet kontor på 186 px), 8 anläggningsplatser (två per våning), `BW` 480, pitch 54, intH 48, takhöjd 52.
+  Rumsplanen blandar innehållet per våning: bottenvåning lobby + café + kontor, våning 1 kontor + konferens + fikarum, våning 2 serverhall + kontor + designlab,
+  våning 3 boklounge + kontor + ledningsrum. Alla beteenden (möte, kaffe, lounge, server, whiteboard, parprogrammering, lobby) har sina stationer.
+- **Identitet:** kall vit/turkos/bärnsten med orange neon (Studiohuset är grafit med cyan/magenta): glasväggar med bågar och reflexer i alla rum, vita bjälklag med turkost
+  glasband och orange LED, aluminiumpelare med orange neonlist, lobby med tall glasvägg och klotlampor, entrépaviljong med revolvingdörr, glasbalkonger.
+  Taket har solpaneler, vindturbin, en glasad takvåning med gäster, skylt med studions namn, ventilation och antenn med blinkande flygvarningslampa.
+- **Hur en nivå får egna rum (rooms.js):** `TIER_DEF[nivå][typ]` ersätter `DEF[typ]` för just den nivåns rum. Typnamnen behålls (`dev`, `meeting`, `lounge`, `kitchen`, `server`,
+  `whiteboard`, `lobby`) så att `behavior.js` hittar stationerna (`f<våning>-<typ>`). En definition har `windows`, `stations`, `pendants`, `decor` och valfritt
+  `backWall(ctx, room, fy, intH)` (egen bakvägg) och `dynamic`. Rumsplanens tredje värde (`{ name: [sv, en], light, lightRGB, sty }`) hamnar på rummet: `name` ersätter namnskylten,
+  `light`/`lightRGB` rumsljuset. Skalet (pelare, bjälklag, skiljeväggar, entré, neon) ritas om i takets `facade`-hook, som körs sist.
+- **Fasta ankare i rooms.js** som nivåns rum måste ta hänsyn till: väggskärmen i öppet kontor på `rx+38, fy-38` (32x17), mötesskärmen på `rx+26, fy-44` (38x19), akvariet i lounge
+  på `rx+5, fy-41` (30x12, fiskarna ritas dynamiskt), ångan över espressomaskinen på `rx+27, fy-32` och lobbyns neonlist på `rx+6, fy-45` (115x5, flimrar ibland).
+- **Test:** `node test/tier4.mjs` (layoutkontrakt, stationer, namn på båda språken, ritning inom lagrets yta), `TIER=4 REQUIRE=meeting,coffee,lounge,server,board,pair,fac node test/behavior.mjs 900 1`
+  och `node test/statichash.mjs` (övriga nivåer ska behålla sina kontrollsummor).
