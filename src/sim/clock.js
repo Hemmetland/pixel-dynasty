@@ -10,7 +10,7 @@ import { salesWeek } from './sales.js';
 import { monthlyMarket, updateTrends } from './market.js';
 import { rollDevEvent, rollStudioEvent } from './events.js';
 import { runAwards, expoOffer } from './awards.js';
-import { finishTraining, refreshCandidates, payroll, updateMood } from './people.js';
+import { finishTraining, refreshCandidates, payroll, updateMood, burnoutQuits } from './people.js';
 import { rentOf, facUpkeep, loanInterest, spend } from './studio.js';
 import { note } from './news.js';
 
@@ -88,6 +88,7 @@ function monthly(G, d) {
     G.flags.lowCashAt = G.t;
     note(G, 'news.lowCash', {}, 'bad');
   } else if (G.money > burn * 4) G.flags.lowCashAt = 0;
+  burnoutQuits(G);
   refreshCandidates(G);
   refreshContracts(G);
   monthlyMarket(G);

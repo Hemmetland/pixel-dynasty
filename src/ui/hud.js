@@ -6,7 +6,7 @@ import { PLATFORM } from '../data/platforms.js';
 import { dateOf, TICKS_PER_WEEK } from '../sim/const.js';
 import { rpPerWeek } from '../sim/research.js';
 import { canUpgradeOffice, capacity, tierOf, nextTier } from '../sim/studio.js';
-import { canHire, workers } from '../sim/people.js';
+import { canHire, workers, teamFatigue, FATIGUE_MAX, FATIGUE_GRACE } from '../sim/people.js';
 import { canLicense } from '../sim/actions.js';
 import { RESEARCH, RES } from '../data/research.js';
 import { canResearch } from '../sim/research.js';
@@ -501,6 +501,16 @@ export function updateDev(G) {
   }
 }
 
+// Crunchknappen visar teamets trötthet: en mätare (grön under de gratis veckorna, sedan gul och röd) med procent och
+// ett verktygstips om hur mycket långsammare teamet jobbar.
+function crunchBtn(J, f) {
+  const pct = Math.round((f.avg / FATIGUE_MAX) * 100);
+  const col = f.avg <= FATIGUE_GRACE ? 'var(--good)' : f.slow < 0.15 ? 'var(--warn)' : 'var(--bug)';
+  const state = f.slow >= 0.005 ? t('dev.fatigueSlow', { n: Math.max(1, Math.round(f.slow * 100)) }) : f.avg > 0 ? t('dev.fatigueGrace') : t('dev.fatigueFresh');
+  const meter = J.crunch || f.avg > 0 ? `<span style="display:inline-flex;align-items:center;gap:4px;margin-left:6px"><span style="width:26px;height:5px;border-radius:3px;background:rgba(255,255,255,.16);overflow:hidden"><i style="display:block;height:100%;width:${Math.max(pct, 4)}%;background:${col}"></i></span><b class="num" style="font-size:10.5px;color:${col}">${pct}%</b></span>` : '';
+  return `<button class="btn sm ${J.crunch ? 'crunch-on' : ''}" data-act="crunch" data-tip="${t('tip.crunch')}<br>${t('dev.fatigue', { n: pct })}: ${state}">${icon('fire')}${t('dev.crunch')}${meter}</button>`;
+}
+
 function updateDevGame(G, J, el) {
   const key = 'game' + J.id + J.state;
   if (key !== devKey) {
@@ -547,13 +557,14 @@ function updateDevGame(G, J, el) {
   $('#dv-h', el).textContent = Math.round(J.hype);
   // åtgärder
   const actEl = $('#dv-act', el);
-  const akey = [cur, J.crunch, J.marketing.length, J.extended, G.u.mkt.length, J.state, J.ticks >= J.devTicks * 0.2].join('|');
+  const fat = teamFatigue(G);
+  const akey = [cur, J.crunch, J.marketing.length, J.extended, G.u.mkt.length, J.state, J.ticks >= J.devTicks * 0.2, Math.round(fat.avg * 2)].join('|');
   if (actEl.dataset.k !== akey) {
     actEl.dataset.k = akey;
     let h = '';
     if (J.state === 'dev') {
       // crunch syns även under polish, annars går en påslagen crunch inte att stänga av
-      const crunch = `<button class="btn sm ${J.crunch ? 'crunch-on' : ''}" data-act="crunch" data-tip="${t('tip.crunch')}">${icon('fire')}${t('dev.crunch')}</button>`;
+      const crunch = crunchBtn(J, fat);
       if (cur < 3) {
         if (G.u.mkt.length) h += `<button class="btn sm" data-act="open-marketing" ${J.ticks < J.devTicks * 0.2 ? 'disabled data-tip="' + t('err.tooEarly') + '"' : ''}>${icon('megaphone')}${t('dev.market')}</button>`;
         h += crunch;

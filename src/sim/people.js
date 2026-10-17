@@ -7,6 +7,7 @@ import { TRAIN_TEMPO } from './tempo.js';
 import { DIFFICULTY, nextId } from './state.js';
 import { tr } from './tr.js';
 import { capacity, facLevel, spend } from './studio.js';
+import { note } from './news.js';
 
 export const SPECS = {
   designer: { d: 1.45, t: 0.75, s: 1, r: 0.9, name: { sv: 'Speldesigner', en: 'Game Designer' } },
@@ -212,13 +213,43 @@ export function moodTarget(G) {
 }
 export function updateMood(G) {
   const target = moodTarget(G);
-  const crunch = G.job && G.job.crunch ? 12 : 0;
+  const crunching = !!(G.job && G.job.crunch);
+  const crunch = crunching ? 12 : 0;
   for (const s of G.staff) {
     const tr_ = s.trait === 'steady' ? 6 : 0;
-    s.mood = clamp(s.mood + (target + tr_ - crunch - s.mood) * 0.12, 5, 100);
+    const busy = crunching && s.trainUntil <= G.t;
+    if (busy || s.fatigue) s.fatigue = clamp((s.fatigue || 0) + (busy ? (s.trait === 'nightowl' ? 0.6 : 1) : -FATIGUE_REST), 0, FATIGUE_MAX);
+    s.mood = clamp(s.mood + (target + tr_ - crunch - 2 * fatigueOver(s) - s.mood) * 0.12, 5, 100);
   }
 }
 export const moodMult = (st) => 0.85 + (0.3 * st.mood) / 100;
+
+// ── Crunch och trötthet ──────────────────────────────────────────
+// Trötthet (valfritt fält, saknas = 0) byggs upp med 1 per crunchvecka (nattugglor 0,6) och klingar av med
+// FATIGUE_REST per vecka annars. De första FATIGUE_GRACE veckorna är gratis: bara tröttheten över gränsen sänker
+// tempo (2,5 % per vecka) och humör, så en kort crunch (händelsen Deadline, sex veckor) lönar sig medan ständig
+// crunch bränner ut folk. Den som mår riktigt dåligt kan säga upp sig (burnoutQuits, varje månad).
+export const FATIGUE_GRACE = 4;
+export const FATIGUE_MAX = 20;
+export const FATIGUE_REST = 0.5;
+export const fatigueOver = (st) => Math.max(0, (st.fatigue || 0) - FATIGUE_GRACE);
+export const fatigueMult = (st) => 1 - 0.025 * fatigueOver(st);
+// Teamets snittrötthet (0..FATIGUE_MAX) och hur mycket långsammare det jobbar (0..1).
+export function teamFatigue(G) {
+  const ws = workers(G);
+  if (!ws.length) return { avg: 0, slow: 0 };
+  return { avg: ws.reduce((a, w) => a + (w.fatigue || 0), 0) / ws.length, slow: ws.reduce((a, w) => a + 1 - fatigueMult(w), 0) / ws.length };
+}
+export function burnoutQuits(G) {
+  for (const s of G.staff.slice()) {
+    if (s.isFounder || s.mood >= 35) continue;
+    const p = ((35 - s.mood) / 100) * (s.trait === 'steady' ? 0.3 : 1) * (G.perk.morale ? 0.6 : 1);
+    if (!chance(G, p)) continue;
+    G.staff = G.staff.filter((x) => x !== s);
+    G.stats.quits = (G.stats.quits || 0) + 1;
+    note(G, 'news.quit', { name: s.name }, 'bad');
+  }
+}
 
 // Aktiva arbetare: alla som inte är på kurs.
 export function workers(G) {

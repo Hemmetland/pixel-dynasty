@@ -8,7 +8,7 @@ import { MKT } from '../data/research.js';
 import { SCOPES, yearOf, yfOf, moneyScale, engineMult, TICKS_PER_WEEK } from './const.js';
 import { SCOPE_TEMPO } from './tempo.js';
 import { DIFFICULTY } from './state.js';
-import { workers, moodMult } from './people.js';
+import { workers, moodMult, fatigueMult } from './people.js';
 import { bugMult, qaFixMult, mktCostMult, mktHypeMult, serverMult, labMult, spend } from './studio.js';
 import { phaseCats, normFocus, defaultFocus, evaluate, compatOf, parPerTick } from './score.js';
 import { startSales } from './sales.js';
@@ -119,7 +119,7 @@ export function teamOutput(G, J, mixD) {
     // Fler händer ger avtagande nytta (samordning) och mindre utanför projektets idealstorlek.
     const coord = 1 / (1 + 0.035 * i);
     const over = i >= sc.team ? 0.6 : 1;
-    let eff = (0.6 + (0.4 * w.speed) / 25) * moodMult(w) * over * coord;
+    let eff = (0.6 + (0.4 * w.speed) / 25) * moodMult(w) * fatigueMult(w) * over * coord;
     if (w.trait === 'perfectionist') eff *= 0.93;
     if (w.trait === 'nightowl' && J.crunch) eff *= 1.15;
     if (hasMentor && w.trait !== 'mentor') eff *= 1.05;
