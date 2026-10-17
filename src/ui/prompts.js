@@ -8,7 +8,7 @@ import { CAT } from '../data/categories.js';
 import { PLATFORM } from '../data/platforms.js';
 import { REVIEWERS } from '../data/reviews.js';
 import { EV } from '../data/events.js';
-import { reviewTexts, phaseCats, idealFocus } from '../sim/score.js';
+import { reviewTexts, phaseCats, idealFocus, SCOPE_CAP, softCap } from '../sim/score.js';
 import { setPhaseFocus } from '../sim/dev.js';
 import { resolveEvent } from '../sim/events.js';
 import { AWARD_CATS } from '../sim/awards.js';
@@ -107,7 +107,7 @@ function reportPrompt(app, G, p, finish) {
       </div>`;
     })
     .join('');
-  const ins = rep.insights.map((x) => insightRow(x, rep, J)).join('');
+  const ins = studioNotes(rep, J);
   const learned = G.know.combos[J.topic + '|' + J.genre] ? '' : `<div class="learn">${icon('sparkle')}<span>${t('rep.learned', { combo: `<b>${L(tp.name)} × ${L(ge.name)}</b>`, v: `<b>${t('compat.' + Math.round(rep.parts.compat))}</b>` })}</span></div>`;
   const outlook = total >= 9 ? 'rep.o4' : total >= 7.5 ? 'rep.o3' : total >= 6 ? 'rep.o2' : total >= 4.5 ? 'rep.o1' : 'rep.o0';
   UI.modal(`
@@ -202,6 +202,30 @@ function reportPrompt(app, G, p, finish) {
   );
   music.setMood?.('report');
 }
+// Studioanteckningar för ett utvärderat projekt eller ett släppt spel (spelet bär flags, insights, parts och scope).
+export const studioNotes = (rep, J) => scopeNote(rep, J) + (rep.insights || []).map((x) => insightRow(x, rep, J)).join('');
+
+// Storleken som förklaring: taket slog i, teamet har vuxit ur storleken, eller den var för ambitiös
+function scopeNote(rep, J) {
+  const sc = SCOPES[J.scope];
+  const cap = SCOPE_CAP[J.scope];
+  if (!sc || !cap) return '';
+  const p = rep.parts || {};
+  const raw0 = p.s0 * p.mCompat * p.mFit * p.mAud * (p.mPlat ?? 1) * (p.mBug ?? 1) * (p.mFresh ?? 1) * (p.mSeq ?? 1);
+  const loss = cap < 10 && raw0 > 0 ? raw0 - softCap(raw0, cap) : 0;
+  const v = rep.flags?.find((f) => f.k === 'scope')?.v || 0;
+  const name = `<b>${L(sc.name)}</b>`;
+  let lvl = 'ok';
+  let txt;
+  if (loss >= 0.25) txt = t('ins.scope.cap', { scope: name, v: `<b>${Math.min(10, rep.score + loss).toFixed(1)}</b>` });
+  else if (v > 0) txt = t('ins.scope.grow', { scope: name }) + (cap < 9 ? ' ' + t('ins.scope.ceil', { scope: L(sc.name), n: Math.round(cap) }) : '');
+  else if (v < 0) {
+    lvl = 'bad';
+    txt = t('ins.scope.over', { scope: name });
+  } else return '';
+  return `<div class="in ${lvl}"><span class="ii">${icon('target')}</span><span>${txt}</span></div>`;
+}
+
 function insightRow(x, rep, J) {
   const lvl = x.level > 0 ? 'good' : x.level < 0 ? 'bad' : 'ok';
   const ic = { compat: 'sparkle', focus: 'sliders', design: 'bulb', tech: 'cpu', bugs: 'bug', platform: 'gamepad', audience: 'user' }[x.k];

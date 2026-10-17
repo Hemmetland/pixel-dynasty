@@ -134,7 +134,9 @@ function roundHalf(x) {
 }
 // Betygstak per storlek (se "Små spel kan aldrig bli mästerverk" nedan). Taket styr också hur mycket
 // de första åren ger: ett litet spel landar kring 6–7 och första "succén" (7,5+) kommer med kontoret.
-const SCOPE_CAP = { small: 7.0, medium: 8.7, large: 9.2, aaa: 10 };
+export const SCOPE_CAP = { small: 7.0, medium: 8.7, large: 9.2, aaa: 10 };
+// Mjukt tak: upp till cap − 1 oförändrat, därefter planar betyget ut mot cap.
+export const softCap = (raw0, cap) => (raw0 <= cap - 1 ? raw0 : cap - 1 + (1 - Math.exp(-(raw0 - (cap - 1)))));
 
 export function evaluate(G, job) {
   const year = yearOf(G.t);
@@ -162,7 +164,7 @@ export function evaluate(G, job) {
   const cap = SCOPE_CAP[job.scope];
   const raw0 = s0 * mCompat * mFit * mAud * mPlat * mBug * mFresh * mSeq;
   // Små spel kan aldrig bli mästerverk: ambitionen avgör taket.
-  const raw = raw0 <= cap - 1 ? raw0 : cap - 1 + (1 - Math.exp(-(raw0 - (cap - 1))));
+  const raw = softCap(raw0, cap);
 
   const lossBugs = s0 * (1 - mBug);
   const reviews = REVIEWERS.map((rv) => {
