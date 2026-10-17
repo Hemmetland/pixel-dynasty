@@ -1,110 +1,131 @@
 {
- "skyline-dusk": {
-  "dir": "backgrounds",
-  "file": "skyline-dusk.png"
+ "backgrounds-skyline-dusk": {
+  "file": "backgrounds/skyline-dusk.png"
  },
- "skyline-night": {
-  "dir": "backgrounds",
-  "file": "skyline-night.png"
+ "backgrounds-skyline-night": {
+  "file": "backgrounds/skyline-night.png"
  },
- "window-view": {
-  "dir": "backgrounds",
-  "file": "window-view.png"
+ "backgrounds-window-view": {
+  "file": "backgrounds/window-view.png"
  },
- "code": {
-  "dir": "characters",
-  "file": "code.png"
+ "characters-dev-drink-coffee-east-0": {
+  "file": "characters/dev/drink-coffee-east/0.png"
  },
- "drink-coffee": {
-  "dir": "characters",
-  "file": "drink-coffee.png"
+ "characters-dev-drink-coffee-east-1": {
+  "file": "characters/dev/drink-coffee-east/1.png"
  },
- "sit": {
-  "dir": "characters",
-  "file": "sit.png"
+ "characters-dev-drink-coffee-east-2": {
+  "file": "characters/dev/drink-coffee-east/2.png"
  },
- "talk": {
-  "dir": "characters",
-  "file": "talk.png"
+ "characters-dev-drink-coffee-east-3": {
+  "file": "characters/dev/drink-coffee-east/3.png"
  },
- "walk": {
-  "dir": "characters",
-  "file": "walk.png"
+ "characters-dev-drink-coffee-east-4": {
+  "file": "characters/dev/drink-coffee-east/4.png"
  },
- "coffee-cup": {
-  "dir": "props",
-  "file": "coffee-cup.png"
+ "characters-dev-drink-coffee-east-5": {
+  "file": "characters/dev/drink-coffee-east/5.png"
  },
- "desk-lamp": {
-  "dir": "props",
-  "file": "desk-lamp.png"
+ "characters-dev-east": {
+  "file": "characters/dev/east.png"
  },
- "desk": {
-  "dir": "props",
-  "file": "desk.png"
+ "characters-dev-north": {
+  "file": "characters/dev/north.png"
  },
- "floor-lamp": {
-  "dir": "props",
-  "file": "floor-lamp.png"
+ "characters-dev-south": {
+  "file": "characters/dev/south.png"
  },
- "laptop": {
-  "dir": "props",
-  "file": "laptop.png"
+ "characters-dev-type-code-east-0": {
+  "file": "characters/dev/type-code-east/0.png"
  },
- "monitor": {
-  "dir": "props",
-  "file": "monitor.png"
+ "characters-dev-type-code-east-1": {
+  "file": "characters/dev/type-code-east/1.png"
  },
- "office-chair": {
-  "dir": "props",
-  "file": "office-chair.png"
+ "characters-dev-type-code-east-2": {
+  "file": "characters/dev/type-code-east/2.png"
  },
- "plant": {
-  "dir": "props",
-  "file": "plant.png"
+ "characters-dev-type-code-east-3": {
+  "file": "characters/dev/type-code-east/3.png"
  },
- "server-rack": {
-  "dir": "props",
-  "file": "server-rack.png"
+ "characters-dev-type-code-east-4": {
+  "file": "characters/dev/type-code-east/4.png"
  },
- "side-table": {
-  "dir": "props",
-  "file": "side-table.png"
+ "characters-dev-walk-east-0": {
+  "file": "characters/dev/walk-east/0.png"
  },
- "sofa": {
-  "dir": "props",
-  "file": "sofa.png"
+ "characters-dev-walk-east-1": {
+  "file": "characters/dev/walk-east/1.png"
  },
- "vending-machine": {
-  "dir": "props",
-  "file": "vending-machine.png"
+ "characters-dev-walk-east-2": {
+  "file": "characters/dev/walk-east/2.png"
  },
- "whiteboard": {
-  "dir": "props",
-  "file": "whiteboard.png"
+ "characters-dev-walk-east-3": {
+  "file": "characters/dev/walk-east/3.png"
  },
- "logo-nexus": {
-  "dir": "ui",
-  "file": "logo-nexus.png"
+ "characters-dev-walk-east-4": {
+  "file": "characters/dev/walk-east/4.png"
  },
- "nav-building": {
-  "dir": "ui",
-  "file": "nav-building.png"
+ "characters-dev-walk-east-5": {
+  "file": "characters/dev/walk-east/5.png"
  },
- "nav-settings": {
-  "dir": "ui",
-  "file": "nav-settings.png"
+ "characters-dev-west": {
+  "file": "characters/dev/west.png"
  },
- "nav-stats": {
-  "dir": "ui",
-  "file": "nav-stats.png"
+ "props-coffee-cup": {
+  "file": "props/coffee-cup.png"
  },
- "nav-team": {
-  "dir": "ui",
-  "file": "nav-team.png"
+ "props-desk-lamp": {
+  "file": "props/desk-lamp.png"
  },
- "nav-upgrades": {
-  "dir": "ui",
-  "file": "nav-upgrades.png"
+ "props-desk": {
+  "file": "props/desk.png"
+ },
+ "props-floor-lamp": {
+  "file": "props/floor-lamp.png"
+ },
+ "props-laptop": {
+  "file": "props/laptop.png"
+ },
+ "props-monitor": {
+  "file": "props/monitor.png"
+ },
+ "props-office-chair": {
+  "file": "props/office-chair.png"
+ },
+ "props-plant": {
+  "file": "props/plant.png"
+ },
+ "props-server-rack": {
+  "file": "props/server-rack.png"
+ },
+ "props-side-table": {
+  "file": "props/side-table.png"
+ },
+ "props-sofa": {
+  "file": "props/sofa.png"
+ },
+ "props-vending-machine": {
+  "file": "props/vending-machine.png"
+ },
+ "props-whiteboard": {
+  "file": "props/whiteboard.png"
+ },
+ "ui-logo-nexus": {
+  "file": "ui/logo-nexus.png"
+ },
+ "ui-nav-building": {
+  "file": "ui/nav-building.png"
+ },
+ "ui-nav-settings": {
+  "file": "ui/nav-settings.png"
+ },
+ "ui-nav-stats": {
+  "file": "ui/nav-stats.png"
+ },
+ "ui-nav-team": {
+  "file": "ui/nav-team.png"
+ },
+ "ui-nav-upgrades": {
+  "file": "ui/nav-upgrades.png"
  }
 }
