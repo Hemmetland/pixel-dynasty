@@ -3,6 +3,7 @@ import { drawPerson } from './people.js';
 import { randomLook } from '../sim/people.js';
 import { drawVehicle, vehicleSize } from './vehicles.js';
 import { drawBackdropCover } from './sprites.js';
+import { drawWalkerSprite } from './charsprite.js';
 
 const BAYER = [0, 8, 2, 10, 12, 4, 14, 6, 3, 11, 1, 9, 15, 7, 13, 5].map((v) => (v + 0.5) / 16);
 
@@ -543,7 +544,9 @@ export class World {
     const cars = this.cars.slice().sort((p, q) => this.laneY(p) - this.laneY(q));
     for (const c of cars) drawVehicle(ctx, c, gy + this.laneY(c));
     // fotgängare på förgrundstrottoaren, framför allt annat
-    for (const p of this.peds) drawPerson(ctx, p.x, gy + STREET.pedY, p.look, 'walk', Math.floor(p.t) % 4, p.dir, {});
+    for (const p of this.peds) {
+      if (!drawWalkerSprite(ctx, p.x, gy + STREET.pedY, p.look, p.t, p.dir)) drawPerson(ctx, p.x, gy + STREET.pedY, p.look, 'walk', Math.floor(p.t) % 4, p.dir, {});
+    }
   }
 
   // Fordonets markyta relativt gy. Fordon åt höger kör närmast kameran.

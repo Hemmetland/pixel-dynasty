@@ -611,6 +611,12 @@ export function drawPerson(ctx, x, y, look, pose = 'stand', frame = 0, dir = 1, 
   ctx.restore();
 }
 
+// Utseendets huvudfärger (för sprites som färgbyts efter personen, se charsprite.js). hat är null utan huvudbonad.
+export function lookColors(look) {
+  const C = colors(look);
+  return { skin: C.skin, shirt: C.shirt, pants: C.pants, hair: C.hair, hat: C.hat ? C.hatC : null, shoe: C.shoe };
+}
+
 // Förhandsgranskning (för UI): ritar en person i liten canvas.
 export function personCanvas(look, scale = 4, pose = 'stand') {
   const c = document.createElement('canvas');

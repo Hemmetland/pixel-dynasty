@@ -23,7 +23,7 @@ export function registerSprites(pack) {
           c.width = cw;
           c.height = ch;
           c.getContext('2d').drawImage(img, cx, cy, cw, ch, 0, 0, cw, ch);
-          sprites.set(name, { c, fw, fh, ax: e.ax ?? Math.round(fw / 2), ay: e.ay ?? fh, frames: e.frames || 1 });
+          sprites.set(name, { c, fw, fh, ax: e.ax ?? Math.round(fw / 2), ay: e.ay ?? fh, frames: e.frames || 1, scale: e.scale || 1 });
           const base = name.split('#')[0];
           if (name.includes('#')) variants.set(base, (variants.get(base) || 0) + 1);
           res(1);
@@ -44,6 +44,8 @@ export const onSpritesLoaded = (fn) => listeners.push(fn);
 export const spritesVersion = () => version;
 export const hasSprite = (name) => sprites.has(name) || variants.has(name);
 export const spriteCount = () => sprites.size;
+// Rå sprite (canvas, rutstorlek, ankare, frames, scale) för moduler som gör egna varianter, t.ex. färgbytta personer.
+export const getSprite = (name) => sprites.get(name) || null;
 
 // Ritar sprite 'name' med ankaret i (x, y). o.dir=-1 speglar, o.frame väljer ruta, o.variant väljer variant. Returnerar false om den saknas.
 export function drawSprite(ctx, name, x, y, o = {}) {

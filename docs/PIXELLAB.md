@@ -70,7 +70,9 @@ Spelet bäddar bara in det som står i `assets/manifest.json`; resten av `assets
 | `backgrounds/window-view.png` | Ej använd än (tänkt som utsikt genom fönster i våningarna). |
 | `props/plant.png`, `floor-lamp.png` | **Används**: nedskalade (yt-medelvärde, hård alfa) till `assets/props/plantFloor.png` (21x28) och `floorLamp.png` (19x41), som `prop.plantFloor` och `prop.floorLamp`. Spriten har en storlek, så funktionernas höjd- och färgparametrar påverkar den inte. |
 | övriga `props/*.png` (64x64, snett ovanifrån) | Ej i scenen (provat: skrivbord, stol, serverrack, soffa och varuautomat krockar med sidovyn): scenen är sidovy med 48 px per våning, rekvisitan är ritad i 3/4-perspektiv med annan pixeltäthet och skulle se klistrad ut. Bra som illustrationer i fönster (anläggningar, butik). |
-| `characters/*.png` (64x64) | Ej i scenen: fem olika personer i porträttstil, inte ett pose-ark. Behövs som en person med gång/sitta/skriva/kaffe/prata i profil, ca 30 px hög. |
+| `characters/dev/walk-east/0-5.png` (92x92, en karaktär i sidovy) | **Används**: fotgängarna på trottoaren (`char.walk`, remsa i `assets/chars/walk.png`, `scale` 0.42 ger ca 30 px). `src/render/charsprite.js` färgbyter tröja, mössa, byxor, hud, hår och skor efter varje persons utseende (mössan blir hårfärgad om personen saknar huvudbonad) och skalar ner i spelet. |
+| `characters/dev/` övrigt (`east/west/south/north`, `drink-coffee-east`, `type-code-east`) | Ej i scenen än: `type-code-east` står upp (scenen behöver sittande vid skrivbord), och anställda använder fortfarande den procedurella figuren, eftersom samma person annars skulle byta stil när den sätter sig. Behövs: sitta, sitta och skriva, prata, i samma karaktär. |
+| `characters/*.png` (64x64, första satsen) | Ej i scenen: fem olika personer i porträttstil, inte ett pose-ark. |
 | `ui/nav-*.png` (32x32) | Ej kopplade än (dockan använder vektorikoner). `nav-building` föreställer inte en byggnad, `logo-nexus` har oläslig text. |
 
 Om (nästa sats): generera om rekvisita och personer i den skala och vy scenen använder, se `docs/ASSET_SPECS.md` och `docs/PIXELLAB_PROMPTS.md`
