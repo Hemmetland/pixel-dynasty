@@ -67,6 +67,7 @@ const named = L.rooms.filter((r) => r.name);
 ok(named.length >= 10 && named.every((r) => Array.isArray(r.name) && r.name.length === 2 && r.name.every((n) => typeof n === 'string' && n.length > 1 && n.length * 4 + 5 <= r.w - 4)), `rumsnamn finns på svenska och engelska och ryms i rummet (${named.length} rum)`);
 ok(L.lights.every((l) => [l.x, l.y, l.r, l.i].every(Number.isFinite) && l.c.length === 3 && l.x > -L.BW / 2 - 40 && l.x < L.BW / 2 + 40 && l.y <= 0), 'alla ljuskällor har giltiga värden och ligger vid huset');
 ok(L.lights.every((l, i) => i === 0 || L.lights[i - 1].pri <= l.pri), 'ljuskällorna är sorterade efter prioritet');
+ok(L.lights.filter((l) => l.pri === 0.5 && l.y < -200).length === 2, 'skylten och takvåningen har ljus med hög prioritet (kommer alltid med bland de 48)');
 ok(L.anim.leds.length > 40 && L.anim.screens.length >= 6 && L.anim.fish.length >= 1 && L.anim.steam.length >= 3, `animationslistor: ${L.anim.leds.length} dioder, ${L.anim.screens.length} skärmar, ${L.anim.fish.length} akvarier, ${L.anim.steam.length} ångkällor`);
 
 // ritning: inget utanför lagrets yta (mitten nere, bredd W+40, höjd H+40) och inga ogiltiga färger

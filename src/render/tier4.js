@@ -1005,8 +1005,9 @@ function dynamicRoof(A, cx, gy, L, t, night, st) {
 }
 
 const ROOF_LIGHTS = (topY) => [
-  { x: ROOF.sign, y: topY - 24, r: 70, i: 0.8, c: [1, 0.7, 0.4], kind: 1, pri: 1 },
-  { x: ROOF.pent + ROOF.pentW / 2, y: topY - 20, r: 62, i: 0.95, c: [1, 0.82, 0.5], kind: 0, y0: topY - 34, y1: topY - 3, pri: 1 },
+  // skylt och takvåning är byggnadens ansikte mot skylinen: lite före de vanliga prioritet-1-ljusen så att de alltid kommer med (högst 48 ljus)
+  { x: ROOF.sign, y: topY - 24, r: 70, i: 0.8, c: [1, 0.7, 0.4], kind: 1, pri: 0.5 },
+  { x: ROOF.pent + ROOF.pentW / 2, y: topY - 20, r: 62, i: 0.95, c: [1, 0.82, 0.5], kind: 0, y0: topY - 34, y1: topY - 3, pri: 0.5 },
   { x: ROOF.pent + ROOF.pentW / 2, y: topY - 16, r: 52, i: 0.45, c: [1, 0.82, 0.5], kind: 1, pri: 2 },
   { x: -HALF - 12, y: -FOUND - 24, r: 40, i: 0.55, c: [1, 0.78, 0.5], kind: 1, pri: 2 },
   { x: -64, y: -FOUND - 36, r: 44, i: 0.6, c: [1, 0.55, 0.25], kind: 1, pri: 2 },
