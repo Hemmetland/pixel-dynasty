@@ -16,6 +16,7 @@ import { music } from '../audio/sfx.js';
 import { saveSettings } from '../core/store.js';
 import { CLIENTS, BRIEFS } from '../data/events.js';
 import { ACHIEVEMENTS } from '../data/achievements.js';
+import { crowdChip } from './crowd.js';
 
 export const LOGOS = ['c_gameplay', 'g_action', 't_space', 't_fantasy', 't_robots', 't_pirates', 'g_casual', 't_magic'];
 
@@ -526,6 +527,7 @@ function updateDevGame(G, J, el) {
         <span class="chip c" style="--c:${ge.color}">${glyphImg(ge.glyph, ge.color, 16, false)}${L(ge.name)}</span>
         <span class="chip">${L(tp.name)}</span>
         <span class="chip" style="--c:${PLATFORM[J.platform].color}">${esc(PLATFORM[J.platform].name)}</span>
+        <span id="dv-crowd" style="display:contents"></span>
       </div>
       <div class="phases" id="dv-phases"></div>
       <div class="phase-names" id="dv-pn"></div>
@@ -555,6 +557,13 @@ function updateDevGame(G, J, el) {
   $('#dv-t', el).textContent = Math.round(J.T);
   $('#dv-b', el).textContent = Math.round(J.bugs);
   $('#dv-h', el).textContent = Math.round(J.hype);
+  // trängsel vid släpp (räknas om varje vecka och när släppet flyttas)
+  const crEl = $('#dv-crowd', el);
+  const ckey = [G.t, J.phase, J.extended, J.state, lang].join('|');
+  if (crEl && crEl.dataset.k !== ckey) {
+    crEl.dataset.k = ckey;
+    crEl.innerHTML = crowdChip(G, J);
+  }
   // åtgärder
   const actEl = $('#dv-act', el);
   const fat = teamFatigue(G);

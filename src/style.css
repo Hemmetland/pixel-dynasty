@@ -808,3 +808,5 @@ svg.lchart .axt { font: 600 10px var(--font); fill: var(--faint); }
 .choice .fxrow .chip { height: 21px; padding: 0 7px; font-size: 11.5px; gap: 4px; }
 .choice .fxrow .chip .gl { width: 13px; height: 13px; }
 .evchoice { font-size: 12px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.06em; margin-bottom: 6px; }
+/* Konkurrentlistan på telefon: styrkestapeln får ge plats åt namnet */
+@media (max-width: 520px) { .rv-str { display: none; } }

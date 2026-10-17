@@ -2,10 +2,10 @@ import { clamp } from '../core/util.js';
 import { rnd, rint, gauss, pick, chance, weighted, shuffle } from '../core/rng.js';
 import { emit } from '../core/bus.js';
 import { COMPETITORS, TITLE_PARTS, TOPIC_NOUNS } from '../data/names.js';
-import { TOPICS } from '../data/topics.js';
-import { GENRES } from '../data/genres.js';
+import { TOPICS, TOPIC } from '../data/topics.js';
+import { GENRES, GENRE } from '../data/genres.js';
 import { PLATFORMS, potential } from '../data/platforms.js';
-import { SCOPES, yearOf, yfOf, priceOf } from './const.js';
+import { SCOPES, yearOf, yfOf, priceOf, WEEKS_PER_MONTH } from './const.js';
 import { unitRev, curveFor } from './sales.js';
 import { SALES_TAIL } from './tempo.js';
 import { RESEARCH } from '../data/research.js';
@@ -64,11 +64,12 @@ export function releaseComp(G, c) {
   const yf = yfOf(G.t);
   const plats = PLATFORMS.filter((p) => potential(p, yf) > 1);
   const plat = weighted(G, plats, (p) => potential(p, yf));
-  const topicsAvail = TOPICS.filter((t) => t.start || RESEARCH.some((r) => (r.unlock.topics || []).includes(t.id) && r.year <= year + 1));
-  const topic = pick(G, topicsAvail);
-  const genre = weighted(G, GENRES.filter((g) => ['action', 'adventure', 'strategy', 'rpg', 'simulation', 'casual', 'shooter', 'racing'].includes(g.id)), (g) => 1 + topic.compat[GENRES.indexOf(g)] * 0.6);
+  // tema och genre bestämdes när släppet planerades (ryktet); gamla sparfiler och första släppet drar dem nu
+  const nx = c.next && TOPIC[c.next.topic] && GENRE[c.next.genre] ? c.next : rollNext(G, year);
+  const topic = TOPIC[nx.topic];
+  const genre = GENRE[nx.genre];
   const strength = c.strength;
-  const mean = 5.4 + (strength - 0.7) * 2.6 + Math.min(1, (year - 1980) / 40) * 0.3;
+  const mean = compMean(c, year);
   const score = clamp(Math.round(gauss(G, mean, 1.15) * 10) / 10, 1.8, 9.7);
   const scope = compScope(G, year, strength);
   const total = unitRev(year) * Math.max(0.4, potential(plat, yf)) * Math.exp(0.62 * (score - 6.5)) * SCOPES[scope].rev * (0.6 + strength * 0.5) * (1 + (c.games > 3 ? 0.2 : 0)) * clamp(gauss(G, 1, 0.2), 0.6, 1.5) * 0.85;
@@ -85,9 +86,50 @@ export function releaseComp(G, c) {
   c.games++;
   c.best = Math.max(c.best, score);
   c.nextT = G.t + Math.round(rint(G, 36, 90) / (0.6 + strength * 0.6) / Math.min(1.8, 1 + (year - 1980) / 60));
+  c.next = rollNext(G, yearOf(c.nextT));
   c.strength = clamp(c.strength + c.growth * (score >= mean ? 1 : 0.4) - 0.004, 0.45, 1.7);
   emit('compRelease', rel);
   return rel;
+}
+// Konkurrentens nästa spel: tema och genre (som rykte i marknadsfönstret innan det släpps).
+const COMP_GENRES = ['action', 'adventure', 'strategy', 'rpg', 'simulation', 'casual', 'shooter', 'racing'];
+function rollNext(G, year) {
+  const topicsAvail = TOPICS.filter((t) => t.start || RESEARCH.some((r) => (r.unlock.topics || []).includes(t.id) && r.year <= year + 1));
+  const topic = pick(G, topicsAvail);
+  const genre = weighted(G, GENRES.filter((g) => COMP_GENRES.includes(g.id)), (g) => 1 + topic.compat[GENRES.indexOf(g)] * 0.6);
+  return { topic: topic.id, genre: genre.id };
+}
+// Väntat betyg för en konkurrents spel ett visst år.
+export const compMean = (c, year) => 5.4 + (c.strength - 0.7) * 2.6 + Math.min(1, (year - 1980) / 40) * 0.3;
+
+// Trängsel vid släpp: konkurrentspel i samma genre (eller tema) som släpptes upp till 8 veckor före, eller ska släppas
+// upp till 8 veckor efter, tar en del av köparna. Starkare spel och närmare i tid tar mer. Inga alls = lugnt fönster.
+// x = { genre, genre2, topic }, T = släppveckan. Ger { mult, rivals: [{ title?, studio, color, genre, topic, t, score, future, hit }] }.
+export const CROWD_WEEKS = 8;
+export const CROWD_QUIET = 1.05;
+export function crowding(G, x, T = G.t) {
+  const rivals = [];
+  const add = (r, studio, color, score, t, future, title) => {
+    const m = (r.genre === x.genre ? 1 : r.genre === x.genre2 ? 0.5 : 0) + (r.topic === x.topic ? 0.6 : 0);
+    if (!m) return;
+    const k = 1 - Math.abs(t - T) / (CROWD_WEEKS + 1);
+    const hit = 0.09 * m * clamp((score - 4.5) / 3, 0.2, 1.4) * k;
+    rivals.push({ title, studio, color, genre: r.genre, topic: r.topic, t, score, future, hit });
+  };
+  for (const r of (G.market && G.market.releases) || []) if (r.t <= T && T - r.t <= CROWD_WEEKS) add(r, r.studio, r.color, r.score, r.t, false, r.title);
+  for (const c of upcomingReleases(G, T - G.t + CROWD_WEEKS)) {
+    const w = releaseWeek(c);
+    if (Math.abs(w - T) <= CROWD_WEEKS) add(c.next, c.name, c.color, compMean(c, yearOf(w)), w, true, null);
+  }
+  rivals.sort((a, b) => b.hit - a.hit);
+  const sum = rivals.reduce((a, r) => a + r.hit, 0);
+  return { mult: rivals.length ? clamp(1 - sum, 0.75, 1) : CROWD_QUIET, rivals };
+}
+// Konkurrenterna släpper vid månadsskiftet (monthlyMarket), första månadsskiftet från nextT.
+export const releaseWeek = (c) => Math.ceil(c.nextT / WEEKS_PER_MONTH) * WEEKS_PER_MONTH;
+// Kommande konkurrentsläpp (med känt rykte) inom 'weeks' veckor, närmast först.
+export function upcomingReleases(G, weeks = 24) {
+  return (G.comps || []).filter((c) => c.next && releaseWeek(c) > G.t && releaseWeek(c) - G.t <= weeks).sort((a, b) => a.nextT - b.nextT);
 }
 function rnd2(G) {
   return () => rnd(G);

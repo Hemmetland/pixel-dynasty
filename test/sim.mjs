@@ -87,7 +87,7 @@ function handlePending(G) {
     } else if (p.type === 'report') {
       const g = S.releaseGame(G);
       G.pending.shift();
-      if (verbose) console.log(`  release ${S.dateOf(G.t).year}: ${g.title} ${g.scope} on ${g.platform} ${g.topic}/${g.genre} score ${g.score} total $${Math.round(g.total)}`);
+      if (verbose) console.log(`  release ${S.dateOf(G.t).year}: ${g.title} ${g.scope} on ${g.platform} ${g.topic}/${g.genre} score ${g.score} total $${Math.round(g.total)} crowd ${g.crowd?.toFixed(2)} (${(g.crowdBy || []).length})`);
     } else if (p.type === 'event') {
       const ev = EV[p.ev];
       S.resolveEvent(G, p.id, Math.floor(Math.random() * ev.choices.length));

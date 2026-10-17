@@ -14,6 +14,7 @@ import { fmtNum } from '../core/util.js';
 import { lang } from '../core/i18n.js';
 import { openSequel } from './wizard.js';
 import { studioNotes } from './prompts.js';
+import { crowdNote } from './crowd.js';
 
 const scoreColor = (s) => (s >= 9 ? 'var(--gold)' : s >= 8 ? 'var(--good)' : s >= 6.5 ? 'var(--accent)' : s >= 5 ? 'var(--warn)' : 'var(--bug)');
 const spec = (g) => ({ id: g.id, title: g.title, topic: g.topic, genre: g.genre, platform: g.platform });
@@ -74,7 +75,7 @@ function detailView(G, id) {
     </div>
     <div class="card" style="margin-top:16px"><div class="row" style="margin-bottom:6px"><div class="lbl">${t('lib.sales')}</div><span class="sp"></span><span class="faint" style="font-size:12px">${g.ended ? t('lib.ended') : t('lib.forecast', { v: money(g.total) })}</span></div>${salesChart(g)}</div>
     <div class="grid" style="grid-template-columns:repeat(auto-fit,minmax(240px,1fr));margin-top:16px">${texts.map((r, i) => `<div class="rev show" style="--c:${REVIEWERS[i].color}"><div class="rv-h"><div class="rv-av">${icon(['cpu', 'book', 'heart', 'skull'][i])}</div><div style="flex:1"><b>${L(REVIEWERS[i].name)}</b></div><div class="rv-s num" style="color:${scoreColor(r.score)}">${r.score.toFixed(1)}</div></div><div class="rv-t"><b>${esc(r.headline)}</b>${r.detail ? `<p>${esc(r.detail)}</p>` : ''}</div></div>`).join('')}</div>
-    ${g.insights?.length ? `<div class="card" style="margin-top:16px"><div class="lbl" style="margin-bottom:8px">${t('rep.notes')}</div><div class="ins">${studioNotes(g, g)}</div></div>` : ''}
+    ${g.insights?.length ? `<div class="card" style="margin-top:16px"><div class="lbl" style="margin-bottom:8px">${t('rep.notes')}</div><div class="ins">${studioNotes(g, g)}${crowdNote(G, g, true)}</div></div>` : ''}
     <div class="row wrap" style="gap:10px;margin-top:16px">
       ${G.u.flags.sequels ? `<button class="btn primary" data-act="lib-seq" data-id="${g.id}" ${G.job ? 'disabled' : ''}>${icon('film')}${t('lib.sequel')}</button>` : `<span class="hint">${icon('lock')} ${t('lib.seqLocked')}</span>`}
       ${patchOk && !g.ended ? `<button class="btn" data-act="lib-patch" data-id="${g.id}" ${g.patched || g.bugs < 3 ? 'disabled' : ''} data-tip="${t('lib.patchTip')}">${icon('wrench')}${g.patched ? t('lib.patched') : t('lib.patch') + ' · ' + money(patchCost(G, g))}</button>` : ''}

@@ -7,7 +7,7 @@ import { GENRE } from '../data/genres.js';
 import { TOPIC } from '../data/topics.js';
 import { yearOf, yfOf } from '../sim/const.js';
 import { canLicense, buyLicense, licenseCost } from '../sim/actions.js';
-import { topSellers, trendWeeksLeft } from '../sim/market.js';
+import { topSellers, trendWeeksLeft, upcomingReleases, releaseWeek } from '../sim/market.js';
 import { fmtNum } from '../core/util.js';
 import { TOPICS } from '../data/topics.js';
 import { GENRES } from '../data/genres.js';
@@ -100,14 +100,28 @@ function insightsTab(G) {
     <div class="grid" style="grid-template-columns:repeat(auto-fill,minmax(280px,1fr))">${focus}</div>`;
 }
 
+// Rykten om konkurrenternas nästa spel inom 24 veckor; de som delar genre eller tema med ditt projekt märks ut.
+function rumorsHTML(G) {
+  const J = G.job && G.job.kind === 'game' ? G.job : null;
+  const up = upcomingReleases(G, 24).slice(0, 8);
+  const row = (c) => {
+    const ge = GENRE[c.next.genre];
+    const tp = TOPIC[c.next.topic];
+    const clash = J && (c.next.genre === J.genre || c.next.genre === J.genre2 || c.next.topic === J.topic);
+    return `<div class="card row wrap" style="gap:10px 14px"><div class="dotc" style="background:${c.color}"></div><div style="flex:1 1 160px;min-width:0"><b>${esc(c.name)}</b>${clash ? ` <span class="tag" style="--c:var(--warn)">${t('mkt.clash', { title: esc(J.title) })}</span>` : ''}<div class="row wrap" style="gap:5px;margin-top:4px"><span class="chip c" style="--c:${ge.color}">${glyphImg(ge.glyph, ge.color, 16, false)}${L(ge.name)}</span><span class="chip">${glyphImg(tp.glyph, '#fff', 16, false)}${L(tp.name)}</span></div></div><div class="faint num" style="font-size:12.5px;text-align:right">${t('mkt.rumorIn', { n: releaseWeek(c) - G.t })}</div></div>`;
+  };
+  return `<div class="lbl" style="margin-bottom:6px">${t('mkt.rumors')}</div><p class="hint" style="margin-bottom:10px">${t('mkt.rumorHelp')}</p>
+    ${up.length ? `<div class="col" style="gap:8px;margin-bottom:20px">${up.map(row).join('')}</div>` : `<div class="hint" style="margin-bottom:20px">${t('mkt.noRumors')}</div>`}`;
+}
+
 function rivalsTab(G) {
   const rows = G.comps.slice().sort((a, b) => b.best - a.best);
-  return `<div class="col" style="gap:8px">${rows
+  return `${rumorsHTML(G)}<div class="lbl" style="margin-bottom:8px">${t('mkt.tab.rivals')}</div><div class="col" style="gap:8px">${rows
     .map((c, i) => {
       const last = G.market.releases.filter((r) => r.comp === c.id).slice(-1)[0];
       return `<div class="card row" style="gap:14px"><div class="rk disp">${i + 1}</div><div class="dotc" style="background:${c.color}"></div><div style="flex:1;min-width:0"><b>${esc(c.name)}</b><div class="faint" style="font-size:12px">${last ? t('mkt.lastRel', { title: esc(L(last.title)), v: last.score.toFixed(1) }) : t('mkt.noRel')}</div></div>
-      <div style="width:120px">${bar(((c.strength - 0.4) / 1.3) * 100, c.color, 'thin')}<div class="faint" style="font-size:11px;margin-top:3px">${t('mkt.strength')}</div></div>
-      <div style="text-align:right;min-width:60px"><div class="disp" style="font-size:23px;color:var(--gold)">${c.best ? c.best.toFixed(1) : '–'}</div><div class="faint" style="font-size:11px">${c.games} ${t('mkt.games')}</div></div></div>`;
+      <div class="rv-str" style="width:120px">${bar(((c.strength - 0.4) / 1.3) * 100, c.color, 'thin')}<div class="faint" style="font-size:11px;margin-top:3px">${t('mkt.strength')}</div></div>
+      <div style="text-align:right;min-width:60px"><div class="disp" style="font-size:23px;color:var(--gold)">${c.best ? c.best.toFixed(1) : '–'}</div><div class="faint" style="font-size:11px">${t('mkt.games', { n: c.games })}</div></div></div>`;
     })
     .join('')}</div>`;
 }

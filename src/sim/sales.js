@@ -57,7 +57,7 @@ export function forecast(G, game, opts = {}) {
   const pf = clamp(Math.pow(platFit(game.platform, game.genre, game.genre2), 0.7), 0.7, 1.4);
   const seq = game.chain >= 2 ? 1.08 : 1;
   const bugs = 1 - Math.min(0.3, (game.parts?.bugRatio ?? 0) * 0.12);
-  const mult = game.salesMult ?? 1;
+  const mult = (game.salesMult ?? 1) * (opts.crowd ?? game.crowd ?? 1);
   // Äldre hårdvarugenerationer säljer sämre när nyare finns.
   const year = yearOf(game.t);
   let best = 1;

@@ -19,6 +19,7 @@ import { focusHTML, bindFocus } from './focus.js';
 import { SCOPES } from '../sim/const.js';
 import { bailoutAmount, takeBailout, declineBailout } from '../sim/studio.js';
 import { music } from '../audio/sfx.js';
+import { crowdNote } from './crowd.js';
 
 let timers = [];
 const later = (fn, ms) => timers.push(setTimeout(fn, ms));
@@ -107,7 +108,7 @@ function reportPrompt(app, G, p, finish) {
       </div>`;
     })
     .join('');
-  const ins = studioNotes(rep, J);
+  const ins = studioNotes(rep, J) + crowdNote(G, J, false);
   const learned = G.know.combos[J.topic + '|' + J.genre] ? '' : `<div class="learn">${icon('sparkle')}<span>${t('rep.learned', { combo: `<b>${L(tp.name)} × ${L(ge.name)}</b>`, v: `<b>${t('compat.' + Math.round(rep.parts.compat))}</b>` })}</span></div>`;
   const outlook = total >= 9 ? 'rep.o4' : total >= 7.5 ? 'rep.o3' : total >= 6 ? 'rep.o2' : total >= 4.5 ? 'rep.o1' : 'rep.o0';
   UI.modal(`

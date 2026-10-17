@@ -12,6 +12,7 @@ import { workers, moodMult, fatigueMult } from './people.js';
 import { bugMult, qaFixMult, mktCostMult, mktHypeMult, serverMult, labMult, spend } from './studio.js';
 import { phaseCats, normFocus, startFocus, evaluate, compatOf, parPerTick } from './score.js';
 import { startSales, forecast } from './sales.js';
+import { crowding } from './market.js';
 
 export const RP_RATE = 0.05;
 // Satser som beskriver "per projekt" skalas mot projektets längd (tempo) så att ett längre projekt inte tappar mer hype
@@ -279,6 +280,10 @@ export function releaseGame(G) {
   G.stats.gamesMade++;
   G.stats.bestScore = Math.max(G.stats.bestScore, game.score);
   if (game.score >= 8) G.stats.hits++;
+  // konkurrenter i samma genre eller tema runt släppet tar köpare (eller ett lugnt fönster ger lite extra)
+  const cr = crowding(G, game);
+  game.crowd = cr.mult;
+  game.crowdBy = cr.rivals.slice(0, 3).map((r) => ({ studio: r.studio, title: r.title, future: r.future }));
   startSales(G, game);
   // erfarenhet till teamet
   for (const w of workers(G)) {
