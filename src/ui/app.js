@@ -196,10 +196,17 @@ export const app = {
       if (r.amount > 150 && (rel > 0.004 || Math.random() < 0.5)) sc.moneyPop('+' + money(r.amount));
     });
     on('month', () => {
-      if (this.G && !this.G.over) saveGame(this.G);
+      if (this.G && !this.G.over && !saveGame(this.G) && !this.saveWarned) {
+        this.saveWarned = true; // en gång per session
+        toast(t('menu.saveFail'), 'bad');
+      }
       if (this.G) music.setEra?.(1980 + Math.floor(this.G.t / 48));
     });
-    on('gameover', () => music.setMood?.('sad'));
+    on('gameover', () => {
+      music.setMood?.('sad');
+      // Slutläget sparas så att Fortsätt inte kan väcka den konkursade studion igen
+      if (this.G) saveGame(this.G);
+    });
     act('crunch', () => {
       toggleCrunch(this.G);
       sfx.play('click');

@@ -32,14 +32,14 @@ export function saveMeta() {
     const raw = localStorage.getItem(KEY);
     if (!raw) return null;
     const d = JSON.parse(raw);
-    return d.meta || null;
+    return d.meta ? { ...d.meta, over: d.meta.over ?? !!d.G?.over } : null;
   } catch {
     return null;
   }
 }
 export function saveGame(G) {
   try {
-    const meta = { studio: G.studio, t: G.t, money: G.money, games: G.games.length, staff: G.staff.length, at: Date.now() };
+    const meta = { studio: G.studio, t: G.t, money: G.money, games: G.games.length, staff: G.staff.length, over: !!G.over, at: Date.now() };
     localStorage.setItem(KEY, JSON.stringify({ v: SAVE_VERSION, meta, G }));
     return true;
   } catch {

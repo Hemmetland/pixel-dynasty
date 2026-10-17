@@ -108,13 +108,28 @@ act('ng-diff', (el) => {
 act('ng-cancel', () => {
   UI.close(true);
 });
-act('ng-go', () => {
+function begin() {
   const app = UI.app;
   UI.close(true);
   hideTitle();
   intro(() => {
     app.startNew({ studio: N.studio.trim() || 'Nordlys Games', founderName: N.founder.trim() || 'Founder', look: N.look, archetype: N.arch, difficulty: N.diff, logo: N.logo });
   });
+}
+// En sparplats: fråga innan en pågående studio skrivs över
+act('ng-go', () => {
+  const meta = hasSave() ? saveMeta() : null;
+  if (!meta || meta.over) return begin();
+  const v = { studio: `<b>${esc(meta.studio)}</b>`, year: dateOf(meta.t).year, money: money(meta.money) };
+  UI.modal(`<div class="win-head"><div class="wi" style="--wc:var(--bug);color:var(--bug)">${icon('save')}</div><h2>${t('ng.replace')}</h2></div><div class="win-body"><p>${t('ng.replaceText', v)}</p></div><div class="win-foot"><span class="sp"></span><button class="btn" data-act="ng-keep">${t('ui.back')}</button><button class="btn danger" data-act="ng-replace">${t('ng.replaceYes')}</button></div>`, null, 'sm');
+});
+act('ng-keep', () => {
+  UI.closeModal();
+  UI.open('newgame', null, { force: true });
+});
+act('ng-replace', () => {
+  UI.closeModal();
+  begin();
 });
 
 // ── Titelskärm ──
@@ -139,8 +154,9 @@ function renderTitle() {
       <div class="tt-tag">${t('title.tag')}</div>
     </div>
     <div class="tt-menu">
-      ${meta ? `<button class="btn primary lg" data-act="tt-continue"><span>${icon('play')}${t('title.continue')}</span><small>${esc(meta.studio)} · ${d.year} · ${money(meta.money)}</small></button>` : ''}
-      <button class="btn ${meta ? '' : 'primary'} lg" data-act="tt-new">${icon('plus')}${t('title.new')}</button>
+      ${meta && meta.over ? `<button class="btn lg" disabled><span>${icon('skull')}${t('over.title')}</span><small>${esc(meta.studio)} · ${d.year}</small></button>` : ''}
+      ${meta && !meta.over ? `<button class="btn primary lg" data-act="tt-continue"><span>${icon('play')}${t('title.continue')}</span><small>${esc(meta.studio)} · ${d.year} · ${money(meta.money)}</small></button>` : ''}
+      <button class="btn ${meta && !meta.over ? '' : 'primary'} lg" data-act="tt-new">${icon('plus')}${t('title.new')}</button>
       <button class="btn lg" data-act="tt-lang">${icon('globe')}${lang === 'sv' ? 'English' : 'Svenska'}</button>
       <button class="btn lg" data-act="tt-sound" style="min-width:150px">${icon(UI.app.settings.music ? 'volume' : 'mute')}${t(UI.app.settings.music ? 'title.soundOn' : 'title.soundOff')}</button>
       <button class="btn lg" data-act="tt-help" style="min-width:56px">${icon('info')}</button>
