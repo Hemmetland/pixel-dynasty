@@ -43,6 +43,11 @@ const bandX = (sign) => -Math.round(textWidth(sign) / 2) - 30;
 // ── Rumsdefinitioner: fönster, stationer, lampor och möbler ──
 // rx = rummets vänsterkant, w = bredd, fy = golv. Alla x/y nedan är i layoutkoordinater.
 export const DEF = {};
+// Nivåspecifika rumsdefinitioner: TIER_DEF[nivå][typ] ersätter DEF[typ] för just den nivåns rum (samma typnamn, så beteendet hittar sina stationer).
+// En definition får dessutom ha backWall(ctx, room, fy, intH) som ritar rummets bakvägg själv.
+// Ett enskilt rum kan dessutom peka på en egen definition och stil (room.def, satt via planens extra); beteendet följer alltid room.type.
+export const TIER_DEF = {};
+const defOf = (r) => (TIER_DEF[r.tier] && TIER_DEF[r.tier][r.type]) || DEF[r.def || r.type];
 
 // Pendlar (delas av ritning och ljus): [{ x, kind, drop? }]
 const pendants = (rx, w, n, kind) => Array.from({ length: n }, (_, i) => ({ x: Math.round(rx + (i + 0.5) * (w / n)), kind }));
@@ -328,15 +333,15 @@ export function layoutV2(tier) {
     let x = left;
     const add = (type, w, extra = {}) => {
       const v = extra.slot !== undefined ? extra.slot : type === 'dev' ? f : 0;
-      const st = roomStyle(type, v);
-      const room = { id: `f${f}-${type}${extra.slot !== undefined ? extra.slot : ''}`, type, floor: f, x0: x, x1: x + w, w, v, light: st.light, lightRGB: st.light.map((c) => Math.round(c * 255)), wall: st.wall, ...extra };
+      const st = roomStyle(extra.def || type, v);
+      const room = { id: `f${f}-${type}${extra.slot !== undefined ? extra.slot : ''}`, type, tier, floor: f, x0: x, x1: x + w, w, v, light: st.light, lightRGB: st.light.map((c) => Math.round(c * 255)), wall: st.wall, ...extra };
       rooms.push(room);
       x += w;
       return room;
     };
     for (const [type, w, ex] of T.plan[f]) {
       const room = add(type, w, ex && ex.desks === undefined ? ex : {});
-      const d = DEF[type];
+      const d = defOf(room);
       const rx = room.x0;
       if (type === 'dev') {
         const nd = ex && ex.desks !== undefined ? ex.desks : Math.floor((w - 6) / deskSp);
@@ -370,7 +375,7 @@ export function layoutV2(tier) {
       if (type === 'lobby') lights.push({ x: rx + 18, y: fy - 20, r: 32, i: 0.4, c: [1, 0.9, 0.7], kind: 1, floor: f, pri: 2 });
     }
     for (let s = 0; s < (T.slotsPerFloor ?? 2); s++) {
-      const room = add('facility', slotW, { slot: slots.length });
+      const room = add('facility', slotW, { slot: slots.length, ...(T.facility ? T.facility.room(slots.length, f) : {}) });
       slots.push({ x: room.x0 + 2, w: slotW - 4, fy, floor: f, idx: slots.length });
       lights.push({ x: Math.round(room.x0 + slotW / 2), y: fy - intH + 6, r: 46, i: 0.6, c: room.light, kind: 0, floor: f, y0: fy - intH, y1: fy, pri: 1 });
     }
@@ -386,17 +391,21 @@ export function layoutV2(tier) {
   anim.neon.push(...ra.neon);
   for (const st of rf.steam || []) anim.steam.push({ x: st.x, y: topY + st.dy }); // ventilationsrör på taket
   anim.bulbs = ra.bulbs;
-  return {
+  const L = {
     tier, BW, floors, roof: T.roof, band: T.band, slotW, IW, left, desks, slots, sp: deskSp, roofH,
     H: found + floors * pitch + roofH, W: BW + 40, topY,
     v2: true, pitch, intH, rooms, stations, lights, anim,
   };
+  if (T.post) T.post(L); // nivån får justera stationer, ljus och animationslistor
+  return L;
 }
 
 // ── Ritning ──
 // Bakvägg, golvband och lister för ett rum.
 function backWall(ctx, room, fy, intH) {
-  const st = roomStyle(room.type, room.v);
+  const dd = defOf(room);
+  if (dd && dd.backWall) return dd.backWall(ctx, room, fy, intH);
+  const st = roomStyle(room.def || room.type, room.v);
   const { x0, w } = room;
   const top = fy - intH;
   R(ctx, x0, top, w, intH, st.wall);
@@ -416,7 +425,7 @@ function backWall(ctx, room, fy, intH) {
   R(ctx, x0, fy - 3, w, 1, st.floorHi);
   for (let x = 0; x < w; x += 9) R(ctx, x0 + ((x + room.floor * 4) % w), fy - 2, 1, 2, shade(st.floor, -0.2));
   R(ctx, x0, fy - 1, w, 1, shade(st.floor, -0.18));
-  const d = DEF[room.type];
+  const d = dd;
   if (d && d.wallArt) d.wallArt(ctx, x0, w, fy);
   // ljuspölar på golvet under lamporna
   const lc = room.lightRGB.join(',');
@@ -470,14 +479,15 @@ export const ROOM_NAMES = {
 export const DEV_NAMES = [['PROGRAMMERING', 'PROGRAMMING'], ['ART & ANIMATION', 'ART & ANIMATION'], ['LJUD & MUSIK', 'AUDIO & MUSIC']];
 const FAC_EMPTY = [['FÖRRÅD', 'STORAGE'], ['BIBLIOTEK', 'LIBRARY'], ['PAUS', 'BREAK ROOM'], ['TRÄNING', 'GYM'], ['SPELRUM', 'ARCADE'], ['VÄXTHUS', 'GREENHOUSE']];
 const FAC_NAMES = { coffee: ['KAFFEBAR', 'COFFEE BAR'], lab: ['FORSKNING', 'RESEARCH'], qa: ['TEST & QA', 'TEST & QA'], training: ['UTBILDNING', 'TRAINING'], gameroom: ['SPELRUM', 'GAME ROOM'], marketing: ['MARKNAD', 'MARKETING'], server: ['SERVER & ONLINE', 'SERVER & ONLINE'] };
-function roomName(r, fac) {
+// r.name = [sv, en] sätts via planens extra (eller T.facility.room) och ger rummet ett eget namn, annars tabellerna ovan.
+export function roomName(r, fac) {
   const i = lang === 'en' ? 1 : 0;
-  if (r.type === 'dev') return DEV_NAMES[r.floor % DEV_NAMES.length][i];
+  if (r.type === 'dev') return (r.name || DEV_NAMES[r.floor % DEV_NAMES.length])[i];
   if (r.type === 'facility') {
     const f = fac && fac.get(r.slot);
-    return (f && FAC_NAMES[f.id] ? FAC_NAMES[f.id] : FAC_EMPTY[r.slot % FAC_EMPTY.length])[i];
+    return (f && FAC_NAMES[f.id] ? FAC_NAMES[f.id] : r.name || FAC_EMPTY[r.slot % FAC_EMPTY.length])[i];
   }
-  const n = ROOM_NAMES[r.type];
+  const n = r.name || ROOM_NAMES[r.type];
   return n ? n[i] : null;
 }
 function namePlate(ctx, r, fy, intH, fac) {
@@ -512,7 +522,7 @@ export function drawShellV2(ctx, L, opts) {
     const fr = L.rooms.filter((r) => r.floor === f);
     for (const r of fr) {
       backWall(ctx, r, fy, intH);
-      const d = DEF[r.type];
+      const d = defOf(r);
       if (d && d.windows) for (const w of d.windows(r.x0, fy)) wins.push({ ...w, f, room: r });
       const lc = r.lightRGB.join(',');
       if (d && d.pendants) for (const p of d.pendants(r.x0, r.w)) V.lightCone(ctx, p.x, fy - intH + 14, 26, 30, lc, 0.07);
@@ -550,7 +560,7 @@ export function drawShellV2(ctx, L, opts) {
   for (let f = 0; f < floors; f++) {
     const fy = -V2.found - f * pitch;
     for (const r of L.rooms.filter((q) => q.floor === f)) {
-      const d = DEF[r.type];
+      const d = defOf(r);
       if (d && d.decor) d.decor(ctx, r, fy, env);
       if (r.type === 'facility') drawFacility(ctx, L, r, fy, slotFac.get(r.slot));
     }
@@ -584,12 +594,12 @@ export function drawShellV2(ctx, L, opts) {
     const fy = -V2.found - f * pitch;
     const top = fy - intH;
     for (const r of L.rooms.filter((q) => q.floor === f)) {
-      const d = DEF[r.type];
+      const d = defOf(r);
       if (d && d.pendants) for (const p of d.pendants(r.x0, r.w)) V.pendant(ctx, p.x, top + 4, p.drop || 8, p.kind || 'dome', p.c || '#2a2f3c', r.lightRGB.join(','));
     }
   }
   const lob = L.rooms.find((r) => r.type === 'lobby');
-  if (lob) {
+  if (lob && !lob.def && !(TIER_DEF[L.tier] && TIER_DEF[L.tier].lobby)) { // rum/nivåer med egen lobbydefinition ritar sin skylt själva
     const nx = Math.round(lob.x0 + 6);
     // neonskylt i lobbyn på två rader så att den ryms i rummet utan att krocka med namnskyltarna
     const l1 = 'GOOD IDEAS';
@@ -619,11 +629,12 @@ export function drawShellV2(ctx, L, opts) {
 function drawFacility(ctx, L, room, fy, fac) {
   const slot = L.slots[room.slot];
   const x = room.x0;
+  const TF = V2_TIERS[L.tier].facility; // nivåns egna varianter av tomma och byggda anläggningsrum (Dynasti-tornet: tolv olika)
   if (!fac) {
-    emptySlot(ctx, x, fy, room.slot);
+    (TF && TF.empty ? TF.empty : emptySlot)(ctx, x, fy, room.slot, room);
     return;
   }
-  const st = roomStyle('facility', room.slot);
+  const st = roomStyle(room.def || 'facility', room.slot);
   ctx.save();
   ctx.beginPath();
   ctx.rect(slot.x - 1, fy - V2.intH, slot.w + 2, V2.intH);
@@ -647,6 +658,7 @@ function drawFacility(ctx, L, room, fy, fac) {
   else if (fac.id === 'gameroom') { F.neonPad(ctx, x + 38, fy - 40, NEON.cyanHi, NEON.cyan); R(ctx, x + 6, fy - 40, 18, 1, NEON.magenta); }
   else if (fac.id === 'marketing') V.frame(ctx, x + 44, fy - 40, 8, 11, 0, 8);
   else if (fac.id === 'training') V.plantFloor(ctx, x + 46, fy, 14, 6, '#d8d0c0');
+  if (TF && TF.extra) TF.extra(ctx, room, fy, fac);
   ctx.restore();
 }
 
@@ -735,7 +747,7 @@ export function drawRoomsDynamic(A, cx, gy, L, time, night, st = {}) {
     }
   }
   for (const r of L.rooms) {
-    const d = DEF[r.type];
+    const d = defOf(r);
     if (d && d.dynamic) d.dynamic(A, cx, gy, L, r, t, st);
   }
   const rf = ROOFS[L.roof];

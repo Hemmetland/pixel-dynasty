@@ -92,6 +92,7 @@ export class World {
     this.stars = [];
     this.layers = [];
     this.lamps = [];
+    this.lampX = 230; // avstånd från mitten till närmaste gatlykta (breda hus flyttar ut dem, se Scene.rebuildLayout)
     this.birds = [];
     this.nextBird = 6;
   }
@@ -107,8 +108,8 @@ export class World {
     this.stars = Array.from({ length: Math.round(W * groundY / 900) }, () => ({ x: Math.floor(r() * W), y: Math.floor(r() * groundY * 0.8), p: r() * 6, b: r() < 0.2 ? 2 : 1 }));
     this.clouds = Array.from({ length: Math.max(4, Math.round(W / 90)) }, (_, i) => this.makeCloud(r, i));
     this.lamps = [];
-    for (let x = W / 2 - 230; x > -40; x -= 150) this.lamps.push(x);
-    for (let x = W / 2 + 230; x < W + 40; x += 150) this.lamps.push(x);
+    for (let x = W / 2 - this.lampX; x > -40; x -= 150) this.lamps.push(x);
+    for (let x = W / 2 + this.lampX; x < W + 40; x += 150) this.lamps.push(x);
     this.treeX = [W / 2 - 250, W / 2 + 255, W / 2 - 380, W / 2 + 390].filter((x) => x > -20 && x < W + 20);
   }
 
