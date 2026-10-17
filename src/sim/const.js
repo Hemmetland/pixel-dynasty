@@ -20,7 +20,7 @@ export const SCOPES = {
     desc: { sv: 'Ett riktigt spel med lite mer ambition.', en: 'A proper game with some ambition.' } },
   large: { id: 'large', idx: 2, minTier: 2, weeks: dw(32, 'large'), polish: dw(6, 'large'), par: 160, team: 12, rev: rv(11, 'large'), bugs: 80, name: { sv: 'Stor', en: 'Large' },
     desc: { sv: 'Kräver ett riktigt team men kan sälja i massor.', en: 'Needs a real team but can sell by the millions.' } },
-  aaa: { id: 'aaa', idx: 3, minTier: 3, weeks: dw(52, 'aaa'), polish: dw(10, 'aaa'), par: 700, team: 36, rev: rv(38, 'aaa'), bugs: 220, name: { sv: 'AAA', en: 'AAA' },
+  aaa: { id: 'aaa', idx: 3, minTier: 3, weeks: dw(52, 'aaa'), polish: dw(10, 'aaa'), par: 450, team: 36, rev: rv(38, 'aaa'), bugs: 220, name: { sv: 'AAA', en: 'AAA' },
     desc: { sv: 'Branschens största satsning. Stort team, stor risk.', en: 'The industry\'s biggest bet. Big team, big risk.' } },
 };
 export const SCOPE_IDS = ['small', 'medium', 'large', 'aaa'];
