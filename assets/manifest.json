@@ -1,6 +1,8 @@
 {
   "sprites": {
     "bg.skyline-dusk": { "file": "pixellab/backgrounds/skyline-dusk.png", "fw": 512, "fh": 256, "ax": 0, "ay": 0, "note": "PixelLab create_image_pixen, titelskärm i skymning (luftskepp)" },
-    "bg.skyline-night": { "file": "pixellab/backgrounds/skyline-night.png", "fw": 512, "fh": 256, "ax": 0, "ay": 0, "note": "PixelLab create_image_pixen, titelskärm på natten (neon)" }
+    "bg.skyline-night": { "file": "pixellab/backgrounds/skyline-night.png", "fw": 512, "fh": 256, "ax": 0, "ay": 0, "note": "PixelLab create_image_pixen, titelskärm på natten (neon)" },
+    "prop.floorLamp": { "file": "props/floorLamp.png", "crop": [0, 0, 19, 41], "fw": 19, "fh": 41, "ax": 9, "ay": 41, "frames": 1, "note": "pixellab/props/floor-lamp.png nedskalad (yt-medelvärde, hård alfa)" },
+    "prop.plantFloor": { "file": "props/plantFloor.png", "crop": [0, 0, 21, 28], "fw": 21, "fh": 28, "ax": 5, "ay": 28, "frames": 1, "note": "pixellab/props/plant.png nedskalad (yt-medelvärde, hård alfa)" }
   }
 }

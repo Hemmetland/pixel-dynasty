@@ -68,7 +68,8 @@ Spelet bäddar bara in det som står i `assets/manifest.json`; resten av `assets
 |---|---|
 | `backgrounds/skyline-dusk.png`, `skyline-night.png` (512x256) | **Används**: titelskärmens bakgrund (`bg.skyline-dusk` med luftskepp, `bg.skyline-night` med neon). |
 | `backgrounds/window-view.png` | Ej använd än (tänkt som utsikt genom fönster i våningarna). |
-| `props/*.png` (64x64, snett ovanifrån) | Ej i scenen: scenen är sidovy med 48 px per våning, rekvisitan är ritad i 3/4-perspektiv med annan pixeltäthet och skulle se klistrad ut. Bra som illustrationer i fönster (anläggningar, butik). |
+| `props/plant.png`, `floor-lamp.png` | **Används**: nedskalade (yt-medelvärde, hård alfa) till `assets/props/plantFloor.png` (21x28) och `floorLamp.png` (19x41), som `prop.plantFloor` och `prop.floorLamp`. Spriten har en storlek, så funktionernas höjd- och färgparametrar påverkar den inte. |
+| övriga `props/*.png` (64x64, snett ovanifrån) | Ej i scenen (provat: skrivbord, stol, serverrack, soffa och varuautomat krockar med sidovyn): scenen är sidovy med 48 px per våning, rekvisitan är ritad i 3/4-perspektiv med annan pixeltäthet och skulle se klistrad ut. Bra som illustrationer i fönster (anläggningar, butik). |
 | `characters/*.png` (64x64) | Ej i scenen: fem olika personer i porträttstil, inte ett pose-ark. Behövs som en person med gång/sitta/skriva/kaffe/prata i profil, ca 30 px hög. |
 | `ui/nav-*.png` (32x32) | Ej kopplade än (dockan använder vektorikoner). `nav-building` föreställer inte en byggnad, `logo-nexus` har oläslig text. |
 
