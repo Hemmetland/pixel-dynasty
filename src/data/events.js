@@ -1,5 +1,4 @@
-// Händelser. fx-nycklar: money (skalas med år och studions storlek), rp och fans (skalas med studions storlek, se
-// fxScale i sim/events.js), advanceRev (minst denna andel av de senaste spelens snittprognos), hype, bugs, D, T, mood,
+// Händelser. fx-nycklar: money (skalas med år), moneyAbs, rp, fans, hype, bugs, D, T, mood,
 // crunch (veckor), salesMult (för nästa spel), loseStaff, rand: [[sannolikhet, fx], …]
 // kind: 'studio' (månadsslump) eller 'dev' (under utveckling)
 const E = (id, kind, weight, when, title, body, choices) => ({ id, kind, weight, when, title, body, choices });
@@ -33,7 +32,7 @@ export const EVENTS = [
   E('publisher_deal', 'studio', 0.7, (G) => G.games.length >= 2 && G.t < 48 * 30,
     { sv: 'Utgivare ringer', en: 'Publisher on the line' },
     { sv: 'En utgivare erbjuder förskott på ditt nästa spel, men vill ha en bit av vinsten.', en: 'A publisher offers an advance on your next game, but wants a cut of the profits.' },
-    [C('Ta förskottet', 'Take the advance', { money: 9000, advanceRev: 0.15, salesMult: 0.82 }, 'Pengar nu, lägre intäkter sen', 'Cash now, lower revenue later'),
+    [C('Ta förskottet', 'Take the advance', { money: 9000, salesMult: 0.82 }, 'Pengar nu, lägre intäkter sen', 'Cash now, lower revenue later'),
       C('Tacka nej', 'Decline', { mood: 2 })]),
   E('piracy', 'studio', 0.8, (G) => G.t < 48 * 18 && G.games.length >= 1,
     { sv: 'Piratkopior sprids', en: 'Pirate copies spreading' },
