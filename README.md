@@ -44,6 +44,10 @@ node test/features.mjs    # funktionstest av sim-API:t
 node test/first.mjs small # betygsfördelning för första spelet
 node test/drive.mjs .shots 1280 720   # kör UI:t i Chromium och tar skärmdumpar
 node test/soak.mjs .shots-soak 16     # spelar 16 år i UI:t med bot och fångar alla dialoger
+node test/looks.mjs                   # personernas paletter, poser, utseendefält och gamla sparfiler
+node test/behavior.mjs 900 1          # Studiohusets beteende i Node: ingen fastnar, går genom stängda dörrar eller står i varandra
+node test/scene-shot.mjs .shots/s 1280 720 3 0.93 clear 1   # skärmdump av scenen (nivå, tid på dygnet, väder, HD-ljus)
+node build.mjs --with-dev             # bygger även dist/dev/*.html (rooms, props, sprites m.fl.) för att granska grafik
 ```
 
 ## Balans

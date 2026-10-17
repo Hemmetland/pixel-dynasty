@@ -1,0 +1,31 @@
+// Rekvisitablad för Studiohuset (v2): enskilda möbler och dekor i stor skala. ?zoom=6
+import * as F from '../render/furniture.js';
+import * as V from '../render/props2.js';
+
+const zoom = +(new URLSearchParams(location.search).get('zoom') || 6);
+const W = 280;
+const H = 70;
+const c = document.createElement('canvas');
+c.width = W;
+c.height = H;
+c.style.cssText = `width:${W * zoom}px;height:${H * zoom}px;image-rendering:pixelated;display:block`;
+document.body.style.cssText = 'margin:0;background:#222';
+document.body.appendChild(c);
+const g = c.getContext('2d');
+g.fillStyle = '#9ad0ff';
+g.fillRect(0, 0, W, H);
+g.fillStyle = '#8a6a48';
+g.fillRect(0, 60, W, 4);
+F.podChair(g, 6, 60, '#8a5ae0');
+F.podChair(g, 28, 60, '#a46bff');
+F.sofa(g, 52, 60, 34);
+F.beanbag(g, 92, 60, 14);
+V.plantFloor(g, 112, 60, 24, 1);
+V.palm(g, 140, 60, 34, 1);
+F.desk2(g, 156, 60, 0, 1, 2);
+F.rack(g, 190, 60, 14, 38, 1);
+F.fridge(g, 210, 60);
+F.copier(g, 228, 60);
+F.waterCooler(g, 252, 60);
+F.armchair(g, 264, 60);
+window.__info = { ox: 0, oy: 0, zoom, W, H, L: {} };

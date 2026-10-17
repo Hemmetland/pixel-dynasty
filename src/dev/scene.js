@@ -25,6 +25,11 @@ sc.setGame(G);
 sc.todLock = tod;
 sc.resize(innerWidth, innerHeight, { top: 70, bottom: 110 });
 window.__sc = sc;
+// ?act=meeting:1:5,lounge:0:3 startar aktiviteter direkt (aktivitet:våning:antal), ?nosched=1 stänger av de slumpade (Studiohuset)
+if (sc.crowd) {
+  if (q.get('nosched')) { sc.crowd.floorT.fill(1e9); sc.crowd.meetT.fill(1e9); }
+  for (const a of (q.get('act') || '').split(',').filter(Boolean)) { const [k, f, n] = a.split(':'); sc.forceAct(k, +(f || 0), +(n || 0)); }
+}
 let last = performance.now();
 function frame(now) {
   const dt = Math.min(0.05, (now - last) / 1000); last = now;

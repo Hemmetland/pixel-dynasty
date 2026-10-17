@@ -1,4 +1,4 @@
-import { rint, gauss, pick, chance } from '../core/rng.js';
+import { rint, gauss, pick, chance, seeded, hashStr } from '../core/rng.js';
 import { clamp } from '../core/util.js';
 import { FIRST, LAST } from '../data/names.js';
 import { emit } from '../core/bus.js';
@@ -29,11 +29,64 @@ export function wageOf(G, st) {
   return Math.max(250, Math.round((sum * 32 * w) / 10) * 10);
 }
 
+// Antal val per utseendefält (samma som paletterna i render/pal.js och frisyrerna i render/people.js).
+export const LOOK_N = { skin: 7, hair: 14, hairColor: 14, shirt: 18, pants: 8 };
+const FANTASY_HAIR = [7, 8, 9, 10, 11, 12, 13]; // blått, rosa, platina, ingefära, turkos, violett, midnatt
+
+// Nya, valfria utseendefält: hat 0-3, glasses 0-3, beard 0-2, headphones/backpack/hoodie 0/1, pattern 0-3.
+// Saknas de räknas de som 0 (gamla sparfiler). Hänger ihop med det gamla acc-fältet så att ett utseende inte får
+// två mössor. remix=true blandar också in de nya frisyrerna, hårfärgerna, tröjorna, byxorna och hudtonerna.
+function dress(look, r, remix) {
+  const ri = (a, b) => a + Math.floor(r() * (b - a + 1));
+  const acc = look.acc | 0;
+  if (remix) {
+    if (r() < 0.5) look.hair = ri(7, LOOK_N.hair - 1);
+    if (r() < 0.16) look.hairColor = FANTASY_HAIR[ri(0, FANTASY_HAIR.length - 1)];
+    if (r() < 0.4) look.shirt = ri(12, LOOK_N.shirt - 1);
+    if (r() < 0.4) look.pants = ri(4, LOOK_N.pants - 1);
+    if (r() < 0.2) look.skin = ri(5, LOOK_N.skin - 1);
+  }
+  look.hat = acc === 3 ? 2 : acc === 4 ? 3 : r() < 0.14 ? ri(1, 3) : 0;
+  look.glasses = acc === 1 ? (r() < 0.5 ? 1 : ri(1, 3)) : r() < 0.1 ? ri(1, 3) : 0;
+  look.headphones = acc === 2 || r() < 0.07 ? 1 : 0;
+  look.beard = r() < 0.27 ? (r() < 0.55 ? 1 : 2) : 0;
+  look.backpack = r() < 0.14 ? 1 : 0;
+  look.hoodie = r() < 0.3 ? 1 : 0;
+  look.pattern = look.hoodie ? (r() < 0.2 ? 2 : 0) : r() < 0.4 ? ri(1, 3) : 0;
+  return look;
+}
+
+// Slumpat utseende från en vanlig slumpfunktion (0..1): karaktärsskaparen och fotgängare.
+export function randomLook(r = Math.random) {
+  const ri = (a, b) => a + Math.floor(r() * (b - a + 1));
+  return dress({ skin: ri(0, 4), hair: ri(0, 6), hairColor: ri(0, 7), shirt: ri(0, 11), pants: ri(0, 3), acc: r() < 0.45 ? ri(1, 4) : 0, body: ri(0, 1) }, r, true);
+}
+
+// De gamla fälten slumpas exakt som förut. De nya härleds ur slumptillståndet efteråt utan att flytta fram det,
+// så att allt annat i en körning med samma frö förblir identiskt.
 export function makeLook(G) {
-  return {
+  const look = {
     skin: rint(G, 0, 4), hair: rint(G, 0, 6), hairColor: rint(G, 0, 7), shirt: rint(G, 0, 11),
     pants: rint(G, 0, 3), acc: chance(G, 0.45) ? rint(G, 1, 4) : 0, body: rint(G, 0, 1),
   };
+  return dress(look, seeded(G.rng ^ 0x9e3779b9), true);
+}
+
+// Gamla sparfiler: ge personal och kandidater utan nya fält ett utseende (fast per person, rör inga gamla fält).
+export function migrateLooks(G) {
+  for (const p of [...(G.staff || []), ...(G.candidates || [])]) {
+    if (p.look && !p.isFounder && p.look.hat === undefined) dress(p.look, seeded(hashStr(p.name + ':' + p.id)), false);
+  }
+}
+
+// Förinställda "extra"-kombinationer för karaktärsskaparens knapp.
+const EXTRAS = [
+  {}, { glasses: 1 }, { hat: 1 }, { hat: 2 }, { headphones: 1 }, { beard: 1 }, { beard: 2, glasses: 2 }, { hoodie: 1 },
+  { hoodie: 1, hat: 1, backpack: 1 }, { glasses: 3, pattern: 1 }, { hat: 3, pattern: 2 }, { backpack: 1, pattern: 3 },
+];
+export const EXTRA_N = EXTRAS.length;
+export function extraLook(look, i) {
+  return { ...look, acc: 0, hat: 0, glasses: 0, beard: 0, headphones: 0, backpack: 0, hoodie: 0, pattern: 0, ...EXTRAS[i % EXTRAS.length] };
 }
 
 export function makeCandidate(G, q = 0) {

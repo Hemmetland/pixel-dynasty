@@ -72,6 +72,8 @@ const ICONS = {
   eye: P('<path d="M2.5 12S6 5.5 12 5.5 21.5 12 21.5 12 18 18.5 12 18.5 2.5 12 2.5 12z"/><circle cx="12" cy="12" r="3"/>'),
   sliders: P('<path d="M5 4v16M12 4v16M19 4v16"/><circle cx="5" cy="9" r="2" fill="currentColor"/><circle cx="12" cy="15" r="2" fill="currentColor"/><circle cx="19" cy="8" r="2" fill="currentColor"/>'),
   menu: P('<path d="M4 7h16M4 12h16M4 17h16"/>'),
+  chevron: P('<path d="M6 9.5l6 6 6-6"/>'),
+  dusk: P('<path d="M7 17a5 5 0 0 1 10 0M12 6.5v2.5M5 10.2l1.7 1.7M19 10.2l-1.7 1.7M2.5 17H5M19 17h2.5M3.5 20.5h17"/>'),
 };
 export const icon = (name, cls = '') => `<span class="ic ${cls}">${ICONS[name] || ICONS.info}</span>`;
 export const hasIcon = (n) => !!ICONS[n];

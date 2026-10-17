@@ -7,7 +7,7 @@ import { SKINS, HAIRS, SHIRTS } from '../render/pal.js';
 import { newGame } from '../sim/state.js';
 import { makeCompetitors } from '../sim/market.js';
 import { initWorld } from '../sim/clock.js';
-import { refreshCandidates } from '../sim/people.js';
+import { refreshCandidates, randomLook, extraLook, LOOK_N, EXTRA_N } from '../sim/people.js';
 import { hasSave, saveMeta } from '../core/store.js';
 import { STUDIO_NAMES, FIRST, LAST } from '../data/names.js';
 import { dateOf } from '../sim/const.js';
@@ -21,7 +21,8 @@ const rnd = (a) => a[Math.floor(Math.random() * a.length)];
 function randomize() {
   N.studio = rnd(STUDIO_NAMES);
   N.founder = rnd(FIRST) + ' ' + rnd(LAST);
-  N.look = { skin: Math.floor(Math.random() * 5), hair: Math.floor(Math.random() * 7), hairColor: Math.floor(Math.random() * 9), shirt: Math.floor(Math.random() * 12), pants: Math.floor(Math.random() * 4), acc: Math.random() < 0.4 ? 1 + Math.floor(Math.random() * 4) : 0, body: 0 };
+  N.look = randomLook(Math.random);
+  N.extra = 0;
   N.logo = Math.floor(Math.random() * LOGOS.length);
 }
 
@@ -84,11 +85,12 @@ act('ng-dice', () => {
   UI.refresh();
 });
 act('ng-hair', () => {
-  N.look = { ...N.look, hair: (N.look.hair + 1) % 7 };
+  N.look = { ...N.look, hair: (N.look.hair + 1) % LOOK_N.hair };
   UI.refresh();
 });
 act('ng-acc', () => {
-  N.look = { ...N.look, acc: (N.look.acc + 1) % 5 };
+  N.extra = ((N.extra || 0) + 1) % EXTRA_N;
+  N.look = extraLook(N.look, N.extra);
   UI.refresh();
 });
 act('ng-logo', (el) => {

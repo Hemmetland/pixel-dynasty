@@ -1,5 +1,6 @@
 import { clamp, lerp, hex2rgb } from '../core/util.js';
 import { drawPerson } from './people.js';
+import { randomLook } from '../sim/people.js';
 import { drawVehicle, vehicleSize } from './vehicles.js';
 
 const BAYER = [0, 8, 2, 10, 12, 4, 14, 6, 3, 11, 1, 9, 15, 7, 13, 5].map((v) => (v + 0.5) / 16);
@@ -280,7 +281,7 @@ export class World {
     if (this.nextPed <= 0) {
       this.nextPed = 4 + Math.random() * 8;
       const dir = Math.random() < 0.5 ? 1 : -1;
-      this.peds.push({ x: dir > 0 ? -12 : this.W + 12, dir, v: 10 + Math.random() * 8, t: 0, look: { skin: Math.floor(Math.random() * 5), hair: Math.floor(Math.random() * 7), hairColor: Math.floor(Math.random() * 9), shirt: Math.floor(Math.random() * 12), pants: Math.floor(Math.random() * 4), acc: Math.random() < 0.3 ? 3 : 0 } });
+      this.peds.push({ x: dir > 0 ? -12 : this.W + 12, dir, v: 10 + Math.random() * 8, t: 0, look: randomLook(Math.random) });
     }
     for (const p of this.peds) {
       p.x += p.dir * p.v * dt;

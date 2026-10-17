@@ -2,7 +2,10 @@ import { clamp } from '../core/util.js';
 import { World, STREET } from './world.js';
 import { vehicleSize } from './vehicles.js';
 import { makeLayout, drawShell, eraOf, PITCH, INT_H } from './building.js';
+import { drawRoomsDynamic } from './rooms.js';
 import { drawPerson } from './people.js';
+import { makeCrowd, updateCrowd, drawDoors, detach, forceAct } from './behavior.js';
+import { drawEmote, EMOTE_LIFE } from './emotes.js';
 import { drawTextOutlined, drawText, textWidth } from './font.js';
 import { TOPIC } from '../data/topics.js';
 import { drawCat } from './props.js';
@@ -11,6 +14,8 @@ import { glMethods } from './gl/scene-gl.js';
 
 const SCALES = [0.6, 0.75, 0.9, 1, 1.5, 2, 2.5, 3, 4, 5, 6];
 const STREET_SLACK = 26;
+// Poser där en person vid skrivbordet inte tittar på skärmen (v2): skärmen dämpas
+const DESK_IDLE = new Set(['sleep', 'read', 'sitIdle', 'cheer', 'wave']);
 
 // Mjuk, pixelerad ellipsglöd (staplade ellipser, additivt läge förutsätts).
 function glow(ctx, cx, cy, rx, ry, rgb, alpha, steps = 5) {
@@ -45,6 +50,8 @@ export class Scene {
     this.ih = 180;
     this.insets = { top: 70, bottom: 110 };
     this.actors = new Map();
+    this.crowd = null; // beteendet på Studiohuset (behavior.js), annars gamla vägen
+    this.emotes = [];
     this.floaters = [];
     this.fx = [];
     this.statics = null;
@@ -87,6 +94,9 @@ export class Scene {
     this.statics = null;
     this.staticKey = '';
     this.actors.clear();
+    this.crowd = this.L.v2 ? makeCrowd(this) : null;
+    this.emotes = [];
+    this.lightCache = null;
     this.fit();
     this.syncActors(first);
     this.world.setYear(yearOf(G.t));
@@ -154,12 +164,63 @@ export class Scene {
     const lg = lift.getContext('2d');
     lg.translate(w / 2, h);
     for (let f = 0; f < L.floors; f++) {
-      const fy = -4 - f * PITCH;
+      const fy = -4 - f * (L.pitch ?? PITCH);
       lg.fillStyle = '#ffffff';
-      lg.fillRect(L.left, fy - INT_H, L.IW, INT_H);
+      lg.fillRect(L.left, fy - (L.intH ?? INT_H), L.IW, (L.intH ?? INT_H));
     }
     for (const [x, y, ww, hh] of holes) lg.clearRect(x - 2, y - 2, ww + 4, hh + 4);
-    this.statics = { layer, lift, w, h, holes };
+    this.statics = { layer, lift, w, h, holes, glow: null };
+    if (L.v2) this.statics.glow = this.buildGlowLayer(w, h);
+  }
+
+  // Studiohuset i canvasläget: rumsljus, neonglöd och fönsterglans i full styrka i ett eget lager (additivt, tonas med natten).
+  // Samma ljuskällor (L.lights) som HD-ljuset, bara ritade som mjuka fält istället för beräknade per pixel.
+  buildGlowLayer(w, h) {
+    const L = this.L;
+    const c = cv(w, h);
+    const g = c.getContext('2d');
+    g.globalCompositeOperation = 'lighter';
+    const ox = w / 2;
+    const oy = h;
+    for (const l of L.lights) {
+      const rgb = l.c.map((v) => Math.round(v * 255)).join(',');
+      const k = l.kind || 0;
+      if (k === 1) {
+        glow(g, ox + l.x, oy + l.y, l.r * 0.9, l.r * 0.5, rgb, 0.17 * l.i, 5);
+        continue;
+      }
+      const room = L.rooms.find((r) => r.floor === l.floor && l.x >= r.x0 && l.x < r.x1);
+      g.save();
+      g.beginPath();
+      if (room) g.rect(ox + room.x0, oy + l.y0, room.w, l.y1 - l.y0);
+      else g.rect(ox + l.x - l.r, oy + l.y0, l.r * 2, l.y1 - l.y0);
+      g.clip();
+      if (k === 0) glow(g, ox + l.x, oy + l.y + 10, l.r, (l.y1 - l.y0) * 0.7, rgb, 0.15 * l.i, 6);
+      else glow(g, ox + l.x, oy + l.y, l.r * 0.9, l.r * 0.7, rgb, 0.12 * l.i, 4);
+      g.restore();
+    }
+    this.windowGlow(g, ox, oy, 1, false);
+    return c;
+  }
+
+  // Fönsterglans: rummets ljus speglas i rutan (svagt färgat fält) och diagonala ljusstreck. a = styrka 0..1.
+  // bloom = HD-ljuset: två streck som blommar, i canvasläget ett enda så att rutorna inte blir brusiga.
+  windowGlow(ctx, ox, oy, a, bloom = true) {
+    const L = this.L;
+    for (const [x, y, w, h, f] of this.statics.holes) {
+      const room = L.rooms.find((r) => r.floor === f && x + w / 2 >= r.x0 && x + w / 2 < r.x1);
+      const c = room ? room.lightRGB.join(',') : '255,220,160';
+      ctx.fillStyle = `rgba(${c},${0.1 * a})`;
+      ctx.fillRect(ox + x, oy + y, w, h);
+      ctx.fillStyle = `rgba(${c},${0.2 * a})`;
+      ctx.fillRect(ox + x, oy + y + h - 2, w, 2);
+      ctx.fillStyle = `rgba(255,244,214,${0.55 * a})`;
+      const len = Math.min(9, h - 4);
+      for (let i = 0; i < len; i++) {
+        ctx.fillRect(ox + x + 3 + Math.round(i * 0.55), oy + y + h - 3 - i, 1, 1);
+        if (bloom && w > 12 && i < len - 3) ctx.fillRect(ox + x + 8 + Math.round(i * 0.55), oy + y + h - 3 - i, 1, 1);
+      }
+    }
   }
 
   // ── Aktörer ──
@@ -168,29 +229,45 @@ export class Scene {
     const L = this.L;
     const ids = new Set(G.staff.map((s) => s.id));
     for (const [id, a] of this.actors) if (!ids.has(id) && !a.leaving) a.leaving = true;
+    // Studiohuset: personalen fördelas över våningarna (behavior.js), annars i skrivbordsordning
+    const order = this.crowd ? this.crowd.nav.order : null;
     G.staff.forEach((st, i) => {
       let a = this.actors.get(st.id);
-      const desk = L.desks[i];
+      const di = order ? order[i] : i;
+      const desk = L.desks[di];
       if (!desk) return;
       if (!a) {
         a = {
-          id: st.id, desk: i, x: desk.x + 5, fy: desk.fy, floor: desk.floor, dir: 1,
+          id: st.id, desk: di, x: desk.x + 5, fy: desk.fy, floor: desk.floor, dir: 1,
           pose: 'sit', frame: 0, t: Math.random() * 3, state: 'work', target: null, timer: 1 + Math.random() * 4, blink: 0, say: null,
         };
+        if (this.crowd) {
+          // v2: bana (ly), sittande, gånghastighet, skrivbordspose, väntetid mellan aktiviteter och emotes
+          Object.assign(a, {
+            ly: 0, seated: true, spd: 0.92 + (st.id % 7) * 0.03, deskT: Math.random() * 4, deskPose: null,
+            cool: 3 + Math.random() * 8, emoCool: 6 + Math.random() * 20, hello: 0, walkT: 0, carry: false, act: null, m: null,
+          });
+        }
         if (!first) {
           a.x = L.left - 6;
           a.state = 'enter';
           a.pose = 'walk';
         }
         this.actors.set(st.id, a);
-      } else if (a.desk !== i) {
-        a.desk = i;
+      } else if (a.desk !== di) {
+        if (this.crowd) detach(this.crowd, this, a);
+        a.desk = di;
         a.fy = desk.fy;
         a.floor = desk.floor;
         a.state = a.state === 'work' ? 'work' : 'walkto';
       }
     });
-    for (const [id, a] of this.actors) if (a.leaving && (a.x < L.left - 12 || !ids.has(id) === false)) this.actors.delete(id);
+    for (const [id, a] of this.actors) {
+      if (a.leaving && (a.x < L.left - 12 || !ids.has(id) === false)) {
+        if (this.crowd) detach(this.crowd, this, a);
+        this.actors.delete(id);
+      }
+    }
   }
 
   deskX(a) {
@@ -208,6 +285,7 @@ export class Scene {
   }
 
   updateActors(dt) {
+    if (this.crowd) return updateCrowd(this, dt);
     const G = this.G;
     const L = this.L;
     this.syncActors(false);
@@ -358,6 +436,9 @@ export class Scene {
     const colors = { design: '#7cd6ff', tech: '#8aff9a', bug: '#ff7a6a', fix: '#8aff9a', spark: '#ffe27a', rp: '#d8a8ff', money: '#8aff9a' };
     const sign = kind === 'fix' ? '-' : '+';
     const label = kind === 'spark' ? '*' + amount : sign + amount;
+    // idéer och buggar syns också som bubblor över huvudet (Studiohuset)
+    if (this.crowd && kind === 'spark') this.emote(staffId, 'bulb', undefined, true);
+    else if (this.crowd && kind === 'bug' && Math.random() < 0.35) this.emote(staffId, Math.random() < 0.5 ? 'exclam' : 'sweat', undefined, true);
     this.floaters.push({
       x: a.x + 3 + (Math.random() * 10 - 5),
       y: a.fy - 31,
@@ -368,6 +449,23 @@ export class Scene {
       max: 1.5,
       kind,
     });
+  }
+  // Startar en aktivitet direkt på en våning (utvecklarverktyg/tester): scene.forceAct('meeting', 1, 4)
+  forceAct(kind, floor, n = 0) {
+    return this.crowd ? forceAct(this, kind, floor, n) : false;
+  }
+
+  // Pratbubbla över en aktör. Högst tre samtidigt (fyra för händelser), en per person och inte två intill varandra.
+  emote(id, kind, life, force = false) {
+    const a = this.actors.get(id);
+    if (!a || a.leaving || !EMOTE_LIFE[kind]) return false;
+    if (this.emotes.length >= (force ? 4 : 3) || this.emotes.some((e) => e.id === id)) return false;
+    for (const e of this.emotes) {
+      const o = this.actors.get(e.id);
+      if (o && o.floor === a.floor && Math.abs(o.x - a.x) < 16) return false;
+    }
+    this.emotes.push({ id, kind, t: 0, life: life ?? EMOTE_LIFE[kind] });
+    return true;
   }
   moneyPop(text) {
     if (!this.L) return;
@@ -402,6 +500,8 @@ export class Scene {
       f.life -= dt;
     }
     this.floaters = this.floaters.filter((f) => f.life > 0);
+    for (const e of this.emotes) e.t += dt;
+    if (this.emotes.length) this.emotes = this.emotes.filter((e) => e.t < e.life && this.actors.has(e.id));
     const add = [];
     for (const p of this.fx) {
       if (p.t === 'conf') {
@@ -537,8 +637,9 @@ export class Scene {
 
     wd.drawWeather(ctx);
 
-    // flytande tal och partiklar
+    // flytande tal, bubblor och partiklar
     this.drawFloaters(ctx);
+    this.drawEmotes(ctx);
     this.drawFx(ctx);
 
     if (this.fade > 0) {
@@ -552,7 +653,7 @@ export class Scene {
     }
     if (this.hover && this.hover.type === 'slot') {
       const s = this.L.slots[this.hover.idx];
-      this.drawOutline(ctx, cx + s.x - 1, gy + s.fy - 40, s.w + 2, 40);
+      this.drawOutline(ctx, cx + s.x - 1, gy + s.fy - (this.L.intH ?? INT_H), s.w + 2, this.L.intH ?? INT_H);
     }
   }
 
@@ -562,13 +663,22 @@ export class Scene {
     for (const [dx, dy, ww, hh] of [[0, 0, c, 1], [0, 0, 1, c], [w - c, 0, c, 1], [w - 1, 0, 1, c], [0, h - 1, c, 1], [0, h - c, 1, c], [w - c, h - 1, c, 1], [w - 1, h - c, 1, c]]) ctx.fillRect(Math.round(x + dx), Math.round(y + dy), ww, hh);
   }
 
+  // Sitter någon vid skrivbordet och tittar på skärmen? (v2: alla vid skrivbordet utom de som sover, läser, vilar eller hälsar)
+  screenLive(a) {
+    return this.crowd ? a.state === 'work' && !DESK_IDLE.has(a.pose) : a.pose === 'sit' || a.pose === 'drink';
+  }
+
   drawDynamic(A, cx, gy, night) {
     const G = this.G;
     const L = this.L;
     const era = eraOf(yearOf(G.t));
     const working = !!G.job && !this.paused;
     const occupied = new Map();
-    for (const a of this.actors.values()) if (a.state === 'work' || a.pose === 'sit') occupied.set(a.desk, a);
+    const live = new Map();
+    for (const a of this.actors.values()) {
+      if (a.state === 'work' || (!this.crowd && a.pose === 'sit')) occupied.set(a.desk, a);
+      if (this.screenLive(a)) live.set(a.desk, a);
+    }
     // skärmar
     const tt = Math.floor(this.time * 7);
     for (const d of L.desks) {
@@ -576,7 +686,7 @@ export class Scene {
       const bx = cx + d.x + 3;
       const by = gy + d.fy - 12;
       let cols;
-      if (a && working && (a.pose === 'sit' || a.pose === 'drink')) cols = ['#7cf2ff', '#3fd8a8', '#9ab8ff', '#e8f4ff'];
+      if (a && working && live.has(d.idx)) cols = ['#7cf2ff', '#3fd8a8', '#9ab8ff', '#e8f4ff'];
       else if (a) cols = ['#2a6a7a', '#245a6a'];
       else cols = ['#101820'];
       const strip = era === 2 ? [bx + 15, by - 13, 1, 10] : era === 1 ? [bx + 11, by - 11, 1, 7] : [bx + 11, by - 10, 1, 6];
@@ -585,15 +695,27 @@ export class Scene {
         A.fillRect(strip[0], strip[1] + r, 1, 1);
       }
       // skrivbordskant som speglar skärmen
-      if (a && working) {
+      if (a && working && live.has(d.idx)) {
         A.fillStyle = 'rgba(124,242,255,0.35)';
         A.fillRect(bx + 4, by - 2, 7, 1);
       }
     }
-    // aktörer
-    const acts = [...this.actors.values()].sort((p, q) => p.floor - q.floor || p.x - q.x);
+    // Studiohuset (v2): serverdioder, andra skärmar, neon och ljusslinga (rooms.js), glasdörrar och fönsterglans
+    if (L.v2) {
+      drawRoomsDynamic(A, cx, gy, L, this.time, night, { occupied: working ? live : new Map(), working, era, reduced: this.reduced });
+      const st = this.statics;
+      if (this.crowd && st) drawDoors(A, this.crowd, cx, gy, st.layer, st.w, st.h);
+      if (this.glOn && night > 0.05 && st) this.windowGlow(A, cx, gy, clamp(night * 1.1, 0, 1)); // HD-ljuset: glansen blommar via bloom
+    }
+    // aktörer (längre fram = närmare betraktaren: gående ritas en pixel lägre och ovanpå dem som sitter)
+    const acts = [...this.actors.values()].sort((p, q) => p.floor - q.floor || Math.round(p.ly || 0) - Math.round(q.ly || 0) || p.x - q.x);
     for (const a of acts) {
-      drawPerson(A, cx + a.x, gy + a.fy, this.G.staff.find((s) => s.id === a.id)?.look || { skin: 1, hair: 1, hairColor: 1, shirt: 1, pants: 1, acc: 0 }, a.pose, a.frame, a.dir, { blink: a.blink });
+      const sm = this.G.staff.find((s) => s.id === a.id);
+      const look = sm?.look || { skin: 1, hair: 1, hairColor: 1, shirt: 1, pants: 1, acc: 0 };
+      const opts = this.crowd
+        ? { blink: a.blink, t: a.t, seated: a.seated, mood: sm ? sm.mood : undefined }
+        : { blink: a.blink, t: a.t, seated: a.state === 'work' && a.pose === 'drink' };
+      drawPerson(A, cx + a.x, gy + a.fy + Math.round(a.ly || 0), look, a.pose, a.frame, a.dir, opts);
       if (a.pose === 'sleep') {
         const z = Math.floor(this.time * 2) % 3;
         drawText(A, 'Z', cx + a.x + 6 + z * 2, gy + a.fy - 32 - z * 3, '#cfe0ff', 1);
@@ -627,25 +749,33 @@ export class Scene {
   drawLights(ctx, cx, gy, night, info) {
     const L = this.L;
     const G = this.G;
-    if (night > 0.02) {
+    if (L.v2) {
+      // Studiohuset: färgade rumsljus, neon och fönsterglans (förberäknat lager)
+      const gl = this.statics && this.statics.glow;
+      if (gl && night > 0.02) {
+        ctx.globalAlpha = clamp(night * 1.15, 0, 1);
+        ctx.drawImage(gl, cx - this.statics.w / 2, gy - this.statics.h);
+        ctx.globalAlpha = 1;
+      }
+    } else if (night > 0.02) {
       // lampkäglor
       for (let f = 0; f < L.floors; f++) {
-        const fy = gy - 4 - f * PITCH;
+        const fy = gy - 4 - f * (L.pitch ?? PITCH);
         const n = Math.floor(L.IW / 56);
         for (let l = 0; l < n; l++) {
           const lx = cx + Math.round(L.left + 28 + l * (L.IW / n)) + 2;
           ctx.fillStyle = `rgba(255,214,150,${0.1 * night})`;
-          ctx.fillRect(lx - 3, fy - INT_H + 6, 7, 3);
-          ctx.fillRect(lx - 7, fy - INT_H + 9, 15, 8);
-          ctx.fillRect(lx - 12, fy - INT_H + 17, 25, 12);
-          ctx.fillRect(lx - 16, fy - INT_H + 29, 33, 11);
+          ctx.fillRect(lx - 3, fy - (L.intH ?? INT_H) + 6, 7, 3);
+          ctx.fillRect(lx - 7, fy - (L.intH ?? INT_H) + 9, 15, 8);
+          ctx.fillRect(lx - 12, fy - (L.intH ?? INT_H) + 17, 25, 12);
+          ctx.fillRect(lx - 16, fy - (L.intH ?? INT_H) + 29, 33, 11);
         }
       }
     }
     // skärmsken
     const working = !!G.job && !this.paused;
     for (const a of this.actors.values()) {
-      if (!(working && a.pose === 'sit')) continue;
+      if (!(working && (this.crowd ? this.screenLive(a) : a.pose === 'sit'))) continue;
       const d = L.desks[a.desk];
       if (!d) continue;
       const bx = cx + d.x + 3 + 12;
@@ -656,8 +786,8 @@ export class Scene {
       ctx.fillStyle = `rgba(110,220,255,${k * 0.7 * (0.7 + night)})`;
       ctx.fillRect(bx - 16, by - 2, 4, 10);
     }
-    // skylt-glöd
-    if (night > 0.1) {
+    // skylt-glöd (Studiohusets skylt lyser via L.lights)
+    if (night > 0.1 && !L.v2) {
       const topY = gy + L.topY;
       glow(ctx, cx, topY - 22, 70, 22, '255,120,190', 0.16 * night, 4);
     }
@@ -704,6 +834,17 @@ export class Scene {
     }
   }
 
+  // Pratbubblor ovanför huvudet (emotes.js). Ritas efter ljuset så att de aldrig dämpas av natten.
+  drawEmotes(ctx) {
+    if (!this.emotes.length) return;
+    const cx = Math.round(this.iw / 2);
+    for (const e of this.emotes) {
+      const a = this.actors.get(e.id);
+      if (!a) continue;
+      drawEmote(ctx, cx + a.x, this.groundY + a.fy + Math.round(a.ly || 0) - (a.seated ? 32 : 34), e.kind, e.t, e.life, this.time);
+    }
+  }
+
   drawFx(ctx) {
     ctx.globalCompositeOperation = 'lighter';
     for (const p of this.fx) {
@@ -741,7 +882,7 @@ export class Scene {
       if (x >= a.x - 8 && x <= a.x + 9 && y >= a.fy - 30 && y <= a.fy + 1) return { type: 'staff', id: a.id };
     }
     for (const s of this.L.slots) {
-      if (x >= s.x && x <= s.x + s.w && y >= s.fy - 40 && y <= s.fy) return { type: 'slot', idx: s.idx };
+      if (x >= s.x && x <= s.x + s.w && y >= s.fy - (this.L.intH ?? INT_H) && y <= s.fy) return { type: 'slot', idx: s.idx };
     }
     if (x >= -this.L.BW / 2 && x <= this.L.BW / 2 && y >= this.L.topY - 60 && y <= 0) return { type: 'building' };
     return null;

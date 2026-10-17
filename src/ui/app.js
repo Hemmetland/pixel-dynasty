@@ -10,7 +10,7 @@ import { cancelContract } from '../sim/contracts.js';
 import { refreshCandidates } from '../sim/people.js';
 import { sfx, music } from '../audio/sfx.js';
 import { UI, act, initUICore, toast, $, icon, L, money, esc } from './core.js';
-import { buildHUD, buildDock, updateHUD, updateDock, updateDev, setHUDVisible, flashStat } from './hud.js';
+import { buildHUD, buildDock, updateHUD, updateDock, updateDev, setHUDVisible, flashStat, fitHUD } from './hud.js';
 import { showPrompt } from './prompts.js';
 import { FACILITIES } from '../sim/studio.js';
 import './windows.js';
@@ -74,12 +74,13 @@ export const app = {
     saveSettings(this.settings);
     $('#dock').innerHTML = '';
     // Bygg om HUD-texter
-    this.root.querySelectorAll('#hud, #devpanel, #toasts, #dock, #overlay, #tip').forEach((e) => e.remove());
+    this.root.querySelectorAll('#hud, #devpanel, #rcol, #pbar, #clockp, #dock, #overlay, #tip').forEach((e) => e.remove());
     buildHUD(this.root);
     buildDock();
     initUICore(this.root);
     UI.overlay = $('#overlay', this.root);
     setHUDVisible(this.mode === 'play');
+    fitHUD();
     UI.refresh();
     emit('lang', l);
   },
@@ -89,7 +90,8 @@ export const app = {
     const h = this.root.clientHeight;
     const narrow = w < 720;
     if (this.mode === 'title') this.scene.resize(w, h, { top: Math.min(340, h * 0.5), bottom: 60 });
-    else this.scene.resize(w, h, { top: narrow ? 64 : 70, bottom: narrow ? 100 : 118 });
+    else this.scene.resize(w, h, { top: narrow ? 64 : 70, bottom: narrow ? 138 : 118 });
+    fitHUD();
   },
 
   wire() {

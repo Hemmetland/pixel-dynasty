@@ -1,4 +1,5 @@
 import { SAVE_VERSION } from '../sim/state.js';
+import { migrateLooks } from '../sim/people.js';
 
 const KEY = 'pixel-dynasty-save-v1';
 const SKEY = 'pixel-dynasty-settings-v1';
@@ -83,5 +84,6 @@ function migrate(G) {
   G.hist = G.hist || { cash: [], revenue: [], fans: [] };
   G.market = G.market || { releases: [], trend: { genre: [], topic: [] } };
   G.uid = G.uid || 1000;
+  migrateLooks(G);
   return G;
 }

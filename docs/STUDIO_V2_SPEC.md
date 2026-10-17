@@ -52,6 +52,15 @@ Varje pose har 2–4 ruter. Personerna ska se tydligt olika ut på avstånd (sil
 - HD-ljuset (`gl/scene-gl.js`) läser `L.lights`, lägger rumsfärger, neon (ljusa mättade pixlar glöder redan via bloom) och golvlampor.
   Canvas-läget (utan WebGL) ska också se bra ut: rumsljus ritas enkelt additivt.
 
+Implementerat (`render/behavior.js`, `render/emotes.js`, `render/scene.js`, `render/gl/scene-gl.js`): `scene.crowd` styr aktörerna på nivå 3
+(övriga nivåer använder det gamla beteendet). Personalen fördelas först tre per våning (mitten, nere, uppe) så att även små team kan ha möte.
+Aktiviteterna (`meeting`, `lounge`, `lobby`, `coffee`, `server`, `board`, `window`, `sofa`, `pair`, `fac`) reserverar stationer och rör sig på sin våning;
+skiljeväggarna är glasdörrar som glider upp när någon närmar sig (`drawDoors`). Mer social aktivitet i tomgång, kickoff-möte när projektet byter fas, färre
+avbrott under crunch. `scene.emote(id, kind)` visar bubblor (`exclam question heart bulb coffee sweat zzz`, högst tre samtidigt), `scene.forceAct(kind, floor, n)`
+startar en aktivitet direkt (dev-sidan `dist/dev/scene.html?tier=3&staff=15&job=1&act=meeting:1:5,lounge:0:3&nosched=1`). HD-ljuset sorterar `L.lights` efter
+prioritet (`pri`, lägre är viktigare) tillsammans med gatlyktor, fordon och skärmsken och släpper de sista över `MAX_LIGHTS`. Canvasläget ritar samma ljuskällor som
+additiva fält i ett förberäknat lager (`statics.glow`) plus fönsterglans. Test: `node test/behavior.mjs`.
+
 ## 4. Gränssnitt (`src/ui/hud.js`, `src/ui/app.js`, `src/style.css`, `src/data/strings.js`)
 
 Referensens glaspaneler, uppbyggda av riktigt spelstate (inget påhittat):

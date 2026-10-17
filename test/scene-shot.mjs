@@ -18,7 +18,7 @@ await page.waitForTimeout(300);
 await page.click('[data-act="ng-go"]');
 await page.waitForTimeout(5500);
 await page.evaluate(() => document.querySelector('[data-act="coach-skip"], #coach .coach-close')?.click());
-if (process.env.NOHUD) await page.addStyleTag({ content: '#hud,#dock,#devpanel,#coach,#toasts,.vignette{display:none!important}' });
+if (process.env.NOHUD) await page.addStyleTag({ content: '#hud,#dock,#devpanel,#coach,#toasts,#rcol,#clockp,#pbar,.vignette{display:none!important}' });
 for (const t of tiers.split(',')) {
   const ok = await page.evaluate(({ t, tod, weather, gl, year }) => {
     const a = window.__pd;

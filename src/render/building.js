@@ -2,6 +2,7 @@ import { WALLS } from './pal.js';
 import { shade } from '../core/util.js';
 import { drawText, textWidth, fitText } from './font.js';
 import * as P from './props.js';
+import { layoutV2, drawShellV2 } from './rooms.js';
 
 export const PITCH = 44;
 export const INT_H = 40;
@@ -19,6 +20,7 @@ const GEO = [
 
 // Layout: positioner för skrivbord, anläggningar och våningar.
 export function makeLayout(tier) {
+  if (tier === 3) return tuneStations(layoutV2(tier)); // Studiohuset: rum, neon och takträdgård (rooms.js)
   const g = GEO[tier];
   const IW = g.BW - WALL * 2;
   const left = -IW / 2;
@@ -36,6 +38,18 @@ export function makeLayout(tier) {
   return { tier, ...g, IW, left, desks, slots, sp, roofH, H, W: g.BW + 40, topY: -(FOUND + g.floors * PITCH) };
 }
 
+// Stationer för beteendet (behavior.js): ger två personer som står vid samma möbel minst ~10 px mellan fötterna
+// (rumsdefinitionerna placerar dem tätare, och då skulle de stå i varandra).
+function tuneStations(L) {
+  const SHIFT = { 'f0-lobby-0': 34, 'f0-lobby-1': 22, 'f0-lobby-2': 10, 'f1-meeting-3': 6, 'f1-kitchen-1': 49 }; // x relativt rummets vänsterkant
+  for (const s of L.stations) {
+    const k = SHIFT[s.id];
+    const room = k !== undefined && L.rooms.find((r) => r.id === s.room);
+    if (room) s.x = room.x0 + k;
+  }
+  return L;
+}
+
 const rect = (ctx, x, y, w, h, c) => {
   ctx.fillStyle = c;
   ctx.fillRect(x, y, w, h);
@@ -48,7 +62,10 @@ function seedRng(seed) {
 
 // Ritar hela den statiska byggnaden. opts: { era, name, awards, games, fac:{id:{lvl,slot}}, tier }
 export function drawShell(ctx, L, opts) {
+  if (L.v2) return drawShellV2(ctx, L, opts);
   const { BW, IW, floors } = L;
+  const pitch = L.pitch ?? PITCH;
+  const intH = L.intH ?? INT_H;
   const rng = seedRng(1234 + L.tier * 77);
   const eraIdx = opts.era; // 0,1,2
   const hole = []; // fönsterhål
@@ -57,12 +74,12 @@ export function drawShell(ctx, L, opts) {
   rect(ctx, -BW / 2 - 2, -FOUND, BW + 4, 1, '#9a98a4');
   // ── Våningar ──
   for (let f = 0; f < floors; f++) {
-    const fy = -FOUND - f * PITCH;
-    const top = fy - INT_H;
+    const fy = -FOUND - f * pitch;
+    const top = fy - intH;
     const wall = WALLS[(f + (L.tier > 3 ? 1 : 0)) % WALLS.length];
     // bakvägg
-    rect(ctx, L.left, top, IW, INT_H, wall.a);
-    for (let x = 0; x < IW; x += 10) rect(ctx, L.left + x, top, 1, INT_H - 12, wall.b);
+    rect(ctx, L.left, top, IW, intH, wall.a);
+    for (let x = 0; x < IW; x += 10) rect(ctx, L.left + x, top, 1, intH - 12, wall.b);
     // lister
     rect(ctx, L.left, top, IW, 2, shade(wall.a, -0.22));
     rect(ctx, L.left, fy - 12, IW, 1, wall.trim);
@@ -78,9 +95,9 @@ export function drawShell(ctx, L, opts) {
     const brick = L.tier <= 1 ? '#a8604a' : L.tier <= 3 ? '#8a5a4a' : '#5a6478';
     const brickHi = L.tier <= 1 ? '#c27a5e' : L.tier <= 3 ? '#a8705a' : '#7a869c';
     for (const sx of [-BW / 2, L.left + IW]) {
-      rect(ctx, sx, top - 4, WALL, INT_H + 4, brick);
+      rect(ctx, sx, top - 4, WALL, intH + 4, brick);
       for (let y = top; y < fy; y += 4) rect(ctx, sx, y, WALL, 1, brickHi);
-      rect(ctx, sx + (sx < 0 ? 0 : WALL - 1), top - 4, 1, INT_H + 4, shade(brick, -0.3));
+      rect(ctx, sx + (sx < 0 ? 0 : WALL - 1), top - 4, 1, intH + 4, shade(brick, -0.3));
     }
     // fönster (hål) över varannat skrivbord
     const winY = top + 7;
@@ -101,7 +118,7 @@ export function drawShell(ctx, L, opts) {
   }
   // ── Möbler: inredning per våning ──
   for (let f = 0; f < floors; f++) {
-    const fy = -FOUND - f * PITCH;
+    const fy = -FOUND - f * pitch;
     // affischer/klocka/whiteboard över varannat skrivbord (mellan fönstren)
     const nd = L.desks.filter((d) => d.floor === f);
     for (let i = 0; i < nd.length; i++) {
@@ -121,8 +138,8 @@ export function drawShell(ctx, L, opts) {
       rect(ctx, L.left + 102, fy - 33, 8, 3, '#f2a63a'); rect(ctx, L.left + 104, fy - 30, 4, 9, '#7c5232');
       rect(ctx, L.left + 114, fy - 32, 8, 6, '#c8d0e0'); rect(ctx, L.left + 118, fy - 26, 2, 7, '#c8d0e0');
       // rullport
-      for (let y = 0; y < 8; y += 2) { rect(ctx, L.left, fy - INT_H + 2 + y, IW, 2, y % 4 === 0 ? '#aeb4c4' : '#8a90a2'); }
-      rect(ctx, L.left, fy - INT_H + 10, IW, 1, '#5a6070');
+      for (let y = 0; y < 8; y += 2) { rect(ctx, L.left, fy - intH + 2 + y, IW, 2, y % 4 === 0 ? '#aeb4c4' : '#8a90a2'); }
+      rect(ctx, L.left, fy - intH + 10, IW, 1, '#5a6070');
       P.bookshelf(ctx, L.left + 140 - 32 + 56, fy, 20, 26, 7);
     }
     // gemensamma tillägg
@@ -148,7 +165,7 @@ export function drawShell(ctx, L, opts) {
     if (!slot) continue;
     ctx.save();
     ctx.beginPath();
-    ctx.rect(slot.x - 1, slot.fy - INT_H, slot.w + 2, INT_H);
+    ctx.rect(slot.x - 1, slot.fy - intH, slot.w + 2, intH);
     ctx.clip();
     const fn = { coffee: P.coffee, lab: P.labBench, qa: P.qaLab, training: P.trainingRoom, gameroom: P.gameRoom, marketing: P.marketingRoom, server: P.serverRoom }[id];
     if (fn) fn(ctx, slot.x + 3, slot.fy, f.lvl);
