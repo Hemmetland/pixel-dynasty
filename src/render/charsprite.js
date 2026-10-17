@@ -31,7 +31,7 @@ function material(r, g, b, ry) {
   return null;
 }
 
-const cache = new WeakMap();
+const cache = new WeakMap(); // look -> Map(nyckel -> färdig remsa)
 
 function build(s, look) {
   const C = lookColors(look);
@@ -77,17 +77,15 @@ function build(s, look) {
   return { c, W, H, ax: Math.round(s.ax * s.scale), ay: Math.round(s.ay * s.scale), frames: s.frames, v: spritesVersion() };
 }
 
-// Ritar en gående person som sprite med fötterna i (x, y). t = gångtid (samma enhet som fotgängarnas p.t, 6 per sekund).
-export function drawWalkerSprite(ctx, x, y, look, t, dir = 1) {
-  const s = getSprite('char.walk');
+// Ritar personen som sprite 'key' (t.ex. 'char.walk', 'char.stand', 'char.drink') med fötterna i (x, y), ruta frame.
+export function drawCharSprite(ctx, key, x, y, look, frame = 0, dir = 1) {
+  const s = getSprite(key);
   if (!s || typeof document === 'undefined') return false;
-  let e = cache.get(look);
-  if (!e || e.v !== spritesVersion()) {
-    e = build(s, look);
-    cache.set(look, e);
-  }
-  // 6 rutor per steg-cykel i samma takt som den procedurella gången (4 rutor på 6 per sekund)
-  const f = Math.floor(t * 1.5) % e.frames;
+  let m = cache.get(look);
+  if (!m) cache.set(look, (m = new Map()));
+  let e = m.get(key);
+  if (!e || e.v !== spritesVersion()) m.set(key, (e = build(s, look)));
+  const f = (((frame | 0) % e.frames) + e.frames) % e.frames;
   const X = Math.round(x);
   const Y = Math.round(y);
   ctx.globalAlpha = 0.22;
@@ -102,4 +100,15 @@ export function drawWalkerSprite(ctx, x, y, look, t, dir = 1) {
     ctx.restore();
   } else ctx.drawImage(e.c, f * e.W, 0, e.W, e.H, X - e.ax, Y - e.ay, e.W, e.H);
   return true;
+}
+
+// Gående fotgängare; t = gångtid (fotgängarnas p.t, 6 per sekund). 6 rutor per steg-cykel i samma takt som den procedurella gången.
+export const drawWalkerSprite = (ctx, x, y, look, t, dir = 1) => drawCharSprite(ctx, 'char.walk', x, y, look, Math.floor(t * 1.5), dir);
+
+// Stående poser som har en sprite, med bildrutor per sekund. Sittande poser saknas i karaktären och ritas procedurellt.
+const POSE_SPRITE = { walk: ['char.walk', 9], stand: ['char.stand', 0], drink: ['char.drink', 3] };
+// Personal i huset: ritar posen som sprite om en sådan finns (t = sekunder), annars false.
+export function drawPoseSprite(ctx, x, y, look, pose, t, dir = 1) {
+  const p = POSE_SPRITE[pose];
+  return !!p && drawCharSprite(ctx, p[0], x, y, look, Math.floor((t || 0) * p[1]), dir);
 }

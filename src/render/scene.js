@@ -4,6 +4,7 @@ import { vehicleSize } from './vehicles.js';
 import { makeLayout, drawShell, eraOf, PITCH, INT_H } from './building.js';
 import { drawRoomsDynamic } from './rooms.js';
 import { drawPerson } from './people.js';
+import { drawPoseSprite } from './charsprite.js';
 import { makeCrowd, updateCrowd, drawDoors, detach, forceAct } from './behavior.js';
 import { drawEmote, EMOTE_LIFE } from './emotes.js';
 import { drawTextOutlined, drawText, textWidth } from './font.js';
@@ -718,7 +719,9 @@ export class Scene {
       const opts = this.crowd
         ? { blink: a.blink, t: a.t, seated: a.seated, mood: sm ? sm.mood : undefined }
         : { blink: a.blink, t: a.t, seated: a.state === 'work' && a.pose === 'drink' };
-      drawPerson(A, cx + a.x, gy + a.fy + Math.round(a.ly || 0), look, a.pose, a.frame, a.dir, opts);
+      const px = cx + a.x;
+      const py = gy + a.fy + Math.round(a.ly || 0);
+      if (opts.seated || !drawPoseSprite(A, px, py, look, a.pose, a.t, a.dir)) drawPerson(A, px, py, look, a.pose, a.frame, a.dir, opts);
       if (a.pose === 'sleep') {
         const z = Math.floor(this.time * 2) % 3;
         drawText(A, 'Z', cx + a.x + 6 + z * 2, gy + a.fy - 32 - z * 3, '#cfe0ff', 1);
