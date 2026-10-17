@@ -552,12 +552,15 @@ function updateDevGame(G, J, el) {
     actEl.dataset.k = akey;
     let h = '';
     if (J.state === 'dev') {
+      // crunch syns även under polish, annars går en påslagen crunch inte att stänga av
+      const crunch = `<button class="btn sm ${J.crunch ? 'crunch-on' : ''}" data-act="crunch" data-tip="${t('tip.crunch')}">${icon('fire')}${t('dev.crunch')}</button>`;
       if (cur < 3) {
         if (G.u.mkt.length) h += `<button class="btn sm" data-act="open-marketing" ${J.ticks < J.devTicks * 0.2 ? 'disabled data-tip="' + t('err.tooEarly') + '"' : ''}>${icon('megaphone')}${t('dev.market')}</button>`;
-        h += `<button class="btn sm ${J.crunch ? 'crunch-on' : ''}" data-act="crunch" data-tip="${t('tip.crunch')}">${icon('fire')}${t('dev.crunch')}</button>`;
+        h += crunch;
       } else {
         h += `<button class="btn sm gold" data-act="ship">${icon('rocket')}${t('dev.ship')}</button>`;
         if (!J.extended) h += `<button class="btn sm" data-act="polish-more" data-tip="${t('tip.polishMore')}">${icon('wrench')}${t('dev.polishMore')}</button>`;
+        h += crunch;
       }
       if (cur < 3) h += `<button class="btn sm ghost" data-act="job-cancel" data-tip="${t('tip.cancelProj')}">${icon('x')}</button>`;
     }
