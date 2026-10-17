@@ -308,10 +308,7 @@ defs.meeting = {
       sillGreens(ctx, rx + 66, fy, 14, 4);
     }
     // skrivbart glas / konstverk till vänster, bildskärm i mitten (animeras av rooms.js på rx+26, fy-44)
-    if (big) P.designWall(ctx, rx + 3, fy - 38, 19, 24, 5);
-    else {
-      V.frame(ctx, rx + 3, fy - 37, 11, 14, 4, 3, '#c9a35a');
-    }
+    P.designWall(ctx, rx + 3, fy - 38, 19, 24, big ? 5 : 8);
     R(ctx, rx + 24, fy - 46, 42, 23, 'rgba(0,0,0,0.14)');
     V.wallScreen(ctx, rx + 26, fy - 44, 38, 19, 'slides', 3);
     // bord, stolar
@@ -585,6 +582,35 @@ function washFacilities(ctx, L, opts) {
   ctx.restore();
 }
 
+// Glashiss på husets högra sida: stålpelare, tonat glas, plattformar vid varje våning och orange neon. Hytten ritas dynamiskt.
+const SHAFT = { x0: HALF + 1, w: 16 };
+function elevatorShaft(ctx, L) {
+  const { x0, w } = SHAFT;
+  const topY = L.topY;
+  const y0 = topY - 4;
+  const h = -y0;
+  RA(ctx, x0, y0, w, h, TL.glass, 0.14);
+  R(ctx, x0 + 4, topY, 1, -topY, 'rgba(26,38,46,0.45)');
+  R(ctx, x0 + w - 5, topY, 1, -topY, 'rgba(26,38,46,0.45)');
+  R(ctx, x0, y0, 2, h, ST.mid);
+  R(ctx, x0, y0, 1, h, ST.hi);
+  R(ctx, x0 + w - 2, y0, 2, h, ST.mid);
+  R(ctx, x0 + w - 1, y0, 1, h, ST.dk);
+  for (let f = 0; f < L.floors; f++) {
+    const fy = -FOUND - f * PITCH;
+    R(ctx, x0, fy, w, 2, '#c9d7de');
+    R(ctx, x0, fy, w, 1, ST.wh);
+    R(ctx, x0, fy + 2, w, 1, '#7d909b');
+    R(ctx, x0 + 2, fy - 2, w - 4, 2, '#2c6068');
+  }
+  R(ctx, x0 - 1, y0 - 3, w + 2, 3, '#eef4f6');
+  R(ctx, x0 - 1, y0 - 3, w + 2, 1, '#ffffff');
+  R(ctx, x0 - 1, y0, w + 2, 1, OR.neon);
+  RA(ctx, x0 - 1, y0 + 1, w + 2, 2, OR.glow, 0.25);
+  V.neonLineV(ctx, x0 + w + 1, topY + 2, -topY - 8, OR.neon, OR.glow);
+  R(ctx, x0, 0, w, 1, '#7d909b');
+}
+
 function facade(ctx, L, opts) {
   const topY = L.topY;
   for (const sx of COL_X) column(ctx, sx, topY);
@@ -602,6 +628,7 @@ function facade(ctx, L, opts) {
   leftDoors(ctx, L);
   vestibule(ctx);
   neonColumns(ctx, L);
+  elevatorShaft(ctx, L);
 }
 
 // ═══ Tak: solpaneler, vindturbin, glasad takvåning, skylt, ventilation och antenn ═══
@@ -739,8 +766,7 @@ function mast(ctx, deck) {
 // Skylt med studions namn på stålram: vit text på mörk turkos tavla med orange neonlist.
 function roofSign(ctx, name, deck) {
   let lines = [name];
-  let sc = P.V.R ? 0 : 0;
-  sc = fitText(name, 100, 2).scale;
+  let sc = fitText(name, 100, 2).scale;
   if (sc === 1) {
     let cut = -1;
     for (let i = 0; i < name.length; i++) if (name[i] === ' ' && (cut < 0 || Math.abs(i - name.length / 2) < Math.abs(cut - name.length / 2))) cut = i;
@@ -827,6 +853,43 @@ const GUESTS = [
   { dx: 28, look: { skin: 0, hair: 8, hairColor: 4, shirt: 14, pants: 4, acc: 1 }, pose: 'drink', seated: true },
   { dx: 92, look: { skin: 3, hair: 4, hairColor: 0, shirt: 9, pants: 5, acc: 0 }, pose: 'drink', seated: false },
 ];
+// Hissens hytt: stannar en stund på varje våning och glider sedan till nästa; ibland åker någon med.
+const LIFT = [0, 2, 3, 1, 0, 1, 3, 0];
+const RIDERS = [
+  { skin: 4, hair: 5, hairColor: 1, shirt: 7, pants: 4, acc: 0 },
+  { skin: 1, hair: 2, hairColor: 5, shirt: 10, pants: 1, acc: 2 },
+  { skin: 0, hair: 12, hairColor: 9, shirt: 3, pants: 6, acc: 0 },
+];
+function elevator(A, cx, gy, rt) {
+  const LEG = 6;
+  const k = Math.floor(rt / LEG);
+  const a = LIFT[k % LIFT.length];
+  const b = LIFT[(k + 1) % LIFT.length];
+  const ph = (rt % LEG) / LEG;
+  const e = ph < 0.4 ? 0 : (ph - 0.4) / 0.6;
+  const p = e * e * (3 - 2 * e);
+  const fyA = -FOUND - a * PITCH;
+  const fyB = -FOUND - b * PITCH;
+  const y = Math.round(gy + fyA + (fyB - fyA) * p); // hyttens golv
+  const x = cx + SHAFT.x0 + 2;
+  const w = SHAFT.w - 4;
+  const h = 36;
+  A.fillStyle = '#9fb4c0';
+  A.fillRect(x, y - h, w, h);
+  A.fillStyle = '#ffe9bd';
+  A.fillRect(x + 1, y - h + 2, w - 2, h - 5);
+  A.fillStyle = '#fff6dc';
+  A.fillRect(x + 1, y - h + 2, w - 2, 2);
+  A.fillStyle = 'rgba(255,255,255,0.45)';
+  A.fillRect(x + 2, y - h + 5, 1, 12);
+  A.fillStyle = '#5f7684';
+  A.fillRect(x, y - h, w, 1);
+  A.fillRect(x, y - 2, w, 2);
+  A.fillStyle = TL.hi;
+  A.fillRect(x + w - 3, y - 6, 1, 1);
+  if (k % 3 !== 1) drawPerson(A, x + Math.floor(w / 2), y - 2, RIDERS[k % RIDERS.length], 'stand', 0, 1, { t: rt, noShadow: true });
+}
+
 // Alla glaspartier (samma hål som rooms.js klipper ut), för glansen som sveper över fasaden.
 function glassRects(L) {
   if (L.t4glass) return L.t4glass;
@@ -906,6 +969,7 @@ function dynamicRoof(A, cx, gy, L, t, night, st) {
     A.fillRect(px - 1, py, 4, 1);
     A.globalAlpha = 1;
   }
+  elevator(A, cx, gy, rt);
   // glansen över glasfasaden
   if (!(st && st.reduced)) glassGlint(A, cx, gy, L, rt);
   // gäster på takvåningen

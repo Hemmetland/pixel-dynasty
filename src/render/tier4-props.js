@@ -16,7 +16,6 @@ export const OR = { core: '#ffd9b0', neon: '#ff7a2e', glow: '#ff5a14', lo: '#b83
 
 // Orange neonlinje (vågrät) med varm glöd, i samma stil som V.neonLine men med nivåns orange.
 export const neonH = (ctx, x, y, w) => V.neonLine(ctx, x, y, w, OR.core, OR.glow);
-export const neonV = (ctx, x, y, h) => V.neonLineV(ctx, x, y, h, OR.core, OR.glow);
 
 // ── Glasvägg ──
 // Glaset i ett fönsterhål (hålet är redan urklippt): tonad ruta, diagonala reflexer, bågar och sprosslinjer.
@@ -244,20 +243,6 @@ export function chairShell(ctx, x, fy, c = TL.lt) {
   R(ctx, x, fy - 2, 8, 1, ST.dk);
   R(ctx, x, fy - 1, 2, 1, '#14151c');
   R(ctx, x + 6, fy - 1, 2, 1, '#14151c');
-}
-
-// Konsolbord / sideboard i trä med vita luckor.
-export function sideboard(ctx, x, fy, w = 24) {
-  F.shadow(ctx, x, fy, w, 0.25);
-  R(ctx, x, fy - 12, w, 10, '#f2f6f7');
-  R(ctx, x, fy - 12, w, 1, '#ffffff');
-  R(ctx, x + w - 1, fy - 11, 1, 9, '#aebcc2');
-  for (let i = 8; i < w - 2; i += 8) R(ctx, x + i, fy - 11, 1, 8, '#c4d0d5');
-  for (let i = 4; i < w - 2; i += 8) R(ctx, x + i, fy - 8, 2, 1, ST.mid);
-  R(ctx, x - 1, fy - 14, w + 2, 2, '#c89a62');
-  R(ctx, x - 1, fy - 14, w + 2, 1, '#e8be88');
-  R(ctx, x + 2, fy - 2, 1, 2, '#7a5a38');
-  R(ctx, x + w - 3, fy - 2, 1, 2, '#7a5a38');
 }
 
 // Abstrakt tavla i nivåns färger.
@@ -549,11 +534,6 @@ export function rugM(ctx, x, fy, w, c1 = TL.mid, c2 = AM.mid) {
   R(ctx, x, fy - 2, w, 2, c1);
   R(ctx, x + 1, fy - 2, w - 2, 1, shade(c1, 0.25));
   for (let i = 3; i < w - 3; i += 6) R(ctx, x + i, fy - 1, 3, 1, c2);
-}
-
-// Solpanel-rad och takdetaljer finns i tier4.js (roof). Hjälpare här: glödande parallellogram.
-export function slantedRect(ctx, x, y, w, h, shear, c) {
-  for (let r = 0; r < h; r++) R(ctx, x + Math.round((r * shear) / h), y + r, w, 1, c);
 }
 
 export { drawText, textWidth, F, V };

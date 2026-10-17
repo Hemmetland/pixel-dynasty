@@ -100,6 +100,7 @@ export class Scene {
     this.crowd = this.L.v2 ? makeCrowd(this) : null;
     this.emotes = [];
     this.lightCache = null;
+    this.world.lampX = this.L.BW > 424 ? Math.round(this.L.BW / 2 + 44) : 230; // gatlyktorna står utanför breda hus
     this.fit();
     this.syncActors(first);
     this.world.setYear(yearOf(G.t));

@@ -88,7 +88,7 @@ Glas- och stålhuset (nivå 4) är byggt med rumssystemet och är mallen för hu
   Rumsplanen blandar innehållet per våning: bottenvåning lobby + café + kontor, våning 1 kontor + konferens + fikarum, våning 2 serverhall + kontor + designlab,
   våning 3 boklounge + kontor + ledningsrum. Alla beteenden (möte, kaffe, lounge, server, whiteboard, parprogrammering, lobby) har sina stationer.
 - **Identitet:** kall vit/turkos/bärnsten med orange neon (Studiohuset är grafit med cyan/magenta): glasväggar med bågar och reflexer i alla rum, vita bjälklag med turkost
-  glasband och orange LED, aluminiumpelare med orange neonlist, lobby med tall glasvägg och klotlampor, entrépaviljong med revolvingdörr, glasbalkonger.
+  glasband och orange LED, aluminiumpelare med orange neonlist, lobby med tall glasvägg och klotlampor, entrépaviljong med revolvingdörr, glasbalkonger och en glashiss på husets högra sida (hytten glider mellan våningarna, ibland med en passagerare).
   Taket har solpaneler, vindturbin, en glasad takvåning med gäster, skylt med studions namn, ventilation och antenn med blinkande flygvarningslampa.
 - **Hur en nivå får egna rum (rooms.js):** `TIER_DEF[nivå][typ]` ersätter `DEF[typ]` för just den nivåns rum. Typnamnen behålls (`dev`, `meeting`, `lounge`, `kitchen`, `server`,
   `whiteboard`, `lobby`) så att `behavior.js` hittar stationerna (`f<våning>-<typ>`). En definition har `windows`, `stations`, `pendants`, `decor` och valfritt
@@ -96,5 +96,6 @@ Glas- och stålhuset (nivå 4) är byggt med rumssystemet och är mallen för hu
   `light`/`lightRGB` rumsljuset. Skalet (pelare, bjälklag, skiljeväggar, entré, neon) ritas om i takets `facade`-hook, som körs sist.
 - **Fasta ankare i rooms.js** som nivåns rum måste ta hänsyn till: väggskärmen i öppet kontor på `rx+38, fy-38` (32x17), mötesskärmen på `rx+26, fy-44` (38x19), akvariet i lounge
   på `rx+5, fy-41` (30x12, fiskarna ritas dynamiskt), ångan över espressomaskinen på `rx+27, fy-32` och lobbyns neonlist på `rx+6, fy-45` (115x5, flimrar ibland).
+- **Breda hus:** `Scene.rebuildLayout` flyttar ut gatlyktorna (`world.lampX`) när huset är bredare än Studiohuset, så att de inte hamnar framför fasaden.
 - **Test:** `node test/tier4.mjs` (layoutkontrakt, stationer, namn på båda språken, ritning inom lagrets yta), `TIER=4 REQUIRE=meeting,coffee,lounge,server,board,pair,fac node test/behavior.mjs 900 1`
   och `node test/statichash.mjs` (övriga nivåer ska behålla sina kontrollsummor).
