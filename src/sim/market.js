@@ -84,17 +84,31 @@ export function monthlyMarket(G) {
   for (const c of G.comps) while (c.nextT <= G.t) releaseComp(G, c);
 }
 
-// Trender uppdateras varje halvår.
+// Trender ses över varje halvår, men var och en lever 2–5 halvår (48–120 veckor), så att en trend du ser när du
+// startar ett projekt oftast gäller när spelet släpps (då räknas försäljningen). Bara utgångna platser byts, mot id som
+// inte redan är trendiga. until = veckan då trenden byts; gamla sparfiler saknar den och byts vid nästa halvår.
+export const TREND_STEP = 24;
+const TREND_MULT = { genre: [1.28, 1.14, 0.82], topic: [1.3, 1.15, 0.85] };
 export function updateTrends(G) {
   const year = yearOf(G.t);
-  const genres = shuffle(G, GENRES.map((g) => g.id));
   const topicsAvail = TOPICS.filter((t) => t.start || RESEARCH.some((r) => (r.unlock.topics || []).includes(t.id) && r.year <= year));
-  const topics = shuffle(G, topicsAvail.map((t) => t.id));
-  G.market.trend = {
-    genre: [{ id: genres[0], mult: 1.28 }, { id: genres[1], mult: 1.14 }, { id: genres[2], mult: 0.82 }],
-    topic: [{ id: topics[0], mult: 1.3 }, { id: topics[1], mult: 1.15 }, { id: topics[2] || topics[0], mult: chance(G, 0.5) ? 0.85 : 1 }],
+  const prev = G.market.trend || {};
+  const roll = (kind, pool) => {
+    const keep = TREND_MULT[kind].map((_, i) => ((prev[kind] || [])[i]?.until > G.t ? prev[kind][i] : null));
+    const used = new Set(keep.filter(Boolean).map((x) => x.id));
+    const free = shuffle(G, pool.filter((id) => !used.has(id)));
+    return TREND_MULT[kind].map((m, i) => keep[i] || {
+      id: free.shift() || pool[0],
+      mult: kind === 'topic' && i === 2 && !chance(G, 0.5) ? 1 : m,
+      until: G.t + TREND_STEP * rint(G, 2, 5),
+    });
   };
+  G.market.trend = { genre: roll('genre', GENRES.map((g) => g.id)), topic: roll('topic', topicsAvail.map((t) => t.id)) };
   emit('trends', G.market.trend);
+}
+// Veckor kvar tills trenden byts (gamla sparfiler: nästa halvår).
+export function trendWeeksLeft(G, x) {
+  return (x.until ?? (Math.floor(G.t / TREND_STEP) + 1) * TREND_STEP) - G.t;
 }
 
 // Veckovis intäkt för en konkurrentrelease (för listor).

@@ -10,7 +10,7 @@ import { SCOPES, SCOPE_IDS, AUDIENCES, yearOf, yfOf, engineMult } from '../sim/c
 import { startProject, platformOpen, teamOutput, baseHype } from '../sim/dev.js';
 import { phaseCats, idealFocus, normFocus, techWeight, platFit, defaultFocus } from '../sim/score.js';
 import { buyLicense, licenseCost } from '../sim/actions.js';
-import { randomTitle } from '../sim/market.js';
+import { randomTitle, trendWeeksLeft } from '../sim/market.js';
 import { focusHTML, bindFocus } from './focus.js';
 import { lang } from '../core/i18n.js';
 import { clamp } from '../core/util.js';
@@ -56,10 +56,14 @@ export function teamReadiness(G, cfg) {
 const verdict = (r) => (r < 0.45 ? ['bad', 'wiz.tooHard'] : r < 0.75 ? ['warn', 'wiz.hard'] : r < 1.5 ? ['good', 'wiz.good'] : r < 2.4 ? ['good', 'wiz.great'] : ['accent', 'wiz.easy']);
 const VCOL = { bad: 'var(--bug)', warn: 'var(--warn)', good: 'var(--good)', accent: 'var(--accent)' };
 
+// Försäljningen räknas när spelet släpps: hinner trenden bytas innan ett spel av den här storleken är klart?
+const trendFades = (G, x, scope) => trendWeeksLeft(G, x) < SCOPES[scope].weeks + SCOPES[scope].polish;
 function trendBadge(G, kind, id) {
   const tr = G.market.trend[kind].find((x) => x.id === id);
   if (!tr) return '';
-  return tr.mult > 1.1 ? `<i class="trend hot" data-tip="${t('wiz.trendHot')}">${icon('fire')}</i>` : tr.mult < 0.95 ? `<i class="trend cold" data-tip="${t('wiz.trendCold')}">${icon('snow')}</i>` : '';
+  const fade = trendFades(G, tr, W.scope);
+  const st = fade ? ' style="opacity:.5"' : '';
+  return tr.mult > 1.1 ? `<i class="trend hot" data-tip="${t(fade ? 'wiz.trendHotFade' : 'wiz.trendHot')}"${st}>${icon('fire')}</i>` : tr.mult < 0.95 ? `<i class="trend cold" data-tip="${t(fade ? 'wiz.trendColdFade' : 'wiz.trendCold')}"${st}>${icon('snow')}</i>` : '';
 }
 
 function stepConcept(G) {
@@ -147,10 +151,11 @@ function stepMarket(G) {
     const weak = tier < sc.minTier;
     const rd = teamReadiness(G, { ...W, scope: id });
     const [vk, vtxt] = verdict(rd.r);
+    const fades = [G.market.trend.genre.find((x) => x.id === W.genre), G.market.trend.topic.find((x) => x.id === W.topic)].some((x) => x && x.mult > 1.1 && trendFades(G, x, id));
     return `<button class="card scope ${W.scope === id ? 'sel' : ''} ${!unlocked || weak ? 'lockd' : ''}" data-act="w-scope" data-id="${id}" ${!unlocked ? 'disabled' : ''}>
       <div class="row"><b class="disp" style="font-size:22px">${L(sc.name)}</b><span class="sp"></span>${unlocked ? (weak ? `<span class="tag" style="--c:var(--bug)">${t('wiz.needTier', { n: sc.minTier })}</span>` : `<span class="tag" style="--c:${VCOL[vk]}">${t(vtxt)}</span>`) : icon('lock')}</div>
       <div class="hint" style="margin:4px 0 8px">${unlocked ? L(sc.desc) : t('wiz.locked')}</div>
-      <div class="row" style="gap:14px;font-size:12px"><span>${icon('clock')} ${sc.weeks + sc.polish} ${t('ui.weeksShort')}</span><span>${icon('team')} ${t('wiz.idealTeam', { n: sc.team })}</span></div>
+      <div class="row" style="gap:14px;font-size:12px"><span>${icon('clock')} ${sc.weeks + sc.polish} ${t('ui.weeksShort')}</span><span>${icon('team')} ${t('wiz.idealTeam', { n: sc.team })}</span>${fades ? `<span data-tip="${t('wiz.trendHotFade')}" style="opacity:.7">${icon('fire')} ${t('wiz.trendFadeShort')}</span>` : ''}</div>
     </button>`;
   }).join('');
   const engines = G.u.flags.engines && G.engines.length

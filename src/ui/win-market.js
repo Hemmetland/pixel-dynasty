@@ -7,7 +7,7 @@ import { GENRE } from '../data/genres.js';
 import { TOPIC } from '../data/topics.js';
 import { yearOf, yfOf } from '../sim/const.js';
 import { canLicense, buyLicense, licenseCost } from '../sim/actions.js';
-import { topSellers } from '../sim/market.js';
+import { topSellers, trendWeeksLeft } from '../sim/market.js';
 import { fmtNum } from '../core/util.js';
 import { TOPICS } from '../data/topics.js';
 import { GENRES } from '../data/genres.js';
@@ -62,11 +62,11 @@ function trendsTab(G) {
   const chip = (kind, x) => {
     const src = kind === 'genre' ? GENRE[x.id] : TOPIC[x.id];
     const hot = x.mult > 1;
-    return `<div class="card row trendc ${hot ? 'hot' : 'cold'}" style="gap:12px">${glyphImg(src.glyph, hot ? '#ffb070' : '#8ad0ff', 32, true)}<div style="flex:1"><b>${L(src.name)}</b><div class="hint">${t(kind === 'genre' ? 'mkt.genre' : 'mkt.topic')}</div></div><div class="disp" style="font-size:29px;color:${hot ? 'var(--good)' : 'var(--bug)'}">${hot ? '+' : ''}${Math.round((x.mult - 1) * 100)}%</div></div>`;
+    return `<div class="card row trendc ${hot ? 'hot' : 'cold'}" style="gap:12px">${glyphImg(src.glyph, hot ? '#ffb070' : '#8ad0ff', 32, true)}<div style="flex:1"><b>${L(src.name)}</b><div class="hint">${t(kind === 'genre' ? 'mkt.genre' : 'mkt.topic')} · ${t('mkt.trendLeft', { n: trendWeeksLeft(G, x) })}</div></div><div class="disp" style="font-size:29px;color:${hot ? 'var(--good)' : 'var(--bug)'}">${hot ? '+' : ''}${Math.round((x.mult - 1) * 100)}%</div></div>`;
   };
   return `<p class="hint" style="margin-bottom:14px">${t('mkt.trendHelp')}</p>
-    <div class="lbl" style="margin-bottom:8px">${t('mkt.genres')}</div><div class="grid" style="grid-template-columns:repeat(auto-fit,minmax(240px,1fr));margin-bottom:18px">${tr.genre.map((x) => chip('genre', x)).join('')}</div>
-    <div class="lbl" style="margin-bottom:8px">${t('mkt.topics')}</div><div class="grid" style="grid-template-columns:repeat(auto-fit,minmax(240px,1fr))">${tr.topic.map((x) => chip('topic', x)).join('')}</div>`;
+    <div class="lbl" style="margin-bottom:8px">${t('mkt.genres')}</div><div class="grid" style="grid-template-columns:repeat(auto-fit,minmax(240px,1fr));margin-bottom:18px">${tr.genre.filter((x) => x.mult !== 1).map((x) => chip('genre', x)).join('')}</div>
+    <div class="lbl" style="margin-bottom:8px">${t('mkt.topics')}</div><div class="grid" style="grid-template-columns:repeat(auto-fit,minmax(240px,1fr))">${tr.topic.filter((x) => x.mult !== 1).map((x) => chip('topic', x)).join('')}</div>`;
 }
 
 function insightsTab(G) {
