@@ -154,24 +154,102 @@ export function initUICore(root) {
   });
   document.addEventListener('pointerleave', () => tipOf()?.classList.remove('on'));
   document.addEventListener('pointerdown', () => tipOf()?.classList.remove('on'));
+  // Pekskärm: långt tryck (450 ms) på något med data-tip visar tipset vid elementet, och klicket som följer sväljs
+  let press = null;
+  let swallow = false;
+  const endPress = () => {
+    if (press) clearTimeout(press.timer);
+    press = null;
+  };
+  document.addEventListener('pointerdown', (e) => {
+    endPress();
+    swallow = false;
+    if (e.pointerType !== 'touch') return;
+    const el = e.target.closest?.('[data-tip]');
+    if (!el) return;
+    press = {
+      x: e.clientX,
+      y: e.clientY,
+      timer: setTimeout(() => {
+        press = null;
+        const tip = tipOf();
+        if (!tip || !el.isConnected) return;
+        swallow = true;
+        tip.innerHTML = el.dataset.tip;
+        tip.classList.add('on');
+        const r = UI.root.getBoundingClientRect();
+        const b = el.getBoundingClientRect();
+        const w = tip.offsetWidth;
+        const h = tip.offsetHeight;
+        const x = Math.min(Math.max(6, b.left + b.width / 2 - w / 2 - r.left), r.width - w - 6);
+        let y = b.top - r.top - h - 10;
+        if (y < 6) y = b.bottom - r.top + 10;
+        tip.style.left = Math.max(6, x) + 'px';
+        tip.style.top = Math.max(6, Math.min(y, r.height - h - 6)) + 'px';
+      }, 450),
+    };
+  });
+  document.addEventListener('pointermove', (e) => {
+    if (press && Math.hypot(e.clientX - press.x, e.clientY - press.y) > 10) endPress();
+  });
+  document.addEventListener('pointerup', endPress);
+  document.addEventListener('pointercancel', endPress);
+  window.addEventListener(
+    'click',
+    (e) => {
+      if (!swallow) return;
+      swallow = false;
+      e.stopPropagation();
+      e.preventDefault();
+    },
+    true,
+  );
+  document.addEventListener('contextmenu', (e) => {
+    if (swallow) e.preventDefault();
+  });
 }
 
 // ── Toast ──
 const TOAST_ICON = { info: 'info', good: 'check', bad: 'bug', platform: 'gamepad', award: 'trophy', research: 'flask', money: 'money', hire: 'team' };
 const TOAST_COL = { info: 'var(--accent)', good: 'var(--good)', bad: 'var(--bug)', platform: 'var(--design)', award: 'var(--gold)', research: 'var(--rp)', money: 'var(--money)', hire: 'var(--fans)' };
+const narrow = () => typeof matchMedia !== 'undefined' && matchMedia('(max-width: 760px)').matches;
+// Mobil: notiserna läggs under utvecklingspanelen i stället för över den (följer panelens höjd)
+let dpSeen = null;
+const ro = typeof ResizeObserver !== 'undefined' ? new ResizeObserver(() => placeToasts()) : null;
+function placeToasts() {
+  const box = $('#toasts');
+  const dp = $('#devpanel');
+  if (!box) return;
+  if (ro && dp && dp !== dpSeen) {
+    if (dpSeen) ro.unobserve(dpSeen);
+    ro.observe(dp);
+    dpSeen = dp;
+  }
+  const on = narrow() && dp && dp.classList.contains('on') && dp.offsetHeight;
+  box.style.top = on ? dp.offsetTop + dp.offsetHeight + 8 + 'px' : '';
+}
+const dropToast = (el) => {
+  if (el.classList.contains('out')) return;
+  el.classList.add('out');
+  setTimeout(() => el.remove(), 380);
+};
 export function toast(text, kind = 'info', ms = 5200) {
   const box = $('#toasts');
   if (!box) return;
+  // samma text igen: låt den gamla försvinna så att den nya hamnar sist
+  for (const o of box.children) if (o.dataset.txt === text) o.remove();
   const el = document.createElement('div');
   el.className = 'toast glass';
+  el.dataset.txt = text;
   el.style.setProperty('--c', TOAST_COL[kind] || TOAST_COL.info);
   el.innerHTML = `<div class="ti">${icon(TOAST_ICON[kind] || 'info')}</div><div>${text}</div>`;
+  el.addEventListener('click', () => dropToast(el)); // tryck bort
   box.appendChild(el);
-  while (box.children.length > 5) box.firstChild.remove();
-  setTimeout(() => {
-    el.classList.add('out');
-    setTimeout(() => el.remove(), 380);
-  }, ms);
+  const max = narrow() ? 2 : 3;
+  const live = [...box.children].filter((c) => !c.classList.contains('out'));
+  for (const o of live.slice(0, Math.max(0, live.length - max))) dropToast(o);
+  placeToasts();
+  setTimeout(() => dropToast(el), ms);
 }
 
 // Felsvar från simulatorn: översatt text, en strängnyckel, en kort kod ('money', 'invalid' …) eller false

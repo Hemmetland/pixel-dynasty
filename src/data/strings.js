@@ -281,11 +281,13 @@ export const STRINGS = {
   'res.title': ['Forskning', 'Research'],
   'res.rp': ['Poäng', 'Points'],
   'res.slots': ['Platser', 'Slots'],
-  'res.idle': ['Inget pågår. Välj något i trädet nedan.', 'Nothing in progress. Pick something in the tree below.'],
+  'res.idle': ['Inget pågår. Välj något nedan.', 'Nothing in progress. Pick something below.'],
   'res.onlyAvail': ['Bara möjliga', 'Available only'],
   'res.done': ['Klar', 'Done'],
   'res.from': ['Från {y}', 'From {y}'],
   'res.needs': ['Kräver', 'Requires'],
+  'res.start': ['Starta forskning', 'Start research'],
+  'res.running': ['Pågår', 'In progress'],
 
   // ── Personal ──
   'staff.title': ['Team', 'Team'],

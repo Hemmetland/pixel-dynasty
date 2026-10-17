@@ -17,7 +17,12 @@ await page.evaluate(() => {
   S.startProject(G, { title: 'Triangle Test', topic: 'fantasy', genre: 'rpg', platform: 'pc', scope: 'small', audience: 'everyone' });
   app.turbo = 30; app.setSpeed(3);
 });
-for (let i = 0; i < 60; i++) { await page.waitForTimeout(250); if (await page.$('[data-act="p-go"]')) break; }
+// slumpade händelser kan komma före fasprompten: svara på dem och vänta vidare
+for (let i = 0; i < 80; i++) {
+  await page.waitForTimeout(250);
+  if (await page.$('[data-act="p-go"]')) break;
+  await page.evaluate(() => document.querySelector('[data-act="ev-ok"], [data-act="ev-pick"]')?.click());
+}
 await page.evaluate(() => { window.__pd.turbo = 1; });
 await page.waitForTimeout(500);
 await page.screenshot({ path: '.shots/phase2.png' });
