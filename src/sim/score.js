@@ -48,6 +48,12 @@ export function idealFocus(G, genre, phase, genre2) {
 export function defaultFocus(G, genre, genre2) {
   return [0, 1, 2].map((p) => idealFocus(G, genre, p, genre2));
 }
+// Startfördelningen för ett nytt projekt: genrens ideal först när du har lärt dig det (släppt ett spel i genren),
+// annars jämnt fördelat. Att hitta idealet är en del av spelet, inte en gratis förinställning.
+export const focusKnown = (G, genre) => !!G.know.focus[genre];
+export function startFocus(G, genre, genre2) {
+  return focusKnown(G, genre) ? defaultFocus(G, genre, genre2) : [0, 1, 2].map((p) => normFocus(phaseCats(G, p), {}));
+}
 // Hur väl valet matchar genrens ideal. 1 = perfekt.
 export function focusFit(G, job) {
   const fits = [];
@@ -128,7 +134,7 @@ function roundHalf(x) {
 }
 // Betygstak per storlek (se "Små spel kan aldrig bli mästerverk" nedan). Taket styr också hur mycket
 // de första åren ger: ett litet spel landar kring 6–7 och första "succén" (7,5+) kommer med kontoret.
-const SCOPE_CAP = { small: 6.9, medium: 8.7, large: 9.2, aaa: 10 };
+const SCOPE_CAP = { small: 7.0, medium: 8.7, large: 9.2, aaa: 10 };
 
 export function evaluate(G, job) {
   const year = yearOf(G.t);

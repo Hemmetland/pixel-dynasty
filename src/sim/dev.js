@@ -10,7 +10,7 @@ import { SCOPE_TEMPO } from './tempo.js';
 import { DIFFICULTY } from './state.js';
 import { workers, moodMult, fatigueMult } from './people.js';
 import { bugMult, qaFixMult, mktCostMult, mktHypeMult, serverMult, labMult, spend } from './studio.js';
-import { phaseCats, normFocus, defaultFocus, evaluate, compatOf, parPerTick } from './score.js';
+import { phaseCats, normFocus, startFocus, evaluate, compatOf, parPerTick } from './score.js';
 import { startSales } from './sales.js';
 
 export const RP_RATE = 0.05;
@@ -38,6 +38,7 @@ export function startProject(G, cfg) {
   const sc = SCOPES[scope];
   const sequel = cfg.sequelOf ? G.games.find((g) => g.id === cfg.sequelOf) : null;
   const engine = cfg.engineId ? G.engines.find((e) => e.id === cfg.engineId) : null;
+  const f0 = startFocus(G, genre, cfg.genre2);
   const job = {
     kind: 'game',
     id: G.uid++,
@@ -52,11 +53,7 @@ export function startProject(G, cfg) {
     polishTicks: sc.polish * TICKS_PER_WEEK,
     polishDone: 0,
     phase: 0,
-    focus: [
-      normFocus(phaseCats(G, 0), cfg.focus0 || defaultFocus(G, genre, cfg.genre2)[0]),
-      normFocus(phaseCats(G, 1), defaultFocus(G, genre, cfg.genre2)[1]),
-      normFocus(phaseCats(G, 2), defaultFocus(G, genre, cfg.genre2)[2]),
-    ],
+    focus: [normFocus(phaseCats(G, 0), cfg.focus0 || f0[0]), normFocus(phaseCats(G, 1), f0[1]), normFocus(phaseCats(G, 2), f0[2])],
     D: 0, T: 0, bugs: 0, hype: baseHype(G) + (sequel ? Math.min(18, sequel.score * 1.6) : 0),
     marketing: [],
     crunch: false,

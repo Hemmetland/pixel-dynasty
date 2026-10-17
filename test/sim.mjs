@@ -81,7 +81,8 @@ function handlePending(G) {
     const p = G.pending[0];
     if (p.type === 'phase') {
       const J = G.job;
-      if (!casual && (!mid || Math.random() < 0.6)) S.setPhaseFocus(G, p.phase, S.idealFocus(G, J.genre, p.phase, J.genre2));
+      // Idealfördelningen är bara känd för genrer man redan har släppt spel i (annars ligger den jämna kvar).
+      if (!casual && S.focusKnown(G, J.genre) && (!mid || Math.random() < 0.6)) S.setPhaseFocus(G, p.phase, S.idealFocus(G, J.genre, p.phase, J.genre2));
       G.pending.shift();
     } else if (p.type === 'report') {
       const g = S.releaseGame(G);

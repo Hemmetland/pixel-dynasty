@@ -170,7 +170,7 @@ export const STRINGS = {
   'wiz.noEngine': ['Ingen', 'None'],
   'wiz.focusTitle': ['Fokus', 'Focus'],
   'wiz.focusHelp': ['Dra i triangeln för att fördela arbetet. Varje genre vill ha sin egen balans.', 'Drag the triangle to split the work. Every genre wants its own balance.'],
-  'wiz.focusUnknown': ['Idealfördelningen är okänd. Släpp ett spel i genren för att lära dig den.', 'The ideal mix is unknown. Release a game in this genre to learn it.'],
+  'wiz.focusUnknown': ['Idealfördelningen är okänd, så reglagen börjar jämnt. Genrens beskrivning ger en ledtråd, och efter ett släppt spel i genren vet du.', 'The ideal mix is unknown, so the sliders start even. The genre description gives a hint, and after releasing a game in this genre you will know.'],
   'wiz.useIdeal': ['Genrens ideal', 'Genre ideal'],
   'wiz.even': ['Jämnt', 'Even'],
   'wiz.start': ['Starta utveckling', 'Start development'],

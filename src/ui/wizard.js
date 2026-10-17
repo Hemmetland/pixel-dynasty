@@ -8,7 +8,7 @@ import { PHASES } from '../data/categories.js';
 import { PLATFORMS, PLATFORM, potential, platTier, techMult, pcGeneration } from '../data/platforms.js';
 import { SCOPES, SCOPE_IDS, AUDIENCES, yearOf, yfOf, engineMult } from '../sim/const.js';
 import { startProject, platformOpen, teamOutput, baseHype } from '../sim/dev.js';
-import { phaseCats, idealFocus, normFocus, techWeight, platFit, defaultFocus } from '../sim/score.js';
+import { phaseCats, idealFocus, normFocus, techWeight, platFit, startFocus } from '../sim/score.js';
 import { buyLicense, licenseCost } from '../sim/actions.js';
 import { randomTitle, trendWeeksLeft } from '../sim/market.js';
 import { focusHTML, bindFocus } from './focus.js';
@@ -295,7 +295,7 @@ function prefill(G) {
     const rt = randomTitle(Math.random);
     W.title = rt[lang];
   }
-  if (!W.focus) W.focus = defaultFocus(G, W.genre, W.genre2)[0];
+  if (!W.focus) W.focus = startFocus(G, W.genre, W.genre2)[0];
 }
 
 act('w-topic', (el) => {
