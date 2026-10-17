@@ -20,11 +20,48 @@ const W = {};
 function reset(G) {
   Object.assign(W, {
     step: 0, title: '', topic: null, genre: null, genre2: null, platform: null, audience: 'everyone', scope: 'small', engineId: null, sequelOf: null,
-    focus: null, titleAuto: true,
+    focus: null, titleAuto: true, G, used: false,
   });
   const best = bestPlatform(G);
   W.platform = best;
   W.audience = G.u.aud.includes('everyone') ? 'everyone' : G.u.aud[0];
+  // Samma storlek, målgrupp och plattform som förra spelet, så länge de går att välja
+  const last = G.games.at(-1);
+  if (!last) return;
+  if (G.u.scopes.includes(last.scope)) W.scope = last.scope;
+  if (G.u.aud.includes(last.audience)) W.audience = last.audience;
+  if (G.licenses.includes(last.platform) && platformOpen(G, last.platform)) W.platform = last.platform;
+  fitScope(G);
+}
+// Plattformen måste klara storleken: byt till den bästa plattformen, annars till Liten
+function fitScope(G) {
+  const year = yearOf(G.t);
+  const ok = () => platTier(PLATFORM[W.platform], year) >= SCOPES[W.scope].minTier;
+  if (!ok()) W.platform = bestPlatform(G);
+  if (!ok()) W.scope = 'small';
+}
+// Utkastet ligger kvar när guiden stängs. Börja om efter en start, i ett annat spel eller när temat/genren inte längre finns.
+function keepDraft(G) {
+  if (W.G !== G || W.used) return false;
+  const u = G.u;
+  if ((W.topic && !u.topics.includes(W.topic)) || (W.genre && !u.genres.includes(W.genre))) return false;
+  if (W.genre2 && !(u.flags.genre2 && u.genres.includes(W.genre2))) return false;
+  if (W.sequelOf && !G.games.some((g) => g.id === W.sequelOf)) return false;
+  if (!platformOpen(G, W.platform)) W.platform = bestPlatform(G);
+  if (!u.scopes.includes(W.scope)) W.scope = 'small';
+  if (!u.aud.includes(W.audience)) W.audience = u.aud.includes('everyone') ? 'everyone' : u.aud[0];
+  if (W.engineId && !G.engines.some((e) => e.id === W.engineId)) W.engineId = null;
+  const cats = phaseCats(G, 0);
+  if (W.focus && cats.some((c) => W.focus[c] == null)) W.focus = normFocus(cats, W.focus);
+  if (W.step === 2 && !G.licenses.includes(W.platform)) W.step = 1;
+  return true;
+}
+// Nytt steg: börja högst upp i stället för på förra stegets rullning
+function toStep(i) {
+  W.step = i;
+  UI.refresh();
+  const b = $('[data-keep="body"]');
+  if (b) b.scrollTop = 0;
 }
 function bestPlatform(G) {
   const yf = yfOf(G.t);
@@ -260,7 +297,7 @@ regWin({
       W.keep = false;
       return;
     }
-    reset(G);
+    if (!keepDraft(G)) reset(G);
   },
 });
 
@@ -306,6 +343,13 @@ act('w-topic', (el) => {
   if (W.titleAuto) W.title = '';
   prefill(G);
   UI.refresh();
+  // Ingen genre vald och genrerna ligger utanför bild (lång lista, telefon): rulla fram dem
+  const b = $('[data-keep="body"]');
+  const sec = $('.tiles.g', b || undefined)?.parentElement;
+  if (!W.genre && b && sec) {
+    const top = sec.getBoundingClientRect().top - b.getBoundingClientRect().top;
+    if (top > b.clientHeight - 90) b.scrollTo({ top: b.scrollTop + top - 8, behavior: 'smooth' });
+  }
 });
 act('w-genre', (el) => {
   const G = UI.app.G;
@@ -379,19 +423,16 @@ act('w-go', (el) => {
   const G = UI.app.G;
   if (i > 0 && !(W.topic && W.genre)) return;
   if (i > 1 && !G.licenses.includes(W.platform)) return;
-  W.step = i;
   prefill(G);
-  UI.refresh();
+  toStep(i);
 });
 act('w-prev', () => {
-  W.step = Math.max(0, W.step - 1);
-  UI.refresh();
+  toStep(Math.max(0, W.step - 1));
 });
 act('w-next', () => {
   const G = UI.app.G;
   prefill(G);
-  W.step = Math.min(2, W.step + 1);
-  UI.refresh();
+  toStep(Math.min(2, W.step + 1));
 });
 act('w-ideal', () => {
   const G = UI.app.G;
@@ -417,6 +458,7 @@ act('w-start', () => {
     r.hype = Math.min(100, r.hype + G.flags.hypeNext);
     G.flags.hypeNext = 0;
   }
+  W.used = true;
   UI.close(true);
   sfx.play('start');
   toast(t('toast.started', { title: `<b>${esc(r.title)}</b>` }), 'good');
