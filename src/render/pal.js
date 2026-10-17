@@ -65,12 +65,12 @@ const DEV_WALLS = [
   { wall: '#e8bc9a', wall2: '#dcae8a', dado: '#5a4a5e', trim: '#9a7a78', light: [1, 0.76, 0.52] },
 ];
 const FAC_WALLS = [
-  { wall: '#8cc0bc', wall2: '#7eb2ae', dado: '#2e5a62', trim: '#5a9a9a', light: [0.8, 1, 0.92] },
-  { wall: '#b4a4d8', wall2: '#a696cc', dado: '#4a3e78', trim: '#8a7ac0', light: [0.88, 0.78, 1] },
-  { wall: '#e2a894', wall2: '#d49a86', dado: '#7a4a48', trim: '#b87868', light: [1, 0.82, 0.7] },
-  { wall: '#a8c88a', wall2: '#9abc7c', dado: '#44603c', trim: '#7a9c68', light: [0.92, 1, 0.8] },
-  { wall: '#8cb4dc', wall2: '#7ea6d0', dado: '#2e4a70', trim: '#5a86b8', light: [0.8, 0.92, 1] },
-  { wall: '#e0cc88', wall2: '#d2be7a', dado: '#6a5a30', trim: '#a8924e', light: [1, 0.9, 0.6] },
+  { wall: '#6f9a98', wall2: '#648e8c', dado: '#26474e', trim: '#4a8888', light: [0.8, 1, 0.92] },
+  { wall: '#8c7ec0', wall2: '#8070b4', dado: '#3a3068', trim: '#7466aa', light: [0.88, 0.78, 1] },
+  { wall: '#b87e6c', wall2: '#aa7060', dado: '#603a3a', trim: '#98665a', light: [1, 0.82, 0.7] },
+  { wall: '#4a6a8c', wall2: '#40608a', dado: '#1c2c48', trim: '#4a76a8', light: [0.8, 0.92, 1] },
+  { wall: '#3a3458', wall2: '#322c4e', dado: '#1a1830', trim: '#6a58a8', light: [0.9, 0.7, 1] },
+  { wall: '#4f7a58', wall2: '#46704e', dado: '#223a2c', trim: '#6a9a6c', light: [0.92, 1, 0.8] },
 ];
 export const roomStyle = (type, v = 0) => {
   const base = ROOM_STYLE[type] || ROOM_STYLE.facility;

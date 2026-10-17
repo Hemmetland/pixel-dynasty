@@ -444,6 +444,7 @@ export function podChair(ctx, x, fy, c = '#8a5ae0') {
     const x0 = Math.round(8 - 8 * s);
     const arm = yy <= 2 || yy >= 14;
     const x1 = arm ? 13 : x0 + 3;
+    if (!arm) R(ctx, x + x1 + 1, top + yy, 13 - x1, 1, shade(c, -0.55)); // mörk insida så att stolen inte är ett tomt "C"
     R(ctx, x + x0, top + yy, x1 - x0 + 1, 1, c);
     R(ctx, x + x0, top + yy, 1, 1, shade(c, 0.45));
     if (!arm) R(ctx, x + x0 + 1, top + yy, 1, 1, shade(c, 0.2));

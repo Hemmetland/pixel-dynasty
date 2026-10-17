@@ -142,44 +142,6 @@ export function drawRoofGarden(ctx, L, opts) {
   hedge(ctx, 52, deck, 36, 8);
   tree(ctx, 112, deck, 2, 28);
   hedge(ctx, 18, deck, 2, 1);
-  // skylt på ben
-  // långa namn delas på två rader i stor stil, annars en rad som får plats
-  let lines = [name];
-  let sc = fitText(name, 100, 2).scale;
-  if (sc === 1) {
-    let cut = -1;
-    for (let i = 0; i < name.length; i++) if (name[i] === ' ' && (cut < 0 || Math.abs(i - name.length / 2) < Math.abs(cut - name.length / 2))) cut = i;
-    if (cut > 0 && textWidth(name.slice(0, cut), 2) <= 100 && textWidth(name.slice(cut + 1), 2) <= 100) {
-      lines = [name.slice(0, cut), name.slice(cut + 1)];
-      sc = 2;
-    } else lines = [fitText(name, 100, 1).text];
-  } else lines = [fitText(name, 100, 2).text];
-  const tw = Math.max(...lines.map((s) => textWidth(s, sc)));
-  const sw = tw + 40;
-  const sx = -Math.round(sw / 2);
-  const sy = deck - 40; // högre än räcket så att tvåradiga namn inte krockar med räcket
-  R(ctx, sx + 8, sy + 27, 3, deck - sy - 27, '#2a2f3c');
-  R(ctx, sx + sw - 11, sy + 27, 3, deck - sy - 27, '#2a2f3c');
-  R(ctx, sx - 1, sy - 1, sw + 2, 29, NEON.cyan);
-  R(ctx, sx, sy, sw, 27, '#0a0e1c');
-  R(ctx, sx + 1, sy + 1, sw - 2, 25, '#101a34');
-  R(ctx, sx + 1, sy + 1, sw - 2, 1, '#1e2c54');
-  R(ctx, sx, sy + 26, sw, 1, '#050810');
-  logoMark(ctx, sx + 6, sy + 6);
-  const tx0 = sx + 26;
-  if (lines.length === 2) {
-    lines.forEach((s, i) => {
-      drawText(ctx, s, tx0, sy + 4 + i * 11, '#1a8aa8', sc, null);
-      drawText(ctx, s, tx0, sy + 3 + i * 11, i ? '#ffd0f0' : '#e8fbff', sc);
-    });
-  } else {
-    const ty = sy + 6 + (sc === 1 ? 3 : 0);
-    drawText(ctx, lines[0], tx0, ty + 1, '#1a8aa8', sc);
-    drawText(ctx, lines[0], tx0, ty, '#e8fbff', sc);
-    R(ctx, tx0, sy + 19, tw, 1, NEON.magenta);
-    RA(ctx, tx0 - 1, sy + 18, tw + 2, 3, NEON.magenta, 0.25);
-  }
-  RA(ctx, sx - 3, sy - 3, sw + 6, 33, NEON.cyan, 0.1);
   // ljusslinga
   const { poles, pts } = stringPoints(topY, L.BW);
   for (const [px, py] of poles) {
@@ -197,6 +159,45 @@ export function drawRoofGarden(ctx, L, opts) {
     R(ctx, p.x, p.y + 1, 1, 2, BULB[i % BULB.length]);
     RA(ctx, p.x - 1, p.y, 3, 4, BULB[i % BULB.length], 0.28);
   });
+  // skylt på ben
+  // långa namn delas på två rader i stor stil, annars en rad som får plats
+  let lines = [name];
+  let sc = fitText(name, 100, 2).scale;
+  if (sc === 1) {
+    let cut = -1;
+    for (let i = 0; i < name.length; i++) if (name[i] === ' ' && (cut < 0 || Math.abs(i - name.length / 2) < Math.abs(cut - name.length / 2))) cut = i;
+    if (cut > 0 && textWidth(name.slice(0, cut), 2) <= 100 && textWidth(name.slice(cut + 1), 2) <= 100) {
+      lines = [name.slice(0, cut), name.slice(cut + 1)];
+      sc = 2;
+    } else lines = [fitText(name, 100, 1).text];
+  } else lines = [fitText(name, 100, 2).text];
+  const tw = Math.max(...lines.map((s) => textWidth(s, sc)));
+  const sw = tw + 40;
+  const sx = -Math.round(sw / 2);
+  const SH = lines.length === 2 ? 33 : 27; // tvåradiga skyltar är högre
+  const sy = deck - 40 - (SH - 27); // högre än räcket så att tvåradiga namn inte krockar med räcket
+  R(ctx, sx + 8, sy + SH, 3, deck - sy - SH, '#2a2f3c');
+  R(ctx, sx + sw - 11, sy + SH, 3, deck - sy - SH, '#2a2f3c');
+  R(ctx, sx - 1, sy - 1, sw + 2, SH + 2, NEON.cyan);
+  R(ctx, sx, sy, sw, SH, '#0a0e1c');
+  R(ctx, sx + 1, sy + 1, sw - 2, SH - 2, '#101a34');
+  R(ctx, sx + 1, sy + 1, sw - 2, 1, '#1e2c54');
+  R(ctx, sx, sy + SH - 1, sw, 1, '#050810');
+  logoMark(ctx, sx + 6, sy + 6);
+  const tx0 = sx + 26;
+  if (lines.length === 2) {
+    lines.forEach((s, i) => {
+      drawText(ctx, s, tx0, sy + 5 + i * 13, i ? '#7a2e66' : '#1a8aa8', sc, null);
+      drawText(ctx, s, tx0, sy + 4 + i * 13, i ? '#ffd0f0' : '#e8fbff', sc);
+    });
+  } else {
+    const ty = sy + 6 + (sc === 1 ? 3 : 0);
+    drawText(ctx, lines[0], tx0, ty + 1, '#1a8aa8', sc);
+    drawText(ctx, lines[0], tx0, ty, '#e8fbff', sc);
+    R(ctx, tx0, sy + 19, tw, 1, NEON.magenta);
+    RA(ctx, tx0 - 1, sy + 18, tw + 2, 3, NEON.magenta, 0.25);
+  }
+  RA(ctx, sx - 3, sy - 3, sw + 6, SH + 6, NEON.cyan, 0.1);
   // glasräcke längst fram
   const rl = -half + 2;
   const rr = half - 2;

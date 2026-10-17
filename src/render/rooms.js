@@ -55,9 +55,9 @@ DEF.lobby = {
     F.receptionDesk(ctx, rx + 39, fy, 36);
     if (env.opts.awards || env.opts.games.length) P.trophyShelf(ctx, rx + 32, fy - 2, env.opts.awards, env.opts.games);
     else {
-      V.frame(ctx, rx + 36, fy - 40, 8, 10, 2, 4);
-      V.frame(ctx, rx + 47, fy - 38, 12, 8, 0, 1);
-      V.frame(ctx, rx + 62, fy - 40, 10, 10, 4, 2);
+      V.frame(ctx, rx + 36, fy - 34, 8, 10, 2, 4);
+      V.frame(ctx, rx + 47, fy - 33, 12, 8, 0, 1);
+      V.frame(ctx, rx + 62, fy - 34, 10, 10, 4, 2);
     }
   },
 };
@@ -77,13 +77,13 @@ DEF.lounge = {
   },
   decor(ctx, r, fy) {
     const rx = r.x0;
-    F.fishTank(ctx, rx + 5, fy - 41, 30, 12);
+    F.fishTank(ctx, rx + 5, fy - 33, 30, 12);
     F.rug(ctx, rx + 1, fy, 52, '#3a2a62', '#a08adc');
     F.sofa(ctx, rx + 2, fy, 30, '#3a9a5a', '#f2c84a');
     F.armchair(ctx, rx + 34, fy, '#2fb0b8');
     F.floorLamp(ctx, rx + 51, fy, 38);
     F.beanbag(ctx, rx + 53, fy, 13, '#ff8a4a');
-    F.neonPad(ctx, rx + 34, fy - 45, NEON.magentaHi, NEON.magenta);
+    F.neonPad(ctx, rx + 44, fy - 36, NEON.magentaHi, NEON.magenta);
     V.plantHang(ctx, rx + 58, fy - 47, 4, 10, 2);
   },
 };
@@ -106,10 +106,10 @@ DEF.dev = {
       V.frame(ctx, rx + 114, fy - 37, 8, 8, f + 4, 9 + f);
     }
     V.wallShelf(ctx, rx + 104, fy - 24, 20, f === 0 ? 'bpc' : 'cbp', 3 + f);
-    V.wallClock(ctx, rx + 150, fy - 38);
-    V.plantHang(ctx, rx + 31, fy - 45, 3, 12, 1 + f);
-    V.plantHang(ctx, rx + 94, fy - 45, 3, 11, 4 + f);
-    F.trashBin(ctx, rx + 151, fy);
+    V.wallClock(ctx, rx + 140, fy - 38);
+    V.plantHang(ctx, rx + 22, fy - 45, 3, 8, 1 + f);
+    V.plantHang(ctx, rx + 113, fy - 45, 3, 8, 4 + f);
+    F.trashBin(ctx, rx + 143, fy);
   },
 };
 
@@ -122,7 +122,7 @@ DEF.meeting = {
     { kind: 'board', x: rx + 12, dir: 1, pose: 'present' },
     { kind: 'stand', x: rx + 83, dir: -1, pose: 'stand' },
   ],
-  pendants: (rx) => [{ x: rx + 33, kind: 'cone' }, { x: rx + 55, kind: 'cone' }],
+  pendants: (rx) => [{ x: rx + 20, kind: 'cone' }, { x: rx + 72, kind: 'cone' }],
   wallArt(ctx, rx, w, fy) {
     for (let x = 2; x < w - 2; x += 9) R(ctx, rx + x, fy - 44, 8, 32, x % 18 ? '#52729a' : '#4a6a90');
     for (let x = 2; x < w - 2; x += 9) R(ctx, rx + x + 8, fy - 44, 1, 32, 'rgba(0,0,0,0.2)');
@@ -169,14 +169,14 @@ DEF.kitchen = {
   },
   decor(ctx, r, fy) {
     const rx = r.x0;
-    F.fridge(ctx, rx + 2, fy);
+    F.fridge(ctx, rx + 4, fy);
     F.kitchenCounter(ctx, rx + 17, fy, 36);
     F.espresso(ctx, rx + 21, fy - 16);
     R(ctx, rx + 36, fy - 21, 9, 5, '#2a2f3c');
     R(ctx, rx + 37, fy - 20, 5, 3, '#10202a');
     R(ctx, rx + 43, fy - 20, 1, 3, '#ffe27a');
     F.mug(ctx, rx + 47, fy - 16, '#4a90e0');
-    V.wallClock(ctx, rx + 5, fy - 44);
+    V.wallClock(ctx, rx + 11, fy - 44);
   },
 };
 
@@ -222,24 +222,74 @@ DEF.whiteboard = {
 
 // Tom anläggningsplats: inredning tills något byggs. v = platsnummer.
 function emptySlot(ctx, rx, fy, v) {
-  const k = v % 3;
+  const k = v % 6;
   if (k === 0) { // kopierings- och förråd
     F.copier(ctx, rx + 6, fy);
     F.boxes(ctx, rx + 28, fy);
     F.trashBin(ctx, rx + 43, fy);
     V.wallShelf(ctx, rx + 4, fy - 32, 22, 'bbc', 4 + v);
     V.frame(ctx, rx + 32, fy - 40, 13, 9, 5, 3 + v);
+    V.neonLine(ctx, rx + 4, fy - 44, 46, NEON.cyanHi, NEON.cyan);
   } else if (k === 1) { // läshörna
     P.bookshelf(ctx, rx + 4, fy, 20, 36, 4 + v);
     F.rug(ctx, rx + 24, fy, 28, '#6a3a4a', '#e8a05a');
     F.armchair(ctx, rx + 28, fy, '#4a9ac8');
     F.floorLamp(ctx, rx + 46, fy, 34);
     V.plantHang(ctx, rx + 34, fy - 47, 4, 9, 3);
-  } else { // pausplats
+    V.frame(ctx, rx + 30, fy - 40, 9, 11, 2, 6);
+  } else if (k === 2) { // pausplats
     F.waterCooler(ctx, rx + 6, fy);
     P.vending(ctx, rx + 20, fy);
     V.plantFloor(ctx, rx + 39, fy, 22, 5, '#c8643a');
     V.frame(ctx, rx + 6, fy - 40, 11, 12, 3 + v, 7 + v);
+    V.neonLine(ctx, rx + 20, fy - 44, 30, NEON.magentaHi, NEON.magenta);
+  } else if (k === 3) { // gym: löpband och hantlar
+    F.rug(ctx, rx + 2, fy, 52, '#2a3a4a', '#5aa0c8');
+    R(ctx, rx + 5, fy - 3, 26, 3, '#222633');
+    R(ctx, rx + 6, fy - 4, 24, 1, '#4a5268');
+    R(ctx, rx + 6, fy - 4, 3, 1, '#2a2f3c');
+    R(ctx, rx + 28, fy - 26, 2, 22, '#4a5268');
+    R(ctx, rx + 24, fy - 31, 10, 6, '#161a28');
+    R(ctx, rx + 25, fy - 30, 8, 3, NEON.cyan);
+    R(ctx, rx + 26, fy - 29, 3, 1, '#c8faff');
+    R(ctx, rx + 21, fy - 19, 8, 1, '#8a92a8');
+    R(ctx, rx + 21, fy - 19, 1, 6, '#6a7288');
+    R(ctx, rx + 37, fy - 12, 16, 2, '#3a4054');
+    R(ctx, rx + 38, fy - 10, 2, 10, '#2a2f3c');
+    R(ctx, rx + 50, fy - 10, 2, 10, '#2a2f3c');
+    for (let i = 0; i < 4; i++) {
+      R(ctx, rx + 38 + i * 4, fy - 17, 3, 5, i % 2 ? '#e8504a' : '#4a90e0');
+      R(ctx, rx + 38 + i * 4, fy - 17, 3, 1, 'rgba(255,255,255,0.4)');
+    }
+    R(ctx, rx + 44, fy - 5, 8, 2, '#8a5ae0');
+    V.frame(ctx, rx + 6, fy - 42, 14, 8, 1, 8);
+    V.neonLine(ctx, rx + 4, fy - 45, 48, NEON.green, NEON.green);
+  } else if (k === 4) { // arkad
+    V.neonText(ctx, 'PLAY', rx + 17, fy - 42, NEON.yellow, NEON.orange);
+    [[rx + 5, NEON.magenta, '#5cf2a0', '#ffe27a'], [rx + 22, NEON.cyan, '#ff6a6a', '#c8faff']].forEach(([x, mq, p1, p2]) => {
+      R(ctx, x, fy - 30, 14, 30, '#1c1f33');
+      R(ctx, x, fy - 30, 14, 1, '#3a4262');
+      R(ctx, x, fy - 30, 14, 5, mq);
+      R(ctx, x + 1, fy - 29, 12, 1, 'rgba(255,255,255,0.45)');
+      R(ctx, x + 2, fy - 23, 10, 9, '#0a1a2c');
+      R(ctx, x + 3, fy - 21, 2, 2, p1);
+      R(ctx, x + 7, fy - 18, 2, 2, p2);
+      R(ctx, x + 5, fy - 16, 4, 1, p1);
+      R(ctx, x + 1, fy - 12, 12, 3, '#2a2f50');
+      R(ctx, x + 3, fy - 11, 1, 1, '#ff5a5a');
+      R(ctx, x + 6, fy - 11, 1, 1, '#ffe27a');
+      R(ctx, x + 9, fy - 11, 1, 1, '#5cf2a0');
+      RA(ctx, x - 2, fy - 31, 18, 36, mq, 0.08);
+    });
+    F.beanbag(ctx, rx + 40, fy, 14, '#4a90e0');
+  } else { // växthus: palmer och växtlampa
+    R(ctx, rx + 4, fy - 44, 50, 2, '#ff7ad8');
+    RA(ctx, rx + 2, fy - 43, 54, 26, '#ff7ad8', 0.07);
+    V.palm(ctx, rx + 12, fy, 38, 2);
+    V.plantFloor(ctx, rx + 31, fy, 26, 3, '#c8643a');
+    V.plantFloor(ctx, rx + 44, fy, 20, 4, '#4a5a78');
+    V.plantHang(ctx, rx + 22, fy - 42, 3, 12, 5);
+    V.plantSmall(ctx, rx + 50, fy - 0, 2, '#e8a05a');
   }
 }
 
@@ -490,8 +540,10 @@ export function drawShellV2(ctx, L, opts) {
     const t1 = 'GOOD IDEAS ';
     const t2 = 'BUILD GREAT THINGS';
     const nx = Math.round(lob.x0 + 6);
-    V.neonText(ctx, t1, nx, -V2.found - 45, NEON.cyanHi, NEON.cyan);
-    V.neonText(ctx, t2, nx + textWidth(t1), -V2.found - 45, NEON.magentaHi, NEON.magenta);
+    const ny = -V2.found - 42;
+    R(ctx, nx - 3, ny - 2, textWidth(t1 + t2) + 6, 9, '#0a1220');
+    V.neonText(ctx, t1, nx, ny, NEON.cyanHi, NEON.cyan);
+    V.neonText(ctx, t2, nx + textWidth(t1), ny, NEON.magentaHi, NEON.magenta);
     // fasadskylt: blå neon i bjälklaget mellan våning 1 och 2
     const by = -V2.found - 2 * pitch;
     R(ctx, BAND_X - 3, by, textWidth(BAND_SIGN) + 6, 6, '#0a1220');
