@@ -1,6 +1,7 @@
 import { roomStyle, NEON, GRAPH } from './pal.js';
 import { shade } from '../core/util.js';
-import { textWidth } from './font.js';
+import { textWidth, drawText } from './font.js';
+import { lang } from '../core/i18n.js';
 import * as P from './props.js';
 import * as V from './props2.js';
 import * as F from './furniture.js';
@@ -55,9 +56,9 @@ DEF.lobby = {
     F.receptionDesk(ctx, rx + 39, fy, 36);
     if (env.opts.awards || env.opts.games.length) P.trophyShelf(ctx, rx + 32, fy - 2, env.opts.awards, env.opts.games);
     else {
-      V.frame(ctx, rx + 36, fy - 34, 8, 10, 2, 4);
-      V.frame(ctx, rx + 47, fy - 33, 12, 8, 0, 1);
-      V.frame(ctx, rx + 62, fy - 34, 10, 10, 4, 2);
+      V.frame(ctx, rx + 36, fy - 29, 8, 10, 2, 4);
+      V.frame(ctx, rx + 47, fy - 28, 12, 8, 0, 1);
+      V.frame(ctx, rx + 62, fy - 29, 10, 10, 4, 2);
     }
   },
 };
@@ -265,7 +266,7 @@ function emptySlot(ctx, rx, fy, v) {
     V.frame(ctx, rx + 6, fy - 42, 14, 8, 1, 8);
     V.neonLine(ctx, rx + 4, fy - 45, 48, NEON.green, NEON.green);
   } else if (k === 4) { // arkad
-    V.neonText(ctx, 'PLAY', rx + 17, fy - 42, NEON.yellow, NEON.orange);
+    V.neonText(ctx, 'PLAY', rx + 17, fy - 37, NEON.yellow, NEON.orange);
     [[rx + 5, NEON.magenta, '#5cf2a0', '#ffe27a'], [rx + 22, NEON.cyan, '#ff6a6a', '#c8faff']].forEach(([x, mq, p1, p2]) => {
       R(ctx, x, fy - 30, 14, 30, '#1c1f33');
       R(ctx, x, fy - 30, 14, 1, '#3a4262');
@@ -439,6 +440,39 @@ function partition(ctx, x, fy, intH, kind, c = '#9fd6ff') {
   }
 }
 
+// Rummens namnskyltar (som i referensbilden). [sv, en]. Rum utan egen skylt (lobbyn har en stor neonskylt) hoppas över.
+const ROOM_NAMES = {
+  lounge: ['PAUS & LOUNGE', 'LOUNGE'],
+  meeting: ['MÖTESRUM', 'MEETING ROOM'],
+  kitchen: ['KÖK', 'KITCHEN'],
+  server: ['SERVER', 'SERVERS'],
+  whiteboard: ['KONCEPT & DESIGN', 'CONCEPT & DESIGN'],
+};
+const DEV_NAMES = [['PROGRAMMERING', 'PROGRAMMING'], ['ART & ANIMATION', 'ART & ANIMATION'], ['LJUD & MUSIK', 'AUDIO & MUSIC']];
+const FAC_EMPTY = [['FÖRRÅD', 'STORAGE'], ['BIBLIOTEK', 'LIBRARY'], ['PAUS', 'BREAK ROOM'], ['TRÄNING', 'GYM'], ['SPELRUM', 'ARCADE'], ['VÄXTHUS', 'GREENHOUSE']];
+const FAC_NAMES = { coffee: ['KAFFEBAR', 'COFFEE BAR'], lab: ['FORSKNING', 'RESEARCH'], qa: ['TEST & QA', 'TEST & QA'], training: ['UTBILDNING', 'TRAINING'], gameroom: ['SPELRUM', 'GAME ROOM'], marketing: ['MARKNAD', 'MARKETING'], server: ['SERVER & ONLINE', 'SERVER & ONLINE'] };
+function roomName(r, fac) {
+  const i = lang === 'en' ? 1 : 0;
+  if (r.type === 'dev') return DEV_NAMES[r.floor % DEV_NAMES.length][i];
+  if (r.type === 'facility') {
+    const f = fac && fac.get(r.slot);
+    return (f && FAC_NAMES[f.id] ? FAC_NAMES[f.id] : FAC_EMPTY[r.slot % FAC_EMPTY.length])[i];
+  }
+  const n = ROOM_NAMES[r.type];
+  return n ? n[i] : null;
+}
+function namePlate(ctx, r, fy, intH, fac) {
+  const name = roomName(r, fac);
+  if (!name) return;
+  const w = Math.min(r.w - 8, textWidth(name) + 5);
+  const x = r.x0 + 4;
+  const y = fy - intH + 1;
+  R(ctx, x, y, w, 7, '#0c1020');
+  R(ctx, x, y, w, 1, '#3a466e');
+  R(ctx, x, y + 6, w, 1, '#05070f');
+  drawText(ctx, name.length * 4 > w ? name.slice(0, Math.floor((w - 1) / 4)) : name, x + 3, y + 1, '#e4ecff');
+}
+
 export function drawShellV2(ctx, L, opts) {
   const { BW, IW, floors, pitch, intH, left } = L;
   const holes = [];
@@ -537,17 +571,22 @@ export function drawShellV2(ctx, L, opts) {
   }
   {
     const lob = L.rooms.find((r) => r.type === 'lobby');
-    const t1 = 'GOOD IDEAS ';
-    const t2 = 'BUILD GREAT THINGS';
     const nx = Math.round(lob.x0 + 6);
-    const ny = -V2.found - 42;
-    R(ctx, nx - 3, ny - 2, textWidth(t1 + t2) + 6, 9, '#0a1220');
-    V.neonText(ctx, t1, nx, ny, NEON.cyanHi, NEON.cyan);
-    V.neonText(ctx, t2, nx + textWidth(t1), ny, NEON.magentaHi, NEON.magenta);
+    // neonskylt i lobbyn på två rader så att den ryms i rummet utan att krocka med namnskyltarna
+    const l1 = 'GOOD IDEAS';
+    const l2 = 'BUILD GREAT THINGS';
+    const ny = -V2.found - 46;
+    R(ctx, nx - 3, ny - 2, textWidth(l2) + 6, 15, '#0a1220');
+    V.neonText(ctx, l1, nx, ny, NEON.cyanHi, NEON.cyan);
+    V.neonText(ctx, l2, nx, ny + 7, NEON.magentaHi, NEON.magenta);
     // fasadskylt: blå neon i bjälklaget mellan våning 1 och 2
     const by = -V2.found - 2 * pitch;
     R(ctx, BAND_X - 3, by, textWidth(BAND_SIGN) + 6, 6, '#0a1220');
     V.neonText(ctx, BAND_SIGN, BAND_X, by, NEON.cyanHi, NEON.cyan);
+  }
+  {
+    const fac = new Map(Object.entries(opts.fac || {}).map(([id, f]) => [f.slot, { id, lvl: f.lvl }]));
+    for (const r of L.rooms) namePlate(ctx, r, -V2.found - r.floor * pitch, intH, fac);
   }
   drawFacade(ctx, L, opts);
   drawRoofGarden(ctx, L, opts);

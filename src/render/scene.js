@@ -10,6 +10,7 @@ import { drawTextOutlined, drawText, textWidth } from './font.js';
 import { TOPIC } from '../data/topics.js';
 import { drawCat } from './props.js';
 import { yearOf, dateOf } from '../sim/const.js';
+import { lang } from '../core/i18n.js';
 import { glMethods } from './gl/scene-gl.js';
 
 const SCALES = [0.6, 0.75, 0.9, 1, 1.5, 2, 2.5, 3, 4, 5, 6];
@@ -150,7 +151,7 @@ export class Scene {
     const L = this.L;
     const era = eraOf(yearOf(G.t));
     const games = G.games.slice(-5).map((g) => ({ c1: TOPIC[g.topic].c1, c2: TOPIC[g.topic].c2 }));
-    const key = [G.office.tier, era, G.studio, G.awards.length, games.map((g) => g.c1).join(''), JSON.stringify(G.office.fac)].join('|');
+    const key = [lang, G.office.tier, era, G.studio, G.awards.length, games.map((g) => g.c1).join(''), JSON.stringify(G.office.fac)].join('|');
     if (key === this.staticKey && this.statics) return;
     this.staticKey = key;
     const w = L.W + 40;

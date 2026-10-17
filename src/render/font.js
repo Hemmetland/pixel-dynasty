@@ -12,17 +12,22 @@ const G = {
   '?': '110001010000010', ':': '000010000010000', '%': '101001010100101', $: '011110010011110', '/': '001001010100100',
   "'": '010010000000000', '&': '010101010101011', '#': '101111101111101', '*': '000101010101000', ' ': '000000000000000',
 };
+// Å, Ä, Ö och É: grundbokstav plus markering i raden ovanför.
+const DIACRITIC = { Å: ['A', [1]], Ä: ['A', [0, 2]], Ö: ['O', [0, 2]], É: ['E', [2]] };
 export function textWidth(s, scale = 1) {
   return Math.max(0, s.length * 4 - 1) * scale;
 }
 export function drawText(ctx, str, x, y, color, scale = 1, shadow = null) {
-  const s = String(str).toUpperCase().replace(/[ÅÄ]/g, 'A').replace(/Ö/g, 'O').replace(/É/g, 'E');
+  const s = String(str).toUpperCase();
   const pass = (ox, oy, c) => {
     ctx.fillStyle = c;
     let cx = x + ox;
     for (const ch of s) {
-      const g = G[ch] || G['?'];
+      const d = DIACRITIC[ch];
+      const g = G[d ? d[0] : ch] || G['?'];
       for (let i = 0; i < 15; i++) if (g[i] === '1') ctx.fillRect(cx + (i % 3) * scale, y + oy + Math.floor(i / 3) * scale, scale, scale);
+      // prickar, ring eller accent i raden ovanför
+      if (d) for (const dx of d[1]) ctx.fillRect(cx + dx * scale, y + oy - scale, scale, scale);
       cx += 4 * scale;
     }
   };
