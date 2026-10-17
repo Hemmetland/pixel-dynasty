@@ -195,8 +195,8 @@ export class Scene {
       if (room) g.rect(ox + room.x0, oy + l.y0, room.w, l.y1 - l.y0);
       else g.rect(ox + l.x - l.r, oy + l.y0, l.r * 2, l.y1 - l.y0);
       g.clip();
-      if (k === 0) glow(g, ox + l.x, oy + l.y + 10, l.r, (l.y1 - l.y0) * 0.7, rgb, 0.15 * l.i, 6);
-      else glow(g, ox + l.x, oy + l.y, l.r * 0.9, l.r * 0.7, rgb, 0.12 * l.i, 4);
+      if (k === 0) glow(g, ox + l.x, oy + l.y + 10, l.r, (l.y1 - l.y0) * 0.7, rgb, 0.2 * l.i, 6);
+      else glow(g, ox + l.x, oy + l.y, l.r * 0.9, l.r * 0.7, rgb, 0.16 * l.i, 4);
       g.restore();
     }
     this.windowGlow(g, ox, oy, 1, false);
@@ -579,7 +579,7 @@ export class Scene {
     const ambient = `rgb(${am[0] | 0},${am[1] | 0},${am[2] | 0})`;
     // Byggnadens insida lyses upp av lampor: ljusare ambient på natten.
     const k = clamp(night * 0.8, 0, 0.8);
-    const warm = [255, 230, 200];
+    const warm = L.v2 ? [196, 176, 164] : [255, 230, 200]; // Studiohuset: mörkare insida så att rumsljusen syns
     const ambientB = `rgb(${(am[0] + (warm[0] - am[0]) * k) | 0},${(am[1] + (warm[1] - am[1]) * k) | 0},${(am[2] + (warm[2] - am[2]) * k) | 0})`;
     const sx = this.shake > 0 && !this.reduced ? Math.round((Math.random() - 0.5) * 2 * this.shake * 2) : 0;
     const sy = this.shake > 0 && !this.reduced ? Math.round((Math.random() - 0.5) * 2 * this.shake * 2) : 0;
