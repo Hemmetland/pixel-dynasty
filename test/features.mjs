@@ -2,6 +2,7 @@
 import * as S from '../src/sim/index.js';
 import { RESEARCH } from '../src/data/research.js';
 import { EVENTS } from '../src/data/events.js';
+import { exportCode, importCode } from '../src/core/store.js';
 let fails = 0;
 const ok = (c, m) => { if (!c) { fails++; console.log('FAIL', m); } else console.log('ok  ', m); };
 const G = S.newGame({ studio: 'T', seed: 7, difficulty: 'normal' });
@@ -113,5 +114,26 @@ const json = JSON.stringify(G);
 const G4 = JSON.parse(json);
 for (let i = 0; i < 100; i++) { if (G4.pending.length) G4.pending.shift(); S.stepTick(G4); }
 ok(G4.t > G.t, 'sparad state går att fortsätta spela');
+// äldre sparningar: ett fält som saknas fylls i av migrate() och spelet går att köra två år utan NaN
+const M0 = S.newGame({ studio: 'M', seed: 4 }); S.makeCompetitors(M0); S.initWorld(M0);
+while (M0.t < 60) { M0.pending.length = 0; S.stepTick(M0); }
+const NESTED = ['u', 'perk', 'research', 'stats', 'office', 'month', 'lastMonth', 'know', 'hist', 'market'];
+const paths = Object.keys(M0).filter((k) => k !== 'staff').map((k) => [k]);
+for (const k of NESTED) for (const k2 of Object.keys(M0[k])) paths.push([k, k2]);
+const bad = [];
+for (const p of paths) {
+  const D = JSON.parse(JSON.stringify(M0));
+  delete (p.length > 1 ? D[p[0]] : D)[p[p.length - 1]];
+  try {
+    const L = importCode(exportCode(D));
+    for (let i = 0; i < 48 * 2 * S.TICKS_PER_WEEK; i++) {
+      while (L.pending.length) { const q = L.pending[0]; if (q.type === 'event') S.resolveEvent(L, q.id, 0); else L.pending.shift(); }
+      if (!L.job) S.startProject(L, { title: 'x', topic: L.u.topics[0], genre: 'action', platform: 'pc', scope: 'small', audience: 'everyone' });
+      S.stepTick(L);
+    }
+    if (!Number.isFinite(L.money) || !Number.isFinite(L.fans) || L.staff.some((x) => !Number.isFinite(x.mood)) || L.games.some((g) => !Number.isFinite(g.score))) bad.push(p.join('.') + ' NaN');
+  } catch (e) { bad.push(p.join('.') + ' ' + e.message); }
+}
+ok(!bad.length, `äldre sparning utan ett av ${paths.length} fält går att spela vidare` + (bad.length ? ': ' + bad.join(', ') : ''));
 console.log(fails ? `\n${fails} FEL` : '\nAlla tester gick bra');
 process.exit(fails ? 1 : 0);

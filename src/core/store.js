@@ -1,4 +1,4 @@
-import { SAVE_VERSION } from '../sim/state.js';
+import { SAVE_VERSION, DIFFICULTY, newGame } from '../sim/state.js';
 import { migrateLooks } from '../sim/people.js';
 
 const KEY = 'pixel-dynasty-save-v1';
@@ -84,6 +84,18 @@ function migrate(G) {
   G.hist = G.hist || { cash: [], revenue: [], fans: [] };
   G.market = G.market || { releases: [], trend: { genre: [], topic: [] } };
   G.uid = G.uid || 1000;
+  G.staff = G.staff || [];
+  G.nextId = G.nextId || 1 + Math.max(1, ...G.staff.map((s) => s.id), ...(G.candidates || []).map((c) => c.id));
+  // Fyll i fält som saknas i äldre sparningar ur en ny mall (en nivå ner); befintliga värden och personal rörs inte
+  const T = newGame({ seed: G.seed ?? 1, difficulty: DIFFICULTY[G.difficulty] ? G.difficulty : undefined, archetype: G.archetype });
+  for (const [k, v] of Object.entries(T)) {
+    if (k === 'staff') continue;
+    if (G[k] === undefined) G[k] = v;
+    else if (v && typeof v === 'object' && !Array.isArray(v) && G[k] && typeof G[k] === 'object' && !Array.isArray(G[k])) {
+      for (const [k2, v2] of Object.entries(v)) if (G[k][k2] === undefined) G[k][k2] = v2;
+    }
+  }
+  G.v = SAVE_VERSION;
   migrateLooks(G);
   return G;
 }
