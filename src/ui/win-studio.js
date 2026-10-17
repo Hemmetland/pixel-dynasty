@@ -1,4 +1,4 @@
-import { icon, t, L, UI, act, regWin, money, toast, bar } from './core.js';
+import { icon, t, L, UI, act, regWin, money, toast, errToast, bar } from './core.js';
 import { buildingPreview, eraOf } from '../render/building.js';
 import { FACILITIES, FAC_IDS, FAC_MAX, OFFICE_AVG_N, facLevel, facCost, facCount, tierOf, nextTier, officeReqs, canUpgradeOffice, upgradeOffice, buildFacility, rentOf, facUpkeep } from '../sim/studio.js';
 import { RESEARCH } from '../data/research.js';
@@ -119,7 +119,7 @@ act('st-up', () => {
 act('st-fac', (el) => {
   const G = UI.app.G;
   const r = buildFacility(G, el.dataset.id);
-  if (r !== true) toast(String(r), 'bad');
+  if (r !== true) errToast(r);
   else toast(t('toast.facility', { name: `<b>${L(FACILITIES[el.dataset.id].name)}</b>`, lvl: facLevel(G, el.dataset.id) }), 'good');
   UI.refresh();
 });

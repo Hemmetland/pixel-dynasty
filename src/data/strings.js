@@ -121,6 +121,7 @@ export const STRINGS = {
   'err.rp': ['Inte tillräckligt med forskningspoäng.', 'Not enough research points.'],
   'err.resSlots': ['Alla forskningsplatser är upptagna. Uppgradera labbet.', 'All research slots are busy. Upgrade the lab.'],
   'err.resLocked': ['Forska fram förutsättningarna först.', 'Research the prerequisites first.'],
+  'err.generic': ['Det går inte just nu.', 'That is not possible right now.'],
 
   // ── Nytt spel ──
   'wiz.head': ['Nytt spel', 'New game'],

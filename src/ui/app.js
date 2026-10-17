@@ -200,6 +200,9 @@ export const app = {
         this.saveWarned = true; // en gång per session
         toast(t('menu.saveFail'), 'bad');
       }
+      // Utan menypaus går tiden medan ett fönster är öppet: rita om så att knappar inte pekar på gammal data (men inte mitt i inmatning)
+      const ae = document.activeElement;
+      if (UI.cur && !(ae && UI.overlay?.contains(ae) && /^(INPUT|TEXTAREA)$/.test(ae.tagName))) UI.refresh();
       if (this.G) music.setEra?.(1980 + Math.floor(this.G.t / 48));
     });
     on('gameover', () => {

@@ -1,4 +1,4 @@
-import { $, esc, icon, t, L, UI, act, regWin, money, toast } from './core.js';
+import { $, esc, icon, t, L, UI, act, regWin, money, errToast } from './core.js';
 import { glyphImg } from '../render/glyphs.js';
 import { coverImg } from '../render/covers.js';
 import { TOPIC } from '../data/topics.js';
@@ -110,6 +110,6 @@ act('lib-seq', (el) => {
 act('lib-patch', (el) => {
   const G = UI.app.G;
   const r = patchGame(G, +el.dataset.id);
-  if (r !== true) toast(String(r), 'bad');
+  if (r !== true) errToast(r);
   UI.refresh();
 });

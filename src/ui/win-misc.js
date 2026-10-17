@@ -1,4 +1,4 @@
-import { $, $$, esc, icon, t, L, UI, act, regWin, money, toast, MONTHS } from './core.js';
+import { $, $$, esc, icon, t, L, UI, act, regWin, money, toast, errToast, MONTHS } from './core.js';
 import { dateOf } from '../sim/const.js';
 import { lang } from '../core/i18n.js';
 import { music } from '../audio/sfx.js';
@@ -36,7 +36,7 @@ regWin({
 act('mk-go', (el) => {
   const G = UI.app.G;
   const r = launchMarketing(G, el.dataset.id);
-  if (r !== true) toast(String(r), 'bad');
+  if (r !== true) errToast(r);
   else toast(t('mk.done', { name: `<b>${L(MKT[el.dataset.id].name)}</b>` }), 'good');
   UI.refresh();
 });

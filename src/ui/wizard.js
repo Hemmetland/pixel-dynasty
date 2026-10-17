@@ -1,4 +1,4 @@
-import { $, esc, icon, t, L, UI, act, regWin, bar, money, toast } from './core.js';
+import { $, esc, icon, t, L, UI, act, regWin, bar, money, toast, errToast } from './core.js';
 import { sfx } from '../audio/sfx.js';
 import { glyphImg } from '../render/glyphs.js';
 import { coverImg } from '../render/covers.js';
@@ -354,7 +354,7 @@ act('w-buy', (el, e) => {
     W.platform = el.dataset.id;
     sfx.play('coin');
     toast(t('toast.license', { name: `<b>${PLATFORM[el.dataset.id].name}</b>` }), 'money');
-  } else if (typeof r === 'string') toast(r, 'bad');
+  } else errToast(r);
   UI.refresh();
 });
 act('w-scope', (el) => {
@@ -405,7 +405,7 @@ act('w-start', () => {
   const G = UI.app.G;
   const r = startProject(G, { title: W.title, topic: W.topic, genre: W.genre, genre2: W.genre2, platform: W.platform, scope: W.scope, audience: W.audience, engineId: W.engineId, sequelOf: W.sequelOf, focus0: W.focus });
   if (typeof r === 'string') {
-    toast(r === 'tier' ? t('wiz.tooOld') : r, 'bad');
+    errToast(r);
     return;
   }
   if (G.flags.hypeNext) {

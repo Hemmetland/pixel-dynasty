@@ -174,6 +174,15 @@ export function toast(text, kind = 'info', ms = 5200) {
   }, ms);
 }
 
+// Felsvar från simulatorn: översatt text, en strängnyckel, en kort kod ('money', 'invalid' …) eller false
+const ERR_KEY = { money: 'err.money', few: 'work.few', tier: 'wiz.tooOld' };
+export function errToast(r) {
+  let s = typeof r === 'string' ? r : '';
+  if (ERR_KEY[s]) s = t(ERR_KEY[s]);
+  else if (/^[\w.]+$/.test(s)) s = t(s) !== s ? t(s) : ''; // nyckel eller okänd kod
+  toast(s || t('err.generic'), 'bad');
+}
+
 export const bar = (pct, color, cls = '') => `<div class="bar ${cls}" style="--c:${color}"><i style="width:${Math.max(0, Math.min(100, pct))}%"></i></div>`;
 export const money = (n) => {
   const neg = n < 0;

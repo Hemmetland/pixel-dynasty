@@ -1,4 +1,4 @@
-import { $, esc, icon, t, L, UI, act, regWin, bar, money, toast } from './core.js';
+import { $, esc, icon, t, L, UI, act, regWin, bar, money, toast, errToast } from './core.js';
 import { sfx } from '../audio/sfx.js';
 import { glyphImg } from '../render/glyphs.js';
 import { coverImg } from '../render/covers.js';
@@ -136,7 +136,7 @@ act('m-buy', (el) => {
   if (r === true) {
     sfx.play('coin');
     toast(t('toast.license', { name: `<b>${PLATFORM[el.dataset.id].name}</b>` }), 'money');
-  } else toast(String(r), 'bad');
+  } else errToast(r);
   UI.refresh();
 });
 void $;

@@ -1,4 +1,4 @@
-import { $, esc, icon, t, L, UI, act, regWin, bar, money, toast } from './core.js';
+import { $, esc, icon, t, L, UI, act, regWin, bar, money, errToast } from './core.js';
 import { sfx } from '../audio/sfx.js';
 import { CLIENTS, BRIEFS } from '../data/events.js';
 import { FEATURES, FEAT } from '../data/research.js';
@@ -78,7 +78,7 @@ act('w-accept', (el) => {
   if (r === true) {
     sfx.play('start');
     UI.close(true);
-  } else toast(String(r), 'bad');
+  } else errToast(r);
 });
 act('w-feat', (el) => {
   const id = el.dataset.id;
@@ -93,6 +93,6 @@ act('w-build', () => {
     sfx.play('start');
     K.name = '';
     UI.close(true);
-  } else toast(String(r === 'few' ? t('work.few') : r), 'bad');
+  } else errToast(r);
 });
 void FEAT; void PLATFORM; void workers; void engineEff;

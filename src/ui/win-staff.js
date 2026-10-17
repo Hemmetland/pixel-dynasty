@@ -1,4 +1,4 @@
-import { $, esc, icon, t, L, UI, act, regWin, bar, money, toast } from './core.js';
+import { $, esc, icon, t, L, UI, act, regWin, bar, money, toast, errToast } from './core.js';
 import { sfx } from '../audio/sfx.js';
 import { avatarImg } from '../render/people.js';
 import { SPECS, TRAITS, hire, fire, raise, train, canTrain, trainCost, trainWeeks, trainingSlots, trainingNow, skillCap, canHire, SKILLS, payroll } from '../sim/people.js';
@@ -98,7 +98,7 @@ act('s-tab', (el) => {
 act('s-hire', (el) => {
   const G = UI.app.G;
   const r = hire(G, +el.dataset.id);
-  if (r !== true) toast(String(r), 'bad');
+  if (r !== true) errToast(r);
   else sfx.play('coin');
   UI.refresh();
 });
@@ -138,6 +138,6 @@ act('s-train', (el) => {
   if (r === true) {
     sfx.play('research');
     S.trainFor = null;
-  } else toast(String(r), 'bad');
+  } else errToast(r);
   UI.refresh();
 });

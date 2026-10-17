@@ -1,4 +1,4 @@
-import { $, $$, esc, icon, t, L, UI, act, money, toast } from './core.js';
+import { $, $$, esc, icon, t, L, UI, act, money, toast, errToast } from './core.js';
 import { sfx } from '../audio/sfx.js';
 import { glyphImg } from '../render/glyphs.js';
 import { coverImg } from '../render/covers.js';
@@ -336,7 +336,7 @@ function expoPrompt(app, G, p, finish) {
           app.promptActive = false;
           UI.closeModal();
           app.menuChanged();
-        } else toast(String(r), 'bad');
+        } else errToast(r);
       });
     },
     'md',
