@@ -57,7 +57,7 @@ regWin({
         <div class="col">
           <div class="card"><div class="row" style="margin-bottom:8px"><div class="lbl">${t('fin.cashChart')}</div><span class="sp"></span><span class="chip c" style="--c:${net >= 0 ? 'var(--good)' : 'var(--bug)'}">${net >= 0 ? '▲' : '▼'} ${money(Math.abs(net))}${t('ui.perMonth')}</span></div>${lineChart(pts, '#7cf29a')}</div>
           <div class="grid" style="grid-template-columns:repeat(auto-fit,minmax(150px,1fr))">
-            <div class="counter" style="--c:var(--bug)"><div class="v num">${money(burn)}</div><div class="k">${t('fin.burn')}</div></div>
+            <div class="counter" style="--c:${burn <= 0 ? 'var(--good)' : runway < 3 ? 'var(--bug)' : 'var(--warn)'}"><div class="v num">${money(burn)}</div><div class="k">${t('fin.burn')}</div></div>
             <div class="counter" style="--c:${runway < 3 ? 'var(--bug)' : 'var(--accent)'}"><div class="v num">${runway > 60 ? '∞' : runway.toFixed(1)}</div><div class="k">${t('fin.runway')}</div></div>
             <div class="counter" style="--c:var(--money)"><div class="v num">${money(G.stats.revenue)}</div><div class="k">${t('fin.lifetime')}</div></div>
           </div>

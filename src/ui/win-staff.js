@@ -1,4 +1,4 @@
-import { $, esc, icon, t, L, UI, act, regWin, bar, money, toast, errToast } from './core.js';
+import { $, esc, icon, t, tn, L, UI, act, regWin, bar, money, toast, errToast } from './core.js';
 import { sfx } from '../audio/sfx.js';
 import { avatarImg } from '../render/people.js';
 import { SPECS, TRAITS, hire, fire, raise, train, canTrain, trainCost, trainWeeks, trainingSlots, trainingNow, skillCap, canHire, SKILLS, payroll } from '../sim/people.js';
@@ -73,14 +73,14 @@ regWin({
     }
     if (S.tab === 'hire') {
       const d = dateOf(G.t);
-      return `<div class="row" style="margin-bottom:14px;gap:12px"><div class="hint" style="flex:1">${icon('info')} ${t('staff.hireHelp', { n: capacity(G) - G.staff.length })}</div><span class="chip">${icon('calendar')}${t('staff.refresh', { n: 4 - d.week })}</span></div>
+      return `<div class="row" style="margin-bottom:14px;gap:12px"><div class="hint" style="flex:1">${icon('info')} ${tn('staff.hireHelp', capacity(G) - G.staff.length)}</div><span class="chip">${icon('calendar')}${t('staff.refresh', { n: 4 - d.week })}</span></div>
         <div class="grid sgrid">${G.candidates.map((c) => candCard(G, c)).join('')}</div>
         ${G.staff.length >= capacity(G) ? `<div class="hint" style="margin-top:14px;color:var(--warn)">${icon('building')} ${t('staff.full')}</div>` : ''}`;
     }
-    const tn = trainingNow(G);
+    const trainNow = trainingNow(G);
     return `<div class="row wrap" style="gap:8px;margin-bottom:14px">
         <span class="chip">${icon('coffee')}${t('staff.avgMood')} ${Math.round(G.staff.reduce((s, x) => s + x.mood, 0) / G.staff.length)}</span>
-        ${G.u.flags.training ? `<span class="chip">${icon('book')}${t('staff.trainSlots')} ${tn}/${trainingSlots(G)}</span>` : `<span class="chip faint">${icon('lock')}${t('staff.trainLocked')}</span>`}
+        ${G.u.flags.training ? `<span class="chip">${icon('book')}${t('staff.trainSlots')} ${trainNow}/${trainingSlots(G)}</span>` : `<span class="chip faint">${icon('lock')}${t('staff.trainLocked')}</span>`}
       </div>
       <div class="grid sgrid">${G.staff.map((s) => teamCard(G, s)).join('')}</div>`;
   },

@@ -1,4 +1,4 @@
-import { $, $$, esc, icon, t, L, UI, act, money, MONTHS, bar } from './core.js';
+import { $, $$, esc, icon, t, tn, L, UI, act, money, MONTHS, bar } from './core.js';
 import { glyphImg } from '../render/glyphs.js';
 import { TOPIC } from '../data/topics.js';
 import { GENRE } from '../data/genres.js';
@@ -193,7 +193,7 @@ export function updateHUD(G, dt) {
   els.money.classList.toggle('neg', G.money < 0);
   $('.v', els.money).style.color = G.money < 0 ? 'var(--bug)' : '';
   set(els.rp, fmtNum(r), '+' + rpPerWeek(G).toFixed(1) + t('ui.perWeek'), `<b>${t('hud.rp')}</b><br>${t('hud.rpTip')}`);
-  set(els.fans, fmtNum(f), t('hud.fansSub'), `<b>${t('hud.fans')}</b><br>${t('hud.fansTip')}`);
+  set(els.fans, fmtNum(f), tn('hud.fansSub', Math.round(f)), `<b>${t('hud.fans')}</b><br>${t('hud.fansTip')}`);
   // speed
   for (const b of $$('button', els.speed)) b.classList.toggle('on', +b.dataset.v === UI.app.speed);
   const mb = $('#mute-btn');

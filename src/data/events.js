@@ -38,7 +38,7 @@ export const EVENTS = [
     { sv: 'Piratkopior sprids', en: 'Pirate copies spreading' },
     { sv: 'Dina spel kopieras på skolgårdar över hela landet. Kopieringsskydd kostar men kan hjälpa.', en: 'Your games are being copied in schoolyards everywhere. Copy protection costs money but may help.' },
     [C('Köp kopieringsskydd', 'Buy copy protection', { money: -3200, salesMult: 1.05 }),
-      C('Skit i det', 'Ignore it', { salesMult: 0.9, fans: 20 }, 'Fler fans, färre intäkter', 'More fans, fewer sales')]),
+      C('Strunta i det', 'Ignore it', { salesMult: 0.9, fans: 20 }, 'Fler fans, färre intäkter', 'More fans, fewer sales')]),
   E('staff_idea', 'studio', 0.9, (G) => G.staff.length >= 2,
     { sv: 'Ett sidoprojekt', en: 'A side project' },
     { sv: 'En i teamet har byggt en liten prototyp på fritiden och vill visa den.', en: 'Someone on the team built a little prototype in their spare time and wants to show it.' },
@@ -53,7 +53,7 @@ export const EVENTS = [
     { sv: 'En konkurrent hävdar att ditt senaste spel liknar deras. Förlikning eller strid?', en: 'A rival claims your latest game looks too much like theirs. Settle or fight?' },
     [C('Förlikas', 'Settle', { money: -6000 }), C('Gå till domstol', 'Go to court', { rand: [[0.5, { fans: 200, money: -1500 }], [0.5, { money: -14000, fans: -80 }]] }, '50/50: ära eller ruin', '50/50: glory or ruin')]),
   E('free_lunch', 'studio', 0.7, (G) => G.staff.length >= 3,
-    { sv: 'Fredagsfika', en: 'Friday treat' },
+    { sv: 'Gemensam lunch', en: 'Team lunch' },
     { sv: 'Någon föreslår att ni ska äta lunch tillsammans. Alla ser så trötta ut.', en: 'Someone suggests a team lunch. Everybody looks so tired.' },
     [C('Bjud på lunch', 'Treat the team', { money: -600, mood: 14 }), C('Jobba vidare', 'Keep working', { mood: -3 })]),
   E('hackathon', 'studio', 0.6, (G) => G.staff.length >= 3,
@@ -67,7 +67,7 @@ export const EVENTS = [
   E('grant', 'studio', 0.5, (G) => G.t > 48 * 2 && G.t < 48 * 20,
     { sv: 'Kulturbidrag', en: 'Arts grant' },
     { sv: 'Du kan söka bidrag för innovativa spel. Pappersarbetet är enormt.', en: 'You can apply for a grant for innovative games. The paperwork is enormous.' },
-    [C('Skicka in ansökan', 'Apply', { rand: [[0.55, { money: 10000, fans: 60 }], [0.45, { money: -300 }]] }, 'Små chanser men stor belöning', 'Small odds but a big payoff'), C('Hoppa över', 'Skip', {})]),
+    [C('Skicka in ansökan', 'Apply', { rand: [[0.55, { money: 10000, fans: 60 }], [0.45, { money: -300 }]] }, 'Mycket pappersarbete, god chans till stor belöning', 'Lots of paperwork, a fair shot at a big payoff'), C('Hoppa över', 'Skip', {})]),
 
   // ── Under utveckling ─────────────────────────────────────────
   E('dev_idea', 'dev', 1.4, (G) => G.job && G.job.phase < 3,
@@ -81,7 +81,7 @@ export const EVENTS = [
   E('dev_crunch', 'dev', 0.9, (G) => G.job && G.job.phase >= 1 && G.job.phase < 3 && !G.job.crunch,
     { sv: 'Deadline närmar sig', en: 'Deadline looming' },
     { sv: 'Datumet i kalendern är tydligt. Teamet föreslår att jobba kvällar och helger.', en: 'The date on the calendar is clear. The team suggests working evenings and weekends.' },
-    [C('Crunch!', 'Crunch time', { crunch: 6, mood: -5 }, '+25% output i 6 veckor, fler buggar', '+25% output for 6 weeks, more bugs'), C('Nej, ta det lugnt', 'No, take it easy', { mood: 4 })]),
+    [C('Crunch!', 'Crunch time', { crunch: 6, mood: -5 }, '+25 % arbete i sex veckor, fler buggar', '+25% output for six weeks, more bugs'), C('Nej, ta det lugnt', 'No, take it easy', { mood: 4 })]),
   E('dev_breakthrough', 'dev', 0.9, (G) => G.job && G.job.phase < 3,
     { sv: 'Tekniskt genombrott', en: 'Technical breakthrough' },
     { sv: 'En ny teknik gör att allt går dubbelt så fort. Ingen vet riktigt hur.', en: 'A new technique makes everything go twice as fast. Nobody quite knows how.' },
@@ -91,7 +91,7 @@ export const EVENTS = [
     { sv: 'Hårddisken ger upp. Ingen har gjort en säkerhetskopia på två veckor.', en: 'The hard drive gives up. Nobody has made a backup in two weeks.' },
     [C('Betala för dataräddning', 'Pay for data recovery', { money: -2400 }), C('Bygg om det som saknas', 'Rebuild what is lost', { D: -0.04, T: -0.04, mood: -6 })]),
   E('dev_creep', 'dev', 1.0, (G) => G.job && G.job.phase < 2,
-    { sv: 'Feature creep', en: 'Feature creep' },
+    { sv: 'En funktion till…', en: 'Feature creep' },
     { sv: 'Någon vill lägga till en funktion till. Och en till. Och en till.', en: 'Someone wants to add one more feature. And another. And another.' },
     [C('Lägg till den', 'Add it', { D: 0.05, bugs: 0.08 }), C('Nej. Håll fokus.', 'No. Stay focused.', { mood: 3, bugsFrac: -0.05 })]),
   E('dev_playtest', 'dev', 0.9, (G) => G.job && G.job.phase >= 1 && G.job.phase < 3,
@@ -101,7 +101,7 @@ export const EVENTS = [
   E('dev_leak', 'dev', 0.5, (G) => G.job && G.job.phase >= 1 && G.job.hype > 5,
     { sv: 'Läcka', en: 'A leak' },
     { sv: 'Skärmdumpar från ditt spel har dykt upp på ett forum.', en: 'Screenshots of your game have turned up on a forum.' },
-    [C('Dubblera satsningen', 'Lean into it', { hype: 8, money: -500 }), C('Tyst, ge dementi', 'Quietly deny it', { hype: -3 })]),
+    [C('Utnyttja uppmärksamheten', 'Lean into it', { hype: 8, money: -500 }), C('Dementera', 'Quietly deny it', { hype: -3 })]),
 ];
 export const EV = Object.fromEntries(EVENTS.map((e) => [e.id, e]));
 

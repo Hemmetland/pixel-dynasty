@@ -472,9 +472,16 @@ export class Scene {
     this.emotes.push({ id, kind, t: 0, life: life ?? EMOTE_LIFE[kind] });
     return true;
   }
+  // Intäkter: ovanför taket (inte över skylten), i turordning över fem spår så att samtidiga belopp inte hamnar på varandra; högst tre åt gången.
   moneyPop(text) {
     if (!this.L) return;
-    this.floaters.push({ x: (Math.random() - 0.5) * this.L.BW * 0.7, y: this.L.topY - 18, vy: -8, text, color: '#8aff9a', life: 2.2, max: 2.2, kind: 'money' });
+    const pops = this.floaters.filter((f) => f.kind === 'money');
+    if (pops.length >= 3) this.floaters.splice(this.floaters.indexOf(pops[0]), 1);
+    this.popLane = ((this.popLane ?? -1) + 1) % 5;
+    const x = [-0.28, 0.14, -0.06, 0.32, 0.04][this.popLane] * this.L.BW;
+    let y = this.L.topY - Math.min(this.L.roofH || 20, 30) - 10;
+    for (const f of pops) if (Math.abs(f.x - x) < textWidth(text) + 6 && Math.abs(f.y - y) < 9) y = Math.min(y, f.y - 9);
+    this.floaters.push({ x, y, vy: -8, text, color: '#8aff9a', life: 2.2, max: 2.2, kind: 'money' });
   }
   confetti(n = 80) {
     const iw = this.iw;

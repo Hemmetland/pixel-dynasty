@@ -1,4 +1,4 @@
-import { rint, gauss, pick, chance, seeded, hashStr } from '../core/rng.js';
+import { rnd, rint, gauss, pick, chance, seeded, hashStr } from '../core/rng.js';
 import { clamp } from '../core/util.js';
 import { FIRST, LAST } from '../data/names.js';
 import { emit } from '../core/bus.js';
@@ -91,6 +91,13 @@ export function extraLook(look, i) {
   return { ...look, acc: 0, hat: 0, glasses: 0, beard: 0, headphones: 0, backpack: 0, hoodie: 0, pattern: 0, ...EXTRAS[i % EXTRAS.length] };
 }
 
+// Förnamn som ingen i teamet eller bland kandidaterna redan har: samma slumptal som pick(), men närmaste lediga namn i listan
+function freshFirst(G) {
+  const used = new Set([...(G.staff || []), ...(G.candidates || [])].map((p) => p.name.split(' ')[0]));
+  let i = Math.floor(rnd(G) * FIRST.length);
+  for (let k = 0; k < FIRST.length && used.has(FIRST[i]); k++) i = (i + 1) % FIRST.length;
+  return FIRST[i];
+}
 export function makeCandidate(G, q = 0) {
   const year = yearOf(G.t);
   const spec = pick(G, Object.keys(SPECS));
@@ -99,7 +106,7 @@ export function makeCandidate(G, q = 0) {
   const sk = (m) => Math.max(3, Math.round(base * m * gauss(G, 1, 0.17)));
   const c = {
     id: nextId(G),
-    name: pick(G, FIRST) + ' ' + pick(G, LAST),
+    name: freshFirst(G) + ' ' + pick(G, LAST),
     look: makeLook(G),
     spec,
     design: sk(sp.d), tech: sk(sp.t), speed: sk(sp.s * 0.9), research: sk(sp.r * 0.8),

@@ -1,11 +1,11 @@
 import { icon } from './icons.js';
-import { t, L } from '../core/i18n.js';
+import { t, tn, L } from '../core/i18n.js';
 import { esc } from '../core/util.js';
 import { sfx } from '../audio/sfx.js';
 
 export const $ = (s, r = document) => r.querySelector(s);
 export const $$ = (s, r = document) => [...r.querySelectorAll(s)];
-export { esc, icon, t, L };
+export { esc, icon, t, tn, L };
 
 // ── Åtgärdsregister (event delegation via data-act) ──
 const acts = new Map();

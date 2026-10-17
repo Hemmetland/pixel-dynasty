@@ -4,7 +4,7 @@ import { GENRE } from '../data/genres.js';
 import { TOPIC } from '../data/topics.js';
 import { CATEGORIES, CAT, CAT_IDX } from '../data/categories.js';
 import { PLATFORM, techMult } from '../data/platforms.js';
-import { REVIEWERS, HEADLINES, DETAILS } from '../data/reviews.js';
+import { REVIEWERS, HEADLINES, DETAILS, NEUTRAL, GENRE_FORMS, TOPIC_PROPER, SCOPE_ADJ } from '../data/reviews.js';
 import { SCOPES, AUD, yearOf } from './const.js';
 
 // ── Fokus ────────────────────────────────────────────────────────
@@ -213,42 +213,63 @@ export function evaluate(G, job) {
   };
 }
 
-// Skriv recensionstexter (språkberoende, så de byggs vid visning).
+// Skriv recensionstexter (språkberoende, så de byggs vid visning). Valen är stabila per spel men varierar mellan spel och recensenter.
+const mix = (a, b, c) => (Math.imul(a + 1, 2654435761 | 0) ^ Math.imul(b + 1, 40503) ^ Math.imul(c + 1, 97)) >>> 0;
+const capFirst = (x) => x.charAt(0).toUpperCase() + x.slice(1);
+const lcName = (name, key) => (TOPIC_PROPER[key].includes(name) || name === 'AI' ? name : name.toLowerCase());
 export function reviewTexts(job, rep, lang) {
   const out = [];
   const key = lang === 'en' ? 'en' : 'sv';
-  const genreName = GENRE[job.genre].name[key];
-  const topicName = TOPIC[job.topic].name[key];
+  const gf = (GENRE_FORMS[job.genre] || {})[key] || { a: GENRE[job.genre].name[key], comp: GENRE[job.genre].name[key], pl: GENRE[job.genre].name[key] };
+  const ins = (rep.insights || []).find((x) => x.k === 'focus');
+  const vars = {
+    aGenre: gf.a,
+    genreComp: gf.comp,
+    genres: gf.pl,
+    topic: lcName(TOPIC[job.topic].name[key], key),
+    over: ins?.over ? lcName(CAT[ins.over].name[key], key) : '…',
+    under: ins?.under ? lcName(CAT[ins.under].name[key], key) : '…',
+    scopeAdj: (SCOPE_ADJ[job.scope] || SCOPE_ADJ.small)[key],
+  };
+  const fill = (line) => capFirst(line.replace(/\{(\w+)\}/g, (m, k) => vars[k] ?? m));
+  // nådde storleken betygstaket? då kan en recensent säga det
+  const p = rep.parts || {};
+  const cap = SCOPE_CAP[job.scope];
+  const raw0 = p.s0 * p.mCompat * p.mFit * p.mAud * (p.mPlat ?? 1) * (p.mBug ?? 1) * (p.mFresh ?? 1) * (p.mSeq ?? 1);
+  const capped = cap < 10 && raw0 > 0 && raw0 - softCap(raw0, cap) >= 0.25;
+  const flags = capped ? [{ k: 'cap', v: 1 }, ...(rep.flags || [])] : rep.flags || [];
   const usedFlags = new Set();
   const usedLines = new Set();
+  const usedHeads = new Set();
+  const pickLine = (pool, tag, salt) => {
+    let idx = mix(job.id, salt, tag.length) % pool.length;
+    for (let n = 0; n < pool.length && usedLines.has(tag + idx); n++) idx = (idx + 1) % pool.length;
+    usedLines.add(tag + idx);
+    return pool[idx];
+  };
   rep.reviews.forEach((rv, i) => {
     const def = REVIEWERS[i];
-    const h = HEADLINES.find((x) => rv.score >= x.min)[key];
-    const headline = h[(job.id + i * 7) % h.length];
+    const tier = HEADLINES.find((x) => rv.score >= x.min);
+    const h = tier[key];
+    let hi = mix(job.id, i, 7) % h.length;
+    for (let n = 0; n < h.length && usedHeads.has(tier.min + ':' + hi); n++) hi = (hi + 1) % h.length;
+    usedHeads.add(tier.min + ':' + hi);
+    const headline = h[hi];
     const pref = {
       bitbyte: ['tech', 'bugs', 'scope', 'platform'],
-      gazette: ['compat', 'scope', 'focus', 'audience'],
+      gazette: ['cap', 'compat', 'scope', 'focus', 'audience'],
       pulse: ['design', 'focus', 'compat', 'fresh'],
       critic: ['bugs', 'compat', 'fresh', 'design', 'tech'],
     }[def.id];
     const good = rv.score >= 6.5;
     const fits = (f) => (good ? f.v > 0 : f.v < 0);
-    const cands = rep.flags.filter(fits);
+    const cands = flags.filter(fits);
     const pickF = cands.find((f) => pref.includes(f.k) && !usedFlags.has(f.k)) || cands.find((f) => !usedFlags.has(f.k)) || cands.find((f) => pref.includes(f.k)) || cands[0];
     let detail = '';
-    if (pickF) {
+    if (pickF && DETAILS[pickF.k]?.[pickF.v > 0 ? '+' : '-']) {
       usedFlags.add(pickF.k);
-      const pool = DETAILS[pickF.k][pickF.v > 0 ? '+' : '-'][key];
-      let idx = (job.id * 3 + i * 2) % pool.length;
-      for (let n = 0; n < pool.length && usedLines.has(pickF.k + idx); n++) idx = (idx + 1) % pool.length;
-      usedLines.add(pickF.k + idx);
-      const ins = rep.insights.find((x) => x.k === 'focus');
-      detail = pool[idx]
-        .replace('{genre}', genreName)
-        .replace('{topic}', topicName)
-        .replace('{over}', ins?.over ? CAT[ins.over].name[key] : '…')
-        .replace('{under}', ins?.under ? CAT[ins.under].name[key] : '…');
-    }
+      detail = fill(pickLine(DETAILS[pickF.k][pickF.v > 0 ? '+' : '-'][key], pickF.k + (pickF.v > 0 ? '+' : '-'), i));
+    } else if (NEUTRAL[def.id]) detail = fill(pickLine(NEUTRAL[def.id][good ? '+' : '-'][key], def.id, i));
     out.push({ id: def.id, score: rv.score, headline, detail });
   });
   return out;

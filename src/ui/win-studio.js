@@ -1,4 +1,4 @@
-import { icon, t, L, UI, act, regWin, money, toast, errToast, bar } from './core.js';
+import { icon, t, tn, L, UI, act, regWin, money, toast, errToast, bar } from './core.js';
 import { buildingPreview, eraOf } from '../render/building.js';
 import { FACILITIES, FAC_IDS, FAC_MAX, OFFICE_AVG_N, facLevel, facCost, facCount, tierOf, nextTier, officeReqs, canUpgradeOffice, upgradeOffice, buildFacility, rentOf, facUpkeep } from '../sim/studio.js';
 import { RESEARCH } from '../data/research.js';
@@ -93,7 +93,7 @@ regWin({
           <div class="card" style="padding:0;overflow:hidden">
             <div class="bprev"><img src="${buildingPreview(G.office.tier, G.studio, era, G.office.fac, 2)}" alt="" draggable="false"></div>
             <div style="padding:14px 16px"><div class="lbl">${t('studio.current')}</div><div class="h2" style="margin:4px 0">${L(tier.name)}</div><div class="hint">${L(tier.desc)}</div>
-              <div class="row wrap" style="gap:6px;margin-top:10px"><span class="chip">${icon('team')}${tier.desks} ${t('staff.desks')}</span><span class="chip">${icon('building')}${tier.slots} ${t('studio.slotsW')}</span><span class="chip">${icon('money')}${money(rentOf(G))}${t('ui.perMonth')}</span></div></div>
+              <div class="row wrap" style="gap:6px;margin-top:10px"><span class="chip">${icon('team')}${tier.desks} ${t('staff.desks')}</span><span class="chip">${icon('building')}${tier.slots} ${tn('studio.slotsW', tier.slots)}</span><span class="chip">${icon('money')}${money(rentOf(G))}${t('ui.perMonth')}</span></div></div>
           </div>
           ${nx ? `<div class="card" style="padding:0;overflow:hidden">
             <div class="bprev dim"><img src="${buildingPreview(nx.id, G.studio, era, {}, 2)}" alt="" draggable="false"></div>

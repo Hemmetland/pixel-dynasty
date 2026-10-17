@@ -24,9 +24,9 @@ export const RESEARCH = [
   R('p_world', 'prod', 'Världsbibel', 'World Bible', 'Öppnar kategorin Världsbygge i fas 3.', 'Unlocks the World Design category in phase 3.', 36, 0, 5, ['p_dialogue'], 1981, { cats: ['world'] }, {}, 'c_world'),
   R('p_aud_young', 'prod', 'Ungdomsmarknad', 'Youth Market', 'Gör spel för en yngre publik.', 'Make games aimed at a younger audience.', 24, 0, 3, [], 1980, { aud: ['young'] }, {}, 'u_young'),
   R('p_aud_mature', 'prod', 'Vuxenmarknad', 'Mature Market', 'Gör spel för en vuxen publik.', 'Make games aimed at a mature audience.', 50, 0, 4, ['p_aud_young'], 1984, { aud: ['mature'] }, {}, 'u_mature'),
-  R('p_scope_large', 'prod', 'Stora produktioner', 'Big Productions', 'Låser upp stora spel (Stor storlek).', 'Unlocks large-scale games.', 80, 5000, 6, ['p_ai'], 1983, { scopes: ['large'] }, {}, 'u_scope'),
+  R('p_scope_large', 'prod', 'Stora produktioner', 'Big Productions', 'Låser upp storleken Stor.', 'Unlocks large-scale games.', 80, 5000, 6, ['p_ai'], 1983, { scopes: ['large'] }, {}, 'u_scope'),
   R('p_scope_aaa', 'prod', 'Blockbuster-budgetar', 'Blockbuster Budgets', 'Låser upp AAA-produktioner med enorma team.', 'Unlocks AAA productions with huge teams.', 650, 150000, 12, ['p_scope_large', 'p_world'], 1996, { scopes: ['aaa'] }, {}, 'u_aaa'),
-  R('p_second_genre', 'prod', 'Genrekrossning', 'Genre Blending', 'Kombinera två genrer i samma spel.', 'Combine two genres in one game.', 110, 8000, 6, ['p_dialogue'], 1985, { flags: ['genre2'] }, {}, 'g_casual'),
+  R('p_second_genre', 'prod', 'Genreblandning', 'Genre Blending', 'Kombinera två genrer i samma spel.', 'Combine two genres in one game.', 110, 8000, 6, ['p_dialogue'], 1985, { flags: ['genre2'] }, {}, 'g_casual'),
   R('p_sequels', 'prod', 'Franchiseplanering', 'Franchise Planning', 'Gör uppföljare som ärver fans och hype.', 'Make sequels that inherit fans and hype.', 45, 0, 4, [], 1982, { flags: ['sequels'] }, {}, 'u_sequel'),
   R('p_engine', 'prod', 'Motorverkstad', 'Engine Workshop', 'Bygg egna spelmotorer av tekniska delar.', 'Build custom game engines from tech parts.', 70, 6000, 6, ['p_ai'], 1984, { flags: ['engines'] }, {}, 'c_engine'),
 
@@ -87,7 +87,7 @@ export const RESEARCH = [
   R('s_train1', 'staff', 'Utbildning', 'Training Courses', 'Skicka personal på kurs för att höja färdigheter.', 'Send staff on courses to raise their skills.', 38, 0, 3, [], 1980, { flags: ['training'] }, {}, 's_train'),
   R('s_train2', 'staff', 'Avancerade kurser', 'Advanced Training', 'Högre tak på färdigheter och bättre kurser.', 'Higher skill caps and better courses.', 180, 0, 5, ['s_train1'], 1990, { flags: ['training2'] }, { skillCap: 40 }, 's_train'),
   R('s_hr1', 'staff', 'Rekryteringsbyrå', 'Recruiting Agency', 'Fler och bättre kandidater varje månad.', 'More and better candidates every month.', 70, 0, 4, [], 1983, { flags: ['hr1'] }, { hire: 1 }, 's_hr'),
-  R('s_hr2', 'staff', 'Headhunters', 'Headhunters', 'Eliteprofiler dyker upp.', 'Elite profiles show up.', 300, 0, 5, ['s_hr1'], 1992, { flags: ['hr2'] }, { hire: 1 }, 's_hr'),
+  R('s_hr2', 'staff', 'Headhunters', 'Headhunters', 'Elitprofiler dyker upp.', 'Elite profiles show up.', 300, 0, 5, ['s_hr1'], 1992, { flags: ['hr2'] }, { hire: 1 }, 's_hr'),
   R('s_perks', 'staff', 'Personalförmåner', 'Staff Perks', 'Högre arbetsglädje och mindre personalomsättning.', 'Higher morale and less staff turnover.', 50, 0, 4, [], 1984, {}, { morale: 8 }, 's_perk'),
 ];
 export const RES = Object.fromEntries(RESEARCH.map((r) => [r.id, r]));

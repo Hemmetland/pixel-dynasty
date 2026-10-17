@@ -1,4 +1,4 @@
-import { $, esc, icon, t, L, UI, act, regWin, money, errToast } from './core.js';
+import { $, esc, icon, t, tn, L, UI, act, regWin, money, errToast } from './core.js';
 import { glyphImg } from '../render/glyphs.js';
 import { coverImg } from '../render/covers.js';
 import { TOPIC } from '../data/topics.js';
@@ -88,7 +88,7 @@ regWin({
   color: 'var(--accent)',
   size: 'xl',
   title: () => t('lib.title'),
-  sub: (G) => t('lib.sub', { n: G.games.length, v: money(G.stats.revenue) }),
+  sub: (G) => tn('lib.sub', G.games.length, { v: money(G.stats.revenue) }),
   render(G, arg) {
     return arg && arg.id ? detailView(G, arg.id) : listView(G);
   },

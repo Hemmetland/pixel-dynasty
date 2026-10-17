@@ -1,4 +1,4 @@
-import { $, esc, icon, t, L, UI, act, regWin, bar, money, toast, errToast } from './core.js';
+import { $, esc, icon, t, tn, L, UI, act, regWin, bar, money, toast, errToast } from './core.js';
 import { sfx } from '../audio/sfx.js';
 import { glyphImg } from '../render/glyphs.js';
 import { coverImg } from '../render/covers.js';
@@ -245,7 +245,7 @@ function summary(G) {
     <div class="kv"><span>${t('wiz.platform')}</span><b>${esc(plat.id === 'pc' ? pcGeneration(yearOf(G.t)) : plat.name)}</b></div>
     <div class="kv"><span>${t('wiz.scope')}</span><b>${L(sc.name)}</b></div>
     <div class="kv"><span>${t('wiz.duration')}</span><b>${sc.weeks + sc.polish} ${t('ui.weeksShort')}</b></div>
-    <div class="kv"><span>${t('wiz.team')}</span><b>${workers(G).length} ${t('wiz.people')}</b></div>
+    <div class="kv"><span>${t('wiz.team')}</span><b>${workers(G).length} ${tn('wiz.people', workers(G).length)}</b></div>
     <div class="kv"><span>${t('wiz.startHype')}</span><b>${Math.round(baseHype(G) + (W.sequelOf ? 8 : 0))}</b></div>
     ${cost ? `<div class="kv"><span>${t('wiz.license')}</span><b>${money(cost)}</b></div>` : ''}
     <div class="ready" style="--c:${VCOL[vk]}">
@@ -329,7 +329,7 @@ export function openSequel(G, g) {
 function prefill(G) {
   if (!W.topic || !W.genre) return;
   if (!W.title) {
-    const rt = randomTitle(Math.random);
+    const rt = randomTitle(Math.random, W.topic);
     W.title = rt[lang];
   }
   if (!W.focus) W.focus = startFocus(G, W.genre, W.genre2)[0];
@@ -385,7 +385,7 @@ act('w-seq', (el) => {
   UI.refresh();
 });
 act('w-dice', () => {
-  const rt = randomTitle(Math.random);
+  const rt = randomTitle(Math.random, W.topic);
   W.title = rt[lang];
   W.titleAuto = false;
   UI.refresh();

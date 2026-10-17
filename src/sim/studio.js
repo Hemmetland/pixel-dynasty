@@ -28,7 +28,7 @@ export const TIERS = [
     name: { sv: 'Spelfabriken', en: 'The Game Factory' },
     desc: { sv: 'Fyra våningar av kreativt kaos.', en: 'Four floors of creative chaos.' } },
   { id: 5, key: 'floors6', floors: 4, desks: 36, slots: 12, deskPerFloor: 9, cost: 25000000, rent: 100000, fans: 150000, games: 26, staff: 24, avg: 7.8, year: 2011,
-    name: { sv: 'Dynasti-tornet', en: 'Dynasty Tower' },
+    name: { sv: 'Dynastitornet', en: 'Dynasty Tower' },
     desc: { sv: 'Ett torn med ditt namn på. Du har gjort det.', en: 'A tower with your name on it. You made it.' } },
 ];
 export const tierOf = (G) => TIERS[G.office.tier];

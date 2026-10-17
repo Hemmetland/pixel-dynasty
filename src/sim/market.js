@@ -1,7 +1,7 @@
 import { clamp } from '../core/util.js';
 import { rnd, rint, gauss, pick, chance, weighted, shuffle } from '../core/rng.js';
 import { emit } from '../core/bus.js';
-import { COMPETITORS, TITLE_PARTS } from '../data/names.js';
+import { COMPETITORS, TITLE_PARTS, TOPIC_NOUNS } from '../data/names.js';
 import { TOPICS } from '../data/topics.js';
 import { GENRES } from '../data/genres.js';
 import { PLATFORMS, potential } from '../data/platforms.js';
@@ -21,23 +21,33 @@ export function makeCompetitors(G) {
   }));
 }
 
-// Slumpad speltitel på båda språken.
-export function randomTitle(rng) {
+// Speltitel på båda språken ur fyra index. Ungefär var tredje titel tar ett substantiv från temat (om det finns).
+function titleFrom(a, n, form, sfx, topic) {
+  const P = TITLE_PARTS;
+  const TN = TOPIC_NOUNS[topic];
+  const out = {};
+  for (const l of ['sv', 'en']) {
+    const adj = P.adj[l][a % P.adj[l].length];
+    const noun = TN && n % 3 === 0 ? TN[l][Math.floor(n / 3) % TN[l].length] : P.noun[l][n % P.noun[l].length];
+    const noun2 = P.noun[l][(n + 3) % P.noun[l].length];
+    if (form === 0) out[l] = `${adj} ${noun}`;
+    else if (form === 1) out[l] = l === 'sv' ? `${noun}s ${adj.toLowerCase()} ${adj === 'Hemliga' ? 'gåta' : 'hemlighet'}` : `Secret of the ${adj} ${noun}`;
+    else if (form === 2) out[l] = `${adj} ${noun} ${P.suffix[l][sfx % P.suffix[l].length]}`;
+    else out[l] = `${noun}: ${adj} ${noun2}`;
+  }
+  return out;
+}
+// Slumpad speltitel. Drar alltid exakt fyra slumptal (simuleringen förblir densamma per frö); är titeln redan tagen
+// (taken = mängd engelska titlar) prövas närliggande kombinationer utan nya dragningar.
+export function randomTitle(rng, topic, taken) {
   const P = TITLE_PARTS;
   const r = (n) => Math.floor(rng() * n);
   const a = r(P.adj.en.length);
   const n = r(P.noun.en.length);
   const form = r(4);
   const sfx = r(P.suffix.en.length);
-  const out = {};
-  for (const l of ['sv', 'en']) {
-    const adj = P.adj[l][a];
-    const noun = P.noun[l][n];
-    if (form === 0) out[l] = `${adj} ${noun}`;
-    else if (form === 1) out[l] = l === 'sv' ? `${noun}s ${P.adj[l][a].toLowerCase()} hemlighet` : `${noun} of the ${adj}`;
-    else if (form === 2) out[l] = `${adj} ${noun} ${P.suffix[l][sfx]}`;
-    else out[l] = l === 'sv' ? `${noun}: ${adj} ${P.noun.sv[(n + 3) % P.noun.sv.length]}` : `${noun}: ${adj} ${P.noun.en[(n + 3) % P.noun.en.length]}`;
-  }
+  let out = titleFrom(a, n, form, sfx, topic);
+  for (let k = 1; k < 6 && taken && taken.has(out.en); k++) out = titleFrom(a + k * 5, n + k * 7, (form + k) % 4, sfx + k, topic);
   return out;
 }
 
@@ -62,7 +72,10 @@ export function releaseComp(G, c) {
   const score = clamp(Math.round(gauss(G, mean, 1.15) * 10) / 10, 1.8, 9.7);
   const scope = compScope(G, year, strength);
   const total = unitRev(year) * Math.max(0.4, potential(plat, yf)) * Math.exp(0.62 * (score - 6.5)) * SCOPES[scope].rev * (0.6 + strength * 0.5) * (1 + (c.games > 3 ? 0.2 : 0)) * clamp(gauss(G, 1, 0.2), 0.6, 1.5) * 0.85;
-  const title = randomTitle(rnd2(G));
+  const enOf = (x) => (typeof x === 'string' ? x : x?.en || '');
+  const taken = new Set(G.market.releases.map((x) => enOf(x.title)));
+  for (const g of G.games) taken.add(enOf(g.title));
+  const title = randomTitle(rnd2(G), topic.id, taken);
   const rel = {
     id: G.uid++, t: G.t, comp: c.id, studio: c.name, color: c.color, title, score, total,
     platform: plat.id, genre: genre.id, topic: topic.id, scope, yours: false, price: priceOf(year), tail: SALES_TAIL,

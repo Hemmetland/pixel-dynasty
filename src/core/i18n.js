@@ -24,9 +24,13 @@ function fill(s, vars) {
   return s.replace(/\{(\w+)\}/g, (m, k) => (vars[k] !== undefined ? vars[k] : m));
 }
 export function t(key, vars) {
+  // singular: med {n} = 1 används 'nyckel.one' om den finns
+  if (vars && vars.n === 1 && STRINGS[key + '.one']) key += '.one';
   const e = STRINGS[key];
   if (!e) return key;
   return fill(lang === 'en' ? e[1] : e[0], vars);
 }
+// Plural för strängar utan {n} i texten (t.ex. '1 game'): som t(key, { n, ...vars }).
+export const tn = (key, n, vars) => t(key, { n, ...vars });
 // Fyll {var} i ett {sv,en}-objekt.
 export const Lf = (o, vars) => fill(L(o), vars);
