@@ -465,6 +465,7 @@ export const STRINGS = {
   // ── Marknadsföring, prestationer, meny ──
   'mk.title': ['Marknadsföring', 'Marketing'],
   'mk.help': ['Hype ger fler köpare vid lansering. Varje kampanj kan användas en gång per spel.', 'Hype brings more buyers at launch. Each campaign can be used once per game.'],
+  'mk.cap': ['Hypen slutar vid 100, så en kampanj som skulle ta den över taket ger bara det som får plats.', 'Hype tops out at 100, so a campaign that would push it past the cap only adds what fits.'],
   'mk.none': ['Starta ett spel först.', 'Start a game first.'],
   'mk.used': ['Använd', 'Used'],
   'mk.done': ['Kampanjen {name} är igång.', 'The {name} campaign is live.'],

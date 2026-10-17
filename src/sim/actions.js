@@ -1,9 +1,9 @@
 import { emit } from '../core/bus.js';
 import { t } from '../core/i18n.js';
 import { PLATFORM } from '../data/platforms.js';
-import { yfOf, moneyScale, yearOf } from './const.js';
+import { yfOf } from './const.js';
 import { spend, earn } from './studio.js';
-import { platformOpen } from './dev.js';
+import { platformOpen, promoPrice, hypeGain } from './dev.js';
 import { patchCost } from './sales.js';
 import { note } from './news.js';
 
@@ -33,6 +33,8 @@ export function patchGame(G, id) {
   if (G.money < c) return t('err.money');
   spend(G, c, 'patches');
   g.patched = true;
+  // Försäljningslyftet följer hur buggigt spelet var vid släppet (ett felfritt spel vinner inget).
+  g.patchBoost = Math.min(0.12, (g.parts?.bugRatio ?? 0) * 0.15);
   g.bugs = Math.round(g.bugs * 0.2);
   g.fansGained += 0;
   G.fans += Math.round(g.bugs * 3 + 20);
@@ -41,7 +43,7 @@ export function patchGame(G, id) {
 }
 // Mässan
 export function expoCost(G, level) {
-  return Math.round(([0, 1500, 6000][level] * moneyScale(yearOf(G.t))) / 50) * 50;
+  return level ? Math.round(promoPrice(G, [0, 1500, 6000][level], [0, 0.015, 0.04][level]) / 50) * 50 : 0;
 }
 export function resolveExpo(G, promptId, level) {
   const i = G.pending.findIndex((p) => p.id === promptId && p.type === 'expo');
@@ -54,7 +56,7 @@ export function resolveExpo(G, promptId, level) {
   if (go) {
     spend(G, c, 'marketing');
     J.cost += c;
-    const add = level === 1 ? 9 : 20;
+    const add = hypeGain(J.hype, level === 1 ? 9 : 20);
     J.hype = Math.min(100, J.hype + add);
     G.fans += level === 1 ? 20 : 90;
     emit('expoDone', { level, add });

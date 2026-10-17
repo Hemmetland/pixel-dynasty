@@ -11,7 +11,7 @@ import { DIFFICULTY } from './state.js';
 import { workers, moodMult, fatigueMult } from './people.js';
 import { bugMult, qaFixMult, mktCostMult, mktHypeMult, serverMult, labMult, spend } from './studio.js';
 import { phaseCats, normFocus, startFocus, evaluate, compatOf, parPerTick } from './score.js';
-import { startSales } from './sales.js';
+import { startSales, forecast } from './sales.js';
 
 export const RP_RATE = 0.05;
 // Satser som beskriver "per projekt" skalas mot projektets längd (tempo) så att ett längre projekt inte tappar mer hype
@@ -80,11 +80,27 @@ export function toggleCrunch(G) {
 }
 
 // ── Marknadsföring ───────────────────────────────────────────────
+// Vad projektet väntas dra in utan hype: prognosen för plattform, storlek och trend med de senaste spelens snittbetyg.
+export function expectedRevenue(G, J) {
+  const gs = G.games.slice(-3);
+  const score = gs.length ? gs.reduce((s, g) => s + g.score, 0) / gs.length : 6;
+  return forecast(G, { t: G.t, platform: J.platform, scope: J.scope, score, hype: 0, topic: J.topic, genre: J.genre, genre2: J.genre2, audience: J.audience, chain: J.chain }, { noise: false });
+}
+// Kampanjer och mässmontrar kostar minst sin andel av den väntade intäkten (annars betalade de sig hundratals gånger
+// om när försäljningen växer snabbare än penningvärdet). Alla fem kostar ungefär en tiondel av vad spelet drar in och
+// betalar sig 6–9 gånger om, så länge hypen inte redan slår i taket (100): det som går över är bortkastat.
+const MKT_SHARE = { press: 0.01, ads: 0.02, tv: 0.04, online: 0.06, influencer: 0.09 };
+export function promoPrice(G, base, share) {
+  const J = G.job && G.job.kind === 'game' ? G.job : null;
+  return Math.max(base * moneyScale(yearOf(G.t)), J ? share * expectedRevenue(G, J) : 0);
+}
+export const hypeGain = (hype, add) => Math.max(0, Math.min(add, 100 - hype));
 export function marketingCost(G, id) {
-  return Math.round((MKT[id].cost * moneyScale(yearOf(G.t)) * mktCostMult(G)) / 50) * 50;
+  return Math.round((promoPrice(G, MKT[id].cost, MKT_SHARE[id] || 0) * mktCostMult(G)) / 50) * 50;
 }
 export function marketingOptions(G) {
-  return G.u.mkt.map((id) => ({ ...MKT[id], cost: marketingCost(G, id), used: !!G.job?.marketing.includes(id) }));
+  const hype = G.job?.hype ?? 0;
+  return G.u.mkt.map((id) => ({ ...MKT[id], cost: marketingCost(G, id), gain: hypeGain(hype, MKT[id].hype * mktHypeMult(G)), used: !!G.job?.marketing.includes(id) }));
 }
 export function launchMarketing(G, id) {
   const J = G.job;
@@ -95,7 +111,7 @@ export function launchMarketing(G, id) {
   spend(G, cost, 'marketing');
   J.cost += cost;
   J.marketing.push(id);
-  const add = MKT[id].hype * mktHypeMult(G);
+  const add = hypeGain(J.hype, MKT[id].hype * mktHypeMult(G));
   J.hype = Math.min(100, J.hype + add);
   emit('marketing', { id, add });
   return true;

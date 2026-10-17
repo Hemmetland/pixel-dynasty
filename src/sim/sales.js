@@ -88,7 +88,7 @@ export function salesWeek(G) {
       continue;
     }
     let rev = g.total * curve[w];
-    if (g.patched) rev *= 1.12;
+    if (g.patched) rev *= 1 + (g.patchBoost ?? 0.12);
     g.weekly.push(rev);
     g.revenue += rev;
     weekRev += rev;

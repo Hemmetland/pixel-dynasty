@@ -22,12 +22,12 @@ regWin({
     const J = G.job;
     if (!J || J.kind !== 'game') return `<div class="empty">${icon('megaphone')}<div>${t('mk.none')}</div></div>`;
     const opts = marketingOptions(G);
-    return `<p class="hint" style="margin-bottom:14px">${t('mk.help')}</p>
+    return `<p class="hint" style="margin-bottom:14px">${t('mk.help')} ${t('mk.cap')}</p>
       <div class="bar tall" style="--c:var(--hot);margin-bottom:18px"><i style="width:${Math.min(100, J.hype)}%"></i></div>
       <div class="col" style="gap:10px">${opts
         .map(
           (o) => `<div class="card row" style="gap:14px;${o.used ? 'opacity:.55' : ''}"><div class="fi" style="width:44px;height:44px;border-radius:13px;display:grid;place-items:center;background:rgba(255,92,157,.14);color:var(--hot)">${icon(MIC[o.id])}</div>
-          <div style="flex:1"><b class="h3">${L(o.name)}</b><div class="hint">+${Math.round(o.hype * (1 + 0.12 * (G.office.fac.marketing?.lvl || 0)))} ${t('stat.hype')}</div></div>
+          <div style="flex:1"><b class="h3">${L(o.name)}</b><div class="hint">+${Math.round(o.gain)} ${t('stat.hype')}</div></div>
           ${o.used ? `<span class="tag" style="--c:var(--good)">${t('mk.used')}</span>` : `<button class="btn hot" data-act="mk-go" data-id="${o.id}" ${G.money < o.cost ? 'disabled' : ''}>${money(o.cost)}</button>`}</div>`,
         )
         .join('')}</div>`;
