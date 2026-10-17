@@ -1,6 +1,7 @@
 // Beteendetest för Studiohuset (v2) utan webbläsare: kör den riktiga Scene med en låtsas-canvas och kontrollerar
 // att ingen fastnar, går genom väggar, ställer sig i varandra eller hamnar utanför huset.
 // node test/behavior.mjs [sekunder=900] [frö=1]
+// TIER=4 provar en annan nivå med rumssystemet (standard 3); REQUIRE=meeting,coffee,... anger vilka aktiviteter som måste förekomma.
 import * as S from '../src/sim/index.js';
 import { POSE_FRAMES } from '../src/render/people.js';
 
@@ -45,8 +46,11 @@ const G = S.newGame({ studio: 'Test', seed: 5, difficulty: 'normal' });
 S.makeCompetitors(G);
 S.initWorld(G);
 G.t = (2020 - 1980) * 192 + 20;
-G.office.tier = 3;
-G.office.fac = { coffee: { lvl: 1, slot: 0 }, lab: { lvl: 1, slot: 1 }, qa: { lvl: 1, slot: 2 }, gameroom: { lvl: 1, slot: 3 }, training: { lvl: 1, slot: 4 }, marketing: { lvl: 1, slot: 5 } };
+const TIER = +(process.env.TIER || 3);
+const CAP = [2, 5, 10, 15, 24, 36][TIER];
+const SLOTS = [1, 2, 4, 6, 8, 12][TIER];
+G.office.tier = TIER;
+G.office.fac = Object.fromEntries(['coffee', 'lab', 'qa', 'gameroom', 'training', 'marketing', 'server'].slice(0, SLOTS).map((id, slot) => [id, { lvl: 1, slot }]));
 const hire = (n) => {
   while (G.staff.length < n) {
     const c = S.makeCandidate(G, 0);
@@ -54,7 +58,7 @@ const hire = (n) => {
     G.staff.push(c);
   }
 };
-hire(15);
+hire(CAP);
 const startJob = () => {
   if (!G.job) S.startProject(G, { title: 'Demo', topic: G.u.topics[0], genre: 'action', platform: 'pc', scope: 'small', audience: 'everyone' });
 };
@@ -169,7 +173,7 @@ ok(idleAway > busyAway, `i tomgång är fler borta (${(idleAway * 100).toFixed(0
 startJob();
 G.staff.pop();
 run(5);
-hire(15);
+hire(CAP);
 run(10);
 const gone = G.staff.splice(3, 2);
 run(40);
@@ -177,22 +181,22 @@ ok(!gone.some((s) => scene.actors.has(s.id) && !scene.actors.get(s.id).leaving &
 ok(![...scene.actors.values()].some((a) => gone.some((s) => s.id === a.id) && a.state !== 'leave'), 'avskedade går mot dörren');
 run(30);
 ok(!gone.some((s) => scene.actors.has(s.id)), 'avskedade är borta ur scenen efter en stund');
-hire(15);
+hire(CAP);
 scene.celebrateNow(3);
 run(5);
-G.office.tier = 2;
+G.office.tier = 1;
 scene.tierChanged();
 run(30);
 ok(!scene.crowd, 'andra nivåer använder gamla beteendet');
-G.office.tier = 3;
+G.office.tier = TIER;
 scene.tierChanged();
-ok(!!scene.crowd, 'tillbaka till Studiohuset');
+ok(!!scene.crowd, 'tillbaka till rumsnivån');
 run(total * 0.3);
 // få personer: bara tre i huset
 G.staff.length = 3;
 scene.syncActors(false);
 run(120);
-hire(15);
+hire(CAP);
 run(60);
 
 // HD-ljuset: ljuskällorna får plats i MAX_LIGHTS med rumsljusen först (kräver ingen WebGL att räkna ut)
@@ -220,7 +224,7 @@ ok(stat.overlaps === 0, 'inga stillastående aktörer i varandra');
 ok(stat.stuck === 0, 'ingen fastnar borta från skrivbordet');
 ok(stat.doors === 0, 'ingen går genom en stängd dörr');
 ok(stat.maxEmotes <= 4, 'högst fyra bubblor samtidigt');
-for (const k of ['meeting', 'coffee', 'lounge', 'server', 'board', 'pair', 'fac']) ok((stat.kinds[k] || 0) > 0, `aktivitet ${k} förekommer`);
+for (const k of (process.env.REQUIRE || 'meeting,coffee,lounge,server,board,pair,fac').split(',')) ok((stat.kinds[k] || 0) > 0, `aktivitet ${k} förekommer`);
 ok(stat.maxMeet >= 3, 'möten med minst tre');
 ok(Object.keys(stat.emotes).length >= 4, 'flera sorters bubblor förekommer');
 console.log(fails ? `\n${fails} fel` : '\nalla ok');

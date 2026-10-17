@@ -30,7 +30,9 @@ export const V2_TIERS = {
 export const registerTier = (tier, cfg) => { V2_TIERS[tier] = cfg; };
 export const hasV2 = (tier) => !!V2_TIERS[tier];
 
-// Tak: { lights(topY, BW), anim(topY, BW) -> { bulbs, neon }, steam: [{ x, dy }], facade(ctx, L, opts), roof(ctx, L, opts) }
+// Tak: { lights(topY, BW), anim(topY, BW) -> { bulbs, neon }, steam: [{ x, dy }], facade(ctx, L, opts), roof(ctx, L, opts),
+//       dynamic?(A, cx, gy, L, t, night, st) } där dynamic ritas varje bildruta ovanpå (helikopter, blinkande flygvarningslampor ...).
+// Rum kan på samma sätt ha DEF[typ].dynamic(A, cx, gy, L, room, t, st).
 const ROOFS = { garden: { lights: roofLights, anim: roofAnim, steam: [{ x: 206, dy: -27 }], facade: drawFacade, roof: drawRoofGarden } };
 export const registerRoof = (kind, def) => { ROOFS[kind] = def; };
 
@@ -732,7 +734,12 @@ export function drawRoomsDynamic(A, cx, gy, L, time, night, st = {}) {
       A.fillRect(cx + b.x, gy + b.y, 1, 1);
     }
   }
-  void night;
+  for (const r of L.rooms) {
+    const d = DEF[r.type];
+    if (d && d.dynamic) d.dynamic(A, cx, gy, L, r, t, st);
+  }
+  const rf = ROOFS[L.roof];
+  if (rf && rf.dynamic) rf.dynamic(A, cx, gy, L, t, night, st);
 }
 
 // Enkel additiv rumsbelysning för canvasläget (anropas av den som äger ljuset): ritar L.rooms[].light som mjuka fält.
