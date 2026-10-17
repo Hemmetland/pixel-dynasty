@@ -353,7 +353,7 @@ function yearPrompt(app, G, p, finish) {
   const cash0 = G.hist.cash.find((h) => h.t > lo - 4 && h.t <= lo + 1)?.v ?? G.money0 ?? 0;
   const cash1 = hist.length ? hist[hist.length - 1].v : G.money;
   const fansNow = G.hist.fans.find((h) => h.t > hi - 1)?.v ?? G.fans;
-  const fans0 = G.hist.fans.find((h) => h.t > lo && h.t <= lo + 2)?.v ?? 0;
+  const fans0 = G.hist.fans.find((h) => h.t > lo - 4 && h.t <= lo + 1)?.v ?? 0; // samma fönster som cash0 (historiken skrivs var 4:e vecka)
   const best = yGames.slice().sort((a, b) => b.score - a.score)[0];
   UI.modal(`
     <div class="win-head"><div class="wi" style="--wc:var(--gold)">${icon('calendar')}</div><h2>${t('year.title', { y: p.year })}<div class="sub">${esc(G.studio)}</div></h2></div>
