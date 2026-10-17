@@ -1,6 +1,7 @@
 import { PAL } from './pal.js';
 import { shade } from '../core/util.js';
 import { drawText } from './font.js';
+import { spr } from './sprites.js';
 
 // Alla ritfunktioner: (ctx, x, fy, ...) där x = vänsterkant och fy = golvets y-koordinat.
 const R = (ctx, x, y, w, h, c) => {
@@ -69,6 +70,7 @@ export function desk(ctx, x, fy, era = 0, variant = 0) {
 }
 
 export function plant(ctx, x, fy, size = 1) {
+  if (spr(ctx, 'plant', x, fy)) return;
   const h = 8 * size;
   R(ctx, x + 1, fy - 5, 5, 5, PAL.pot);
   R(ctx, x + 1, fy - 5, 5, 1, '#e08050');
@@ -81,6 +83,7 @@ export function plant(ctx, x, fy, size = 1) {
 }
 
 export function bookshelf(ctx, x, fy, w = 24, h = 30, seed = 1) {
+  if (spr(ctx, 'bookshelf', x, fy)) return;
   R(ctx, x, fy - h, w, h, PAL.woodLo);
   R(ctx, x + 1, fy - h + 1, w - 2, h - 2, '#4a3220');
   const cols = ['#e8504a', '#f2a63a', '#4a90e0', '#6cc86a', '#c860c8', '#e8e8f0', '#3fb8a8', '#f0d24a'];
@@ -231,6 +234,7 @@ export function serverRoom(ctx, x, fy, lvl = 1, tick = 0) {
 }
 
 export function couch(ctx, x, fy, color = '#4a6ab0') {
+  if (spr(ctx, 'couch', x, fy)) return;
   R(ctx, x, fy - 14, 26, 14, color);
   R(ctx, x, fy - 14, 26, 3, shade(color, 0.25));
   R(ctx, x + 3, fy - 10, 20, 7, shade(color, 0.1));
@@ -240,6 +244,7 @@ export function couch(ctx, x, fy, color = '#4a6ab0') {
 }
 
 export function filingCabinet(ctx, x, fy) {
+  if (spr(ctx, 'filingCabinet', x, fy)) return;
   R(ctx, x, fy - 18, 11, 18, '#8a92a8'); R(ctx, x, fy - 18, 11, 1, '#c8d0e0');
   for (let i = 0; i < 3; i++) { R(ctx, x + 1, fy - 17 + i * 6, 9, 5, '#9aa4b8'); R(ctx, x + 4, fy - 15 + i * 6, 3, 1, '#3a4256'); }
 }
@@ -268,6 +273,7 @@ export function arcadeSign(ctx, x, y, text, color = '#ff5c9d') {
 }
 
 export function vending(ctx, x, fy) {
+  if (spr(ctx, 'vending', x, fy)) return;
   R(ctx, x, fy - 26, 14, 26, '#e8504a'); R(ctx, x, fy - 26, 14, 1, '#ff8a7a');
   R(ctx, x + 2, fy - 23, 8, 14, '#10202a');
   const cols = ['#f2c84a', '#6cc86a', '#4a90e0', '#e86aa8'];

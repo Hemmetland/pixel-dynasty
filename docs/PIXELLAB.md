@@ -26,8 +26,15 @@ PixelLab-token får aldrig klistras in i chatten eller sparas i repot.
    så att allt ser ut att höra ihop. Kör sedan `reduce_colors` mot en gemensam palett på allt som sparas.
 3. Spara varje tillgång som PNG med transparent bakgrund i `assets/<grupp>/<namn>.png` och beskriv den i `assets/manifest.json`
    (`file`, storlek, ankare, frames, prompt, seed, kostnad, datum). Inga tokens i filer.
-4. Spelet använder alltid sprite om den finns, annars den procedurella koden. Bygget bäddar in `assets/` i den enda HTML-filen (tänkta
-   mekanismen: en esbuild-plugin som läser manifestet och skapar data-URI:er; `src/render/sprites.js` laddar dem och ritar med ankare och spegling).
+4. Spelet använder alltid sprite om den finns, annars den procedurella koden. Mekanismen finns och är testad:
+   `build.mjs` bäddar in allt som listas i `assets/manifest.json` som data-URI:er (`virtual:assets`), `src/render/sprites.js` laddar dem vid start och
+   `spr()`/`drawSprite()` ritar dem med ankare och spegling. Nycklar: `prop.<funktion>` för möbler och växter (sprites ersätter funktionerna i
+   `furniture.js`, `props.js`, `props2.js` som har en `spr(...)`-rad först, ritas vid x och golvlinjen), `veh.car.0|1|2`, `veh.van`, `veh.truck`, `veh.bus`
+   för fordon. Flera varianter: `veh.car.1#0`, `veh.car.1#1` (väljs efter färgen). Exempel i manifestet:
+   `{ "sprites": { "prop.sofa": { "file": "props/sofa.png", "fw": 41, "fh": 22, "ax": 1, "ay": 22, "frames": 1, "prompt": "...", "seed": 7, "cost": 10 } } }`
+   (`fw`/`fh` = en rutas storlek, `frames` = rutor sida vid sida, `ax`/`ay` = ankarpunkt). Måtten att sikta på står i `docs/ASSET_SPECS.md` och bilderna
+   av dagens procedurella grafik i `assets/baked/` (bra som `style_images` och som kontroll: lägg en baked-fil i manifestet så ser du exakt samma bild).
+   Nya sprite-nycklar för personer, byggnadsdelar och UI kräver en liten kodkrok vardera; lägg dem när tillgångarna finns.
 5. Måttstock i scenen (pixelkonstens egna pixlar): en våning är 48 px hög invändigt, en person ca 30 px, en bil 52–60 px lång, bussen 100.
    Sidovy med snitt genom huset, ljus uppifrån vänster. Spegla åt vänster i koden, generera bara en riktning (öster).
 

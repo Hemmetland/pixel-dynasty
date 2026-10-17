@@ -1,4 +1,5 @@
 import { shade } from '../core/util.js';
+import { drawSprite, hasSprite } from './sprites.js';
 
 // Fordon i profil, ritade mot höger (x = bakkant, y = marken under hjulen). dir=-1 speglar.
 // Måtten är satta mot människorna (30 px höga): en bil är ca dubbelt så lång som en människa är hög.
@@ -275,6 +276,9 @@ function drawBus(R, c, spin) {
 }
 
 export function drawVehicle(ctx, c, y) {
+  // Sprite från PixelLab om den finns: 'veh.<typ>[.<epok>]', varianter väljs efter färgen
+  const key = c.type === 'car' ? `veh.car.${c.era}` : `veh.${c.type}`;
+  if (hasSprite(key) && drawSprite(ctx, key, Math.round(c.x), y, { dir: c.dir, variant: Math.abs(c.color.charCodeAt(1) + c.color.charCodeAt(3)) })) return;
   const x = Math.round(c.x);
   const R = makeR(ctx, x, y, c.dir);
   const spin = Math.floor(Math.abs(c.x) / 2.5);

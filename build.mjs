@@ -9,6 +9,28 @@ const root = dirname(fileURLToPath(import.meta.url));
 const watch = process.argv.includes('--watch');
 const dev = process.argv.includes('--dev');
 
+// Sprites i assets/ (se docs/PIXELLAB.md): assets/manifest.json listar dem, och 'virtual:assets' ger dem som data-URI:er i bygget.
+const assetsPlugin = {
+  name: 'assets',
+  setup(b) {
+    b.onResolve({ filter: /^virtual:assets$/ }, () => ({ path: 'virtual:assets', namespace: 'assets' }));
+    b.onLoad({ filter: /.*/, namespace: 'assets' }, async () => {
+      const dir = resolve(root, 'assets');
+      let manifest = {};
+      try { manifest = JSON.parse(await readFile(resolve(dir, 'manifest.json'), 'utf8')); } catch { /* inga sprites än */ }
+      const sprites = manifest.sprites || {};
+      const images = {};
+      const watchFiles = [resolve(dir, 'manifest.json')];
+      for (const [name, e] of Object.entries(sprites)) {
+        const f = resolve(dir, e.file);
+        watchFiles.push(f);
+        try { images[name] = 'data:image/png;base64,' + (await readFile(f)).toString('base64'); } catch { console.warn('sprite saknas:', e.file); delete sprites[name]; }
+      }
+      return { contents: `export default ${JSON.stringify({ sprites, images })};`, loader: 'js', watchFiles, resolveDir: root };
+    });
+  },
+};
+
 const TITLE = 'Pixel Dynasty';
 const DESC = 'Bygg ett spelimperium från garaget till skyskrapan.';
 const FONTS =
@@ -24,6 +46,7 @@ async function bundle() {
     minify: !dev,
     legalComments: 'none',
     define: { 'process.env.NODE_ENV': '"production"' },
+    plugins: [assetsPlugin],
   });
   const css = await transform(await readFile(resolve(root, 'src/style.css'), 'utf8'), {
     loader: 'css',
@@ -62,14 +85,14 @@ async function emitDev() {
   try { files = (await readdir(resolve(root, 'src/dev'))).filter((f) => f.endsWith('.js')); } catch { return; }
   await mkdir(resolve(root, 'dist/dev'), { recursive: true });
   for (const f of files) {
-    const out = await build({ entryPoints: [resolve(root, 'src/dev', f)], bundle: true, write: false, format: 'iife', target: 'es2020' });
+    const out = await build({ entryPoints: [resolve(root, 'src/dev', f)], bundle: true, write: false, format: 'iife', target: 'es2020', plugins: [assetsPlugin] });
     await writeFile(resolve(root, 'dist/dev', f.replace('.js', '.html')), `<!doctype html><meta charset="utf-8"><style>body{margin:0;background:#1b1d28}</style><body><div id="app"></div><script>${out.outputFiles[0].text.replace(/<\/script/gi, '<\\/script')}</script>`);
   }
 }
 
 // Ljuslabbet (WebGL-jämförelse): dist/lab.html (fristående) och dist/lab-artifact.html (fragment).
 async function emitLab() {
-  const out = await build({ entryPoints: [resolve(root, 'src/lab/gl-lab.js')], bundle: true, write: false, format: 'iife', target: 'es2020', minify: !dev, legalComments: 'none' });
+  const out = await build({ entryPoints: [resolve(root, 'src/lab/gl-lab.js')], bundle: true, write: false, format: 'iife', target: 'es2020', minify: !dev, legalComments: 'none', plugins: [assetsPlugin] });
   const css = await transform(await readFile(resolve(root, 'src/lab/lab.css'), 'utf8'), { loader: 'css', minify: !dev });
   const code = out.outputFiles[0].text.replace(/<\/script/gi, '<\\/script');
   const frag = `<title>Pixel Dynasty Ljuslabb</title>
@@ -103,6 +126,7 @@ if (watch) {
     write: false,
     format: 'iife',
     plugins: [
+      assetsPlugin,
       {
         name: 'emit',
         setup(b) {

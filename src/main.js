@@ -7,9 +7,13 @@ import * as SIM from './sim/index.js';
 import { PLATFORMS, potential, techMult, platTier } from './data/platforms.js';
 import { RESEARCH } from './data/research.js';
 import { TOPICS } from './data/topics.js';
+import PACK from 'virtual:assets';
+import { registerSprites } from './render/sprites.js';
 
 const root = document.getElementById('app');
 app.init(root);
+// Sprites från assets/ (om några): ladda och tvinga byggnaden att ritas om när de är klara
+registerSprites(PACK).then((n) => { if (n && app.scene) app.scene.staticKey = ''; });
 buildTitle(root);
 initTutorial(root);
 showTitle(app);

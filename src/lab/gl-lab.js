@@ -6,6 +6,8 @@ import { initWorld } from '../sim/clock.js';
 import { makeCandidate } from '../sim/people.js';
 import { startProject } from '../sim/dev.js';
 import { glSupported } from '../render/gl/fx.js';
+import PACK from 'virtual:assets';
+import { registerSprites } from '../render/sprites.js';
 
 const $ = (s, r = document) => r.querySelector(s);
 const root = document.getElementById('app');
@@ -52,6 +54,7 @@ G.office.fac = { coffee: { lvl: 2, slot: 0 }, lab: { lvl: 1, slot: 1 } };
 const canvas = $('#c2d');
 const scene = new Scene(canvas);
 scene.setGame(G);
+registerSprites(PACK).then((n) => { if (n) scene.staticKey = ''; });
 let tod = 0.77;
 let auto = false;
 let wx = 'clear';

@@ -1,6 +1,7 @@
 import { PAL, NEON } from './pal.js';
 import { shade } from '../core/util.js';
 import { drawText, textWidth } from './font.js';
+import { spr } from './sprites.js';
 
 // Dekor för Studiohuset (v2): växter, lampor, tavlor, skärmar, neon och fönster.
 // Samma konvention som props.js: (ctx, x, fy, ...) där x = vänsterkant och fy = golvets y, om inget annat anges.
@@ -48,6 +49,7 @@ const GREENS = [['#2c7a40', '#49a85a', '#7bd283'], ['#2a7a62', '#3fae86', '#76dc
 
 // Stor krukväxt (gummiträd/monstera). h = bladkronans höjd över krukan.
 export function plantFloor(ctx, x, fy, h = 24, seed = 1, potC = '#2f3446') {
+  if (spr(ctx, 'plantFloor', x, fy)) return;
   const g = GREENS[seed % GREENS.length];
   const ph = 7;
   pot(ctx, x, fy, 9, ph, potC);
@@ -65,6 +67,7 @@ export function plantFloor(ctx, x, fy, h = 24, seed = 1, potC = '#2f3446') {
 
 // Liten krukväxt.
 export function plantSmall(ctx, x, fy, seed = 1, potC = '#c8643a') {
+  if (spr(ctx, 'plantSmall', x, fy)) return;
   const g = GREENS[seed % GREENS.length];
   pot(ctx, x, fy, 5, 4, potC);
   R(ctx, x + 2, fy - 8, 1, 4, g[0]);
@@ -90,6 +93,7 @@ export function plantHang(ctx, x, y0, drop, len, seed = 1) {
 
 // Palm (kentia) med bågformade blad.
 export function palm(ctx, x, fy, h = 36, seed = 1) {
+  if (spr(ctx, 'palm', x, fy)) return;
   const g = GREENS[0];
   pot(ctx, x - 4, fy, 10, 8, '#3a3f56');
   const top = fy - 8 - h;

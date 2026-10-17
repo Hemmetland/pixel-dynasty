@@ -1,6 +1,7 @@
 import { PAL, NEON } from './pal.js';
 import { shade } from '../core/util.js';
 import { R, RA, blob, hash, plantSmall } from './props2.js';
+import { spr } from './sprites.js';
 
 // Möbler och apparater för Studiohuset (v2). Konvention: x = vänsterkant, fy = golvets y (föremål står på fy).
 
@@ -8,6 +9,7 @@ const DESK_TOP = ['#e2cfa8', '#ecdcb8', '#a88a62'];
 
 // Kontorsstol i profil (samma yta som props.chair: sitsen vid x-1..x+8, personen sitter på x+2).
 export function chair2(ctx, x, fy, color = '#3a4a6a') {
+  if (spr(ctx, 'chair2', x, fy)) return;
   shadow(ctx, x, fy, 9, 0.22);
   R(ctx, x - 2, fy - 22, 3, 13, color);
   R(ctx, x - 2, fy - 22, 1, 13, shade(color, 0.3));
@@ -49,6 +51,7 @@ export function screenContent(ctx, x, y, w, h, kind, seed = 1) {
 // Skrivbord med dubbla skärmar. Samma ytor som props.desk (era 2): profilskärm vid x+15 (animeras av Scene),
 // andra skärmen vänd mot betraktaren vid x+19..x+27.
 export function desk2(ctx, x, fy, variant = 0, seed = 1, era = 2) {
+  if (spr(ctx, 'desk2', x, fy)) return;
   shadow(ctx, x + 1, fy, 26, 0.25);
   const top = fy - 12;
   // under skivan: pc och lådor
@@ -123,6 +126,7 @@ export function desk2(ctx, x, fy, variant = 0, seed = 1, era = 2) {
 
 // Soffa framifrån. Sitsen ligger på fy-9 så att personer i profil "sitter på" den.
 export function sofa(ctx, x, fy, w = 38, c = '#3a9a5a', pillow = '#f2c84a') {
+  if (spr(ctx, 'sofa', x, fy)) return;
   shadow(ctx, x, fy, w);
   const hi = shade(c, 0.3);
   const lo = shade(c, -0.22);
@@ -149,6 +153,7 @@ export function sofa(ctx, x, fy, w = 38, c = '#3a9a5a', pillow = '#f2c84a') {
 }
 
 export function beanbag(ctx, x, fy, w = 15, c = '#ff8a4a') {
+  if (spr(ctx, 'beanbag', x, fy)) return;
   shadow(ctx, x, fy, w, 0.3);
   const h = Math.round(w * 0.72);
   ctx.save();
@@ -164,6 +169,7 @@ export function beanbag(ctx, x, fy, w = 15, c = '#ff8a4a') {
 }
 
 export function floorLamp(ctx, x, fy, h = 38, c = '#ffd88a') {
+  if (spr(ctx, 'floorLamp', x, fy)) return;
   shadow(ctx, x - 2, fy, 5, 0.25);
   R(ctx, x - 2, fy - 1, 5, 1, '#1b1e2a');
   R(ctx, x - 1, fy - 2, 3, 1, '#2a2f3c');
@@ -185,6 +191,7 @@ export function rug(ctx, x, fy, w, c1 = '#8a3a4a', c2 = '#e8a05a') {
 }
 
 export function fridge(ctx, x, fy, c = '#c8d4dc') {
+  if (spr(ctx, 'fridge', x, fy)) return;
   shadow(ctx, x, fy, 14);
   R(ctx, x, fy - 35, 14, 35, c);
   R(ctx, x, fy - 35, 14, 1, '#f0f6fa');
@@ -204,6 +211,7 @@ export function fridge(ctx, x, fy, c = '#c8d4dc') {
 
 // Köksbänk med överskåp. Underskåp 14 px, bänkskiva 2 px, stänkskydd av kakel till överskåp.
 export function kitchenCounter(ctx, x, fy, w, c = '#2e8a86') {
+  if (spr(ctx, 'kitchenCounter', x, fy)) return;
   shadow(ctx, x, fy, w);
   // kakel
   R(ctx, x, fy - 32, w, 17, '#f4f1e8');
@@ -264,6 +272,7 @@ export function laptop(ctx, x, y, dir = 1) {
 }
 
 export function meetingTable(ctx, x, fy, w = 44) {
+  if (spr(ctx, 'meetingTable', x, fy)) return;
   shadow(ctx, x + 2, fy, w - 4);
   R(ctx, x + 3, fy - 13, 2, 13, '#2a2f3c');
   R(ctx, x + 3, fy - 13, 1, 13, '#4a5470');
@@ -277,6 +286,7 @@ export function meetingTable(ctx, x, fy, w = 44) {
 
 // Reception: främre panel med LED-list och logoplatta.
 export function receptionDesk(ctx, x, fy, w = 38) {
+  if (spr(ctx, 'receptionDesk', x, fy)) return;
   shadow(ctx, x, fy, w);
   R(ctx, x, fy - 14, w, 14, '#26353e');
   R(ctx, x, fy - 14, w, 1, '#3e5460');
@@ -324,6 +334,7 @@ export function doorFrame(ctx, x, y, w, h) {
 
 // Serverrack. Returnerar inget; lysdioderna ritas dynamiskt (se rackLeds).
 export function rack(ctx, x, fy, w = 14, h = 38, seed = 1) {
+  if (spr(ctx, 'rack', x, fy)) return;
   shadow(ctx, x, fy, w, 0.4);
   R(ctx, x, fy - h, w, h, '#151824');
   R(ctx, x, fy - h, w, 1, '#4a5470');
@@ -408,6 +419,7 @@ export function whiteboardBig(ctx, x, y, w, h, seed = 1) {
 }
 
 export function benchSeat(ctx, x, fy, w = 24, c = '#c86a4a') {
+  if (spr(ctx, 'benchSeat', x, fy)) return;
   shadow(ctx, x, fy, w);
   R(ctx, x, fy - 9, w, 3, c);
   R(ctx, x, fy - 9, w, 1, shade(c, 0.35));
@@ -417,6 +429,7 @@ export function benchSeat(ctx, x, fy, w = 24, c = '#c86a4a') {
 }
 
 export function armchair(ctx, x, fy, c = '#e8a04a') {
+  if (spr(ctx, 'armchair', x, fy)) return;
   shadow(ctx, x, fy, 14);
   R(ctx, x + 1, fy - 17, 12, 9, c);
   R(ctx, x + 1, fy - 17, 12, 1, shade(c, 0.35));
@@ -432,6 +445,7 @@ export function armchair(ctx, x, fy, c = '#e8a04a') {
 
 // Lila podfåtölj (äggform) för takterrassen.
 export function podChair(ctx, x, fy, c = '#8a5ae0') {
+  if (spr(ctx, 'podChair', x, fy)) return;
   RA(ctx, x - 1, fy - 1, 16, 1, '#000000', 0.3);
   R(ctx, x + 6, fy - 5, 3, 4, '#2a2f3c');
   R(ctx, x + 3, fy - 2, 9, 1, '#3a4256');
@@ -465,6 +479,7 @@ export function shadow(ctx, x, fy, w, a = 0.3) {
 }
 
 export function copier(ctx, x, fy) {
+  if (spr(ctx, 'copier', x, fy)) return;
   shadow(ctx, x, fy, 18);
   R(ctx, x, fy - 15, 18, 15, '#d4d9e4');
   R(ctx, x, fy - 15, 18, 1, '#f4f6fc');
@@ -483,6 +498,7 @@ export function copier(ctx, x, fy) {
 }
 
 export function boxes(ctx, x, fy) {
+  if (spr(ctx, 'boxes', x, fy)) return;
   shadow(ctx, x, fy, 13);
   R(ctx, x, fy - 8, 13, 8, '#c49a62');
   R(ctx, x, fy - 8, 13, 1, '#dcb680');
@@ -495,6 +511,7 @@ export function boxes(ctx, x, fy) {
 }
 
 export function waterCooler(ctx, x, fy) {
+  if (spr(ctx, 'waterCooler', x, fy)) return;
   shadow(ctx, x, fy, 9);
   R(ctx, x, fy - 12, 9, 12, '#dfe5ee');
   R(ctx, x, fy - 12, 9, 1, '#ffffff');
@@ -509,6 +526,7 @@ export function waterCooler(ctx, x, fy) {
 }
 
 export function trashBin(ctx, x, fy, c = '#4a5470') {
+  if (spr(ctx, 'trashBin', x, fy)) return;
   R(ctx, x, fy - 8, 6, 8, c);
   R(ctx, x, fy - 8, 6, 1, shade(c, 0.4));
   R(ctx, x, fy - 8, 1, 8, shade(c, 0.2));
@@ -517,6 +535,7 @@ export function trashBin(ctx, x, fy, c = '#4a5470') {
 }
 
 export function umbrellaStand(ctx, x, fy) {
+  if (spr(ctx, 'umbrellaStand', x, fy)) return;
   R(ctx, x, fy - 8, 6, 8, '#3a3f56');
   R(ctx, x, fy - 8, 6, 1, '#6a769a');
   R(ctx, x + 1, fy - 13, 1, 5, '#e8504a');
