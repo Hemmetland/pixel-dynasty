@@ -11,23 +11,36 @@ const { R, RA } = V;
 
 // Studiohuset (nivå 3, "v2"): rumsplan, layout-data (rooms/stations/lights) och ritning av hela byggnaden.
 // Koordinater: x relativt husets mitt (som desks[].x), y relativt marken (negativt uppåt), fy = golvets y.
-export const V2 = { BW: 424, pitch: 54, intH: 48, floors: 3, roofH: 44, slotW: 56, deskSp: 30, wall: 6, found: 4 };
+export const V2 = { pitch: 54, intH: 48, slotW: 56, deskSp: 30, wall: 6, found: 4 };
 
-// Rumsplan per våning (vänster till höger). Två anläggningsplatser (slots) fyller alltid högerkanten.
-const PLAN = [
-  [['lobby', 78], ['lounge', 66], ['dev', 156]],
-  [['meeting', 90], ['dev', 156], ['kitchen', 54]],
-  [['dev', 156], ['server', 60], ['whiteboard', 84]],
-];
+// Byggnadsnivåer som ritas med rumssystemet: { BW, floors, roofH, roof, plan, slotsPerFloor, band }.
+// plan = rumsplan per våning (vänster till höger, [typ, bredd] eller [typ, bredd, extra]); anläggningsplatserna (slots) fyller alltid högerkanten
+// (slotsPerFloor per våning, standard 2). Utvecklarrum får (bredd - 6) / deskSp skrivbord om inte extra.desks anges.
+// roof = nyckel i ROOFS (takterrass, fasad och skylt). band = neonskylt i bjälklaget mellan våning 1 och 2.
+export const V2_TIERS = {
+  3: {
+    BW: 424, floors: 3, roofH: 44, roof: 'garden', band: 'BETTER CODE TOGETHER',
+    plan: [
+      [['lobby', 78], ['lounge', 66], ['dev', 156]],
+      [['meeting', 90], ['dev', 156], ['kitchen', 54]],
+      [['dev', 156], ['server', 60], ['whiteboard', 84]],
+    ],
+  },
+};
+export const registerTier = (tier, cfg) => { V2_TIERS[tier] = cfg; };
+export const hasV2 = (tier) => !!V2_TIERS[tier];
+
+// Tak: { lights(topY, BW), anim(topY, BW) -> { bulbs, neon }, steam: [{ x, dy }], facade(ctx, L, opts), roof(ctx, L, opts) }
+const ROOFS = { garden: { lights: roofLights, anim: roofAnim, steam: [{ x: 206, dy: -27 }], facade: drawFacade, roof: drawRoofGarden } };
+export const registerRoof = (kind, def) => { ROOFS[kind] = def; };
 
 // Rumsljusets styrka per rumstyp (ljusa väggar behöver mindre, mörka serverrummet mer)
-const LIGHT_I = { lobby: 0.8, lounge: 0.85, dev: 0.8, meeting: 0.75, kitchen: 0.62, whiteboard: 0.6, server: 0.95 };
-const BAND_SIGN = 'BETTER CODE TOGETHER';
-const BAND_X = -Math.round(textWidth(BAND_SIGN) / 2) - 30;
+export const LIGHT_I = { lobby: 0.8, lounge: 0.85, dev: 0.8, meeting: 0.75, kitchen: 0.62, whiteboard: 0.6, server: 0.95 };
+const bandX = (sign) => -Math.round(textWidth(sign) / 2) - 30;
 
 // ── Rumsdefinitioner: fönster, stationer, lampor och möbler ──
 // rx = rummets vänsterkant, w = bredd, fy = golv. Alla x/y nedan är i layoutkoordinater.
-const DEF = {};
+export const DEF = {};
 
 // Pendlar (delas av ritning och ljus): [{ x, kind, drop? }]
 const pendants = (rx, w, n, kind) => Array.from({ length: n }, (_, i) => ({ x: Math.round(rx + (i + 0.5) * (w / n)), kind }));
@@ -296,7 +309,9 @@ function emptySlot(ctx, rx, fy, v) {
 
 // ── Layout ──
 export function layoutV2(tier) {
-  const { BW, pitch, intH, floors, roofH, slotW, deskSp, wall, found } = V2;
+  const { pitch, intH, slotW, deskSp, wall, found } = V2;
+  const T = V2_TIERS[tier];
+  const { BW, floors, roofH } = T;
   const IW = BW - wall * 2;
   const left = -IW / 2;
   const rooms = [];
@@ -317,17 +332,18 @@ export function layoutV2(tier) {
       x += w;
       return room;
     };
-    for (const [type, w] of PLAN[f]) {
-      const room = add(type, w);
+    for (const [type, w, ex] of T.plan[f]) {
+      const room = add(type, w, ex && ex.desks === undefined ? ex : {});
       const d = DEF[type];
       const rx = room.x0;
       if (type === 'dev') {
-        for (let i = 0; i < 5; i++) desks.push({ x: rx + 3 + i * deskSp, fy, floor: f, idx: desks.length, sp: deskSp });
+        const nd = ex && ex.desks !== undefined ? ex.desks : Math.floor((w - 6) / deskSp);
+        for (let i = 0; i < nd; i++) desks.push({ x: rx + 3 + i * deskSp, fy, floor: f, idx: desks.length, sp: deskSp });
         anim.screens.push({ x: rx + 38, y: fy - 38, w: 32, h: 17, kind: ['chart', 'code', 'map'][f % 3], seed: f });
       }
       if (type === 'kitchen') anim.steam.push({ x: rx + 27, y: fy - 32 });
       if (type === 'lobby') anim.neon.push({ x: rx + 6, y: fy - 45, w: 115, h: 5 });
-      if (type === 'dev' && f === 2) anim.neon.push({ x: BAND_X, y: fy, w: textWidth(BAND_SIGN), h: 5 });
+      if (T.band && type === 'dev' && f === 2) anim.neon.push({ x: bandX(T.band), y: fy, w: textWidth(T.band), h: 5 });
       if (type === 'meeting') anim.screens.push({ x: rx + 26, y: fy - 44, w: 38, h: 19, kind: 'slides', seed: 0 });
       if (type === 'lounge') {
         anim.fish.push({ x: rx + 5, y: fy - 41, w: 30, h: 12 });
@@ -351,7 +367,7 @@ export function layoutV2(tier) {
       }
       if (type === 'lobby') lights.push({ x: rx + 18, y: fy - 20, r: 32, i: 0.4, c: [1, 0.9, 0.7], kind: 1, floor: f, pri: 2 });
     }
-    for (let s = 0; s < 2; s++) {
+    for (let s = 0; s < (T.slotsPerFloor ?? 2); s++) {
       const room = add('facility', slotW, { slot: slots.length });
       slots.push({ x: room.x0 + 2, w: slotW - 4, fy, floor: f, idx: slots.length });
       lights.push({ x: Math.round(room.x0 + slotW / 2), y: fy - intH + 6, r: 46, i: 0.6, c: room.light, kind: 0, floor: f, y0: fy - intH, y1: fy, pri: 1 });
@@ -361,14 +377,15 @@ export function layoutV2(tier) {
     for (const nx of [-130, 0, 130]) lights.push({ x: nx, y: fy + 3, r: 38, i: 0.32, c: neonC, kind: 1, floor: f, pri: 2 });
   }
   // takterrass och skylt
-  lights.push(...roofLights(topY, BW));
+  const rf = ROOFS[T.roof];
+  lights.push(...rf.lights(topY, BW));
   lights.sort((a, b) => a.pri - b.pri); // viktigast först: den som äger ljuset tar så många som ryms
-  const ra = roofAnim(topY, BW);
+  const ra = rf.anim(topY, BW);
   anim.neon.push(...ra.neon);
-  anim.steam.push({ x: 206, y: topY - 27 }); // ventilationsrör på taket
+  for (const st of rf.steam || []) anim.steam.push({ x: st.x, y: topY + st.dy }); // ventilationsrör på taket
   anim.bulbs = ra.bulbs;
   return {
-    tier, BW, floors, roof: 'garden', slotW, IW, left, desks, slots, sp: deskSp, roofH,
+    tier, BW, floors, roof: T.roof, band: T.band, slotW, IW, left, desks, slots, sp: deskSp, roofH,
     H: found + floors * pitch + roofH, W: BW + 40, topY,
     v2: true, pitch, intH, rooms, stations, lights, anim,
   };
@@ -441,14 +458,14 @@ function partition(ctx, x, fy, intH, kind, c = '#9fd6ff') {
 }
 
 // Rummens namnskyltar (som i referensbilden). [sv, en]. Rum utan egen skylt (lobbyn har en stor neonskylt) hoppas över.
-const ROOM_NAMES = {
+export const ROOM_NAMES = {
   lounge: ['PAUS & LOUNGE', 'LOUNGE'],
   meeting: ['MÖTESRUM', 'MEETING ROOM'],
   kitchen: ['KÖK', 'KITCHEN'],
   server: ['SERVER', 'SERVERS'],
   whiteboard: ['KONCEPT & DESIGN', 'CONCEPT & DESIGN'],
 };
-const DEV_NAMES = [['PROGRAMMERING', 'PROGRAMMING'], ['ART & ANIMATION', 'ART & ANIMATION'], ['LJUD & MUSIK', 'AUDIO & MUSIC']];
+export const DEV_NAMES = [['PROGRAMMERING', 'PROGRAMMING'], ['ART & ANIMATION', 'ART & ANIMATION'], ['LJUD & MUSIK', 'AUDIO & MUSIC']];
 const FAC_EMPTY = [['FÖRRÅD', 'STORAGE'], ['BIBLIOTEK', 'LIBRARY'], ['PAUS', 'BREAK ROOM'], ['TRÄNING', 'GYM'], ['SPELRUM', 'ARCADE'], ['VÄXTHUS', 'GREENHOUSE']];
 const FAC_NAMES = { coffee: ['KAFFEBAR', 'COFFEE BAR'], lab: ['FORSKNING', 'RESEARCH'], qa: ['TEST & QA', 'TEST & QA'], training: ['UTBILDNING', 'TRAINING'], gameroom: ['SPELRUM', 'GAME ROOM'], marketing: ['MARKNAD', 'MARKETING'], server: ['SERVER & ONLINE', 'SERVER & ONLINE'] };
 function roomName(r, fac) {
@@ -569,8 +586,8 @@ export function drawShellV2(ctx, L, opts) {
       if (d && d.pendants) for (const p of d.pendants(r.x0, r.w)) V.pendant(ctx, p.x, top + 4, p.drop || 8, p.kind || 'dome', p.c || '#2a2f3c', r.lightRGB.join(','));
     }
   }
-  {
-    const lob = L.rooms.find((r) => r.type === 'lobby');
+  const lob = L.rooms.find((r) => r.type === 'lobby');
+  if (lob) {
     const nx = Math.round(lob.x0 + 6);
     // neonskylt i lobbyn på två rader så att den ryms i rummet utan att krocka med namnskyltarna
     const l1 = 'GOOD IDEAS';
@@ -579,17 +596,21 @@ export function drawShellV2(ctx, L, opts) {
     R(ctx, nx - 3, ny - 2, textWidth(l2) + 6, 15, '#0a1220');
     V.neonText(ctx, l1, nx, ny, NEON.cyanHi, NEON.cyan);
     V.neonText(ctx, l2, nx, ny + 7, NEON.magentaHi, NEON.magenta);
+  }
+  if (L.band) {
     // fasadskylt: blå neon i bjälklaget mellan våning 1 och 2
     const by = -V2.found - 2 * pitch;
-    R(ctx, BAND_X - 3, by, textWidth(BAND_SIGN) + 6, 6, '#0a1220');
-    V.neonText(ctx, BAND_SIGN, BAND_X, by, NEON.cyanHi, NEON.cyan);
+    const bx = bandX(L.band);
+    R(ctx, bx - 3, by, textWidth(L.band) + 6, 6, '#0a1220');
+    V.neonText(ctx, L.band, bx, by, NEON.cyanHi, NEON.cyan);
   }
   {
     const fac = new Map(Object.entries(opts.fac || {}).map(([id, f]) => [f.slot, { id, lvl: f.lvl }]));
     for (const r of L.rooms) namePlate(ctx, r, -V2.found - r.floor * pitch, intH, fac);
   }
-  drawFacade(ctx, L, opts);
-  drawRoofGarden(ctx, L, opts);
+  const rf = ROOFS[L.roof];
+  rf.facade(ctx, L, opts);
+  rf.roof(ctx, L, opts);
   return holes;
 }
 

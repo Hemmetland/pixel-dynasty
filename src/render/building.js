@@ -2,7 +2,7 @@ import { WALLS } from './pal.js';
 import { shade } from '../core/util.js';
 import { drawText, textWidth, fitText } from './font.js';
 import * as P from './props.js';
-import { layoutV2, drawShellV2 } from './rooms.js';
+import { layoutV2, drawShellV2, hasV2 } from './rooms.js';
 
 export const PITCH = 44;
 export const INT_H = 40;
@@ -20,7 +20,7 @@ const GEO = [
 
 // Layout: positioner för skrivbord, anläggningar och våningar.
 export function makeLayout(tier) {
-  if (tier === 3) return tuneStations(layoutV2(tier)); // Studiohuset: rum, neon och takträdgård (rooms.js)
+  if (hasV2(tier)) return tier === 3 ? tuneStations(layoutV2(tier)) : layoutV2(tier); // nivåer med rumssystemet (rooms.js): Studiohuset m.fl.
   const g = GEO[tier];
   const IW = g.BW - WALL * 2;
   const left = -IW / 2;

@@ -48,7 +48,7 @@ export const GRAPH = { ink: '#0e1018', dk: '#161a26', mid: '#232838', lt: '#323a
 
 // Rumsstilar. wall/wall2: bakvägg och rand, dado: nedre panel, trim: list, floor/floorHi: golvband,
 // light: rumsljus som flyttal 0..1 (samma skala som ljuskällor i scene-gl).
-const ROOM_STYLE = {
+export const ROOM_STYLE = {
   lobby: { wall: '#d6cab6', wall2: '#cabda8', dado: '#33474f', trim: '#7a8e96', floor: '#6a5648', floorHi: '#8a7260', light: [1, 0.86, 0.62] },
   lounge: { wall: '#6c5aa2', wall2: '#604f94', dado: '#3a3068', trim: '#9a88cc', floor: '#4c3f72', floorHi: '#675792', light: [0.78, 0.58, 1] },
   dev: { wall: '#e4d4b0', wall2: '#d8c7a0', dado: '#6e5a48', trim: '#a48a6a', floor: '#7a6a5a', floorHi: '#9a8670', light: [1, 0.82, 0.52] },
