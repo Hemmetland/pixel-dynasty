@@ -102,9 +102,13 @@ export const UI = {
   },
 };
 
+// Dokumentlyssnarna kopplas bara en gång; ett nytt anrop (språkbyte bygger om HUD) hämtar bara om rot och overlay
+let wired = false;
 export function initUICore(root) {
   UI.root = root;
   UI.overlay = $('#overlay', root);
+  if (wired) return;
+  wired = true;
   document.addEventListener('click', (e) => {
     const el = e.target.closest('[data-act]');
     if (el && !el.disabled) {
@@ -122,10 +126,12 @@ export function initUICore(root) {
     }
     if (e.target === UI.overlay && UI.cur) UI.close();
   });
-  // Verktygstips
-  const tip = $('#tip', root);
+  // Verktygstips (#tip byggs om vid språkbyte, så det slås upp varje gång)
+  const tipOf = () => $('#tip', UI.root);
   let tipEl = null;
   document.addEventListener('pointermove', (e) => {
+    const tip = tipOf();
+    if (!tip) return;
     const el = e.target.closest?.('[data-tip]');
     if (el !== tipEl) {
       tipEl = el;
@@ -135,7 +141,7 @@ export function initUICore(root) {
       } else tip.classList.remove('on');
     }
     if (el) {
-      const r = root.getBoundingClientRect();
+      const r = UI.root.getBoundingClientRect();
       let x = e.clientX - r.left + 14;
       let y = e.clientY - r.top + 16;
       const w = tip.offsetWidth;
@@ -146,9 +152,8 @@ export function initUICore(root) {
       tip.style.top = Math.max(6, y) + 'px';
     }
   });
-  document.addEventListener('pointerleave', () => tip.classList.remove('on'));
-  document.addEventListener('pointerdown', () => tip.classList.remove('on'));
-  return tip;
+  document.addEventListener('pointerleave', () => tipOf()?.classList.remove('on'));
+  document.addEventListener('pointerdown', () => tipOf()?.classList.remove('on'));
 }
 
 // ── Toast ──
