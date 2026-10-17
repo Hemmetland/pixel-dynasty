@@ -22,8 +22,9 @@ function yearEntries(G, year) {
       out.push({ title: r.title, studio: r.studio, yours: false, score: r.score, design: r.score + (r.id % 7) * 0.08 - 0.2, tech: r.score + (r.id % 5) * 0.1 - 0.2, units: relUnitsTotal(r, hi), topic: r.topic, color: r.color });
     }
   }
+  // Galan hålls när årets sista vecka börjar (t = hi - 1), så ett spel som släpps den veckan tävlar nästa år
   for (const g of G.games) {
-    if (g.t >= lo && g.t < hi) {
+    if (g.t >= lo - 1 && g.t < hi - 1) {
       out.push({ title: g.title, studio: G.studio, yours: true, score: g.score, design: g.score + Math.log2(Math.max(0.2, g.parts.rd)) * 0.45, tech: g.score + Math.log2(Math.max(0.2, g.parts.rt)) * 0.45, units: g.units || g.total / g.priceAt, topic: g.topic, gid: g.id });
     }
   }
