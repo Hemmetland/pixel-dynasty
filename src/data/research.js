@@ -1,8 +1,10 @@
+import { RESEARCH_TEMPO } from '../sim/tempo.js';
+
 // Forskningsträdet. rp = forskningspoäng, money = kontantkostnad, weeks = tid.
 // unlock = vad som öppnas, perk = permanenta bonusar.
 const R = (id, cat, sv, en, dsv, den, rp, money, weeks, req, year, unlock, perk, glyph) => ({
   id, cat, name: { sv, en }, desc: { sv: dsv, en: den },
-  rp, money, weeks, req: req || [], year: year || 1980, unlock: unlock || {}, perk: perk || {}, glyph,
+  rp, money, weeks: Math.max(1, Math.round(weeks * RESEARCH_TEMPO)), req: req || [], year: year || 1980, unlock: unlock || {}, perk: perk || {}, glyph,
 });
 
 export const RESEARCH_CATS = [

@@ -6,6 +6,7 @@ import { CAT } from '../data/categories.js';
 import { PLATFORM, lifecycle, platTier } from '../data/platforms.js';
 import { MKT } from '../data/research.js';
 import { SCOPES, yearOf, yfOf, moneyScale, engineMult, TICKS_PER_WEEK } from './const.js';
+import { SCOPE_TEMPO } from './tempo.js';
 import { DIFFICULTY } from './state.js';
 import { workers, moodMult } from './people.js';
 import { bugMult, qaFixMult, mktCostMult, mktHypeMult, serverMult, labMult, spend } from './studio.js';
@@ -13,6 +14,9 @@ import { phaseCats, normFocus, defaultFocus, evaluate, compatOf, parPerTick } fr
 import { startSales } from './sales.js';
 
 export const RP_RATE = 0.05;
+// Satser som beskriver "per projekt" skalas mot projektets längd (tempo) så att ett längre projekt inte tappar mer hype
+// eller fixar fler buggar än ett kort.
+const tempoOf = (J) => SCOPE_TEMPO[J.scope] || 1;
 
 export function platformOpen(G, id) {
   const p = PLATFORM[id];
@@ -174,7 +178,7 @@ export function devTick(G) {
       }
     }
     J.ticks++;
-    J.hype *= 0.9988;
+    J.hype *= Math.pow(0.9988, 1 / tempoOf(J));
     // fasbyte
     const phaseLen = J.devTicks / 3;
     if (J.ticks >= J.devTicks) {
@@ -190,9 +194,9 @@ export function devTick(G) {
     // Polish / QA
     const out = teamOutput(G, J, 0.2);
     const par = parPerTick(G, J);
-    const lambda = 0.05 * Math.sqrt(clamp(out.fix / par, 0.2, 6)) * qaFixMult(G);
+    const lambda = (0.05 / tempoOf(J)) * Math.sqrt(clamp(out.fix / par, 0.2, 6)) * qaFixMult(G);
     const before = J.bugs;
-    J.bugs = Math.max(0, J.bugs * Math.exp(-lambda) - 0.02 * out.n);
+    J.bugs = Math.max(0, J.bugs * Math.exp(-lambda) - (0.02 / tempoOf(J)) * out.n);
     const fixed = before - J.bugs;
     if (fixed > 0.2 && out.ws.length && rnd(G) < 0.5) emit('float', { staff: out.ws[rint(G, 0, out.ws.length - 1)].id, kind: 'fix', amount: Math.max(1, Math.round(fixed)) });
     J.polishDone++;
@@ -209,7 +213,7 @@ export function shipNow(G) {
 export function extendPolish(G) {
   const J = G.job;
   if (!J || J.phase !== 3 || J.state !== 'dev' || J.extended) return false;
-  J.polishTicks += 4 * TICKS_PER_WEEK;
+  J.polishTicks += Math.round(4 * tempoOf(J)) * TICKS_PER_WEEK;
   J.extended = true;
   return true;
 }
@@ -219,7 +223,8 @@ function finishDev(G) {
   J.state = 'report';
   const rep = evaluate(G, J);
   J.report = rep;
-  const rpBonus = Math.round((J.D + J.T) / 45 * labMult(G));
+  // Ett längre projekt ger mer arbete, men samma forskningspoäng per spel som förut: färre spel per år = långsammare forskning.
+  const rpBonus = Math.round(((J.D + J.T) / tempoOf(J) / 45) * labMult(G));
   J.rpGained += rpBonus;
   G.rp += rpBonus;
   G.pending.push({ type: 'report', id: G.uid++ });

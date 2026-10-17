@@ -3,6 +3,7 @@ import { rnd, chance, weighted, pick } from '../core/rng.js';
 import { emit } from '../core/bus.js';
 import { EVENTS, EV } from '../data/events.js';
 import { SCOPES, yearOf, moneyScale } from './const.js';
+import { SCOPE_TEMPO } from './tempo.js';
 import { earn, spend } from './studio.js';
 import { parPerTick } from './score.js';
 import { note } from './news.js';
@@ -19,7 +20,7 @@ export function rollStudioEvent(G, force) {
 export function rollDevEvent(G) {
   const J = G.job;
   if (!J || J.kind !== 'game' || J.state !== 'dev' || J.phase >= 3 || G.pending.length) return false;
-  if (J.events >= 3 || J.ticks < 12 || !chance(G, 0.075)) return false;
+  if (J.events >= 3 || J.ticks < 12 || !chance(G, 0.075 / (SCOPE_TEMPO[J.scope] || 1))) return false;
   const pool = EVENTS.filter((e) => e.kind === 'dev' && e.when(G));
   if (!pool.length) return false;
   const ev = weighted(G, pool, (e) => e.weight);

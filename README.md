@@ -67,11 +67,11 @@ Att flytta till ett större kontor är en milstolpe. Alla krav och kostnader st�
 
 | Nivå | Kontor | Kostnad | Hyra/mån | Spel | Team | Snittbetyg (4 senaste) | Fans | Tidigast |
 |---|---|---|---|---|---|---|---|---|
-| 1 | Litet kontor | $22k | $700 | 5 | 2 | 5,5 | – | 1982 |
-| 2 | Tvåvåningsstudio | $250k | $6k | 13 | 5 | 7,0 | 5k | 1987 |
-| 3 | Studiohuset | $1,6M | $30k | 24 | 10 | 7,5 | 45k | 1994 |
-| 4 | Spelfabriken | $8M | $60k | 35 | 15 | 7,5 | 230k | 2002 |
-| 5 | Dynasti-tornet | $25M | $100k | 44 | 24 | 8,0 | 750k | 2011 |
+| 1 | Litet kontor | $22k | $700 | 3 | 2 | 5,5 | – | 1982 |
+| 2 | Tvåvåningsstudio | $250k | $6k | 8 | 5 | 6,5 | 1,2k | 1987 |
+| 3 | Studiohuset | $1,6M | $30k | 14 | 10 | 7,0 | 14k | 1994 |
+| 4 | Spelfabriken | $8M | $60k | 21 | 15 | 7,3 | 60k | 2002 |
+| 5 | Dynasti-tornet | $25M | $100k | 26 | 24 | 7,8 | 150k | 2011 |
 
 Hyran är i 1980 års pengar och följer inflationen (`moneyScale`). `year` är en golvgräns, så att ingen kan rusa förbi sin tid;
 för en skicklig spelare är det oftast golvet och pengarna som avgör, för en svagare spelare fans, betyg och kassa.
@@ -79,10 +79,22 @@ Kraven visas med framsteg i Studio-fönstret (`canUpgradeOffice(G)` ger id på f
 Befintliga sparfiler behåller sitt kontor, de nya kraven gäller bara nästa steg (inga nya fält i sparfilen).
 
 Övriga justeringar för takten: betygstaken per storlek (`SCOPE_CAP` i `score.js`: litet 6,9, medel 8,7, stort 9,2) så att de
-första åren landar kring 6–7 i betyg, försäljning per enhet (`UNIT_REV_BASE` 340 i `sales.js`) och svårighetsgraden Svår
-(`DIFFICULTY.hardcore`: försäljning 0,93, löner 1,06).
+första åren landar kring 6–7 i betyg, och svårighetsgraden Svår (`DIFFICULTY.hardcore`: försäljning 0,93, löner 1,06).
+Kraven för antal spel och fans är satta för det långsammare tempot nedan (färre spel hinner ut per år).
 
-Mätt med optimerande boten (48+ seeds, Normal; årtalet är nivån vid årsskiftet, bygget sker alltså året innan): nivå 1–5
-1983, 1988, 1995, 2003 och 2012, över 95 % når tornet före 2018, första sex spelen snittar ca 6,8 och kassan vid
-1985/1990/2000 ligger kring $0,4M/$2,0M/$26M. Medelboten ligger 0–3 år efter (mest för nivå 4 och 5) och slarvboten går
-i konkurs i median 1997. Före ändringen blev nivå 1–5 klara 1980, 1983, 1986, 1993 och 2003.
+Mätt med optimerande boten (24 seeds, Normal; årtalet är nivån vid årsskiftet, bygget sker alltså året innan): nivå 1–5
+1983, 1988, 1995, 2003 och 2012, alla når tornet före 2018, första sex spelen snittar ca 6,7 och kassan vid 1985/1990/2000
+ligger kring $0,3M/$1,9M/$40M. Medelboten hamnar nästan på samma år (årtalsgolven styr), svagare spelare hålls tillbaka av
+fans, betyg och kassa: slarvboten får nivå 2 först 1998 och går i konkurs i median 1995. Före ändringen blev nivå 1–5
+klara 1980, 1983, 1986, 1993 och 2003.
+
+**Tempo.** Allt som styr hur lång tid saker tar står i `src/sim/tempo.js` (multiplikatorer mot den första, snabba prototypen):
+
+* Projekt: litet spel 27 veckor (ca 65 s i hastighet 1), medel 34, stort 53, AAA 78 veckor (förut 15 / 24 / 38 / 62).
+  Teamets arbete per tick är oförändrat, så betygen blir desamma; färre spel hinner ut per år.
+* Intäkten per spel följer projektets längd (`REVENUE_PER_TEMPO`), annars rasar ekonomin: små och medelstora spel
+  kompenseras med 1,4 och 1,25, stora spel och AAA med 1,2. Försäljningskurvan är dubbelt så lång.
+* Forskning tar 3 gånger längre och ger lika många forskningspoäng per spel som förut. Kurser tar 4 gånger längre
+  (12–16 veckor, vilopaus 32 veckor) med oförändrad vinst och kostnad, så kompetensen växer långsammare.
+
+Vill du ändra takten: börja med `SCOPE_TEMPO` och `REVENUE_PER_TEMPO`.

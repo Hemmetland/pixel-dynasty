@@ -1,7 +1,7 @@
 import { $, esc, icon, t, L, UI, act, regWin, bar, money, toast } from './core.js';
 import { sfx } from '../audio/sfx.js';
 import { avatarImg } from '../render/people.js';
-import { SPECS, TRAITS, hire, fire, raise, train, canTrain, trainCost, trainingSlots, trainingNow, skillCap, canHire, SKILLS, payroll } from '../sim/people.js';
+import { SPECS, TRAITS, hire, fire, raise, train, canTrain, trainCost, trainWeeks, trainingSlots, trainingNow, skillCap, canHire, SKILLS, payroll } from '../sim/people.js';
 import { capacity } from '../sim/studio.js';
 import { dateOf } from '../sim/const.js';
 
@@ -22,7 +22,7 @@ function teamCard(G, s) {
   const open = S.trainFor === s.id;
   const trait = s.trait ? `<span class="chip" data-tip="${esc(L(TRAITS[s.trait].desc))}">${L(TRAITS[s.trait].name)}</span>` : '';
   const trainBtns = open
-    ? `<div class="trainrow">${SKILLS.map((k) => `<button class="btn sm" data-act="s-train" data-id="${s.id}" data-k="${k}" style="--c:${SK[k][1]}">${icon(SK[k][0])}${t('skill.' + k)} <span class="muted">+${3}–${6 + (G.u.flags.training2 ? 2 : 0)}</span></button>`).join('')}<span class="muted num" style="font-size:12px">${money(trainCost(G, s))} · ${Math.max(2, 4 - (G.office.fac.training?.lvl || 0))} ${t('ui.weeksShort')}</span></div>`
+    ? `<div class="trainrow">${SKILLS.map((k) => `<button class="btn sm" data-act="s-train" data-id="${s.id}" data-k="${k}" style="--c:${SK[k][1]}">${icon(SK[k][0])}${t('skill.' + k)} <span class="muted">+${3}–${6 + (G.u.flags.training2 ? 2 : 0)}</span></button>`).join('')}<span class="muted num" style="font-size:12px">${money(trainCost(G, s))} · ${trainWeeks(G)} ${t('ui.weeksShort')}</span></div>`
     : '';
   return `<div class="scard card ${S.focus === s.id ? 'sel' : ''}" id="sc-${s.id}">
     <div class="sc-top">

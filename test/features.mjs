@@ -20,7 +20,8 @@ S.refreshCandidates(G);
 for (const c of G.candidates.slice(0, 3)) ok(S.hire(G, c.id) === true, 'anställ ' + c.name);
 const st = G.staff[1];
 ok(S.train(G, st.id, 'design') === true, 'utbilda');
-for (let i = 0; i < 40; i++) S.stepTick(G);
+// kursens längd följer spelets tempo (tempo.js)
+for (let i = 0; i < (S.trainWeeks(G) + 1) * S.TICKS_PER_WEEK; i++) S.stepTick(G);
 ok(!st.trainSkill, 'utbildning klar');
 ok(S.raise(G, st.id), 'löneförhöjning');
 // licens + spel

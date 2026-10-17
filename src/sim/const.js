@@ -1,20 +1,26 @@
 import { clamp } from '../core/util.js';
 import { FEATURES } from '../data/research.js';
 import { RES } from '../data/research.js';
+import { SCOPE_TEMPO, REVENUE_PER_TEMPO } from './tempo.js';
 
 export const START_YEAR = 1980;
 export const TICKS_PER_WEEK = 4;
 export const WEEKS_PER_MONTH = 4;
 export const WEEKS_PER_YEAR = 48;
 
+// Projektens längd i veckor och intäkt per spel följer tempot (se tempo.js). Ett litet första spel blir 27 veckor = ca 65 s i hastighet 1.
+const dw = (weeks, id) => Math.round(weeks * SCOPE_TEMPO[id]);
+// Intäktsmultiplikator per storlek, kompenserad för projektets längd (se tempo.js).
+const rv = (rev, id) => Math.round(rev * SCOPE_TEMPO[id] * REVENUE_PER_TEMPO[id] * 100) / 100;
+
 export const SCOPES = {
-  small: { id: 'small', idx: 0, minTier: 1, weeks: 12, polish: 3, par: 7.5, team: 2, rev: 1, bugs: 12, name: { sv: 'Liten', en: 'Small' },
+  small: { id: 'small', idx: 0, minTier: 1, weeks: dw(12, 'small'), polish: dw(3, 'small'), par: 7.5, team: 2, rev: rv(1, 'small'), bugs: 12, name: { sv: 'Liten', en: 'Small' },
     desc: { sv: 'Snabbt, billigt och lagom för en liten grupp.', en: 'Quick, cheap and right-sized for a tiny crew.' } },
-  medium: { id: 'medium', idx: 1, minTier: 1, weeks: 20, polish: 4, par: 36, team: 5, rev: 3.2, bugs: 30, name: { sv: 'Medel', en: 'Medium' },
+  medium: { id: 'medium', idx: 1, minTier: 1, weeks: dw(20, 'medium'), polish: dw(4, 'medium'), par: 36, team: 5, rev: rv(3.2, 'medium'), bugs: 30, name: { sv: 'Medel', en: 'Medium' },
     desc: { sv: 'Ett riktigt spel med lite mer ambition.', en: 'A proper game with some ambition.' } },
-  large: { id: 'large', idx: 2, minTier: 2, weeks: 32, polish: 6, par: 160, team: 12, rev: 11, bugs: 80, name: { sv: 'Stor', en: 'Large' },
+  large: { id: 'large', idx: 2, minTier: 2, weeks: dw(32, 'large'), polish: dw(6, 'large'), par: 160, team: 12, rev: rv(11, 'large'), bugs: 80, name: { sv: 'Stor', en: 'Large' },
     desc: { sv: 'Kräver ett riktigt team men kan sälja i massor.', en: 'Needs a real team but can sell by the millions.' } },
-  aaa: { id: 'aaa', idx: 3, minTier: 3, weeks: 52, polish: 10, par: 700, team: 36, rev: 38, bugs: 220, name: { sv: 'AAA', en: 'AAA' },
+  aaa: { id: 'aaa', idx: 3, minTier: 3, weeks: dw(52, 'aaa'), polish: dw(10, 'aaa'), par: 700, team: 36, rev: rv(38, 'aaa'), bugs: 220, name: { sv: 'AAA', en: 'AAA' },
     desc: { sv: 'Branschens största satsning. Stort team, stor risk.', en: 'The industry\'s biggest bet. Big team, big risk.' } },
 };
 export const SCOPE_IDS = ['small', 'medium', 'large', 'aaa'];

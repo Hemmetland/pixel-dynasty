@@ -7,6 +7,7 @@ import { GENRES } from '../data/genres.js';
 import { PLATFORMS, potential } from '../data/platforms.js';
 import { SCOPES, yearOf, yfOf, priceOf } from './const.js';
 import { unitRev, curveFor } from './sales.js';
+import { SALES_TAIL } from './tempo.js';
 import { RESEARCH } from '../data/research.js';
 
 export function makeCompetitors(G) {
@@ -64,7 +65,7 @@ export function releaseComp(G, c) {
   const title = randomTitle(rnd2(G));
   const rel = {
     id: G.uid++, t: G.t, comp: c.id, studio: c.name, color: c.color, title, score, total,
-    platform: plat.id, genre: genre.id, topic: topic.id, scope, yours: false, price: priceOf(year),
+    platform: plat.id, genre: genre.id, topic: topic.id, scope, yours: false, price: priceOf(year), tail: SALES_TAIL,
   };
   G.market.releases.push(rel);
   if (G.market.releases.length > 260) G.market.releases.shift();
@@ -99,11 +100,11 @@ export function updateTrends(G) {
 // Veckovis intäkt för en konkurrentrelease (för listor).
 export function relWeekly(rel, now) {
   const w = now - rel.t;
-  const curve = curveFor(rel.score);
+  const curve = curveFor(rel.score, rel.tail || 1);
   return w >= 0 && w < curve.length ? rel.total * curve[w] : 0;
 }
 export function relUnitsTotal(rel, now) {
-  const curve = curveFor(rel.score);
+  const curve = curveFor(rel.score, rel.tail || 1);
   let s = 0;
   for (let w = 0; w <= Math.min(now - rel.t, curve.length - 1); w++) s += rel.total * curve[w];
   return s / rel.price;
@@ -117,7 +118,7 @@ export function topSellers(G, weeks = 12, limit = 10) {
     if (now - r.t > 80) continue;
     let rev = 0;
     for (let w = Math.max(0, now - r.t - weeks + 1); w <= now - r.t; w++) {
-      const c = curveFor(r.score)[w];
+      const c = curveFor(r.score, r.tail || 1)[w];
       if (c) rev += r.total * c;
     }
     if (rev > 0) rows.push({ title: r.title, studio: r.studio, color: r.color, score: r.score, rev, units: rev / r.price, platform: r.platform, genre: r.genre, topic: r.topic, yours: false, id: r.id });

@@ -1,4 +1,5 @@
 export * from './const.js';
+export * from './tempo.js';
 export * from './state.js';
 export * from './people.js';
 export * from './studio.js';

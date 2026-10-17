@@ -3,12 +3,13 @@ import { gauss } from '../core/rng.js';
 import { emit } from '../core/bus.js';
 import { PLATFORM, PLATFORMS, potential, platTier } from '../data/platforms.js';
 import { SCOPES, AUD, yearOf, yfOf, priceOf } from './const.js';
+import { SALES_TAIL } from './tempo.js';
 import { DIFFICULTY } from './state.js';
 import { earn } from './studio.js';
 import { platFit } from './score.js';
 
 // Försäljning per enhet och år. Bas och årlig tillväxt är de två reglagen för hur snabbt kassan växer.
-export const UNIT_REV_BASE = 340;
+export const UNIT_REV_BASE = 400;
 export const UNIT_REV_GROWTH = 1.04;
 export const unitRev = (year) => UNIT_REV_BASE * Math.pow(UNIT_REV_GROWTH, year - 1980);
 
@@ -21,18 +22,18 @@ export function trendMult(G, topic, genre) {
 
 // Fördelning över veckor efter lansering.
 const curveCache = new Map();
-export function curveFor(score) {
-  const key = Math.round(score * 2);
+export function curveFor(score, tail = 1) {
+  const key = Math.round(score * 2) + ':' + tail;
   if (curveCache.has(key)) return curveCache.get(key);
-  const tau = 4.5 + score * 1.15;
-  const N = 96;
+  const tau = (4.5 + score * 1.15) * tail;
+  const N = Math.ceil(96 * tail);
   const fast = [];
   const slow = [];
   let sf = 0;
   let ss = 0;
   for (let w = 0; w < N; w++) {
-    const f = (1 - Math.exp(-(w + 1) / 1.3)) * Math.exp(-w / tau);
-    const s = Math.exp(-w / 34);
+    const f = (1 - Math.exp(-(w + 1) / (1.3 * Math.sqrt(tail)))) * Math.exp(-w / tau);
+    const s = Math.exp(-w / (34 * tail));
     fast.push(f);
     slow.push(s);
     sf += f;
@@ -72,6 +73,7 @@ export function startSales(G, game) {
   G.flags.salesQ = [];
   game.total = forecast(G, game);
   game.priceAt = priceOf(yearOf(game.t));
+  game.tail = SALES_TAIL;
 }
 
 // Veckovis: intäkter för alla spel på marknaden.
@@ -80,7 +82,7 @@ export function salesWeek(G) {
   for (const g of G.games) {
     if (g.ended) continue;
     const w = G.t - g.t - 1;
-    const curve = curveFor(g.score);
+    const curve = curveFor(g.score, g.tail || 1);
     if (w >= curve.length) {
       g.ended = true;
       continue;

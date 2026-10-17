@@ -3,6 +3,7 @@ import { clamp } from '../core/util.js';
 import { FIRST, LAST } from '../data/names.js';
 import { emit } from '../core/bus.js';
 import { yearOf, wageIndex } from './const.js';
+import { TRAIN_TEMPO } from './tempo.js';
 import { DIFFICULTY, nextId } from './state.js';
 import { tr } from './tr.js';
 import { capacity, facLevel } from './studio.js';
@@ -164,13 +165,18 @@ export function trainCost(G, st) {
 export function trainingSlots(G) {
   return 1 + facLevel(G, 'training');
 }
+// Kursens längd i veckor (utbildningsrum gör den kortare) och minsta tid mellan två kurser för samma person.
+export function trainWeeks(G) {
+  return Math.max(2, 4 - facLevel(G, 'training')) * TRAIN_TEMPO;
+}
+export const TRAIN_COOLDOWN = 8 * TRAIN_TEMPO;
 export function trainingNow(G) {
   return G.staff.filter((s) => s.trainUntil > G.t).length;
 }
 export function canTrain(G, st) {
   if (!G.u.flags.training) return 'locked';
   if (st.trainUntil > G.t) return 'busy';
-  if (G.t - st.lastTrain < 8) return 'cooldown';
+  if (G.t - st.lastTrain < TRAIN_COOLDOWN) return 'cooldown';
   if (trainingNow(G) >= trainingSlots(G)) return 'slots';
   return true;
 }
@@ -183,7 +189,7 @@ export function train(G, id, skill) {
   if (G.money < cost) return tr(G, 'err.money');
   G.money -= cost;
   G.month.expense += cost;
-  const weeks = Math.max(2, 4 - facLevel(G, 'training'));
+  const weeks = trainWeeks(G);
   st.trainUntil = G.t + weeks;
   st.trainSkill = skill;
   st.lastTrain = G.t;
