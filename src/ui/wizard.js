@@ -259,6 +259,12 @@ regWin({
   },
 });
 
+// Uppföljarens titel: "Foo" -> "Foo 2", "Foo 2" -> "Foo 3" (bara seriens eget nummer tas bort)
+function sequelTitle(g) {
+  const n = g.chain >= 2 ? g.chain : 1;
+  const base = n >= 2 ? g.title.replace(new RegExp('\\s+' + n + '$'), '') : g.title;
+  return base + ' ' + (n + 1);
+}
 export function openSequel(G, g) {
   if (G.job) {
     toast(t('err.busy'), 'bad');
@@ -269,7 +275,7 @@ export function openSequel(G, g) {
   W.topic = g.topic;
   W.genre = g.genre;
   W.genre2 = g.genre2;
-  W.title = g.title + ' ' + (g.chain >= 2 ? g.chain + 1 : 2);
+  W.title = sequelTitle(g);
   W.titleAuto = false;
   W.focus = null;
   prefill(G);
@@ -323,7 +329,7 @@ act('w-seq', (el) => {
     W.genre = g.genre;
     W.genre2 = g.genre2;
     W.focus = null;
-    W.title = g.title + ' ' + (g.chain >= 2 ? g.chain + 1 : 2);
+    W.title = sequelTitle(g);
     W.titleAuto = false;
     prefill(G);
   }
