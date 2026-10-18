@@ -64,7 +64,7 @@ export function forecast(G, game, opts = {}) {
   for (const p of PLATFORMS) if (potential(p, yf) > 12) best = Math.max(best, platTier(p, year));
   const appeal = Math.pow(0.82, Math.max(0, best - platTier(plat, year)));
   const noise = opts.noise === false ? 1 : clamp(gauss(G, 1, 0.1), 0.78, 1.25);
-  const diff = DIFFICULTY[G.difficulty].sales;
+  const diff = DIFFICULTY[G.difficulty].sales * (1 + (G.perk.sales || 0));
   return unitRev(yearOf(game.t)) * pot * scoreMult * scope * hype * fans * trend * aud * pf * seq * bugs * appeal * mult * noise * diff;
 }
 

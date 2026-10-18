@@ -322,6 +322,11 @@ export const STRINGS = {
   'res.needs': ['Kräver', 'Requires'],
   'res.start': ['Starta forskning', 'Start research'],
   'res.running': ['Pågår', 'In progress'],
+  'res.refines': ['Förfiningar', 'Refinements'],
+  'res.refineHelp': ['Forskning som kan göras om och om igen. Varje nivå ger effekten en gång till men kostar mer.', 'Research you can repeat. Each level adds the effect again but costs more.'],
+  'res.level': ['Nivå {n}/{m}', 'Level {n}/{m}'],
+  'res.levelName': ['{name}, nivå {n}', '{name}, level {n}'],
+  'res.maxed': ['Högsta nivån', 'Max level'],
 
   // ── Personal ──
   'staff.title': ['Team', 'Team'],
@@ -654,6 +659,7 @@ export const STRINGS = {
   'toast.released': ['{title} släpptes med betyget {v}.', '{title} released with a score of {v}.'],
   'toast.resStart': ['Forskar: {name}', 'Researching: {name}'],
   'toast.researched': ['Klart: {name}', 'Researched: {name}'],
+  'toast.refined': ['{name} är nu på nivå {n}.', '{name} is now level {n}.'],
   'toast.spark': ['{name} fick ett genialiskt infall!', '{name} had a brilliant idea!'],
   'toast.started': ['Utvecklingen av {title} har börjat.', 'Development of {title} has begun.'],
   'news.awards': ['{title} av {studio} blev årets spel {year}.', '{title} by {studio} was game of the year {year}.'],

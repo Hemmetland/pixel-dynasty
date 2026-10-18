@@ -2,7 +2,7 @@
 import * as S from '../src/sim/index.js';
 import { PLATFORMS, potential, techMult, platTier } from '../src/data/platforms.js';
 import { TOPICS } from '../src/data/topics.js';
-import { RESEARCH } from '../src/data/research.js';
+import { RESEARCH, REFINES } from '../src/data/research.js';
 import { EV } from '../src/data/events.js';
 
 const args = process.argv.slice(2);
@@ -103,6 +103,11 @@ function manage(G) {
     if (G.research.active.length >= S.researchSlots(G)) break;
     if (S.canResearch(G, r.id) === true && r.rp <= G.rp) S.startResearch(G, r.id);
   }
+  // förfiningar när det finns plats över och råd (pengarna med marginal)
+  if (!casual) for (const r of REFINES) {
+    if (G.research.active.length >= S.researchSlots(G)) break;
+    if (S.canResearch(G, r.id) === true && G.money > S.researchCost(G, r.id).money * 5) S.startResearch(G, r.id);
+  }
   // licenser
   for (const p of PLATFORMS) {
     if (S.canLicense(G, p.id) === true && true) {
@@ -177,7 +182,7 @@ while (S.yearOf(G.t) < endYear && !G.over) {
       const n = S.nextTier(G);
       if (n) gate = ' | next: ' + S.officeReqs(G, n).map((r) => (r.ok ? '+' : '-') + r.id + ' ' + (r.id === 'avg' ? r.have.toFixed(1) : Math.round(r.have)) + '/' + r.need).join(' ');
     }
-    console.log(`${y} $${Math.round(G.money).toLocaleString()} fans ${Math.round(G.fans).toLocaleString()} staff ${G.staff.length} tier ${G.office.tier} games ${G.games.length} avg(6) ${avg} yrRev $${Math.round(rev).toLocaleString()} res ${G.research.done.length} loans ${Math.round(S.loanTotal(G))}${gate}`);
+    console.log(`${y} $${Math.round(G.money).toLocaleString()} fans ${Math.round(G.fans).toLocaleString()} staff ${G.staff.length} tier ${G.office.tier} games ${G.games.length} avg(6) ${avg} yrRev $${Math.round(rev).toLocaleString()} res ${G.research.done.length}+${Object.values(G.research.levels || {}).reduce((a, b) => a + b, 0)} rp ${Math.round(G.rp)} loans ${Math.round(S.loanTotal(G))}${gate}`);
   }
 }
 const dt = Date.now() - t0;

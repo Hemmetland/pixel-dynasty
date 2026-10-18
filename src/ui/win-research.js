@@ -1,8 +1,8 @@
 import { esc, icon, t, L, UI, act, regWin, bar, money, toast } from './core.js';
 import { sfx } from '../audio/sfx.js';
 import { glyphImg, hasGlyph } from '../render/glyphs.js';
-import { RESEARCH, RES, RESEARCH_CATS } from '../data/research.js';
-import { researchStatus, canResearch, startResearch, rpPerWeek } from '../sim/research.js';
+import { RESEARCH, RES, RESEARCH_CATS, REFINES } from '../data/research.js';
+import { researchStatus, canResearch, startResearch, rpPerWeek, researchCost, refineLevel, researchYear } from '../sim/research.js';
 import { researchSlots } from '../sim/studio.js';
 import { TICKS_PER_WEEK } from '../sim/const.js';
 import { fmtNum } from '../core/util.js';
@@ -69,11 +69,46 @@ function nodeHTML(G, r, L_, list = false) {
   if (st === 'done') foot = `<span class="done-tag">${icon('check')}${t('res.done')}</span>`;
   else if (st === 'active') foot = `<div style="flex:1">${bar((act_.progress / act_.total) * 100, 'var(--rp)', 'thin')}</div><span class="faint num" style="font-size:11px">${Math.ceil((act_.total - act_.progress) / TICKS_PER_WEEK)}${t('ui.weeksShort')}</span>`;
   else if (st === 'future') foot = `<span class="faint" style="font-size:11.5px">${icon('calendar')} ${t('res.from', { y: r.year })}</span>`;
-  else foot = `<span class="cost ${G.rp >= r.rp ? '' : 'short'}" style="--c:var(--rp)">${icon('flask')}${fmtNum(r.rp)}</span>${r.money ? `<span class="cost ${G.money >= r.money ? '' : 'short'}" style="--c:var(--money)">${icon('money')}${money(r.money)}</span>` : ''}<span class="faint num" style="font-size:11px;margin-left:auto">${r.weeks}${t('ui.weeksShort')}</span>`;
+  else foot = costHTML(G, r, 11);
   const pos = list ? '' : `left:${p.x}px;top:${p.y}px;`;
   return `<button class="rn st-${st} ${can === true ? 'go' : ''} ${dim ? 'dim' : ''} ${hide ? 'hide' : ''} ${R.sel === r.id ? 'sel' : ''}" style="${pos}--c:${cat.color}" data-act="r-start" data-id="${r.id}" data-tip="${esc(tip)}">
     <div class="rn-h"><span class="rn-i">${ic}</span><b>${L(r.name)}</b>${st === 'locked' ? icon('lock') : ''}</div>
     <div class="rn-f">${foot}</div></button>`;
+}
+
+// RP, pengar och veckor för nästa omgång (förfiningar blir dyrare för varje nivå)
+function costHTML(G, r, fs) {
+  const c = researchCost(G, r.id);
+  return `<span class="cost ${G.rp >= c.rp ? '' : 'short'}" style="--c:var(--rp)">${icon('flask')}${fmtNum(c.rp)}</span>${c.money ? `<span class="cost ${G.money >= c.money ? '' : 'short'}" style="--c:var(--money)">${icon('money')}${money(c.money)}</span>` : ''}<span class="faint num" style="font-size:${fs}px;margin-left:auto">${r.weeks}${t('ui.weeksShort')}</span>`;
+}
+
+// Förfiningar: kort med nivå, effekt per nivå, kostnad och start. Syns när minst en linje är upplåst.
+function refineCard(G, r) {
+  const st = researchStatus(G, r.id);
+  const cat = RESEARCH_CATS.find((c) => c.id === r.cat);
+  const a = G.research.active.find((x) => x.id === r.id);
+  const can = st === 'available' ? canResearch(G, r.id) : st;
+  const lvl = refineLevel(G, r.id);
+  const pips = Array.from({ length: r.max }, (_, i) => `<i class="${i < lvl ? 'on' : ''}"></i>`).join('');
+  const missing = r.req.filter((q) => !G.research.done.includes(q)).map((q) => L(RES[q].name)).join(', ');
+  let foot;
+  if (st === 'done') foot = `<span class="done-tag">${icon('check')}${t('res.maxed')}</span>`;
+  else if (st === 'active') foot = `<div style="flex:1">${bar((a.progress / a.total) * 100, 'var(--rp)', 'thin')}</div><span class="faint num" style="font-size:11px">${Math.ceil((a.total - a.progress) / TICKS_PER_WEEK)}${t('ui.weeksShort')}</span>`;
+  else if (st === 'locked') foot = `<span class="faint" style="font-size:11.5px">${icon('lock')} ${t('res.needs')}: ${esc(missing)}</span>`;
+  else if (st === 'future') foot = `<span class="faint" style="font-size:11.5px">${icon('calendar')} ${t('res.from', { y: researchYear(G, r.id) })}</span>`;
+  else foot = costHTML(G, r, 11);
+  return `<button class="rn rf st-${st} ${can === true ? 'go' : ''} ${R.sel === r.id ? 'sel' : ''}" style="--c:${cat.color}" data-act="r-start" data-id="${r.id}">
+    <div class="rn-h"><span class="rn-i">${icon(CAT_ICON[r.cat])}</span><b>${L(r.name)}</b><span class="faint num" style="font-size:11.5px">${t('res.level', { n: lvl, m: r.max })}</span></div>
+    <div class="rf-pips">${pips}</div><div class="rf-d muted">${L(r.desc)}</div><div class="rn-f">${foot}</div></button>`;
+}
+function refinesHTML(G) {
+  if (REFINES.every((r) => researchStatus(G, r.id) === 'locked')) return '';
+  const cards = REFINES.filter((r) => R.cat === 'all' || R.cat === r.cat)
+    .filter((r) => !R.only || researchStatus(G, r.id) === 'available' || R.sel === r.id)
+    .map((r) => refineCard(G, r))
+    .join('');
+  if (!cards) return '';
+  return `<div class="lbl" style="margin:2px 0 4px">${t('res.refines')}</div><p class="hint" style="margin-bottom:8px">${t('res.refineHelp')}</p><div class="rfgrid">${cards}</div>`;
 }
 
 // Vald forskning: namn, beskrivning, krav, kostnad och startknapp
@@ -86,13 +121,13 @@ function detailHTML(G) {
   const missing = r.req.filter((q) => !G.research.done.includes(q)).map((q) => L(RES[q].name)).join(', ');
   let note = '';
   if (st === 'locked') note = `<div style="color:var(--warn);font-size:12.5px;margin-top:4px">${icon('lock')} ${t('res.needs')}: ${esc(missing)}</div>`;
-  else if (st === 'future') note = `<div style="color:var(--warn);font-size:12.5px;margin-top:4px">${icon('calendar')} ${t('res.from', { y: r.year })}</div>`;
-  const cost = `<span class="cost ${G.rp >= r.rp ? '' : 'short'}" style="--c:var(--rp)">${icon('flask')}${fmtNum(r.rp)}</span>${r.money ? `<span class="cost ${G.money >= r.money ? '' : 'short'}" style="--c:var(--money)">${icon('money')}${money(r.money)}</span>` : ''}<span class="faint num" style="font-size:12px">${r.weeks}${t('ui.weeksShort')}</span>`;
+  else if (st === 'future') note = `<div style="color:var(--warn);font-size:12.5px;margin-top:4px">${icon('calendar')} ${t('res.from', { y: researchYear(G, r.id) })}</div>`;
+  const cost = costHTML(G, r, 12);
   const go =
-    st === 'done' ? `<span class="done-tag">${icon('check')}${t('res.done')}</span>`
+    st === 'done' ? `<span class="done-tag">${icon('check')}${t(r.refine ? 'res.maxed' : 'res.done')}</span>`
     : st === 'active' ? `<span class="faint">${t('res.running')}</span>`
     : `<button class="btn sm primary" data-act="r-start" data-id="${r.id}" data-go="1" ${can === true ? '' : 'disabled'}>${icon('flask')}${t('res.start')}</button>`;
-  return `<div class="card rdet" style="--c:${cat.color}"><div class="row" style="gap:10px;align-items:flex-start"><div style="flex:1;min-width:0"><b>${L(r.name)}</b><div class="muted" style="font-size:12.5px;line-height:1.4;margin-top:3px">${L(r.desc)}</div>${note}</div><button class="iconbtn" data-act="r-sel" aria-label="${t('ui.close')}">${icon('x')}</button></div>
+  return `<div class="card rdet" style="--c:${cat.color}"><div class="row" style="gap:10px;align-items:flex-start"><div style="flex:1;min-width:0"><b>${L(r.name)}</b>${r.refine ? ` <span class="faint num" style="font-size:12px">${t('res.level', { n: refineLevel(G, r.id), m: r.max })}</span>` : ''}<div class="muted" style="font-size:12.5px;line-height:1.4;margin-top:3px">${L(r.desc)}</div>${note}</div><button class="iconbtn" data-act="r-sel" aria-label="${t('ui.close')}">${icon('x')}</button></div>
     <div class="row wrap" style="gap:10px;margin-top:8px;align-items:center">${st === 'done' || st === 'active' ? '' : cost}<span class="sp"></span>${go}</div></div>`;
 }
 
@@ -130,7 +165,8 @@ regWin({
     const active = G.research.active
       .map((a) => {
         const r = RES[a.id];
-        return `<div class="card row" style="gap:12px;padding:10px 14px;min-width:260px;flex:1"><span class="rn-i" style="--c:var(--rp)">${icon(CAT_ICON[r.cat])}</span><div style="flex:1"><b>${L(r.name)}</b>${bar((a.progress / a.total) * 100, 'var(--rp)', 'thin')}</div><span class="num muted">${Math.ceil((a.total - a.progress) / TICKS_PER_WEEK)}${t('ui.weeksShort')}</span></div>`;
+        const name = r.refine ? t('res.levelName', { name: L(r.name), n: refineLevel(G, r.id) + 1 }) : L(r.name);
+        return `<div class="card row" style="gap:12px;padding:10px 14px;min-width:min(260px,100%);flex:1"><span class="rn-i" style="--c:var(--rp)">${icon(CAT_ICON[r.cat])}</span><div style="flex:1"><b>${name}</b>${bar((a.progress / a.total) * 100, 'var(--rp)', 'thin')}</div><span class="num muted">${Math.ceil((a.total - a.progress) / TICKS_PER_WEEK)}${t('ui.weeksShort')}</span></div>`;
       })
       .join('');
     const chips = [{ id: 'all', name: { sv: 'Alla', en: 'All' }, color: 'var(--text)' }, ...RESEARCH_CATS]
@@ -156,6 +192,7 @@ regWin({
         <button class="chip btnchip ${R.only ? 'on' : ''}" data-act="r-only">${icon('check')}${t('res.onlyAvail')}</button>
         <span class="chip">${icon('flask')}${done}/${RESEARCH.length}</span></div>
       ${detailHTML(G)}
+      ${refinesHTML(G)}
       ${nodes}`;
   },
 });
@@ -188,7 +225,7 @@ act('r-start', (el) => {
   } else if (r === 'rp') toast(t('err.rp'), 'bad');
   else if (r === 'money') toast(t('err.money'), 'bad');
   else if (r === 'slots') toast(t('err.resSlots'), 'bad');
-  else if (r === 'future') toast(t('res.from', { y: RES[id].year }), 'bad');
+  else if (r === 'future') toast(t('res.from', { y: researchYear(G, id) }), 'bad');
   else if (r === 'locked') toast(t('err.resLocked'), 'bad');
   UI.refresh();
 });

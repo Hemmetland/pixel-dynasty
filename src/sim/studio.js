@@ -140,7 +140,7 @@ export const labMult = (G) => 1 + 0.2 * facLevel(G, 'lab');
 export const researchSlots = (G) => 1 + facLevel(G, 'lab');
 export const qaFixMult = (G) => 1 + G.perk.qa + 0.3 * facLevel(G, 'qa');
 export const bugMult = (G) => Math.max(0.4, 1 + G.perk.bugs - 0.06 * facLevel(G, 'qa'));
-export const mktCostMult = (G) => 1 - 0.1 * facLevel(G, 'marketing');
+export const mktCostMult = (G) => 1 - 0.1 * facLevel(G, 'marketing') - (G.perk.mktCost || 0);
 export const mktHypeMult = (G) => 1 + 0.12 * facLevel(G, 'marketing');
 export const serverMult = (G) => 1 + 0.04 * facLevel(G, 'server');
 

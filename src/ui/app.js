@@ -160,6 +160,10 @@ export const app = {
       sfx.play('research');
       toast(t('toast.researched', { name: `<b>${L(r.name)}</b>` }), 'research', 7000);
     });
+    on('refined', ({ r, level }) => {
+      sfx.play('research');
+      toast(t('toast.refined', { name: `<b>${L(r.name)}</b>`, n: level }), 'research', 6000);
+    });
     on('achievement', (a) => {
       sfx.play('achievement');
       toast(t('toast.achievement', { name: `<b>${L(a.name)}</b>` }), 'award', 8000);

@@ -90,7 +90,20 @@ export const RESEARCH = [
   R('s_hr2', 'staff', 'Headhunters', 'Headhunters', 'Elitprofiler dyker upp.', 'Elite profiles show up.', 300, 0, 5, ['s_hr1'], 1992, { flags: ['hr2'] }, { hire: 1 }, 's_hr'),
   R('s_perks', 'staff', 'Personalförmåner', 'Staff Perks', 'Högre arbetsglädje och mindre personalomsättning.', 'Higher morale and less staff turnover.', 50, 0, 4, [], 1984, {}, { morale: 8 }, 's_perk'),
 ];
-export const RES = Object.fromEntries(RESEARCH.map((r) => [r.id, r]));
+// Förfiningar: återkommande forskning när trädet tar slut. Varje nivå ger perk igen och kostar mer (sim/research.js
+// researchCost: rp × 2^nivå, pengar × årets penningvärde × 1,5^nivå). max = antal nivåer; nivå n går att forska från
+// år year + 3n (researchYear), så att linjerna räcker in på 2000-talet.
+const F = (id, cat, sv, en, dsv, den, rp, money, req, max, perk, year) => ({
+  id, cat, name: { sv, en }, desc: { sv: dsv, en: den }, rp, money, weeks: 5 * RESEARCH_TEMPO, req, year, unlock: {}, perk, glyph: null, max, refine: true,
+});
+export const REFINES = [
+  F('x_quality', 'prod', 'Kvalitetsrutiner', 'Quality Routines', 'Varje nivå: buggar fixas 5 % snabbare och det blir 2 % färre.', 'Each level: bugs get fixed 5% faster and there are 2% fewer.', 300, 20000, ['q_auto'], 8, { qa: 0.05, bugs: -0.02 }, 1994),
+  F('x_brand', 'biz', 'Varumärkesbygge', 'Brand Building', 'Varje nivå: dina spel säljer 2 % mer.', 'Each level: your games sell 2% more.', 400, 40000, ['b_mktdept'], 8, { sales: 0.02 }, 1989),
+  F('x_media', 'biz', 'Mediekontakter', 'Media Relations', 'Varje nivå: marknadsföring kostar 4 % mindre.', 'Each level: marketing costs 4% less.', 300, 20000, ['b_mkt3'], 6, { mktCost: 0.04 }, 1989),
+  F('x_craft', 'staff', 'Mästarkurser', 'Master Classes', 'Varje nivå: utbildning når 5 poäng högre.', 'Each level: training reaches 5 points higher.', 350, 25000, ['s_train2'], 6, { skillCap: 5 }, 1991),
+  F('x_culture', 'staff', 'Studiokultur', 'Studio Culture', 'Varje nivå: teamets humör vilar 2 poäng högre.', 'Each level: team mood settles 2 points higher.', 250, 15000, ['s_perks'], 5, { morale: 2 }, 1985),
+];
+export const RES = Object.fromEntries([...RESEARCH, ...REFINES].map((r) => [r.id, r]));
 
 // Motordelar (används i motorverkstaden). tech = poängbonus, cost = pengar, weeks = byggtid.
 export const FEATURES = [

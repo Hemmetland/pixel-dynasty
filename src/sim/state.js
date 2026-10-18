@@ -52,8 +52,8 @@ export function newGame(opts = {}) {
       mkt: [],
       flags: {},
     },
-    perk: { qa: 0, bugs: 0, skillCap: 0, hire: 0, morale: 0 },
-    research: { done: [], active: [], bonusRp: 0 },
+    perk: { qa: 0, bugs: 0, skillCap: 0, hire: 0, morale: 0, sales: 0, mktCost: 0 },
+    research: { done: [], active: [], bonusRp: 0, levels: {} },
     licenses: ['pc'],
     games: [],
     job: null,
@@ -129,4 +129,5 @@ export function applyUnlocks(G, r) {
 }
 export function rebuildUnlocks(G) {
   for (const id of G.research.done) if (RES[id]) applyUnlocks(G, RES[id]);
+  for (const [id, n] of Object.entries(G.research.levels || {})) for (let i = 0; i < n && RES[id]; i++) applyUnlocks(G, RES[id]);
 }
