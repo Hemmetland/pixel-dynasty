@@ -135,6 +135,12 @@ img.gl, img.cover { image-rendering: pixelated; display: block; }
 .dk.create:hover { transform: translateY(-4px); background: linear-gradient(180deg, #86fff0, #3fd3c3); color: var(--accent-ink); }
 .dk.create.glow { animation: glowp 1.8s infinite; }
 .dk.create.busy { filter: saturate(0.4) brightness(0.8); }
+/* Pixelikoner ur manifestet (ui.dock.<id>, se ui/icons.js): heltalsskala och centrerade även när bilden är större än rutan.
+   Ingen skalning vid hover så att pixlarna förblir skarpa; vald knapp får ett turkost sken eftersom bilden inte följer currentColor. */
+img.px { display: block; flex: none; image-rendering: pixelated; }
+.ic.px { align-items: center; justify-content: center; }
+.dk:hover .ic.px { transform: none; }
+.dk.on .ic.px img { filter: drop-shadow(0 0 5px rgba(77, 225, 208, 0.7)); }
 @keyframes glowp { 0%, 100% { box-shadow: 0 10px 26px -8px rgba(77, 225, 208, 0.75), 0 0 0 0 rgba(77, 225, 208, 0.55); } 50% { box-shadow: 0 10px 26px -8px rgba(77, 225, 208, 0.75), 0 0 0 9px rgba(77, 225, 208, 0); } }
 @keyframes pulse { 0%, 100% { transform: scale(1); } 50% { transform: scale(1.25); } }
 

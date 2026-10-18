@@ -1,6 +1,7 @@
 // Sprites (t.ex. från PixelLab) som kan ersätta den procedurella grafiken. Allt har en reserv: finns ingen sprite ritas den gamla koden.
 // Paketet kommer från assets/manifest.json via build.mjs (inbäddat som data-URI:er) och registreras av startkoden med registerSprites().
-// Nyckelkonvention: 'prop.<funktion>' för möbler och växter (ritas vid (x, golvlinje)), 'veh.<typ>[.<epok>]' för fordon.
+// Nyckelkonvention: 'prop.<funktion>' för möbler och växter (ritas vid (x, golvlinje)), 'veh.<typ>[.<epok>]' för fordon,
+// 'ui.dock.<id>' för gränssnittets ikoner (visas som <img> via spriteSrc, se ui/icons.js).
 // Flera varianter av samma nyckel skrivs 'nyckel#0', 'nyckel#1', ... och väljs med ett index.
 const sprites = new Map();
 const variants = new Map();
@@ -62,6 +63,22 @@ export function drawSprite(ctx, name, x, y, o = {}) {
     ctx.restore();
   } else ctx.drawImage(s.c, f * s.fw, 0, s.fw, s.fh, Math.round(x) - s.ax, Math.round(y) - s.ay, s.fw, s.fh);
   return true;
+}
+
+// Spriten som bild för gränssnittet (nycklar 'ui.*'): { src, w, h } eller null om den saknas.
+// Varianter väljs som i drawSprite. Bilden är första rutan, kodad en gång och sparad.
+export function spriteSrc(name, variant = 0) {
+  let s = sprites.get(name);
+  if (!s && variants.has(name)) s = sprites.get(`${name}#${variant % variants.get(name)}`);
+  if (!s) return null;
+  if (!s.src) {
+    const c = document.createElement('canvas');
+    c.width = s.fw;
+    c.height = s.fh;
+    c.getContext('2d').drawImage(s.c, 0, 0, s.fw, s.fh, 0, 0, s.fw, s.fh);
+    s.src = c.toDataURL();
+  }
+  return { src: s.src, w: s.fw, h: s.fh };
 }
 
 // Genväg för möbler: sprite 'prop.<namn>' vid (x, golvlinje).

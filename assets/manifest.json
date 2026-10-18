@@ -6,6 +6,14 @@
     "prop.plantFloor": { "file": "props/plantFloor.png", "crop": [0, 0, 21, 28], "fw": 21, "fh": 28, "ax": 5, "ay": 28, "frames": 1, "note": "pixellab/props/plant.png nedskalad (yt-medelvärde, hård alfa)" },
     "char.walk": { "file": "chars/walk.png", "fw": 92, "fh": 92, "ax": 46, "ay": 82, "frames": 6, "scale": 0.42, "note": "PixelLab-karaktär 77053f90 (characters/dev/walk-east 0-5) som remsa; färgbyts per person och skalas ner i spelet (charsprite.js)" },
     "char.stand": { "file": "chars/stand.png", "fw": 92, "fh": 92, "ax": 46, "ay": 82, "frames": 1, "scale": 0.42, "note": "PixelLab-karaktär 77053f90 (characters/dev/east.png)" },
-    "char.drink": { "file": "chars/drink.png", "fw": 92, "fh": 92, "ax": 46, "ay": 82, "frames": 6, "scale": 0.42, "note": "PixelLab-karaktär 77053f90 (characters/dev/drink-coffee-east 0-5)" }
+    "char.drink": { "file": "chars/drink.png", "fw": 92, "fh": 92, "ax": 46, "ay": 82, "frames": 6, "scale": 0.42, "note": "PixelLab-karaktär 77053f90 (characters/dev/drink-coffee-east 0-5)" },
+    "ui.dock.wizard": { "file": "ui/dock-wizard.png", "fw": 32, "fh": 32, "note": "handritad pixel för pixel (Kör)" },
+    "ui.dock.research": { "file": "ui/dock-research.png", "fw": 32, "fh": 32, "note": "handritad pixel för pixel (Kör)" },
+    "ui.dock.staff": { "file": "ui/dock-staff.png", "fw": 32, "fh": 32, "note": "handritad pixel för pixel (Kör)" },
+    "ui.dock.studio": { "file": "ui/dock-studio.png", "fw": 32, "fh": 32, "note": "handritad pixel för pixel (Kör)" },
+    "ui.dock.market": { "file": "ui/dock-market.png", "fw": 32, "fh": 32, "note": "handritad utifrån PixelLabs nav-stats (Kör)" },
+    "ui.dock.finance": { "file": "ui/dock-finance.png", "fw": 32, "fh": 32, "note": "handritad pixel för pixel (Kör)" },
+    "ui.dock.library": { "file": "ui/dock-library.png", "fw": 32, "fh": 32, "note": "handritad pixel för pixel (Kör)" },
+    "ui.dock.contracts": { "file": "ui/dock-contracts.png", "fw": 32, "fh": 32, "note": "handritad pixel för pixel (Kör)" }
   }
 }

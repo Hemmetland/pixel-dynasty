@@ -1,5 +1,7 @@
 import { $, $$, esc, icon, t, tn, L, UI, act, money, MONTHS, bar } from './core.js';
 import { glyphImg } from '../render/glyphs.js';
+import { onSpritesLoaded } from '../render/sprites.js';
+import { pixIcon } from './icons.js';
 import { TOPIC } from '../data/topics.js';
 import { GENRE } from '../data/genres.js';
 import { PLATFORM } from '../data/platforms.js';
@@ -152,9 +154,12 @@ export function setHUDVisible(on) {
   if (!on) $('#toasts').innerHTML = '';
 }
 
+// Dockans ikoner: pixelkonst 'ui.dock.<id>' ur manifestet om den finns, annars linjeikonen.
 export function buildDock() {
-  els.dock.innerHTML = DOCK.map((d) => `<button class="dk ${d.create ? 'create' : ''}" data-act="dock" data-id="${d.id}" data-key="${d.id}" data-tip="${t(d.k + '.tip')}">${icon(d.ic)}<span class="l">${t(d.k)}</span></button>`).join('');
+  els.dock.innerHTML = DOCK.map((d) => `<button class="dk ${d.create ? 'create' : ''}" data-act="dock" data-id="${d.id}" data-key="${d.id}" data-tip="${t(d.k + '.tip')}">${pixIcon(`ui.dock.${d.id}`, d.ic, 26)}<span class="l">${t(d.k)}</span></button>`).join('');
 }
+// Sprites laddas efter att dockan byggts: bygg om den (prickar, märken och vald knapp läggs tillbaka av updateDock).
+onSpritesLoaded(() => els.dock && buildDock());
 
 const seasonIcon = (m) => (m === 11 || m <= 1 ? 'snow' : m <= 4 ? 'flower' : m <= 7 ? 'sun' : 'leaf');
 

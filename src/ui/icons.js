@@ -1,3 +1,5 @@
+import { spriteSrc } from '../render/sprites.js';
+
 // Enkla linjeikoner (24×24, currentColor).
 const P = (d) => `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">${d}</svg>`;
 const ICONS = {
@@ -77,3 +79,18 @@ const ICONS = {
 };
 export const icon = (name, cls = '') => `<span class="ic ${cls}">${ICONS[name] || ICONS.info}</span>`;
 export const hasIcon = (n) => !!ICONS[n];
+
+// Pixelkonst ur assets/manifest.json (nycklar 'ui.*', se docs/PIXELLAB.md) som <img>, eller '' om spriten saknas.
+// Skalan är alltid ett heltal, det som ligger närmast rutan 'box' px (minst 1), så att pixlarna förblir skarpa:
+// 32 px konst i dockans 26 px-ruta visas 1:1 och sticker ut lite i stället för att skalas suddigt; 16 px konst dubblas.
+export function pixImg(key, box, variant = 0) {
+  const s = spriteSrc(key, variant);
+  if (!s) return '';
+  const k = Math.max(1, Math.round(box / Math.max(s.w, s.h)));
+  return `<img class="px" src="${s.src}" style="width:${s.w * k}px;height:${s.h * k}px" alt="" draggable="false">`;
+}
+// Ikon med pixelkonst om 'key' finns, annars linjeikonen 'name' (reserven).
+export const pixIcon = (key, name, box, cls = '') => {
+  const img = pixImg(key, box);
+  return img ? `<span class="ic px ${cls}" aria-hidden="true">${img}</span>` : icon(name, cls);
+};
