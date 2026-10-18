@@ -56,7 +56,7 @@ export const FACILITIES = {
     eff: { sv: '−10% kostnad och +12% hype per nivå', en: '−10% cost and +12% hype per level' } },
   server: { id: 'server', glyph: 'f_server', cost: 22000, rent: 700, name: { sv: 'Serverrum', en: 'Server Room' },
     desc: { sv: 'Drift för online-spel och snabbare byggen.', en: 'Ops for online games and faster builds.' },
-    eff: { sv: '+4% tekniskt arbete per nivå', en: '+4% technical output per level' } },
+    eff: { sv: '+4% tekniskt arbete och mer plats för onlinespelare per nivå', en: '+4% technical output and room for more online players per level' } },
 };
 export const FAC_IDS = Object.keys(FACILITIES);
 export const FAC_MAX = 3;

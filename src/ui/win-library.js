@@ -1,4 +1,5 @@
-import { $, esc, icon, t, tn, L, UI, act, regWin, money, errToast } from './core.js';
+import { $, esc, icon, t, tn, L, UI, act, regWin, money, errToast, bar } from './core.js';
+import { sfx } from '../audio/sfx.js';
 import { glyphImg } from '../render/glyphs.js';
 import { coverImg } from '../render/covers.js';
 import { TOPIC } from '../data/topics.js';
@@ -15,6 +16,15 @@ import { lang } from '../core/i18n.js';
 import { openSequel } from './wizard.js';
 import { studioNotes } from './prompts.js';
 import { crowdNote } from './crowd.js';
+import { openExpansion } from './wizard.js';
+import { SUB_TIERS, OPS, PRICE_MIN, PRICE_MAX, PATCH_WEEKS, tierMix, liveMonth, serverCap, liveGames, livePatchCost, startLivePatch, setLivePrice, setLiveOps, closeLive } from '../sim/live.js';
+
+// Stäng servrarna kräver två tryck: första trycket "armerar" knappen för det spelet
+let closeArmed = null;
+// Fasta nycklar (inga dynamiska prefix): innehållets skick, driftnivåer och abonnemangsnivåer
+const FRESH_KEY = { hi: 'live.fresh.hi', mid: 'live.fresh.mid', lo: 'live.fresh.lo' };
+const OPS_KEY = ['live.ops.0', 'live.ops.1', 'live.ops.2'];
+const TIER_KEY = { std: 'live.tier.std', pro: 'live.tier.pro', max: 'live.tier.max' };
 
 const scoreColor = (s) => (s >= 9 ? 'var(--gold)' : s >= 8 ? 'var(--good)' : s >= 6.5 ? 'var(--accent)' : s >= 5 ? 'var(--warn)' : 'var(--bug)');
 const spec = (g) => ({ id: g.id, title: g.title, topic: g.topic, genre: g.genre, platform: g.platform });
@@ -30,6 +40,59 @@ function salesChart(g, w = 520, h = 150) {
     <text x="5" y="${h - 4}" class="axt">${t('lib.week')} 1</text><text x="${w - 5}" y="${h - 4}" text-anchor="end" class="axt">${t('lib.week')} ${arr.length}</text></svg>`;
 }
 
+// Prenumeranter per månad som staplar
+function subsChart(L, w = 520, h = 120) {
+  const arr = L.hist.map((x) => x.v);
+  if (arr.length < 2) return `<div class="hint" style="padding:10px 0">${t('live.chartEmpty')}</div>`;
+  const hi = Math.max(...arr, 1);
+  const bw = (w - 10) / Math.max(arr.length, 24);
+  return `<svg viewBox="0 0 ${w} ${h}" class="lchart" style="height:${h}px" preserveAspectRatio="none">${arr.map((v, i) => `<rect x="${5 + i * bw}" y="${h - 6 - (v / hi) * (h - 14)}" width="${Math.max(1, bw - 1.5)}" height="${(v / hi) * (h - 14)}" rx="1.5" fill="#7cf29a" opacity=".75"/>`).join('')}</svg>`;
+}
+
+// Driftpanelen för ett onlinespel: spelare, intäkter, innehåll, serverlast, priser per nivå, drift och åtgärder
+function livePanel(G, g) {
+  const L = g.live;
+  if (!L) return '';
+  if (L.closed) return `<div class="card live-card" style="margin-top:16px"><div class="lbl">${t('live.title')}</div><div class="muted" style="margin-top:6px">${t('live.closed', { y: dateOf(L.closed).year })} · ${t('live.total')} ${money(L.rev)} · ${t('live.peak', { n: fmtNum(L.peak) })}</div></div>`;
+  const mix = tierMix(G, L);
+  const m = liveMonth(G, g);
+  const cap = serverCap(G);
+  const used = liveGames(G).reduce((a, x) => a + x.live.subs, 0);
+  const load = cap ? used / cap : 1;
+  const fk = L.fresh >= 60 ? 'hi' : L.fresh >= 30 ? 'mid' : 'lo';
+  const fcol = fk === 'hi' ? 'var(--good)' : fk === 'mid' ? 'var(--warn)' : 'var(--bug)';
+  const tiers = SUB_TIERS.map((id, i) => `<div class="ltier"><div style="flex:1;min-width:0"><b>${t(TIER_KEY[id])}</b><div class="faint" style="font-size:11.5px">${t('live.share', { n: Math.round(mix.share[i] * 100) })} · ${t('live.default', { v: money(mix.def[i]) })}</div></div>
+      <button class="iconbtn" data-act="lv-price" data-id="${g.id}" data-i="${i}" data-d="-1" aria-label="${t('live.cheaper')}" data-tip="${t('live.cheaper')}" ${L.price[i] <= PRICE_MIN ? 'disabled' : ''}>${icon('minus')}</button>
+      <b class="num lprice">${money(mix.prices[i])}<span class="faint">${t('ui.perMonth')}</span></b>
+      <button class="iconbtn" data-act="lv-price" data-id="${g.id}" data-i="${i}" data-d="1" aria-label="${t('live.dearer')}" data-tip="${t('live.dearer')}" ${L.price[i] >= PRICE_MAX ? 'disabled' : ''}>${icon('plus')}</button></div>`).join('');
+  const patchLeft = L.patch ? Math.max(0, L.patch.until - G.t) : 0;
+  const armed = closeArmed === g.id;
+  return `<div class="card live-card" style="margin-top:16px">
+    <div class="row" style="margin-bottom:10px;gap:8px"><span class="tag" style="--c:var(--good)">${icon('globe')}${t('live.tag')}</span><div class="lbl">${t('live.title')}</div><span class="sp"></span>${L.exps.length ? `<span class="faint" style="font-size:12px">${t('live.exps')}: ${L.exps.length}</span>` : ''}</div>
+    <div class="grid" style="grid-template-columns:repeat(auto-fit,minmax(130px,1fr))">
+      <div class="counter" style="--c:var(--good)"><div class="v num">${fmtNum(L.subs)}</div><div class="k">${t('live.subs')} · ${t('live.peak', { n: fmtNum(L.peak) })}</div></div>
+      <div class="counter" style="--c:var(--money)"><div class="v num">${money(m.rev)}</div><div class="k">${t('live.revM')}</div></div>
+      <div class="counter" style="--c:var(--bug)"><div class="v num">−${money(m.cost)}</div><div class="k">${t('live.costM')}</div></div>
+      <div class="counter" style="--c:var(--money)"><div class="v num">${money(L.rev)}</div><div class="k">${t('live.total')}</div></div>
+    </div>
+    <div class="grid" style="grid-template-columns:repeat(auto-fit,minmax(220px,1fr));margin-top:12px;gap:14px">
+      <div data-tip="${esc(t('live.freshTip'))}"><div class="row" style="font-size:12.5px;margin-bottom:4px"><span>${t('live.fresh')}</span><span class="sp"></span><b style="color:${fcol}">${t(FRESH_KEY[fk])}</b></div>${bar(L.fresh, fcol, 'thin')}</div>
+      <div data-tip="${esc(t('live.loadTip', { n: fmtNum(used), m: fmtNum(cap) }))}"><div class="row" style="font-size:12.5px;margin-bottom:4px"><span>${t('live.load')}</span><span class="sp"></span><b class="num" style="color:${load > 1 ? 'var(--bug)' : load > 0.85 ? 'var(--warn)' : 'var(--text)'}">${Math.round(load * 100)}%</b></div>${bar(load * 100, load > 1 ? 'var(--bug)' : load > 0.85 ? 'var(--warn)' : 'var(--accent)', 'thin')}</div>
+    </div>
+    <div class="lbl" style="margin:16px 0 4px">${t('live.chart')}</div>${subsChart(L)}
+    <div class="lbl" style="margin:14px 0 4px">${t('live.tiers')}</div><p class="hint" style="margin-bottom:8px">${t('live.tierHelp')}</p>
+    <div class="col" style="gap:6px">${tiers}</div>
+    <div class="lbl" style="margin:16px 0 6px">${t('live.ops')}</div>
+    <div class="seg">${OPS.map((_, i) => `<button class="${L.ops === i ? 'on' : ''}" data-act="lv-ops" data-id="${g.id}" data-i="${i}">${t(OPS_KEY[i])}</button>`).join('')}</div>
+    <p class="hint" style="margin-top:6px">${t('live.opsHelp')}</p>
+    <div class="row wrap" style="gap:8px;margin-top:14px">
+      <button class="btn primary" data-act="lv-patch" data-id="${g.id}" ${L.patch ? 'disabled' : ''} data-tip="${esc(t('live.patchTip', { n: PATCH_WEEKS }))}">${icon('wrench')}${L.patch ? tn('live.patching', patchLeft) : t('live.patch') + ' · ' + money(livePatchCost(G, g))}</button>
+      <button class="btn" data-act="lv-exp" data-id="${g.id}" ${G.job ? 'disabled' : ''}>${icon('plus')}${t('live.expand')}</button>
+      <span class="sp"></span>
+      <button class="btn ${armed ? 'danger' : 'ghost'}" data-act="lv-close" data-id="${g.id}">${icon('x')}${t(armed ? 'live.closeSure' : 'live.close')}</button>
+    </div></div>`;
+}
+
 function listView(G) {
   if (!G.games.length) return `<div class="empty">${icon('gamepad')}<div class="h3" style="margin-bottom:6px">${t('lib.empty')}</div><div>${t('lib.emptyHelp')}</div></div>`;
   const cards = G.games
@@ -41,9 +104,9 @@ function listView(G) {
       return `<button class="card hov game" data-act="lib-open" data-id="${g.id}">
         ${coverImg(spec(g), 72)}
         <div style="flex:1;min-width:0;text-align:left"><b class="h3" style="display:block;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${esc(g.title)}</b>
-          <div class="row wrap" style="gap:5px;margin:6px 0"><span class="chip c" style="--c:${ge.color}">${L(ge.name)}</span><span class="chip">${L(tp.name)}</span></div>
+          <div class="row wrap" style="gap:5px;margin:6px 0"><span class="chip c" style="--c:${ge.color}">${L(ge.name)}</span><span class="chip">${L(tp.name)}</span>${g.expansionOf ? `<span class="chip c" style="--c:var(--good)">${t('dev.expChip')}</span>` : ''}</div>
           <div class="faint" style="font-size:12px">${esc(PLATFORM[g.platform].name)} · ${dateOf(g.t).year}</div>
-          <div class="row" style="gap:12px;margin-top:6px;font-size:12.5px"><span style="color:var(--money)">${money(g.revenue)}</span><span class="faint">${g.ended ? t('lib.ended') : t('lib.onSale')}</span></div></div>
+          <div class="row" style="gap:12px;margin-top:6px;font-size:12.5px"><span style="color:var(--money)">${money(g.revenue + (g.live ? g.live.rev : 0))}</span>${g.live && !g.live.closed ? `<span class="tag" style="--c:var(--good)">${t('live.tag')} · ${fmtNum(g.live.subs)}</span>` : `<span class="faint">${g.ended ? t('lib.ended') : t('lib.onSale')}</span>`}</div></div>
         <div class="disp" style="font-size:39px;color:${scoreColor(g.score)};align-self:flex-start">${g.score.toFixed(1)}</div></button>`;
     })
     .join('');
@@ -73,6 +136,7 @@ function detailView(G, id) {
         </div>
       </div>
     </div>
+    ${livePanel(G, g)}
     <div class="card" style="margin-top:16px"><div class="row" style="margin-bottom:6px"><div class="lbl">${t('lib.sales')}</div><span class="sp"></span><span class="faint" style="font-size:12px">${g.ended ? t('lib.ended') : t('lib.forecast', { v: money(g.total) })}</span></div>${salesChart(g)}</div>
     <div class="grid" style="grid-template-columns:repeat(auto-fit,minmax(240px,1fr));margin-top:16px">${texts.map((r, i) => `<div class="rev show" style="--c:${REVIEWERS[i].color}"><div class="rv-h"><div class="rv-av">${icon(['cpu', 'book', 'heart', 'skull'][i])}</div><div style="flex:1"><b>${L(REVIEWERS[i].name)}</b></div><div class="rv-s num" style="color:${scoreColor(r.score)}">${r.score.toFixed(1)}</div></div><div class="rv-t"><b>${esc(r.headline)}</b>${r.detail ? `<p>${esc(r.detail)}</p>` : ''}</div></div>`).join('')}</div>
     ${g.insights?.length ? `<div class="card" style="margin-top:16px"><div class="lbl" style="margin-bottom:8px">${t('rep.notes')}</div><div class="ins">${studioNotes(g, g)}${crowdNote(G, g, true)}</div></div>` : ''}
@@ -95,6 +159,7 @@ regWin({
   },
 });
 act('lib-open', (el) => {
+  closeArmed = null;
   UI.arg = { id: +el.dataset.id };
   UI.refresh();
   const b = $('[data-keep="body"]');
@@ -114,5 +179,39 @@ act('lib-patch', (el) => {
   const G = UI.app.G;
   const r = patchGame(G, +el.dataset.id);
   if (r !== true) errToast(r);
+  UI.refresh();
+});
+act('lv-price', (el) => {
+  const G = UI.app.G;
+  const g = G.games.find((x) => x.id === +el.dataset.id);
+  if (!g || !g.live) return;
+  const i = +el.dataset.i;
+  setLivePrice(G, g.id, i, g.live.price[i] + 0.05 * +el.dataset.d);
+  UI.refresh();
+});
+act('lv-ops', (el) => {
+  setLiveOps(UI.app.G, +el.dataset.id, +el.dataset.i);
+  UI.refresh();
+});
+act('lv-patch', (el) => {
+  const r = startLivePatch(UI.app.G, +el.dataset.id);
+  if (r === true) sfx.play('click');
+  else errToast(r);
+  UI.refresh();
+});
+act('lv-exp', (el) => {
+  const G = UI.app.G;
+  const g = G.games.find((x) => x.id === +el.dataset.id);
+  if (!g) return;
+  UI.close(true);
+  openExpansion(G, g);
+});
+act('lv-close', (el) => {
+  const id = +el.dataset.id;
+  if (closeArmed !== id) closeArmed = id;
+  else {
+    closeArmed = null;
+    closeLive(UI.app.G, id);
+  }
   UI.refresh();
 });

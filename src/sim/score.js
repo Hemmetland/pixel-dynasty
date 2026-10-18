@@ -124,6 +124,8 @@ export function parPerTick(G, job) {
 }
 
 export function freshness(G, job) {
+  // en expansion bygger vidare på sitt spel och räknas inte som en upprepning
+  if (job.expansionOf) return 0;
   let rep = 0;
   for (const g of G.games.slice(-5)) if (g.topic === job.topic && g.genre === job.genre) rep++;
   return rep;

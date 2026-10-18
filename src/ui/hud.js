@@ -527,6 +527,7 @@ function updateDevGame(G, J, el) {
         <span class="chip c" style="--c:${ge.color}">${glyphImg(ge.glyph, ge.color, 16, false)}${L(ge.name)}</span>
         <span class="chip">${L(tp.name)}</span>
         <span class="chip" style="--c:${PLATFORM[J.platform].color}">${esc(PLATFORM[J.platform].name)}</span>
+        ${J.live ? `<span class="chip c" style="--c:var(--good)">${icon('globe')}${t('dev.liveChip')}</span>` : J.expansionOf ? `<span class="chip c" style="--c:var(--good)">${icon('globe')}${t('dev.expChip')}</span>` : ''}
         <span id="dv-crowd" style="display:contents"></span>
       </div>
       <div class="phases" id="dv-phases"></div>

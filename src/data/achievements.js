@@ -27,6 +27,8 @@ export const ACHIEVEMENTS = [
   A('contracts5', 'a_brief', 'Frilansare', 'Freelancer', 'Slutför fem uppdrag.', 'Complete five contracts.', (G) => G.stats.contracts >= 5),
   A('engine', 'a_engine', 'Egen motor', 'Home-Grown Engine', 'Bygg din första spelmotor.', 'Build your first engine.', (G) => G.engines.length >= 1),
   A('survive', 'a_clock', 'Veteran', 'Veteran', 'Överlev i tio år.', 'Survive ten years.', (G) => G.t >= 48 * 10),
+  A('live1', 'a_game', 'Världen är online', 'World Online', 'Släpp ditt första onlinespel.', 'Launch your first online game.', (G) => (G.stats.liveLaunched || 0) >= 1),
+  A('subs1m', 'a_heart', 'En miljon äventyrare', 'A Million Adventurers', 'Ha en miljon prenumeranter samtidigt.', 'Have a million subscribers at once.', (G) => G.games.some((g) => g.live && g.live.peak >= 1e6)),
   A('legend', 'a_clock', 'Legend', 'Legend', 'Spela till år 2020.', 'Play until the year 2020.', (G) => G.t >= 48 * 40),
 ];
 export const ACH = Object.fromEntries(ACHIEVEMENTS.map((a) => [a.id, a]));

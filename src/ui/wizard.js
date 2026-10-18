@@ -15,11 +15,13 @@ import { focusHTML, bindFocus } from './focus.js';
 import { lang } from '../core/i18n.js';
 import { clamp } from '../core/util.js';
 import { workers } from '../sim/people.js';
+import { liveUnlocked, canGoLive, liveGames, LIVE_SCOPES, EXP_SCOPES, LIVE_DEV } from '../sim/live.js';
+import { TITLE_PARTS } from '../data/names.js';
 
 const W = {};
 function reset(G) {
   Object.assign(W, {
-    step: 0, title: '', topic: null, genre: null, genre2: null, platform: null, audience: 'everyone', scope: 'small', engineId: null, sequelOf: null,
+    step: 0, title: '', topic: null, genre: null, genre2: null, platform: null, audience: 'everyone', scope: 'small', engineId: null, sequelOf: null, live: false, expansionOf: null,
     focus: null, titleAuto: true, G, used: false,
   });
   const best = bestPlatform(G);
@@ -47,6 +49,8 @@ function keepDraft(G) {
   if ((W.topic && !u.topics.includes(W.topic)) || (W.genre && !u.genres.includes(W.genre))) return false;
   if (W.genre2 && !(u.flags.genre2 && u.genres.includes(W.genre2))) return false;
   if (W.sequelOf && !G.games.some((g) => g.id === W.sequelOf)) return false;
+  if (W.expansionOf && !liveGames(G).some((g) => g.id === W.expansionOf)) return false;
+  if (W.live && !canGoLive(G)) W.live = false;
   if (!platformOpen(G, W.platform)) W.platform = bestPlatform(G);
   if (!u.scopes.includes(W.scope)) W.scope = 'small';
   if (!u.aud.includes(W.audience)) W.audience = u.aud.includes('everyone') ? 'everyone' : u.aud[0];
@@ -92,6 +96,32 @@ export function teamReadiness(G, cfg) {
 }
 const verdict = (r) => (r < 0.45 ? ['bad', 'wiz.tooHard'] : r < 0.75 ? ['warn', 'wiz.hard'] : r < 1.5 ? ['good', 'wiz.good'] : r < 2.4 ? ['good', 'wiz.great'] : ['accent', 'wiz.easy']);
 const VCOL = { bad: 'var(--bug)', warn: 'var(--warn)', good: 'var(--good)', accent: 'var(--accent)' };
+// Storlekar som formatet tillåter: onlinespel Stor/AAA, expansioner upp till Stor
+const scopeAllowed = (id) => (W.live ? LIVE_SCOPES.includes(id) : W.expansionOf ? EXP_SCOPES.includes(id) : true);
+// Byt till en tillåten storlek (den största upplåsta som plattformen klarar) när formatet ändras
+function fitFormat(G) {
+  if (scopeAllowed(W.scope)) return;
+  const ok = SCOPE_IDS.filter((id) => scopeAllowed(id) && G.u.scopes.includes(id));
+  W.scope = W.live ? ok[0] || W.scope : ok[ok.length - 1] || 'small';
+}
+// Expansionens titel: grundspelets namn (före ett eventuellt kolon) och en undertitel
+function expansionTitle(g) {
+  const P = TITLE_PARTS;
+  const pick = (a) => a[Math.floor(Math.random() * a.length)];
+  return `${g.title.split(':')[0].trim()}: ${pick(P.adj[lang])} ${pick(P.noun[lang])}`;
+}
+// Format (vanligt spel eller onlinespel) och expansioner till onlinespel som är igång. Syns när serverforskningen är klar.
+function formatHTML(G) {
+  if (!liveUnlocked(G)) return '';
+  const can = canGoLive(G);
+  const lives = liveGames(G);
+  const fmt = `<div class="wz-sec"><div class="lbl">${t('wiz.format')}</div><div class="seg"><button class="${!W.live && !W.expansionOf ? 'on' : ''}" data-act="w-fmt" data-id="game">${t('wiz.fmtGame')}</button><button class="${W.live ? 'on' : ''}" data-act="w-fmt" data-id="live" ${can ? '' : 'disabled'}>${icon('globe')}${t('wiz.fmtLive')}</button></div>
+    <p class="hint" style="margin-top:6px">${can ? t('wiz.fmtHelp') : `${icon('lock')} ${t('wiz.fmtNeedServer')}`}</p></div>`;
+  const exp = lives.length
+    ? `<div class="wz-sec"><div class="lbl">${t('wiz.expansion')}</div><div class="row wrap">${lives.map((g) => `<button class="chip btnchip ${W.expansionOf === g.id ? 'on' : ''}" data-act="w-exp" data-id="${g.id}">${icon('globe')}${esc(g.title)}<span class="muted">${Math.round(g.live.subs).toLocaleString('sv-SE')}</span></button>`).join('')}</div><p class="hint" style="margin-top:6px">${t('wiz.expHelp')}</p></div>`
+    : '';
+  return fmt + exp;
+}
 
 // Försäljningen räknas när spelet släpps: hinner trenden bytas innan ett spel av den här storleken är klart?
 const trendFades = (G, x, scope) => trendWeeksLeft(G, x) < SCOPES[scope].weeks + SCOPES[scope].polish;
@@ -129,7 +159,7 @@ function stepConcept(G) {
     return `<button class="tile gtile ${sel ? 'sel' : ''} ${dis ? 'off' : ''}" data-act="${which === 1 ? 'w-genre' : 'w-genre2'}" data-id="${ge.id}" style="--t1:${ge.color};--t2:#10142a" ${dis ? 'disabled' : ''}>
       <span class="tg">${glyphImg(ge.glyph, '#fff', 32, true)}</span><b>${L(ge.name)}</b>${dot}${trendBadge(G, 'genre', ge.id)}</button>`;
   };
-  const seqs = G.u.flags.sequels ? G.games.filter((g) => g.score >= 5).slice(-4).reverse() : [];
+  const seqs = G.u.flags.sequels ? G.games.filter((g) => g.score >= 5 && !g.expansionOf).slice(-4).reverse() : [];
   let compat = '';
   if (W.topic && W.genre) {
     const k = known(W.topic, W.genre);
@@ -144,6 +174,7 @@ function stepConcept(G) {
       <div class="row"><input class="input" id="w-title" maxlength="28" value="${esc(W.title)}" placeholder="${t('wiz.titlePh')}" autocomplete="off"><button class="btn" data-act="w-dice" data-tip="${t('wiz.dice')}">${icon('dice')}</button></div>
     </div>
     ${seqs.length ? `<div class="wz-sec"><div class="lbl">${t('wiz.sequel')}</div><div class="row wrap">${seqs.map((g) => `<button class="chip btnchip ${W.sequelOf === g.id ? 'on' : ''}" data-act="w-seq" data-id="${g.id}">${glyphImg(TOPIC[g.topic].glyph, '#fff', 16, false)}${esc(g.title)}<span class="muted">${g.score.toFixed(1)}</span></button>`).join('')}</div></div>` : ''}
+    ${formatHTML(G)}
     <div class="wz-sec"><div class="lbl">${t('wiz.topic')}</div><div class="tiles">${tiles}</div></div>
     <div class="wz-sec"><div class="lbl">${t('wiz.genre')}</div><div class="tiles g">${genres.map((g) => genreTile(g, 1)).join('')}</div>${compat}</div>
     ${G.u.flags.genre2 ? `<div class="wz-sec"><div class="lbl">${t('wiz.genre2')} <span class="faint">· ${t('wiz.optional')}</span></div><div class="tiles g">${genres.map((g) => genreTile(g, 2)).join('')}</div></div>` : ''}`;
@@ -152,7 +183,7 @@ function stepConcept(G) {
 function stepMarket(G) {
   const year = yearOf(G.t);
   const yf = yfOf(G.t);
-  const plats = PLATFORMS.filter((p) => yf >= p.y0 + p.m0 / 12 - 0.01 && platformOpen(G, p.id));
+  const plats = PLATFORMS.filter((p) => yf >= p.y0 + p.m0 / 12 - 0.01 && platformOpen(G, p.id) && (!W.expansionOf || p.id === W.platform));
   let tot = 0;
   for (const p of PLATFORMS) tot += potential(p, yf);
   const cards = plats
@@ -186,13 +217,14 @@ function stepMarket(G) {
     const unlocked = G.u.scopes.includes(id);
     const tier = platTier(PLATFORM[W.platform], year);
     const weak = tier < sc.minTier;
+    const fmtOk = scopeAllowed(id);
     const rd = teamReadiness(G, { ...W, scope: id });
     const [vk, vtxt] = verdict(rd.r);
     const fades = [G.market.trend.genre.find((x) => x.id === W.genre), G.market.trend.topic.find((x) => x.id === W.topic)].some((x) => x && x.mult > 1.1 && trendFades(G, x, id));
-    return `<button class="card scope ${W.scope === id ? 'sel' : ''} ${!unlocked || weak ? 'lockd' : ''}" data-act="w-scope" data-id="${id}" ${!unlocked ? 'disabled' : ''}>
-      <div class="row"><b class="disp" style="font-size:22px">${L(sc.name)}</b><span class="sp"></span>${unlocked ? (weak ? `<span class="tag" style="--c:var(--bug)">${t('wiz.needTier', { n: sc.minTier })}</span>` : `<span class="tag" style="--c:${VCOL[vk]}">${t(vtxt)}</span>`) : icon('lock')}</div>
+    return `<button class="card scope ${W.scope === id ? 'sel' : ''} ${!unlocked || weak || !fmtOk ? 'lockd' : ''}" data-act="w-scope" data-id="${id}" ${!unlocked || !fmtOk ? 'disabled' : ''}>
+      <div class="row"><b class="disp" style="font-size:22px">${L(sc.name)}</b><span class="sp"></span>${!unlocked ? icon('lock') : !fmtOk ? `<span class="tag" style="--c:var(--bug)">${t(W.live ? 'wiz.liveScope' : 'wiz.expScope')}</span>` : weak ? `<span class="tag" style="--c:var(--bug)">${t('wiz.needTier', { n: sc.minTier })}</span>` : `<span class="tag" style="--c:${VCOL[vk]}">${t(vtxt)}</span>`}</div>
       <div class="hint" style="margin:4px 0 8px">${unlocked ? L(sc.desc) : t('wiz.locked')}</div>
-      <div class="row" style="gap:14px;font-size:12px"><span>${icon('clock')} ${sc.weeks + sc.polish} ${t('ui.weeksShort')}</span><span>${icon('team')} ${t('wiz.idealTeam', { n: sc.team })}</span>${fades ? `<span data-tip="${t('wiz.trendHotFade')}" style="opacity:.7">${icon('fire')} ${t('wiz.trendFadeShort')}</span>` : ''}</div>
+      <div class="row" style="gap:14px;font-size:12px"><span>${icon('clock')} ${weeksOf(id)} ${t('ui.weeksShort')}</span><span>${icon('team')} ${t('wiz.idealTeam', { n: sc.team })}</span>${fades ? `<span data-tip="${t('wiz.trendHotFade')}" style="opacity:.7">${icon('fire')} ${t('wiz.trendFadeShort')}</span>` : ''}</div>
     </button>`;
   }).join('');
   const engines = G.u.flags.engines && G.engines.length
@@ -244,7 +276,8 @@ function summary(G) {
     </div>
     <div class="kv"><span>${t('wiz.platform')}</span><b>${esc(plat.id === 'pc' ? pcGeneration(yearOf(G.t)) : plat.name)}</b></div>
     <div class="kv"><span>${t('wiz.scope')}</span><b>${L(sc.name)}</b></div>
-    <div class="kv"><span>${t('wiz.duration')}</span><b>${sc.weeks + sc.polish} ${t('ui.weeksShort')}</b></div>
+    ${W.live || W.expansionOf ? `<div class="kv"><span>${t('wiz.format')}</span><b>${W.live ? t('wiz.fmtLive') : esc(t('wiz.expOf', { title: G.games.find((g) => g.id === W.expansionOf)?.title || '' }))}</b></div>` : ''}
+    <div class="kv"><span>${t('wiz.duration')}</span><b>${weeksOf(W.scope)} ${t('ui.weeksShort')}</b></div>
     <div class="kv"><span>${t('wiz.team')}</span><b>${workers(G).length} ${tn('wiz.people', workers(G).length)}</b></div>
     <div class="kv"><span>${t('wiz.startHype')}</span><b>${Math.round(baseHype(G) + (W.sequelOf ? 8 : 0))}</b></div>
     ${cost ? `<div class="kv"><span>${t('wiz.license')}</span><b>${money(cost)}</b></div>` : ''}
@@ -271,7 +304,7 @@ regWin({
     return `<div class="wz"><div class="wz-main">${body}</div><aside class="wz-side card">${summary(G)}</aside></div>`;
   },
   foot(G) {
-    const canNext = W.step === 0 ? W.topic && W.genre : W.step === 1 ? W.platform && G.licenses.includes(W.platform) && platTier(PLATFORM[W.platform], yearOf(G.t)) >= SCOPES[W.scope].minTier : true;
+    const canNext = W.step === 0 ? W.topic && W.genre : W.step === 1 ? W.platform && G.licenses.includes(W.platform) && platTier(PLATFORM[W.platform], yearOf(G.t)) >= SCOPES[W.scope].minTier && scopeAllowed(W.scope) : true;
     const weak = W.step === 1 && platTier(PLATFORM[W.platform], yearOf(G.t)) < SCOPES[W.scope].minTier;
     const hint = W.step === 0 && !(W.topic && W.genre) ? t('wiz.pick') : W.step === 1 && !G.licenses.includes(W.platform) ? t('wiz.needLicense') : weak ? t('wiz.weakHint') : '';
     return `${W.step > 0 ? `<button class="btn" data-act="w-prev">${icon('back')}${t('ui.back')}</button>` : ''}<span class="hint sp" style="text-align:right">${hint}</span>
@@ -326,6 +359,36 @@ export function openSequel(G, g) {
   UI.open('wizard', null, { force: true });
 }
 
+// Expansion: tema, genrer, plattform och målgrupp från grundspelet
+function pickExpansion(G, g) {
+  W.expansionOf = g.id;
+  W.live = false;
+  W.sequelOf = null;
+  W.topic = g.topic;
+  W.genre = g.genre;
+  W.genre2 = g.genre2;
+  W.platform = g.platform;
+  W.audience = g.audience;
+  W.focus = null;
+  W.title = expansionTitle(g);
+  W.titleAuto = false;
+  prefill(G);
+}
+export function openExpansion(G, g) {
+  if (G.job) {
+    toast(t('err.busy'), 'bad');
+    return;
+  }
+  reset(G);
+  pickExpansion(G, g);
+  W.scope = G.u.scopes.includes('medium') ? 'medium' : 'small';
+  W.step = 1;
+  W.keep = true;
+  UI.open('wizard', null, { force: true });
+}
+// Utvecklingstid i veckor (onlinespel tar längre tid)
+const weeksOf = (id) => Math.round(SCOPES[id].weeks * (W.live ? LIVE_DEV : 1)) + SCOPES[id].polish;
+
 function prefill(G) {
   if (!W.topic || !W.genre) return;
   if (!W.title) {
@@ -339,6 +402,7 @@ act('w-topic', (el) => {
   const G = UI.app.G;
   W.topic = el.dataset.id;
   W.sequelOf = null;
+  W.expansionOf = null;
   W.focus = null;
   if (W.titleAuto) W.title = '';
   prefill(G);
@@ -354,6 +418,7 @@ act('w-topic', (el) => {
 act('w-genre', (el) => {
   const G = UI.app.G;
   W.genre = el.dataset.id;
+  W.expansionOf = null;
   if (W.genre2 === W.genre) W.genre2 = null;
   W.focus = null;
   prefill(G);
@@ -362,6 +427,7 @@ act('w-genre', (el) => {
 act('w-genre2', (el) => {
   const G = UI.app.G;
   W.genre2 = W.genre2 === el.dataset.id ? null : el.dataset.id;
+  W.expansionOf = null;
   W.focus = null;
   prefill(G);
   UI.refresh();
@@ -374,6 +440,7 @@ act('w-seq', (el) => {
     W.sequelOf = null;
   } else {
     W.sequelOf = g.id;
+    W.expansionOf = null;
     W.topic = g.topic;
     W.genre = g.genre;
     W.genre2 = g.genre2;
@@ -382,6 +449,31 @@ act('w-seq', (el) => {
     W.titleAuto = false;
     prefill(G);
   }
+  UI.refresh();
+});
+act('w-fmt', (el) => {
+  const G = UI.app.G;
+  W.live = el.dataset.id === 'live' && canGoLive(G);
+  if (W.expansionOf) {
+    W.expansionOf = null;
+    if (!W.titleAuto) W.title = '';
+    W.titleAuto = true;
+    prefill(G);
+  }
+  fitFormat(G);
+  UI.refresh();
+});
+act('w-exp', (el) => {
+  const G = UI.app.G;
+  const g = liveGames(G).find((x) => x.id === +el.dataset.id);
+  if (!g) return;
+  if (W.expansionOf === g.id) {
+    W.expansionOf = null;
+    W.title = '';
+    W.titleAuto = true;
+    prefill(G);
+  } else pickExpansion(G, g);
+  fitFormat(G);
   UI.refresh();
 });
 act('w-dice', () => {
@@ -449,7 +541,7 @@ act('w-even', () => {
 });
 act('w-start', () => {
   const G = UI.app.G;
-  const r = startProject(G, { title: W.title, topic: W.topic, genre: W.genre, genre2: W.genre2, platform: W.platform, scope: W.scope, audience: W.audience, engineId: W.engineId, sequelOf: W.sequelOf, focus0: W.focus });
+  const r = startProject(G, { title: W.title, topic: W.topic, genre: W.genre, genre2: W.genre2, platform: W.platform, scope: W.scope, audience: W.audience, engineId: W.engineId, sequelOf: W.sequelOf, focus0: W.focus, live: W.live, expansionOf: W.expansionOf });
   if (typeof r === 'string') {
     errToast(r);
     return;

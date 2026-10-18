@@ -13,6 +13,7 @@ import { bugMult, qaFixMult, mktCostMult, mktHypeMult, serverMult, labMult, spen
 import { phaseCats, normFocus, startFocus, evaluate, compatOf, parPerTick } from './score.js';
 import { startSales, forecast } from './sales.js';
 import { crowding } from './market.js';
+import { LIVE_SCOPES, EXP_SCOPES, LIVE_DEV, canGoLive, launchLive, releaseExpansion } from './live.js';
 
 export const RP_RATE = 0.05;
 // Satser som beskriver "per projekt" skalas mot projektets längd (tempo) så att ett längre projekt inte tappar mer hype
@@ -30,6 +31,13 @@ export function baseHype(G) {
 
 export function startProject(G, cfg) {
   if (G.job) return t('err.busy');
+  // Expansion till ett onlinespel: samma tema, genrer, plattform och målgrupp som grundspelet
+  const base = cfg.expansionOf ? G.games.find((g) => g.id === cfg.expansionOf && g.live && !g.live.closed) : null;
+  if (cfg.expansionOf && !base) return t('err.liveGone');
+  if (base) cfg = { ...cfg, topic: base.topic, genre: base.genre, genre2: base.genre2, platform: base.platform, audience: base.audience, live: false, sequelOf: null };
+  if (cfg.live && !canGoLive(G)) return t('err.liveServer');
+  if (cfg.live && !LIVE_SCOPES.includes(cfg.scope)) return t('err.liveScope');
+  if (base && !EXP_SCOPES.includes(cfg.scope)) return t('err.expScope');
   const { topic, genre, platform, scope, audience } = cfg;
   if (!G.u.topics.includes(topic) || !G.u.genres.includes(genre)) return 'invalid';
   if (cfg.genre2 && (!G.u.flags.genre2 || !G.u.genres.includes(cfg.genre2) || cfg.genre2 === genre)) return 'invalid';
@@ -50,8 +58,10 @@ export function startProject(G, cfg) {
     chain: sequel ? (sequel.chain || 1) + 1 : 0,
     t0: G.t,
     ticks: 0,
-    devTicks: sc.weeks * TICKS_PER_WEEK,
+    devTicks: Math.round(sc.weeks * (cfg.live ? LIVE_DEV : 1)) * TICKS_PER_WEEK,
     polishTicks: sc.polish * TICKS_PER_WEEK,
+    live: !!cfg.live,
+    expansionOf: base ? base.id : null,
     polishDone: 0,
     phase: 0,
     focus: [normFocus(phaseCats(G, 0), cfg.focus0 || f0[0]), normFocus(phaseCats(G, 1), f0[1]), normFocus(phaseCats(G, 2), f0[2])],
@@ -261,7 +271,7 @@ export function releaseGame(G) {
     id: J.id,
     title: J.title,
     topic: J.topic, genre: J.genre, genre2: J.genre2, platform: J.platform, audience: J.audience, scope: J.scope,
-    engineId: J.engineId, sequelOf: J.sequelOf, chain: J.chain,
+    engineId: J.engineId, sequelOf: J.sequelOf, chain: J.chain, expansionOf: J.expansionOf || null,
     t: G.t,
     score: rep.score,
     reviews: rep.reviews,
@@ -285,6 +295,8 @@ export function releaseGame(G) {
   game.crowd = cr.mult;
   game.crowdBy = cr.rivals.slice(0, 3).map((r) => ({ studio: r.studio, title: r.title, future: r.future }));
   startSales(G, game);
+  if (J.live) launchLive(G, game);
+  else if (J.expansionOf) releaseExpansion(G, game);
   // erfarenhet till teamet
   for (const w of workers(G)) {
     const skill = ['design', 'tech', 'speed', 'research'][rint(G, 0, 3)];

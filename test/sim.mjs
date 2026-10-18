@@ -18,6 +18,8 @@ const quiet = args.includes('-q');
 const casual = args.includes('--casual');
 // --mid: en genomsnittlig spelare som ibland väljer bra tema/genre och ibland chansar.
 const mid = args.includes('--mid');
+// --mmo: gör onlinespel när serverrummet finns, håller dem vid liv med uppdateringar och expansioner
+const mmo = args.includes('--mmo');
 // --bd: skriv ut årets pengar per kategori (för balansarbete)
 const bd = args.includes('--bd');
 const acc = {};
@@ -55,11 +57,22 @@ function chooseProject(G) {
     const have = Math.min(sk.d, sk.t) * 0.8;
     if (have >= par * 0.95) scope = id;
   }
+  if (mmo) {
+    const live = S.liveGames(G)[0];
+    if (live && live.live.fresh < 70 && G.t - Math.max(live.live.t0, ...live.live.exps.map((id) => G.games.find((x) => x.id === id).t)) > 96) return { title: live.title + ': Exp', topic: live.topic, genre: live.genre, platform: live.platform, scope: 'medium', audience: live.audience, expansionOf: live.id };
+    if (!live && S.canGoLive(G) && S.LIVE_SCOPES.includes(scope)) {
+      const cfg = chooseBest(G, plat, scope);
+      return { ...cfg, live: true };
+    }
+  }
   if (casual || (mid && Math.random() < 0.5)) {
     const tp = G.u.topics[Math.floor(Math.random() * G.u.topics.length)];
     const ge = G.u.genres[Math.floor(Math.random() * G.u.genres.length)];
     return { title: 'Game ' + (G.games.length + 1), topic: tp, genre: ge, platform: plat.id, scope: casual ? (G.u.scopes.includes('medium') && sk.d > 25 ? 'medium' : 'small') : scope, audience: 'everyone' };
   }
+  return chooseBest(G, plat, scope);
+}
+function chooseBest(G, plat, scope) {
   // bästa kända tema/genre
   let best = null;
   let bv = -1;
@@ -143,6 +156,12 @@ function manage(G) {
   if (G.job && G.job.kind === 'game' && G.job.state === 'dev' && G.job.phase >= 1) {
     for (const m of S.marketingOptions(G)) if (!m.used && G.money > m.cost * 6) S.launchMarketing(G, m.id);
   }
+  // onlinespel: innehållsuppdatering när innehållet börjar bli gammalt, och servrar när det blir fullt
+  if (mmo) for (const g of S.liveGames(G)) {
+    if (g.live.fresh < 50 && !g.live.patch && G.money > S.livePatchCost(G, g) * 3) S.startLivePatch(G, g.id);
+    if (S.liveGames(G).reduce((a, x) => a + x.live.subs, 0) > S.serverCap(G) * 0.85 && S.facLevel(G, 'server') < 3 && G.money > S.facCost(G, 'server') * 2) S.buildFacility(G, 'server');
+  }
+  if (mmo && S.liveUnlocked(G) && S.facLevel(G, 'server') < 1 && G.money > S.facCost(G, 'server') * 3) S.buildFacility(G, 'server');
   // lån vid behov
   if (G.money < 2000 && S.loanTotal(G) < S.loanLimit(G) * 0.6) S.takeLoan(G, S.loanLimit(G) - S.loanTotal(G));
   if (G.money > 200000 * S.moneyScale(year) && S.loanTotal(G) > 0) S.repayLoan(G, S.loanTotal(G));
@@ -182,7 +201,8 @@ while (S.yearOf(G.t) < endYear && !G.over) {
       const n = S.nextTier(G);
       if (n) gate = ' | next: ' + S.officeReqs(G, n).map((r) => (r.ok ? '+' : '-') + r.id + ' ' + (r.id === 'avg' ? r.have.toFixed(1) : Math.round(r.have)) + '/' + r.need).join(' ');
     }
-    console.log(`${y} $${Math.round(G.money).toLocaleString()} fans ${Math.round(G.fans).toLocaleString()} staff ${G.staff.length} tier ${G.office.tier} games ${G.games.length} avg(6) ${avg} yrRev $${Math.round(rev).toLocaleString()} res ${G.research.done.length}+${Object.values(G.research.levels || {}).reduce((a, b) => a + b, 0)} rp ${Math.round(G.rp)} loans ${Math.round(S.loanTotal(G))}${gate}`);
+    const lv = S.liveGames(G).map((g) => `[${g.title} subs ${Math.round(g.live.subs).toLocaleString()} fresh ${Math.round(g.live.fresh)} rev/m ${Math.round(S.liveMonth(G, g).rev).toLocaleString()} cost/m ${Math.round(S.liveMonth(G, g).cost).toLocaleString()} cap ${S.serverCap(G).toLocaleString()}]`).join(' ');
+    console.log(`${y} $${Math.round(G.money).toLocaleString()} fans ${Math.round(G.fans).toLocaleString()} staff ${G.staff.length} tier ${G.office.tier} games ${G.games.length} avg(6) ${avg} yrRev $${Math.round(rev).toLocaleString()} res ${G.research.done.length}+${Object.values(G.research.levels || {}).reduce((a, b) => a + b, 0)} rp ${Math.round(G.rp)} loans ${Math.round(S.loanTotal(G))}${gate}${lv ? ' ' + lv : ''}`);
   }
 }
 const dt = Date.now() - t0;

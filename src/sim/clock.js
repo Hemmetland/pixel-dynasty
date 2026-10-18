@@ -7,6 +7,7 @@ import { researchTick } from './research.js';
 import { contractTick, refreshContracts } from './contracts.js';
 import { engineTick } from './engines.js';
 import { salesWeek } from './sales.js';
+import { liveWeek } from './live.js';
 import { monthlyMarket, updateTrends } from './market.js';
 import { rollDevEvent, rollStudioEvent } from './events.js';
 import { runAwards, expoOffer } from './awards.js';
@@ -38,6 +39,7 @@ export function stepTick(G) {
 function weekly(G) {
   for (const s of G.staff) if (s.trainSkill && s.trainUntil <= G.t) finishTraining(G, s);
   salesWeek(G);
+  liveWeek(G);
   updateMood(G);
   rollDevEvent(G);
   const d = dateOf(G.t);

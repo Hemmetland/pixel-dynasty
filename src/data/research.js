@@ -75,7 +75,7 @@ export const RESEARCH = [
   R('b_qa', 'biz', 'QA-avdelning', 'QA Department', 'Anläggning: QA-labb som fixar buggar snabbare.', 'Facility: QA lab that fixes bugs faster.', 60, 0, 4, ['q_triage'], 1984, { facs: ['qa'] }, {}, 'f_qa'),
   R('b_fun', 'biz', 'Spelrum', 'Game Room', 'Anläggning: Arkad och sittsäckar höjer humöret.', 'Facility: Arcade and beanbags lift morale.', 90, 0, 4, [], 1985, { facs: ['gameroom'] }, {}, 'f_gameroom'),
   R('b_mktdept', 'biz', 'Marknadsavdelning', 'Marketing Dept', 'Anläggning: Billigare och starkare kampanjer.', 'Facility: Cheaper, stronger campaigns.', 150, 0, 5, ['b_mkt2'], 1988, { facs: ['marketing'] }, {}, 'f_marketing'),
-  R('b_server', 'biz', 'Serverrum', 'Server Room', 'Anläggning: Bygg och drift för online-spel.', 'Facility: Build and ops for online games.', 420, 0, 6, ['f_net'], 1997, { facs: ['server'] }, {}, 'f_server'),
+  R('b_server', 'biz', 'Serverrum', 'Server Room', 'Anläggning: servrar för onlinespel. Låser upp onlinespel (MMO) med abonnemang och expansioner.', 'Facility: servers for online games. Unlocks online games (MMO) with subscriptions and expansions.', 420, 0, 6, ['f_net'], 1997, { facs: ['server'] }, {}, 'f_server'),
 
   // ── Kvalitet / QA ────────────────────────────────────────────
   R('q_triage', 'prod', 'Buggtriage', 'Bug Triage', 'Fixar buggar 25% snabbare.', 'Fixes bugs 25% faster.', 36, 0, 3, [], 1981, {}, { qa: 0.25 }, 'q_bug'),

@@ -4,6 +4,7 @@ import { loanLimit, loanTotal, takeLoan, repayLoan, loanInterest, rentOf, facUpk
 import { payroll } from '../sim/people.js';
 import { moneyScale, yearOf, dateOf } from '../sim/const.js';
 import { lang } from '../core/i18n.js';
+import { liveCostMonth } from '../sim/live.js';
 
 function lineChart(pts, color, w = 560, h = 190) {
   if (pts.length < 2) return `<div class="empty" style="padding:30px">${t('fin.noData')}</div>`;
@@ -29,7 +30,7 @@ function lineChart(pts, color, w = 560, h = 190) {
     <circle cx="${X(pts.length - 1)}" cy="${Y(last.v)}" r="4.5" fill="#fff" stroke="${color}" stroke-width="2"/>${ticks}</svg>`;
 }
 
-const CAT_KEYS = ['sales', 'contracts', 'awards', 'events', 'loan', 'other', 'salaries', 'rent', 'facilities', 'marketing', 'research', 'licenses', 'interest', 'engines', 'office', 'patches'];
+const CAT_KEYS = ['sales', 'subs', 'servers', 'contracts', 'awards', 'events', 'loan', 'other', 'salaries', 'rent', 'facilities', 'marketing', 'research', 'licenses', 'interest', 'engines', 'office', 'patches'];
 
 regWin({
   id: 'finance',
@@ -48,7 +49,7 @@ regWin({
       .sort((a, b) => b[1] - a[1])
       .map(([k, v]) => `<div class="kv"><span>${t('fin.c.' + k)}</span><b class="${v >= 0 ? 'up' : 'down'}">${v >= 0 ? '+' : ''}${money(v)}</b></div>`)
       .join('');
-    const burn = payroll(G) + rentOf(G) + facUpkeep(G) + loanInterest(G);
+    const burn = payroll(G) + rentOf(G) + facUpkeep(G) + loanInterest(G) + liveCostMonth(G);
     const runway = burn > 0 ? Math.max(0, G.money / burn) : 99; // i skuld finns ingen marginal kvar
     const room = Math.max(0, loanLimit(G) - loanTotal(G));
     const step = Math.max(1000, Math.round((20000 * moneyScale(yearOf(G.t))) / 2000) * 1000);
