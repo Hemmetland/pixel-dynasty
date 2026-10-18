@@ -110,6 +110,7 @@ export const STRINGS = {
   'dev.fatigueGrace': ['teamet orkar ett tag till innan det märks.', 'the team can keep going a while before it shows.'],
   'dev.fatigueSlow': ['teamet jobbar {n} % långsammare.', 'the team works {n}% slower.'],
   'news.quit': ['{name} var utbränd efter för mycket crunch och sa upp sig.', '{name} burned out from too much crunch and quit.'],
+  'news.quitMood': ['{name} trivdes inte längre på studion och sa upp sig.', '{name} was unhappy at the studio and quit.'],
   'dev.ship': ['Släpp nu', 'Ship now'],
   'dev.polishMore': ['Mer polering', 'More polish'],
   'dev.cancel': ['Avbryt', 'Cancel'],

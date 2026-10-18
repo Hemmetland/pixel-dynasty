@@ -160,7 +160,7 @@ export const EVENTS = [
   E('dev_dataloss', 'dev', 0.6, (G) => G.job && G.job.phase < 3 && G.job.ticks > 24,
     { sv: 'Backupen saknas', en: 'No backup' },
     { sv: 'Hårddisken ger upp. Ingen har gjort en säkerhetskopia på två veckor.', en: 'The hard drive gives up. Nobody has made a backup in two weeks.' },
-    [C('Betala för dataräddning', 'Pay for data recovery', { money: -2400 }), C('Bygg om det som saknas', 'Rebuild what is lost', { D: -0.04, T: -0.04, mood: -6 })]),
+    [C('Betala för dataräddning', 'Pay for data recovery', { money: -2400, res: R('Firman får tillbaka allt utom en sparad high score.', 'The recovery firm gets everything back except one saved high score.') }), C('Bygg om det som saknas', 'Rebuild what is lost', { D: -0.04, T: -0.04, mood: -6, res: R('Teamet gör om två veckors arbete och är inte glada över det.', 'The team redoes two weeks of work and is not happy about it.') })]),
   E('dev_creep', 'dev', 1.0, (G) => G.job && G.job.phase < 2,
     { sv: 'En funktion till…', en: 'Feature creep' },
     { sv: 'Någon vill lägga till en funktion till. Och en till. Och en till.', en: 'Someone wants to add one more feature. And another. And another.' },

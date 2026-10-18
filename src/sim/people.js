@@ -220,7 +220,7 @@ export function moodTarget(G) {
 }
 export function updateMood(G) {
   const target = moodTarget(G);
-  const crunching = !!(G.job && G.job.crunch);
+  const crunching = crunchActive(G);
   const crunch = crunching ? 12 : 0;
   for (const s of G.staff) {
     const tr_ = s.trait === 'steady' ? 6 : 0;
@@ -230,6 +230,8 @@ export function updateMood(G) {
   }
 }
 export const moodMult = (st) => 0.85 + (0.3 * st.mood) / 100;
+// Crunch gäller bara medan ett spel utvecklas (inte under rapporten, kontrakt eller motorbyggen).
+export const crunchActive = (G) => !!(G.job && G.job.crunch && G.job.kind === 'game' && G.job.state === 'dev');
 
 // ── Crunch och trötthet ──────────────────────────────────────────
 // Trötthet (valfritt fält, saknas = 0) byggs upp med 1 per crunchvecka (nattugglor 0,6) och klingar av med
@@ -254,7 +256,9 @@ export function burnoutQuits(G) {
     if (!chance(G, p)) continue;
     G.staff = G.staff.filter((x) => x !== s);
     G.stats.quits = (G.stats.quits || 0) + 1;
-    note(G, 'news.quit', { name: s.name }, 'bad');
+    // utbränd av crunch, eller bara missnöjd (för lite trivsel)
+    if (fatigueOver(s) > 0 || crunchActive(G)) note(G, 'news.quit', { name: s.name }, 'bad');
+    else note(G, 'news.quitMood', { name: s.name }, 'bad');
   }
 }
 

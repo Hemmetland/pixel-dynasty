@@ -31,7 +31,7 @@ function titleFrom(a, n, form, sfx, topic) {
     const noun = TN && n % 3 === 0 ? TN[l][Math.floor(n / 3) % TN[l].length] : P.noun[l][n % P.noun[l].length];
     const noun2 = P.noun[l][(n + 3) % P.noun[l].length];
     if (form === 0) out[l] = `${adj} ${noun}`;
-    else if (form === 1) out[l] = l === 'sv' ? `${noun}s ${adj.toLowerCase()} ${adj === 'Hemliga' ? 'gåta' : 'hemlighet'}` : `Secret of the ${adj} ${noun}`;
+    else if (form === 1) out[l] = l === 'sv' ? `${noun}s ${adj.toLowerCase()} ${adj === 'Hemliga' ? 'gåta' : 'hemlighet'}` : `${adj === 'Secret' ? 'Riddle' : 'Secret'} of the ${adj} ${noun}`;
     else if (form === 2) out[l] = `${adj} ${noun} ${P.suffix[l][sfx % P.suffix[l].length]}`;
     else out[l] = `${noun}: ${adj} ${noun2}`;
   }

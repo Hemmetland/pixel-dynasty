@@ -13,8 +13,8 @@ export const REVIEWER = Object.fromEntries(REVIEWERS.map((r) => [r.id, r]));
 
 // Rubriker per poängnivå. Varje recensent får en egen rad (stabil per spel, men varierar mellan spel).
 export const HEADLINES = [
-  { min: 9.5, sv: ['Ett mästerverk.', 'Spelhistoria skrivs här.', 'Sluta läsa, spela det här.', 'Perfektion på kassett.', 'Årets spel, utan tvekan.', 'Det här kommer man prata om i åratal.'],
-    en: ['A masterpiece.', 'Gaming history is made here.', 'Stop reading and go play it.', 'Perfection, pressed to cartridge.', 'Game of the year, no question.', 'People will talk about this for years.'] },
+  { min: 9.5, sv: ['Ett mästerverk.', 'Spelhistoria skrivs här.', 'Sluta läsa, spela det här.', 'Perfektion, helt enkelt.', 'Årets spel, utan tvekan.', 'Det här kommer man prata om i åratal.'],
+    en: ['A masterpiece.', 'Gaming history is made here.', 'Stop reading and go play it.', 'Simply perfection.', 'Game of the year, no question.', 'People will talk about this for years.'] },
   { min: 8.5, sv: ['Briljant och svårt att lägga ifrån sig.', 'Ett toppspel.', 'En ny referenspunkt.', 'Man vill bara ha mer.', 'Ett av årets bästa.', 'Studion har överträffat sig själv.', 'Vi spelade tills solen gick upp.', 'Ett självklart köp.'],
     en: ['Brilliant and impossible to put down.', 'A top-tier game.', 'A new benchmark.', 'You will want more.', 'One of the best this year.', 'The studio has outdone itself.', 'We played until the sun came up.', 'An easy buy.'] },
   { min: 7.5, sv: ['Riktigt bra, med små skavanker.', 'Gedigen underhållning.', 'Starkt jobbat av studion.', 'Ett spel att räkna med.', 'Väl värt pengarna.', 'Mer bra än dåligt, mycket mer.', 'Studion är på rätt väg.', 'Lätt att rekommendera.'],
@@ -25,8 +25,8 @@ export const HEADLINES = [
     en: ['Mediocre. There are better ways to spend your money.', 'Potential that never quite takes root.', 'Neither fish nor fowl.', 'Nothing to write home about.', 'Halfway to something good.', 'There was a good idea in here somewhere.'] },
   { min: 3.5, sv: ['Frustrerande och ofärdigt.', 'Svårt att rekommendera.', 'Det här borde ha fått mer tid.', 'Ett steg i fel riktning.', 'Mer frustration än nöje.', 'Vänta på reapriset.'],
     en: ['Frustrating and unfinished.', 'Hard to recommend.', 'This needed more time in the oven.', 'A step in the wrong direction.', 'More frustration than fun.', 'Wait for the bargain bin.'] },
-  { min: 0, sv: ['Katastrof. Rör inte.', 'Vi hittar inte ord. Jo: nej.', 'Ett misstag på kassett.', 'Kräv pengarna tillbaka.', 'Ett lågvattenmärke.', 'Vi vill ha de timmarna tillbaka.'],
-    en: ['A disaster. Do not touch.', 'We are lost for words. Except: no.', 'A mistake on cartridge.', 'Demand a refund.', 'A new low.', 'We want those hours back.'] },
+  { min: 0, sv: ['Katastrof. Rör inte.', 'Vi hittar inte ord. Jo: nej.', 'Ett misstag från början till slut.', 'Kräv pengarna tillbaka.', 'Ett lågvattenmärke.', 'Vi vill ha de timmarna tillbaka.'],
+    en: ['A disaster. Do not touch.', 'We are lost for words. Except: no.', 'A mistake from start to finish.', 'Demand a refund.', 'A new low.', 'We want those hours back.'] },
 ];
 
 // Böjda former för recensionsmallarna, så att det blir "ett rollspel" och "an RPG" i stället för "ett Rollspel-spel" och "a RPG game".
@@ -127,7 +127,7 @@ export const NEUTRAL = {
   },
   critic: {
     '+': { sv: ['Vi letade efter fel. Vi hittade inte många.', 'Motvilligt: det här är bra.', 'Ett av få spel i år som vi faktiskt spelade klart.', 'Vi hatar att säga det, men vi hade roligt.', 'Irriterande nog finns det lite att klaga på.'], en: ['We looked for flaws. We did not find many.', 'Grudgingly: this is good.', 'One of the few games this year we actually finished.', 'We hate to say it, but we had fun.', 'Annoyingly, there is little to complain about.'] },
-    '-': { sv: ['Inget vi kommer att minnas om ett år.', 'Kompetent och ungefär lika spännande som en blankett.', 'Vi somnade två gånger. Vid skärmen.', 'Vi har sett bättre demoversioner.', 'Kassetten fungerar utmärkt som underlägg.', 'Det här är spelets motsvarighet till en väntsal.', 'Studion kan bättre. Hoppas vi.'], en: ['Nothing we will remember in a year.', 'Competent, and about as exciting as a tax form.', 'We fell asleep twice. At the screen.', 'We have seen better demos.', 'The cartridge makes an excellent coaster.', 'The gaming equivalent of a waiting room.', 'The studio can do better. We hope.'] },
+    '-': { sv: ['Inget vi kommer att minnas om ett år.', 'Kompetent och ungefär lika spännande som en blankett.', 'Vi somnade två gånger. Vid skärmen.', 'Vi har sett bättre demoversioner.', 'Förpackningen fungerar utmärkt som underlägg.', 'Det här är spelets motsvarighet till en väntsal.', 'Studion kan bättre. Hoppas vi.'], en: ['Nothing we will remember in a year.', 'Competent, and about as exciting as a tax form.', 'We fell asleep twice. At the screen.', 'We have seen better demos.', 'The box makes an excellent coaster.', 'The gaming equivalent of a waiting room.', 'The studio can do better. We hope.'] },
   },
 };
 

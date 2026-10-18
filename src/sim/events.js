@@ -50,7 +50,8 @@ export function rollDevEvent(G) {
   return true;
 }
 
-const pct = (x) => (x > 0 ? '+' : '') + Math.round(x * 100) + '%';
+// typografiskt minustecken för negativa procent
+const pct = (x) => (x > 0 ? '+' : x < 0 ? '\u2212' : '') + Math.abs(Math.round(x * 100)) + '%';
 // Tillämpa effekter, returnera lista med förändringar för visning. ctx = { who, game } från händelsen.
 // dry = true ändrar ingenting och ger bara de säkra effekterna (förhandsvisning); slumpgrenar blir { k: 'risk' }.
 export function applyFx(G, fx, out = [], ctx = {}, dry = false) {

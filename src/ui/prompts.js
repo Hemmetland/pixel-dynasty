@@ -302,7 +302,7 @@ function fxChip(o) {
     v = t('ev.fx.crunch', { n: o.v });
     tip = t('ev.fx.crunchTip', { n: o.v });
   } else if (o.k === 'risk') v = t('ev.fx.risk');
-  const bad = (typeof o.v === 'number' && o.k !== 'crunch' && ((o.k === 'bugs' && o.v > 0) || (o.k !== 'bugs' && o.v < 0))) || (typeof o.v === 'string' && o.v.startsWith('-') && o.k !== 'bugs');
+  const bad = (typeof o.v === 'number' && o.k !== 'crunch' && ((o.k === 'bugs' && o.v > 0) || (o.k !== 'bugs' && o.v < 0))) || (typeof o.v === 'string' && /^[-\u2212]/.test(o.v) && o.k !== 'bugs');
   return `<span class="chip c" style="--c:${bad ? 'var(--bug)' : col}"${tip ? ` data-tip="${esc(tip)}"` : ''}>${icon(ic)}<b class="num">${v}</b></span>`;
 }
 
