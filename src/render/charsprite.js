@@ -4,7 +4,7 @@
 // och varje pixel får den närmaste färgen från samma ställe i originalet, så att figuren blir lika skarp som möblerna runt den.
 // Resultatet cachas per utseende. Saknas spriten returnerar funktionerna false så att den procedurella figuren ritas.
 import { hex2rgb } from '../core/util.js';
-import { getSprite, spritesVersion } from './sprites.js';
+import { getSprite, spritesVersion, spriteNames } from './sprites.js';
 import { lookColors, SEATED } from './people.js';
 
 // Referensfärgen per material i originalbilden (den vanligaste nyansen); övriga nyanser behåller sin ljushet relativt den.
@@ -33,7 +33,7 @@ function material(r, g, b, ry, hatRow = 0.3) {
   return null;
 }
 
-const cache = new WeakMap(); // look -> Map(nyckel -> färdig remsa, 'hairV' -> frisyrvariant)
+const cache = new WeakMap(); // look -> Map(nyckel -> färdig remsa, 'hairV' -> { v: frisyrvariant, ver })
 
 function build(s, look) {
   const C = lookColors(look);
@@ -122,19 +122,33 @@ function build(s, look) {
 }
 
 // Frisyrvarianter 'nyckel#1'–'nyckel#3' (kort hår, hästsvans, lockigt; samma rutor och ankare, bara huvudet bytt): den som
-// har mössa eller hatt ritas med grundspriten, övriga får en variant efter frisyren. Saknas varianten används grundspriten.
-const HAIR_VARIANTS = 3;
+// har mössa eller hatt ritas med grundspriten, övriga får en av de varianter som finns efter frisyren. En variant används
+// först när den finns för alla char.*-remsor, annars skulle personen byta frisyr mellan poserna.
+const HAIR_VARIANTS = [1, 2, 3];
+let fullVer = -1;
+let fullV = [];
+function fullVariants() {
+  if (fullVer === spritesVersion()) return fullV;
+  fullVer = spritesVersion();
+  const bases = spriteNames().filter((n) => n.startsWith('char.') && !n.includes('#'));
+  fullV = HAIR_VARIANTS.filter((v) => bases.length && bases.every((b) => getSprite(`${b}#${v}`)));
+  return fullV;
+}
 const hairVariant = (look) => {
   const C = lookColors(look);
-  return C.hatted ? 0 : 1 + (C.style % HAIR_VARIANTS);
+  const vs = fullVariants();
+  return C.hatted || !vs.length ? 0 : vs[C.style % vs.length];
 };
 
 // Ritar personen som sprite 'key' (t.ex. 'char.walk', 'char.stand', 'char.drink') med fötterna i (x, y), ruta frame.
 export function drawCharSprite(ctx, key, x, y, look, frame = 0, dir = 1) {
   if (typeof document === 'undefined') return false;
   let m = cache.get(look);
-  if (!m) cache.set(look, (m = new Map([['hairV', hairVariant(look)]])));
-  const v = m.get('hairV');
+  if (!m) cache.set(look, (m = new Map()));
+  // frisyren väljs om när fler sprites har laddats
+  let hv = m.get('hairV');
+  if (!hv || hv.ver !== spritesVersion()) m.set('hairV', (hv = { v: hairVariant(look), ver: spritesVersion() }));
+  const v = hv.v;
   const s = (v && getSprite(`${key}#${v}`)) || getSprite(key);
   if (!s) return false;
   let e = m.get(key);

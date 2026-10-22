@@ -45,6 +45,7 @@ export const onSpritesLoaded = (fn) => listeners.push(fn);
 export const spritesVersion = () => version;
 export const hasSprite = (name) => sprites.has(name) || variants.has(name);
 export const spriteCount = () => sprites.size;
+export const spriteNames = () => [...sprites.keys()];
 // Rå sprite (canvas, rutstorlek, ankare, frames, scale) för moduler som gör egna varianter, t.ex. färgbytta personer.
 export const getSprite = (name) => sprites.get(name) || null;
 
