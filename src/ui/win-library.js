@@ -17,7 +17,7 @@ import { openSequel } from './wizard.js';
 import { studioNotes } from './prompts.js';
 import { crowdNote } from './crowd.js';
 import { openExpansion } from './wizard.js';
-import { SUB_TIERS, OPS, PRICE_MIN, PRICE_MAX, PATCH_WEEKS, EVENT_WEEKS, SURGE_WEEKS, tierMix, liveMonth, serverCap, liveGames, livePatchCost, startLivePatch, setLivePrice, setLiveOps, closeLive, rivalMmos, rivalPull, eventOn, eventReadyIn, liveEventCost, startLiveEvent } from '../sim/live.js';
+import { SUB_TIERS, OPS, PRICE_MIN, PRICE_MAX, PATCH_WEEKS, EVENT_WEEKS, SURGE_WEEKS, tierMix, liveMonth, serverCap, liveGames, livePatchCost, startLivePatch, setLivePrice, setLiveOps, closeLive, rivalMmos, rivalPull, rivalFactor, eventOn, eventReadyIn, liveEventCost, startLiveEvent } from '../sim/live.js';
 
 // Stäng servrarna kräver två tryck: första trycket "armerar" knappen för det spelet
 let closeArmed = null;
@@ -49,10 +49,14 @@ function subsChart(L, w = 520, h = 120) {
   return `<svg viewBox="0 0 ${w} ${h}" class="lchart" style="height:${h}px" preserveAspectRatio="none">${arr.map((v, i) => `<rect x="${5 + i * bw}" y="${h - 6 - (v / hi) * (h - 14)}" width="${Math.max(1, bw - 1.5)}" height="${(v / hi) * (h - 14)}" rx="1.5" fill="#7cf29a" opacity=".75"/>`).join('')}</svg>`;
 }
 
-// Konkurrenternas MMO som drar spelare från g, mest först
+// Konkurrenternas MMO som drar spelare från g, mest först. Andelarna skalas så att de tillsammans blir den verkliga
+// förlusten (rivalFactor har ett tak), inte summan av varje konkurrents egen dragning.
 function rivalList(G, g) {
-  const rows = rivalMmos(G)
-    .map((m) => ({ m, p: rivalPull(G, m, g) }))
+  const all = rivalMmos(G).map((m) => ({ m, p: rivalPull(G, m, g) }));
+  const sum = all.reduce((a, x) => a + x.p, 0);
+  const k = sum > 0 ? (1 - rivalFactor(G, g)) / sum : 0;
+  const rows = all
+    .map((x) => ({ m: x.m, p: x.p * k }))
     .sort((a, b) => b.p - a.p)
     .map(({ m, p }) => `<div class="ltier"><i class="ldot" style="background:${m.color}"></i><div style="flex:1;min-width:0"><b>${esc(L(m.title))}</b>${G.t - m.t0 < SURGE_WEEKS ? `<span class="tag" style="--c:var(--bug);margin-left:8px">${t('live.rivalNew')}</span>` : ''}
       <div class="faint" style="font-size:11.5px">${esc(m.studio)} · ${L(GENRE[m.genre].name)} · ${m.score.toFixed(1)}</div></div><b class="num" style="color:var(--bug)">${t('live.rivalPull', { n: Math.max(1, Math.round(p * 100)) })}</b></div>`);

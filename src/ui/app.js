@@ -244,7 +244,7 @@ export const app = {
     const o = { ...vars };
     for (const k of Object.keys(o)) {
       if (o[k] && typeof o[k] === 'object') o[k] = `<b>${esc(L(o[k]))}</b>`;
-      else if (typeof o[k] === 'string' && k !== 'html') o[k] = `<b>${o[k]}</b>`;
+      else if (typeof o[k] === 'string' && k !== 'html') o[k] = `<b>${esc(o[k])}</b>`;
     }
     return o;
   },

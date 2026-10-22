@@ -138,7 +138,8 @@ export const SURGE_WEEKS = 16;
 const hash01 = (G, s) => hashStr((G.seed || 0) + ':' + s) / 4294967296;
 
 export const rivalMmos = (G) => ((G.market && G.market.mmos) || []).filter((m) => !m.closed);
-export const eventOn = (G, L) => !!(L.ev && G.t < L.ev.until);
+// Evenemanget gäller veckouppdateringarna till och med veckan 'until' (EVENT_WEEKS stycken)
+export const eventOn = (G, L) => !!(L.ev && G.t <= L.ev.until);
 // Hur stor andel av spelarna konkurrentens MMO lockar från spelet g just nu
 export function rivalPull(G, m, g) {
   if (m.closed) return 0;
@@ -200,12 +201,6 @@ export function liveWeek(G) {
       L.patch = null;
       note(G, 'live.news.patch', { title: g.title }, 'good');
     }
-    if (L.ev && G.t >= L.ev.until) {
-      const back = Math.round(L.subs - L.ev.subs0);
-      if (back > 0) note(G, 'live.news.eventEnd', { title: g.title, n: fmtN(back) }, 'good');
-      else note(G, 'live.news.eventFlat', { title: g.title }, 'info');
-      L.ev = null;
-    }
     let target = liveTarget(G, g);
     // fullt på servrarna: nya spelare kommer inte in och några tröttnar på köerna
     if (over > 0) target = Math.min(target, L.subs * (1 - Math.min(0.05, over * 0.1)));
@@ -213,6 +208,13 @@ export function liveWeek(G) {
     const grow = 0.09 + (G.t < L.boost ? 0.06 + (L.hype / 100) * 0.12 : 0);
     L.subs = Math.max(0, L.subs + d * (d > 0 ? grow : 0.05));
     L.peak = Math.max(L.peak, L.subs);
+    // evenemangets sista vecka har räknats: summera vad det gav
+    if (L.ev && G.t >= L.ev.until) {
+      const back = Math.round(L.subs - L.ev.subs0);
+      if (back > 0) note(G, 'live.news.eventEnd', { title: g.title, n: fmtN(back) }, 'good');
+      else note(G, 'live.news.eventFlat', { title: g.title }, 'info');
+      L.ev = null;
+    }
     const mix = tierMix(G, L);
     const rev = (L.subs * mix.arpu) / WEEKS_PER_MONTH;
     const cost = (L.subs * costPerSub(G, L)) / WEEKS_PER_MONTH;
@@ -288,7 +290,7 @@ export function startLiveEvent(G, id) {
   L.events = (L.events || 0) + 1;
   L.evCost = (L.evCost || 0) + cost;
   L.fresh = Math.min(100, L.fresh + EVENT_FRESH);
-  L.boost = Math.max(L.boost, G.t + EVENT_WEEKS);
+  L.boost = Math.max(L.boost, G.t + EVENT_WEEKS + 1);
   return true;
 }
 // Pris för en nivå relativt standardpriset, i steg om 5 %

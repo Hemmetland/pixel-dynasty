@@ -1,7 +1,7 @@
 // Personer som sprite (PixelLab-karaktären i sidovy) i stället för den procedurella figuren. En enda karaktär finns, så den
 // färgbyts efter personens utseende: tröja, mössa, byxor, hud, hår och skor får personens färger med samma skuggning.
 // Färgbytet görs i full upplösning (rena palettfärger), sedan skalas bilden ner till scenens mått (manifestets scale), kantas hårt
-// och varje pixel läggs på närmaste färg i den färgbytta paletten, så att figuren blir lika skarp som möblerna runt den.
+// och varje pixel får den närmaste färgen från samma ställe i originalet, så att figuren blir lika skarp som möblerna runt den.
 // Resultatet cachas per utseende. Saknas spriten returnerar funktionerna false så att den procedurella figuren ritas.
 import { hex2rgb } from '../core/util.js';
 import { getSprite, spritesVersion } from './sprites.js';
@@ -54,17 +54,6 @@ function build(s, look) {
     for (let j = 0; j < 3; j++) d[i + j] = Math.min(255, Math.round(t[j] * k));
   }
   fg.putImageData(img, 0, 0);
-  // paletten: de färger som finns i den färgbytta bilden (ett trettiotal per sprite)
-  const pal = [];
-  const seen = new Set();
-  for (let i = 0; i < d.length; i += 4) {
-    if (!d[i + 3]) continue;
-    const k = (d[i] << 16) | (d[i + 1] << 8) | d[i + 2];
-    if (!seen.has(k)) {
-      seen.add(k);
-      pal.push(d[i], d[i + 1], d[i + 2]);
-    }
-  }
   // ner till scenens skala, ruta för ruta så att grannrutor inte blöder in
   const W = Math.round(s.fw * s.scale);
   const H = Math.round(s.fh * s.scale);
@@ -78,28 +67,54 @@ function build(s, look) {
   const out = g.getImageData(0, 0, c.width, H);
   const o = out.data;
   // hård kant (getImageData ger redan icke-förmultiplicerade färger, så halvgenomskinliga kantpixlar görs bara täckande)
-  // och närmaste palettfärg i stället för de blandfärger som nedskalningen ger
+  // och i stället för nedskalningens blandfärg den färg ur samma ställe i originalet (rutans block) som ligger närmast,
+  // så att små detaljer som skor och glasögon behåller sina färger
+  const fw = full.width;
+  const near = (i, x0, x1, y0, y1) => {
+    let best = -1;
+    let bd = Infinity;
+    for (let y = y0; y < y1; y++) {
+      for (let x = x0; x < x1; x++) {
+        const j = (y * fw + x) * 4;
+        if (!d[j + 3]) continue;
+        const dr = o[i] - d[j];
+        const dg = o[i + 1] - d[j + 1];
+        const db = o[i + 2] - d[j + 2];
+        const e = 2 * dr * dr + 4 * dg * dg + 3 * db * db;
+        if (e < bd) {
+          bd = e;
+          best = j;
+        }
+      }
+    }
+    return best;
+  };
+  const sx = s.fw / W;
+  const sy = s.fh / H;
   for (let i = 0; i < o.length; i += 4) {
     if (o[i + 3] <= 100) {
       o[i + 3] = 0;
       continue;
     }
     o[i + 3] = 255;
-    let best = 0;
-    let bd = Infinity;
-    for (let j = 0; j < pal.length; j += 3) {
-      const dr = o[i] - pal[j];
-      const dg = o[i + 1] - pal[j + 1];
-      const db = o[i + 2] - pal[j + 2];
-      const e = 2 * dr * dr + 4 * dg * dg + 3 * db * db;
-      if (e < bd) {
-        bd = e;
-        best = j;
-      }
+    const p = i / 4;
+    const ox = p % c.width;
+    const oy = (p - ox) / c.width;
+    const f = Math.floor(ox / W);
+    const lx = ox - f * W;
+    const bx = f * s.fw;
+    const x0 = bx + Math.floor(lx * sx);
+    const y0 = Math.floor(oy * sy);
+    // först blocket, annars ett block större åt alla håll (kantpixlar som bara fått färg från grannen)
+    let j = near(i, x0, bx + Math.max(x0 - bx + 1, Math.ceil((lx + 1) * sx)), y0, Math.min(s.fh, Math.max(y0 + 1, Math.ceil((oy + 1) * sy))));
+    if (j < 0) j = near(i, Math.max(bx, x0 - 2), Math.min(bx + s.fw, x0 + 4), Math.max(0, y0 - 2), Math.min(s.fh, y0 + 4));
+    if (j < 0) {
+      o[i + 3] = 0;
+      continue;
     }
-    o[i] = pal[best];
-    o[i + 1] = pal[best + 1];
-    o[i + 2] = pal[best + 2];
+    o[i] = d[j];
+    o[i + 1] = d[j + 1];
+    o[i + 2] = d[j + 2];
   }
   g.putImageData(out, 0, 0);
   return { c, W, H, ax: Math.round(s.ax * s.scale), ay: Math.round(s.ay * s.scale), frames: s.frames, v: spritesVersion() };
