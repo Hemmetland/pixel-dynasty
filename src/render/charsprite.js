@@ -33,7 +33,7 @@ function material(r, g, b, ry, hatRow = 0.3) {
   return null;
 }
 
-const cache = new WeakMap(); // look -> Map(nyckel -> färdig remsa)
+const cache = new WeakMap(); // look -> Map(nyckel -> färdig remsa, 'hairV' -> frisyrvariant)
 
 function build(s, look) {
   const C = lookColors(look);
@@ -121,12 +121,22 @@ function build(s, look) {
   return { c, W, H, ax: Math.round(s.ax * s.scale), ay: Math.round(s.ay * s.scale), frames: s.frames, v: spritesVersion() };
 }
 
+// Frisyrvarianter 'nyckel#1'–'nyckel#3' (kort hår, hästsvans, lockigt; samma rutor och ankare, bara huvudet bytt): den som
+// har mössa eller hatt ritas med grundspriten, övriga får en variant efter frisyren. Saknas varianten används grundspriten.
+const HAIR_VARIANTS = 3;
+const hairVariant = (look) => {
+  const C = lookColors(look);
+  return C.hatted ? 0 : 1 + (C.style % HAIR_VARIANTS);
+};
+
 // Ritar personen som sprite 'key' (t.ex. 'char.walk', 'char.stand', 'char.drink') med fötterna i (x, y), ruta frame.
 export function drawCharSprite(ctx, key, x, y, look, frame = 0, dir = 1) {
-  const s = getSprite(key);
-  if (!s || typeof document === 'undefined') return false;
+  if (typeof document === 'undefined') return false;
   let m = cache.get(look);
-  if (!m) cache.set(look, (m = new Map()));
+  if (!m) cache.set(look, (m = new Map([['hairV', hairVariant(look)]])));
+  const v = m.get('hairV');
+  const s = (v && getSprite(`${key}#${v}`)) || getSprite(key);
+  if (!s) return false;
   let e = m.get(key);
   if (!e || e.v !== spritesVersion()) m.set(key, (e = build(s, look)));
   const f = (((frame | 0) % e.frames) + e.frames) % e.frames;
