@@ -178,8 +178,10 @@ function rivalWeek(G) {
     if (m.closed || G.t < m.end) continue;
     m.closed = G.t;
     for (const g of liveGames(G)) g.live.boost = Math.max(g.live.boost, G.t + 8);
-    if (liveGames(G).length) note(G, 'live.news.rivalClosed', { studio: m.studio, title: m.title }, 'good');
-    else note(G, 'live.news.rivalGone', { studio: m.studio, title: m.title }, 'info');
+    if (liveGames(G).length) {
+      G.stats.outlasted = (G.stats.outlasted || 0) + 1;
+      note(G, 'live.news.rivalClosed', { studio: m.studio, title: m.title }, 'good');
+    } else note(G, 'live.news.rivalGone', { studio: m.studio, title: m.title }, 'info');
   }
   while (M.mmos.length > 12 && M.mmos[0].closed) M.mmos.shift();
 }

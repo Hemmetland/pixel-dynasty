@@ -1,6 +1,16 @@
 // Prestationer. check(G) körs varje månad och efter lansering.
 const A = (id, glyph, sv, en, dsv, den, check) => ({ id, glyph, name: { sv, en }, desc: { sv: dsv, en: den }, check });
 const best = (G) => G.stats.bestScore;
+// Hur många spel serien som g avslutar har (g, föregångaren, dess föregångare …)
+function seriesLen(G, g) {
+  let n = 1;
+  for (let x = g; x.sequelOf && n < 50; n++) {
+    x = G.games.find((y) => y.id === x.sequelOf);
+    if (!x) break;
+  }
+  return n;
+}
+const liveEvents = (G) => G.games.reduce((a, g) => a + ((g.live && g.live.events) || 0), 0);
 export const ACHIEVEMENTS = [
   A('first_game', 'a_game', 'Första spelet', 'First Release', 'Släpp ditt första spel.', 'Release your first game.', (G) => G.games.length >= 1),
   A('five_games', 'a_game', 'Produktiv', 'Productive', 'Släpp fem spel.', 'Release five games.', (G) => G.games.length >= 5),
@@ -29,6 +39,14 @@ export const ACHIEVEMENTS = [
   A('survive', 'a_clock', 'Veteran', 'Veteran', 'Överlev i tio år.', 'Survive ten years.', (G) => G.t >= 48 * 10),
   A('live1', 'a_game', 'Världen är online', 'World Online', 'Släpp ditt första onlinespel.', 'Launch your first online game.', (G) => (G.stats.liveLaunched || 0) >= 1),
   A('subs1m', 'a_heart', 'En miljon äventyrare', 'A Million Adventurers', 'Ha en miljon prenumeranter samtidigt.', 'Have a million subscribers at once.', (G) => G.games.some((g) => g.live && g.live.peak >= 1e6)),
+  A('goty', 'a_trophy', 'Årets spel', 'Game of the Year', 'Vinn priset Årets spel på Golden Pixel Awards.', 'Win Game of the Year at the Golden Pixel Awards.', (G) => G.awards.some((a) => a.cat === 'goty')),
+  A('trilogy', 'a_game', 'Trilogi', 'Trilogy', 'Släpp det tredje spelet i en serie.', 'Release the third game in a series.', (G) => G.games.some((g) => g.sequelOf && seriesLen(G, g) >= 3)),
+  A('novel', 'a_bulb', 'Nytänkare', 'Trailblazer', 'Efter tio spel: släpp ett med ett tema och en genre du aldrig kombinerat.', 'After ten games, release one with a topic and genre you have never combined.', (G) => G.games.some((g) => g.novel)),
+  A('blend8', 'a_star', 'Genreblandare', 'Genre Blender', 'Få betyg 8 eller mer med ett spel som blandar två genrer.', 'Score 8 or more with a game that blends two genres.', (G) => G.games.some((g) => g.genre2 && g.score >= 8)),
+  A('comeback', 'a_star', 'Comeback', 'Comeback', 'Släpp ett spel med betyg 8 eller mer direkt efter ett med under 5.', 'Release a game scoring 8 or more right after one scoring under 5.', (G) => G.games.some((g, i) => i > 0 && g.score >= 8 && G.games[i - 1].score < 5)),
+  A('exp3', 'a_globe', 'Levande värld', 'Living World', 'Släpp tre expansioner till samma onlinespel.', 'Release three expansions for the same online game.', (G) => G.games.some((g) => g.live && g.live.exps.length >= 3)),
+  A('events10', 'a_globe', 'Festfixare', 'Party Planner', 'Ordna tio evenemang i dina onlinespel.', 'Run ten events in your online games.', (G) => liveEvents(G) >= 10),
+  A('outlast', 'a_globe', 'Sist kvar', 'Last One Standing', 'Ha ett onlinespel igång när en konkurrents MMO stänger.', 'Have an online game running when a rival MMO shuts down.', (G) => (G.stats.outlasted || 0) >= 1),
   A('legend', 'a_clock', 'Legend', 'Legend', 'Spela till år 2020.', 'Play until the year 2020.', (G) => G.t >= 48 * 40),
 ];
 export const ACH = Object.fromEntries(ACHIEVEMENTS.map((a) => [a.id, a]));
