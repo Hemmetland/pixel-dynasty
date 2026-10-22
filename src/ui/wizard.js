@@ -8,7 +8,8 @@ import { PHASES } from '../data/categories.js';
 import { PLATFORMS, PLATFORM, potential, platTier, techMult, pcGeneration } from '../data/platforms.js';
 import { SCOPES, SCOPE_IDS, AUDIENCES, yearOf, yfOf, engineMult } from '../sim/const.js';
 import { startProject, platformOpen, teamOutput, baseHype } from '../sim/dev.js';
-import { phaseCats, idealFocus, normFocus, techWeight, platFit, startFocus } from '../sim/score.js';
+import { phaseCats, idealFocus, normFocus, techWeight, platFit, startFocus, seqFatigue } from '../sim/score.js';
+import { franchiseMult } from '../sim/sales.js';
 import { buyLicense, licenseCost } from '../sim/actions.js';
 import { randomTitle, trendWeeksLeft } from '../sim/market.js';
 import { focusHTML, bindFocus } from './focus.js';
@@ -110,6 +111,19 @@ function expansionTitle(g) {
   const pick = (a) => a[Math.floor(Math.random() * a.length)];
   return `${g.title.split(':')[0].trim()}: ${pick(P.adj[lang])} ${pick(P.noun[lang])}`;
 }
+// Uppföljarens extra starthype (samma som simmen ger) och vad serien betyder för försäljning och betyg
+const seqPrev = (G) => (W.sequelOf ? G.games.find((g) => g.id === W.sequelOf) : null);
+const seqHype = (G) => {
+  const p = seqPrev(G);
+  return p ? Math.min(18, p.score * 1.6) : 0;
+};
+function seqHint(G) {
+  const p = seqPrev(G);
+  if (!p) return `<p class="hint" style="margin-top:6px">${t('wiz.seqHelp')}</p>`;
+  const tired = Math.round((1 - seqFatigue(p)) * 100);
+  const n = Math.round((franchiseMult(p) - 1) * 100);
+  return `<p class="hint" style="margin-top:6px">${t(n > 0 ? 'wiz.seqPick' : 'wiz.seqWeak', { n, score: p.score.toFixed(1) })}${tired ? ' ' + t('wiz.seqTired', { n: tired }) : ''}</p>`;
+}
 // Format (vanligt spel eller onlinespel) och expansioner till onlinespel som är igång. Syns när serverforskningen är klar.
 function formatHTML(G) {
   if (!liveUnlocked(G)) return '';
@@ -176,7 +190,7 @@ function stepConcept(G) {
       <div class="lbl">${t('wiz.title')}</div>
       <div class="row"><input class="input" id="w-title" maxlength="28" value="${esc(W.title)}" placeholder="${t('wiz.titlePh')}" autocomplete="off"><button class="btn" data-act="w-dice" data-tip="${t('wiz.dice')}">${icon('dice')}</button></div>
     </div>
-    ${seqs.length ? `<div class="wz-sec"><div class="lbl">${t('wiz.sequel')}</div><div class="row wrap">${seqs.map((g) => `<button class="chip btnchip ${W.sequelOf === g.id ? 'on' : ''}" data-act="w-seq" data-id="${g.id}">${glyphImg(TOPIC[g.topic].glyph, '#fff', 16, false)}${esc(g.title)}<span class="muted">${g.score.toFixed(1)}</span></button>`).join('')}</div></div>` : ''}
+    ${seqs.length ? `<div class="wz-sec"><div class="lbl">${t('wiz.sequel')}</div><div class="row wrap">${seqs.map((g) => `<button class="chip btnchip ${W.sequelOf === g.id ? 'on' : ''}" data-act="w-seq" data-id="${g.id}">${glyphImg(TOPIC[g.topic].glyph, '#fff', 16, false)}${esc(g.title)}<span class="muted">${g.score.toFixed(1)}</span></button>`).join('')}</div>${seqHint(G)}</div>` : ''}
     ${formatHTML(G)}
     <div class="wz-sec"><div class="lbl">${t('wiz.topic')}</div><div class="tiles">${tiles}</div></div>
     <div class="wz-sec"><div class="lbl">${t('wiz.genre')}</div><div class="tiles g">${genres.map((g) => genreTile(g, 1)).join('')}</div>${compat}</div>
@@ -282,7 +296,7 @@ function summary(G) {
     ${W.live || W.expansionOf ? `<div class="kv"><span>${t('wiz.format')}</span><b>${W.live ? t('wiz.fmtLive') : esc(t('wiz.expOf', { title: G.games.find((g) => g.id === W.expansionOf)?.title || '' }))}</b></div>` : ''}
     <div class="kv"><span>${t('wiz.duration')}</span><b>${weeksOf(W.scope)} ${t('ui.weeksShort')}</b></div>
     <div class="kv"><span>${t('wiz.team')}</span><b>${workers(G).length} ${tn('wiz.people', workers(G).length)}</b></div>
-    <div class="kv"><span>${t('wiz.startHype')}</span><b>${Math.round(baseHype(G) + (W.sequelOf ? 8 : 0))}</b></div>
+    <div class="kv"><span>${t('wiz.startHype')}</span><b>${Math.round(baseHype(G) + seqHype(G))}</b></div>
     ${cost ? `<div class="kv"><span>${t('wiz.license')}</span><b>${money(cost)}</b></div>` : ''}
     <div class="ready" style="--c:${VCOL[vk]}">
       <div class="row"><span class="lbl">${t('wiz.readiness')}</span><span class="sp"></span><b style="color:${VCOL[vk]}">${t(vtxt)}</b></div>

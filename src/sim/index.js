@@ -16,3 +16,4 @@ export * from './clock.js';
 export * from './actions.js';
 export * from './news.js';
 export * from './live.js';
+export * from './legacy.js';

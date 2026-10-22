@@ -102,7 +102,9 @@ export function compatOf(topic, genre, genre2) {
   const c1 = TOPIC[topic].compat[genreIdx(genre)];
   if (!genre2) return c1;
   const c2 = TOPIC[topic].compat[genreIdx(genre2)];
-  return clamp(c1 * 0.62 + c2 * 0.38 + pairScore(genre, genre2) * 0.35, 1, 4);
+  // ett riktigt bra genrepar kan lyfta över vad en ensam genre når
+  const ps = pairScore(genre, genre2);
+  return clamp(c1 * 0.62 + c2 * 0.38 + ps * 0.35, 1, ps > 0 ? 4.4 : 4);
 }
 export function audFit(topic, genre, audience, genre2) {
   const m = TOPIC[topic].mature + GENRE[genre].mature * 0.5 + (genre2 ? GENRE[genre2].mature * 0.25 : 0);
@@ -124,12 +126,19 @@ export function parPerTick(G, job) {
 }
 
 export function freshness(G, job) {
-  // en expansion bygger vidare på sitt spel och räknas inte som en upprepning
+  // en expansion bygger vidare på sitt spel och räknas inte som en upprepning, inte heller en uppföljares närmaste föregångare
   if (job.expansionOf) return 0;
   let rep = 0;
-  for (const g of G.games.slice(-5)) if (g.topic === job.topic && g.genre === job.genre) rep++;
+  for (const g of G.games.slice(-5)) if (g.topic === job.topic && g.genre === job.genre && g.id !== job.sequelOf) rep++;
   return rep;
 }
+// En etablerad studio (tio spel) som för första gången släpper just den här kombinationen av tema och genre(r):
+// ett nytt grepp säljer lite extra. I början är allt nytt, så där ger det inget.
+export const NOVEL_AFTER = 10;
+export const isNovel = (G, job) =>
+  !job.expansionOf && G.games.length >= NOVEL_AFTER && !G.games.some((g) => g.topic === job.topic && g.genre === job.genre && (g.genre2 || null) === (job.genre2 || null));
+// Uppföljare: serien tröttnar (−4 % per tidigare del som inte slog sin föregångare, högst −12 %).
+export const seqFatigue = (prev) => 1 - Math.min(0.12, 0.04 * ((prev && prev.fatigue) || 0));
 
 function roundHalf(x) {
   return Math.round(x * 2) / 2;
@@ -161,8 +170,8 @@ export function evaluate(G, job) {
   const mBug = 1 - 0.25 * (1 - Math.exp(-0.9 * bugRatio));
   const rep = freshness(G, job);
   const mFresh = 1 - Math.min(0.14, rep * 0.05);
-  const chain = job.chain || 0;
-  const mSeq = chain >= 2 ? 1 - Math.min(0.1, (chain - 1) * 0.03) : 1;
+  const prev = job.sequelOf ? G.games.find((g) => g.id === job.sequelOf) : null;
+  const mSeq = prev ? seqFatigue(prev) : 1;
   const cap = SCOPE_CAP[job.scope];
   const raw0 = s0 * mCompat * mFit * mAud * mPlat * mBug * mFresh * mSeq;
   // Små spel kan aldrig bli mästerverk: ambitionen avgör taket.
@@ -190,7 +199,9 @@ export function evaluate(G, job) {
     audience: lvl(mAud, 0.97, 0.9),
     platform: lvl(pf, 1.12, 0.85),
     scope: lvl(r, 1.3, 0.6),
-    fresh: rep >= 2 ? -1 : 0,
+    fresh: rep >= 2 ? -1 : isNovel(G, job) ? 1 : 0,
+    // uppföljaren jämförs med föregångaren
+    sequel: prev ? (score >= prev.score ? 1 : score <= prev.score - 0.5 ? -1 : 0) : 0,
   };
   for (const [k, v] of Object.entries(fl)) if (v) flags.push({ k, v, w: Math.abs(v) });
   const insights = [
@@ -259,8 +270,8 @@ export function reviewTexts(job, rep, lang) {
     const headline = h[hi];
     const pref = {
       bitbyte: ['tech', 'bugs', 'scope', 'platform'],
-      gazette: ['cap', 'compat', 'scope', 'focus', 'audience'],
-      pulse: ['design', 'focus', 'compat', 'fresh'],
+      gazette: ['cap', 'sequel', 'compat', 'scope', 'focus', 'audience'],
+      pulse: ['sequel', 'design', 'focus', 'compat', 'fresh'],
       critic: ['bugs', 'compat', 'fresh', 'design', 'tech'],
     }[def.id];
     const good = rv.score >= 6.5;

@@ -206,6 +206,10 @@ while (S.yearOf(G.t) < endYear && !G.over) {
   }
 }
 const dt = Date.now() - t0;
+if (args.includes('--legacy')) {
+  const L = S.legacy(G);
+  console.log(`legacy ${L.points} rank ${L.rank} ${JSON.stringify(L.parts)} rev $${Math.round(G.stats.revenue / 1e6)}M cash $${Math.round(G.money / 1e6)}M awards ${G.awards.length} best ${G.stats.bestScore} fans ${Math.round(G.fans)} tier ${G.office.tier}`);
+}
 console.log(G.over ? `GAME OVER ${S.yearOf(G.over.t)} (bankrupt) after ${G.games.length} games` : `Finished ${S.yearOf(G.t)}; money $${Math.round(G.money).toLocaleString()}; games ${G.games.length}; best ${G.stats.bestScore}; ach ${G.ach.length}; ${dt}ms`);
 if (args.includes('--parts')) {
   for (const g of G.games.filter((_, i) => i % 3 === 0)) {

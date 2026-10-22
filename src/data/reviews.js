@@ -109,6 +109,12 @@ export const DETAILS = {
     '+': { sv: ['Fräscht och oväntat.', 'Något helt nytt från studion.', 'Vågat och annorlunda.', 'Det här har vi inte sett förut.', 'En frisk fläkt i genren.'],
       en: ['Fresh and unexpected.', 'Something entirely new from the studio.', 'Bold and different.', 'We have not seen this before.', 'A breath of fresh air for the genre.'] },
   },
+  sequel: {
+    '-': { sv: ['Originalet var bättre. Det här känns som mer av samma.', 'Uppföljaren når inte upp till ettan.', 'Serien börjar visa trötthetstecken.', 'Mer av allt, men sämre på det mesta.', 'Fansen förtjänade en bättre fortsättning.'],
+      en: ['The original was better. This feels like more of the same.', 'The sequel does not live up to the first game.', 'The series is starting to show its age.', 'More of everything, but worse at most of it.', 'The fans deserved a better follow-up.'] },
+    '+': { sv: ['Bättre än originalet på nästan alla sätt.', 'En uppföljare som förtjänar sitt namn.', 'Serien har aldrig varit bättre.', 'Allt vi älskade med originalet, bara större och vassare.', 'Så här ska en fortsättning göras.'],
+      en: ['Better than the original in almost every way.', 'A sequel that earns its name.', 'The series has never been better.', 'Everything we loved about the original, only bigger and sharper.', 'This is how a sequel should be done.'] },
+  },
 };
 
 // Reservrader per recensent när ingen flagga passar betyget (+ för bra betyg, − för svaga)

@@ -6,7 +6,7 @@ import { SCOPES, AUD, yearOf, yfOf, priceOf } from './const.js';
 import { SALES_TAIL } from './tempo.js';
 import { DIFFICULTY } from './state.js';
 import { earn } from './studio.js';
-import { platFit } from './score.js';
+import { platFit, techWeight } from './score.js';
 
 // Försäljning per enhet och år. Bas och årlig tillväxt är de två reglagen för hur snabbt kassan växer.
 export const UNIT_REV_BASE = 400;
@@ -44,6 +44,9 @@ export function curveFor(score, tail = 1) {
   return arr;
 }
 
+// En uppföljare säljer mer ju bättre föregångaren var (dess fans väntar på den): +6 % per betygspoäng över 6, högst +25 %.
+export const franchiseMult = (prev) => 1 + clamp(0.06 * (prev.score - 6), 0, 0.25);
+
 export function forecast(G, game, opts = {}) {
   const yf = yfOf(game.t);
   const plat = PLATFORM[game.platform];
@@ -55,17 +58,20 @@ export function forecast(G, game, opts = {}) {
   const trend = trendMult(G, game.topic, game.genre);
   const aud = AUD[game.audience].reach;
   const pf = clamp(Math.pow(platFit(game.platform, game.genre, game.genre2), 0.7), 0.7, 1.4);
-  const seq = game.chain >= 2 ? 1.08 : 1;
+  const prev = game.sequelOf ? G.games.find((g) => g.id === game.sequelOf) : null;
+  const seq = prev ? franchiseMult(prev) : 1;
+  const novel = game.novel ? 1.05 : 1;
   const bugs = 1 - Math.min(0.3, (game.parts?.bugRatio ?? 0) * 0.12);
   const mult = (game.salesMult ?? 1) * (opts.crowd ?? game.crowd ?? 1);
-  // Äldre hårdvarugenerationer säljer sämre när nyare finns.
+  // Äldre hårdvarugenerationer säljer sämre när nyare finns, mest för teknikberoende genrer (ett pusselspel klarar sig).
+  // Faktorn 0,55 + teknikvikt är 1 i snitt över genrerna.
   const year = yearOf(game.t);
   let best = 1;
   for (const p of PLATFORMS) if (potential(p, yf) > 12) best = Math.max(best, platTier(p, year));
-  const appeal = Math.pow(0.82, Math.max(0, best - platTier(plat, year)));
+  const appeal = Math.pow(0.82, Math.max(0, best - platTier(plat, year)) * (0.55 + techWeight(game.genre, game.genre2)));
   const noise = opts.noise === false ? 1 : clamp(gauss(G, 1, 0.1), 0.78, 1.25);
   const diff = DIFFICULTY[G.difficulty].sales * (1 + (G.perk.sales || 0));
-  return unitRev(yearOf(game.t)) * pot * scoreMult * scope * hype * fans * trend * aud * pf * seq * bugs * appeal * mult * noise * diff;
+  return unitRev(yearOf(game.t)) * pot * scoreMult * scope * hype * fans * trend * aud * pf * seq * novel * bugs * appeal * mult * noise * diff;
 }
 
 export function startSales(G, game) {

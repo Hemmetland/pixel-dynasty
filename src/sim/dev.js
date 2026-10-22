@@ -10,9 +10,10 @@ import { SCOPE_TEMPO } from './tempo.js';
 import { DIFFICULTY } from './state.js';
 import { workers, moodMult, fatigueMult } from './people.js';
 import { bugMult, qaFixMult, mktCostMult, mktHypeMult, serverMult, labMult, spend } from './studio.js';
-import { phaseCats, normFocus, startFocus, evaluate, compatOf, parPerTick } from './score.js';
+import { phaseCats, normFocus, startFocus, evaluate, compatOf, parPerTick, isNovel } from './score.js';
 import { startSales, forecast } from './sales.js';
 import { crowding } from './market.js';
+import { note } from './news.js';
 import { LIVE_SCOPES, EXP_SCOPES, LIVE_DEV, canGoLive, launchLive, releaseExpansion } from './live.js';
 
 export const RP_RATE = 0.05;
@@ -95,7 +96,7 @@ export function toggleCrunch(G) {
 export function expectedRevenue(G, J) {
   const gs = G.games.slice(-3);
   const score = gs.length ? gs.reduce((s, g) => s + g.score, 0) / gs.length : 6;
-  return forecast(G, { t: G.t, platform: J.platform, scope: J.scope, score, hype: 0, topic: J.topic, genre: J.genre, genre2: J.genre2, audience: J.audience, chain: J.chain }, { noise: false });
+  return forecast(G, { t: G.t, platform: J.platform, scope: J.scope, score, hype: 0, topic: J.topic, genre: J.genre, genre2: J.genre2, audience: J.audience, chain: J.chain, sequelOf: J.sequelOf, novel: isNovel(G, J) }, { noise: false });
 }
 // Kampanjer och mässmontrar kostar minst sin andel av den väntade intäkten (annars betalade de sig hundratals gånger
 // om när försäljningen växer snabbare än penningvärdet). Alla fem kostar ungefär en tjugondel av vad spelet drar in och
@@ -283,7 +284,9 @@ export function releaseGame(G) {
     hype: J.hype, weeks: Math.round(J.ticks / TICKS_PER_WEEK) + Math.round(J.polishDone / TICKS_PER_WEEK),
     team: J.team, marketing: J.marketing.slice(), rp: J.rpGained,
     revenue: 0, units: 0, weekly: [], ended: false, fansGained: 0, patched: false,
+    novel: isNovel(G, J),
   };
+  const prev = J.sequelOf ? G.games.find((g) => g.id === J.sequelOf) : null;
   G.games.push(game);
   G.know.combos[J.topic + '|' + J.genre] = Math.round(compatOf(J.topic, J.genre));
   G.know.focus[J.genre] = true;
@@ -295,6 +298,16 @@ export function releaseGame(G) {
   game.crowd = cr.mult;
   game.crowdBy = cr.rivals.slice(0, 3).map((r) => ({ studio: r.studio, title: r.title, future: r.future }));
   startSales(G, game);
+  // en uppföljare som slår föregångaren växer serien och lockar nya fans; annars tröttnar serien lite
+  if (prev) {
+    game.fatigue = (prev.fatigue || 0) + (game.score >= prev.score ? 0 : 1);
+    if (game.score >= prev.score) {
+      const fans = Math.round(Math.max(50, (prev.fansGained || 0) * 0.1));
+      G.fans += fans;
+      game.fansGained += fans;
+      note(G, 'news.seqBetter', { title: game.title, prev: prev.title }, 'good');
+    } else note(G, 'news.seqWorse', { title: game.title, prev: prev.title }, 'info');
+  }
   if (J.live) launchLive(G, game);
   else if (J.expansionOf) releaseExpansion(G, game);
   // erfarenhet till teamet

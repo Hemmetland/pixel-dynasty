@@ -20,6 +20,7 @@ import { SCOPES } from '../sim/const.js';
 import { bailoutAmount, takeBailout, declineBailout } from '../sim/studio.js';
 import { music } from '../audio/sfx.js';
 import { crowdNote } from './crowd.js';
+import { legacy, LEGACY_RANKS } from '../sim/legacy.js';
 
 let timers = [];
 const later = (fn, ms) => timers.push(setTimeout(fn, ms));
@@ -445,11 +446,15 @@ function gameoverPrompt(app, G) {
   music.setMood?.('sad');
 }
 
+const END_RANK = ['end.rank0', 'end.rank1', 'end.rank2', 'end.rank3'];
 function endingPrompt(app, G, p, finish) {
-  const rank = G.stats.revenue > 1e9 ? 3 : G.stats.revenue > 1e8 ? 2 : G.stats.revenue > 1e7 ? 1 : 0;
+  // eftermälet (0–100) av omsättning, priser, bästa betyg, fans och kontor avgör titeln
+  const lg = legacy(G);
+  const rank = lg.rank;
+  const next = rank < 3 ? ` · ${t('end.next', { rank: t(END_RANK[rank + 1]), n: LEGACY_RANKS[rank + 1] })}` : '';
   UI.modal(`
     <div class="win-head"><div class="wi" style="--wc:var(--gold)">${icon('crown')}</div><h2>${t('end.title')}<div class="sub">${esc(G.studio)} · 1980–2020</div></h2></div>
-    <div class="win-body"><div class="stamp big" style="--c:var(--gold)">${t('end.rank' + rank)}</div><p class="evtext" style="margin-top:14px">${t('end.text')}</p>
+    <div class="win-body"><div class="stamp big" style="--c:var(--gold)">${t(END_RANK[rank])}</div><div class="muted" style="margin-top:10px">${t('end.legacy', { n: lg.points })}${next}</div><p class="evtext" style="margin-top:14px">${t('end.text')}</p>
       <div class="grid" style="grid-template-columns:repeat(auto-fit,minmax(120px,1fr));margin-top:14px">
         <div class="counter" style="--c:var(--accent)"><div class="v num">${G.games.length}</div><div class="k">${t('year.games')}</div></div>
         <div class="counter" style="--c:var(--gold)"><div class="v num">${G.stats.bestScore.toFixed(1)}</div><div class="k">${t('over.best')}</div></div>

@@ -79,8 +79,14 @@ export function pcGeneration(year) {
   for (const [y, n] of g) if (year >= y) name = n;
   return name;
 }
+// Mobilen blir kraftfullare med åren: smarta telefoner kommer ikapp konsolerna, men aldrig helt.
+export function phoneTier(year) {
+  if (year < 2012) return 3;
+  if (year < 2016) return 4;
+  return 5;
+}
 export function platTier(p, year) {
-  return p.id === 'pc' ? pcTier(year) : p.tier;
+  return p.id === 'pc' ? pcTier(year) : p.kind === 'mobile' ? phoneTier(year) : p.tier;
 }
 export const launchTime = (p) => p.y0 + p.m0 / 12;
 export function lifecycle(p, yf) {
@@ -92,11 +98,12 @@ export function lifecycle(p, yf) {
   const ramp = p.id === 'pc' ? 1 : Math.pow(clamp(age / 1.6, 0, 1), 1.3);
   let fade = 1;
   if (p.y1 < 2100 && yf > t1 - 2) fade = clamp((t1 + 1.5 - yf) / 3.5, 0, 1);
-  // Mobil/PC och långlivade plattformar mognar långsamt vidare.
-  const grow = p.y1 >= 2100 ? 1 + Math.min(0.6, age * 0.03) : 1;
+  // Mobil/PC och långlivade plattformar mognar långsamt vidare (mobilen planar ut tidigare, alla har redan en).
+  const grow = p.y1 >= 2100 ? 1 + Math.min(p.kind === 'mobile' ? 0.25 : 0.6, age * 0.03) : 1;
   return ramp * fade * grow;
 }
 export const potential = (p, yf) => p.weight * lifecycle(p, yf);
 // Teknikfaktor per generation: hur mycket mer poäng ett "bra" spel kräver.
-export const TECH_MULT = [1, 1.7, 3.0, 5.2, 8.5, 13, 20];
+// De sista generationerna stiger mjukare: teamens färdigheter planar ut kring 100, så de nya konsolerna ska gå att nå.
+export const TECH_MULT = [1, 1.7, 3.0, 5.2, 8.0, 10.5, 13.5];
 export const techMult = (p, year) => TECH_MULT[platTier(p, year) - 1];
