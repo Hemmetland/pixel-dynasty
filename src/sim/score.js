@@ -201,7 +201,7 @@ export function evaluate(G, job) {
     scope: lvl(r, 1.3, 0.6),
     fresh: rep >= 2 ? -1 : isNovel(G, job) ? 1 : 0,
     // uppföljaren jämförs med föregångaren
-    sequel: prev ? (score >= prev.score ? 1 : score <= prev.score - 0.5 ? -1 : 0) : 0,
+    sequel: prev ? (score >= prev.score && score >= 6 ? 1 : score <= prev.score - 0.5 ? -1 : 0) : 0,
   };
   for (const [k, v] of Object.entries(fl)) if (v) flags.push({ k, v, w: Math.abs(v) });
   const insights = [
