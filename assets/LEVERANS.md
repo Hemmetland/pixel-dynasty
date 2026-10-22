@@ -186,3 +186,19 @@ Enskilda rutor finns i `assets/pixellab/characters/dev/cheer-east-hand/`. Benen 
 - **Bara stående:** firandet vid skrivbordet (`behavior.js`, `setPose(a, 'cheer', true)`) slår upp sittande sprites och täcks inte av den här.
 - **Färger:** 33 nyanser, alla redan i karaktären, ingen rekvisita. Mössan ligger på rad 8–23, ingen `hatRow` behövs.
 - **Begränsningar:** ansiktet är cirka 4 scenpixlar brett, så skrattet är en mörk pixel och tänderna syns bara i full storlek. Hoppet flyttar glasögonen mot nedskalningen, så de flimrar lite. Den bortre handen är en knytnäve, och den lyfta närmre armen döljer luvan.
+
+## Karaktären: presentation vid tavlan (handritat, stående)
+
+| Remsa | Rutor | Nyckel | Innehåll |
+| --- | --- | --- | --- |
+| `assets/chars/present.png` (184x92) | 2 | `char.present` | står vänd mot tavlan med närmre armen framsträckt och en grå pekpinne i 45° uppåt, munnen öppen. Ruta 1: munnen stängd och handen med pinnen 2 px lägre, som ett tryck på en annan punkt |
+
+Enskilda rutor finns i `assets/pixellab/characters/dev/present-east-hand/`. Raderna 64–91 är identiska med `east.png`, sulorna på rad 80. Pinnens spets hamnar på ungefär `fy-25`, inne på whiteboarden och vid skärmens nederkant i mötesrummet.
+
+```json
+"char.present": { "file": "chars/present.png", "fw": 92, "fh": 92, "ax": 46, "ay": 82, "frames": 2, "scale": 0.42, "note": "PixelLab-karaktär 77053f90, handritad stående presentation med pekpinne; samma ben som char.stand (Kör)" }
+```
+
+- **Takt:** `present: ['char.present', 3]` i `STAND_SPRITE`, samma tempo som procedurella `floor(t*3) % 4`.
+- **Färger:** 33 nyanser, alla redan i karaktären. Pinnen använder tre neutrala källfärger (#96a2c2, #1c1923, #eee8ec) som ger `material()` = null. Mössan ligger på rad 10–24, ingen `hatRow` behövs.
+- **Begränsningar:** pinnen blir 2 scenpixlar bred, lite tjockare än den procedurella, eftersom en tunnare försvann mot antingen den vita tavlan eller den mörka marknadstavlan. Trycket och munrörelsen är ungefär en scenpixel. Kroppen lutar inte framåt (det gjorde glasögonen till en blå klump i spelskala).
