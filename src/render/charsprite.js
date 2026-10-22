@@ -149,15 +149,15 @@ export function drawCharSprite(ctx, key, x, y, look, frame = 0, dir = 1) {
 export const drawWalkerSprite = (ctx, x, y, look, t, dir = 1) => drawCharSprite(ctx, 'char.walk', x, y, look, Math.floor(t * 1.5), dir);
 
 // Poser som har en sprite, med bildrutor per sekund: stående och sittande för sig. Prata och dricka kaffe på en stol har
-// egna sittande sprites (char.sitTalk, char.sitDrink), liksom läsa och tänka. Saknas en sprite i manifestet, och för att
-// sova, ritas den procedurella figuren (med bok och mugg), så nya poser tas i bruk så fort de finns i manifestet.
+// egna sittande sprites (char.sitTalk, char.sitDrink, där klunken 0,1,2,2,2,1 är inbakad), liksom läsa och tänka (vid
+// skrivbordet, armbågen på bordet). Saknas en sprite i manifestet, och för att sova, ritas den procedurella figuren.
 const STAND_SPRITE = { walk: ['char.walk', 9], stand: ['char.stand', 0], drink: ['char.drink', 3], talk: ['char.talk', 4.2] };
 const SEAT_SPRITE = {
   sit: ['char.sit', 1.5], sitIdle: ['char.sit', 1.5], type: ['char.type', 8],
   talk: ['char.sitTalk', 4.2], drink: ['char.sitDrink', 3], read: ['char.read', 1], think: ['char.think', 1.2],
 };
 // Personal i huset: ritar posen som sprite om en sådan finns (t = sekunder, seated = sitter på en stol), annars false.
-// Att prata på en stol har ingen rekvisita, så tills char.sitTalk finns ritas den som vanligt sittande.
+// Att prata på en stol har ingen rekvisita, så utan char.sitTalk ritas den som vanligt sittande.
 export function drawPoseSprite(ctx, x, y, look, pose, t, dir = 1, seated = false) {
   const seat = seated || SEATED.has(pose);
   const p = (seat ? SEAT_SPRITE : STAND_SPRITE)[pose];
