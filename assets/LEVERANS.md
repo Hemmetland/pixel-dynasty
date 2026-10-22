@@ -56,3 +56,33 @@ Linjeikonen är reserv när spriten saknas. Lint, tester och nyckelkontrollen (1
 
 Känd begränsning: pixelikoner följer inte `currentColor`, så den valda knappen (`.dk.on`) syns bara på bakgrund och understrykning.
 Patchen finns på `/mnt/project-files/pixellab-preview/dock-hook.patch`.
+
+## Karaktären: sitta, skriva och prata (handritat)
+
+PixelLab gick inte att nå, så de här rutorna är handredigerade ur karaktärens egna rutor (`east`, `walk-east`, `drink-coffee-east`).
+De använder bara färger som redan finns i karaktären, så färgbytet per person i `charsprite.js` fungerar.
+Bara karaktären är ritad. Stol och skrivbord ritar spelet själv.
+
+| Remsa | Rutor | Nyckel | Innehåll |
+| --- | --- | --- | --- |
+| `assets/chars/sit.png` (184x92) | 2 | `char.sit` | sitter i vila, hand på knät; ruta 1 andas (huvud och bröst 1 px upp) |
+| `assets/chars/type.png` (368x92) | 4 | `char.type` | sitter framåtlutad och skriver, händerna växlar, nick i ruta 2; samma ben som `char.sit` |
+| `assets/chars/talk.png` (368x92) | 4 | `char.talk` | står och pratar: munnen öppnas och stängs, armen gestikulerar i ruta 1–2; fötterna står still |
+
+Enskilda rutor finns i `assets/pixellab/characters/dev/{sit,type,talk}-east-hand/`.
+Alla har samma mått som `char.walk`: `fw` 92, `fh` 92, `ax` 46, `ay` 82, `scale` 0.42, vänd österut, sulorna på rad 80 som i `east.png`.
+
+```json
+"char.sit":  { "file": "chars/sit.png",  "fw": 92, "fh": 92, "ax": 46, "ay": 82, "frames": 2, "scale": 0.42, "note": "PixelLab-karaktär 77053f90, handritad sittande vila" },
+"char.type": { "file": "chars/type.png", "fw": 92, "fh": 92, "ax": 46, "ay": 82, "frames": 4, "scale": 0.42, "note": "PixelLab-karaktär 77053f90, handritad skrivande; samma underkropp som char.sit" },
+"char.talk": { "file": "chars/talk.png", "fw": 92, "fh": 92, "ax": 46, "ay": 82, "frames": 4, "scale": 0.42, "note": "PixelLab-karaktär 77053f90, handritad stående gest och mun; bara stående" }
+```
+
+Höjder i sprite-px: låret ligger på rad 59–63, vilket är stolsitsens topp (`fy-9` i `chair2`). Händerna i `type` ligger på rad 47–53, tangentbordets höjd.
+Förslag på bildfrekvens: `sit` 1,5, `type` 8 och `talk` 4,2 rutor per sekund.
+
+Kända begränsningar:
+- `talk` är bara stående. Den som pratar sittande ska ha kvar den procedurella figuren, annars står den på stolen.
+- Rörelserna är 1 px och blir ungefär en halv scenpixel, så de syns mest som ett lätt flimmer.
+- I `sit` syns underarmen knappt. Benen ser långa ut, eftersom stolsitsen ligger nära stående höfthöjd.
+- `build()` i `charsprite.js` delar kantfärgerna med alfa en gång för mycket (`getImageData` ger redan icke-förmultiplicerade färger). Det ger ljusa kanter på tröja och mössa, också på `char.stand`.
