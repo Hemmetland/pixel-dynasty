@@ -21,10 +21,11 @@ function hsv(r, g, b) {
 }
 
 // Material för en pixel; ry = höjd i rutan (0 topp, 1 fot). Konturer, glasögon och ögonvitor behålls (null).
-function material(r, g, b, ry) {
+// Mössan känns igen ovanför hatRow (manifestets hatRow, annars 0.3), så poser där huvudet sjunker (sova) kan flytta gränsen.
+function material(r, g, b, ry, hatRow = 0.3) {
   const [h, s, v] = hsv(r, g, b);
   if (h >= 165 && h <= 195 && s > 0.45) return 'shirt';
-  if (h >= 18 && h <= 32 && s > 0.7 && ry < 0.3) return 'hat';
+  if (h >= 18 && h <= 32 && s > 0.7 && ry < hatRow) return 'hat';
   if (h >= 205 && h <= 222 && s > 0.4 && ry > 0.6) return 'pants';
   if ((h >= 350 || h <= 2) && s > 0.7 && v > 0.55) return 'shoe';
   if ((h <= 20 || h >= 340) && s > 0.35 && v < 0.3) return 'hair';
@@ -47,7 +48,7 @@ function build(s, look) {
   const d = img.data;
   for (let i = 0; i < d.length; i += 4) {
     if (!d[i + 3]) continue;
-    const m = material(d[i], d[i + 1], d[i + 2], Math.floor(i / 4 / full.width) / s.fh);
+    const m = material(d[i], d[i + 1], d[i + 2], Math.floor(i / 4 / full.width) / s.fh, s.hatRow ?? 0.3);
     if (!m) continue;
     const k = lum(d[i], d[i + 1], d[i + 2]) / REF_L[m];
     const t = T[m];

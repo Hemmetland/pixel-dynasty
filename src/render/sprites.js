@@ -24,7 +24,7 @@ export function registerSprites(pack) {
           c.width = cw;
           c.height = ch;
           c.getContext('2d').drawImage(img, cx, cy, cw, ch, 0, 0, cw, ch);
-          sprites.set(name, { c, fw, fh, ax: e.ax ?? Math.round(fw / 2), ay: e.ay ?? fh, frames: e.frames || 1, scale: e.scale || 1 });
+          sprites.set(name, { c, fw, fh, ax: e.ax ?? Math.round(fw / 2), ay: e.ay ?? fh, frames: e.frames || 1, scale: e.scale || 1, hatRow: e.hatRow });
           const base = name.split('#')[0];
           if (name.includes('#')) variants.set(base, (variants.get(base) || 0) + 1);
           res(1);

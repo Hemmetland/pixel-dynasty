@@ -32,7 +32,8 @@ PixelLab-token får aldrig klistras in i chatten eller sparas i repot.
    `furniture.js`, `props.js`, `props2.js` som har en `spr(...)`-rad först, ritas vid x och golvlinjen), `veh.car.0|1|2`, `veh.van`, `veh.truck`, `veh.bus`
    för fordon. Flera varianter: `veh.car.1#0`, `veh.car.1#1` (väljs efter färgen). Exempel i manifestet:
    `{ "sprites": { "prop.sofa": { "file": "props/sofa.png", "fw": 41, "fh": 22, "ax": 1, "ay": 22, "frames": 1, "prompt": "...", "seed": 7, "cost": 10 } } }`
-   (`fw`/`fh` = en rutas storlek, `frames` = rutor sida vid sida, `ax`/`ay` = ankarpunkt). Måtten att sikta på står i `docs/ASSET_SPECS.md` och bilderna
+   (`fw`/`fh` = en rutas storlek, `frames` = rutor sida vid sida, `ax`/`ay` = ankarpunkt; för `char.*` även `scale` och valfritt `hatRow`,
+   andelen av rutans höjd ovanför vilken orange räknas som mössa vid färgbytet, standard 0.3). Måtten att sikta på står i `docs/ASSET_SPECS.md` och bilderna
    av dagens procedurella grafik i `assets/baked/` (bra som `style_images` och som kontroll: lägg en baked-fil i manifestet så ser du exakt samma bild).
    Nya sprite-nycklar för personer, byggnadsdelar och UI kräver en liten kodkrok vardera; lägg dem när tillgångarna finns.
    **Importera nya filer med ett kommando:** lägg PNG-filerna som `assets/props/<namn>.png` (blir `prop.<namn>`) och `assets/vehicles/<namn>.png` (blir `veh.<namn>`,
