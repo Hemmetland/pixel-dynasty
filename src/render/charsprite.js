@@ -162,8 +162,9 @@ export const drawWalkerSprite = (ctx, x, y, look, t, dir = 1) => drawCharSprite(
 // Poser som har en sprite, med bildrutor per sekund: stående och sittande för sig. Prata och dricka kaffe på en stol har
 // egna sittande sprites (char.sitTalk, char.sitDrink, där klunken 0,1,2,2,2,1 är inbakad), liksom läsa och tänka (vid
 // skrivbordet, armbågen på bordet), sova (huvudet mot bordet), gäspa (crunch) och laptop i knät (soffan; stående laptop vid
-// racket är procedurell). Saknas en sprite i manifestet ritas den procedurella figuren.
-const STAND_SPRITE = { walk: ['char.walk', 9], stand: ['char.stand', 0], drink: ['char.drink', 3], talk: ['char.talk', 4.2] };
+// racket är procedurell). Stående jubel (spelrummet) har en egen sprite; jubel på stolen är procedurellt. Saknas en sprite
+// i manifestet ritas den procedurella figuren.
+const STAND_SPRITE = { walk: ['char.walk', 9], stand: ['char.stand', 0], drink: ['char.drink', 3], talk: ['char.talk', 4.2], cheer: ['char.cheer', 5] };
 const SEAT_SPRITE = {
   sit: ['char.sit', 1.5], sitIdle: ['char.sit', 1.5], type: ['char.type', 8],
   talk: ['char.sitTalk', 4.2], drink: ['char.sitDrink', 3], read: ['char.read', 1], think: ['char.think', 1.2],

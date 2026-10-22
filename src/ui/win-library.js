@@ -47,10 +47,10 @@ function salesChart(g, w = 520, h = 150) {
   return plot({ w, h, svg, labels });
 }
 
-// Ett rimligt tak för y-axeln: 1, 2, 2,5 eller 5 gånger en tiopotens
+// Ett rimligt tak för y-axeln (en jämn siffra gånger en tiopotens), tätt nog att kurvan får använda det mesta av höjden
 const niceMax = (v) => {
   const p = Math.pow(10, Math.floor(Math.log10(Math.max(1, v))));
-  return [1, 2, 2.5, 5, 10].map((k) => k * p).find((x) => x >= v);
+  return [1, 1.2, 1.5, 2, 2.5, 3, 4, 5, 6, 8, 10].map((k) => k * p).find((x) => x >= v);
 };
 // Markörerna i spelardiagrammet: ikon, färg och tips
 const MARK = {
