@@ -86,3 +86,36 @@ Kända begränsningar:
 - Rörelserna är 1 px och blir ungefär en halv scenpixel, så de syns mest som ett lätt flimmer.
 - I `sit` syns underarmen knappt. Benen ser långa ut, eftersom stolsitsen ligger nära stående höfthöjd.
 - `build()` i `charsprite.js` delar kantfärgerna med alfa en gång för mycket (`getImageData` ger redan icke-förmultiplicerade färger). Det ger ljusa kanter på tröja och mössa, också på `char.stand`.
+
+## Karaktären: sittande prat, kaffe, läsa och tänka (handritat)
+
+Samma metod som ovan: handredigerat ur karaktärens egna rutor, bara karaktären ritad, stol och skrivbord ritar spelet.
+Raderna 59–91 är identiska med `sit-east-hand/0.png` i alla elva rutorna, så figuren hoppar inte när den byter mellan sittande poser.
+
+| Remsa | Rutor | Nyckel | Innehåll |
+| --- | --- | --- | --- |
+| `assets/chars/sitTalk.png` (368x92) | 4 | `char.sitTalk` | 0: hand i knät, mun öppen. 1: underarm ut med öppen handflata, mun stängd, litet nick. 2: underarm 45°, handen uppåt, mun öppen. 3: hand i knät, mun stängd |
+| `assets/chars/sitDrink.png` (552x92) | 6 | `char.sitDrink` | vit mugg: låret, bröstet, munnen (huvudet bakåtlutat), munnen, munnen, bröstet. Rutordningen 0,1,2,2,2,1 är inbakad i remsan, samma som procedurella `frameOf('drink')` |
+| `assets/chars/read.png` (184x92) | 2 | `char.read` | huvudet böjt framåt, blicken nere, bok med vita sidor och lila pärm i bröst-/bordshöjd; i ruta 1 tippar boken 2 px och huvudet flyttas 1 px |
+| `assets/chars/think.png` (184x92) | 2 | `char.think` | armbågen på bordsskivan, knytnäven under hakan, huvudet lutat uppåt; i ruta 1 andas överkroppen 1 px upp och pekfingret når läpparna |
+
+Enskilda rutor finns i `assets/pixellab/characters/dev/{sitTalk,sitDrink,read,think}-east-hand/` (sitDrink har bara de tre unika rutorna 0–2).
+Mått som övriga: `fw` 92, `fh` 92, `ax` 46, `ay` 82, `scale` 0.42, sulorna på rad 80.
+
+```json
+"char.sitTalk":  { "file": "chars/sitTalk.png",  "fw": 92, "fh": 92, "ax": 46, "ay": 82, "frames": 4, "scale": 0.42, "note": "PixelLab-karaktär 77053f90, handritad sittande prat; samma underkropp som char.sit (Kör)" },
+"char.sitDrink": { "file": "chars/sitDrink.png", "fw": 92, "fh": 92, "ax": 46, "ay": 82, "frames": 6, "scale": 0.42, "note": "PixelLab-karaktär 77053f90, handritad sittande kaffe, rutordning 0,1,2,2,2,1 inbakad; samma underkropp som char.sit (Kör)" },
+"char.read":     { "file": "chars/read.png",     "fw": 92, "fh": 92, "ax": 46, "ay": 82, "frames": 2, "scale": 0.42, "note": "PixelLab-karaktär 77053f90, handritad sittande läsning med bok; samma underkropp som char.sit (Kör)" },
+"char.think":    { "file": "chars/think.png",    "fw": 92, "fh": 92, "ax": 46, "ay": 82, "frames": 2, "scale": 0.42, "note": "PixelLab-karaktär 77053f90, handritad sittande fundering, armbågen på bordet; samma underkropp som char.sit (Kör)" }
+```
+
+Takterna i `SEAT_SPRITE` (`talk` 4,2, `drink` 3, `read` 1, `think` 1,2) fungerar som de är. `sitDrink` har 6 rutor i stället för 3, eftersom `drawPoseSprite` bara räknar `floor(t*takt) % rutor`: med tre rutor i följd hoppar muggen från munnen rakt ner till låret. Med sex rutor i takt 3 tar en klunk 2 sekunder (procedurella drycken går i 1,7, om ni vill ha samma tempo).
+
+Färger: alla figurpixlar använder färger som redan finns i karaktären (33–37 nyanser per remsa, som `sit.png`). Muggen använder karaktärens egna vita och mörka färger. Bokpärmen har fyra nya lila nyanser (#3a2350, #5a3678, #7a4e9e, #9a6cc0, nyans 271–273) som ligger utanför alla intervall i `material()`, så mugg och bok färgbyts aldrig. Färgbytet är prövat med två andra utseenden: tröja, mössa, jeans, hud och skor byts i alla rutor. Ingen mösspixel ligger under rad 27.
+
+Kända begränsningar:
+- `think` vilar armbågen på bordsskivan (rad 53, ungefär `fy-12`). I loungen (`scene.js`, soffan väljer `sitIdle`/`think`/`read`/`sleep`) finns inget bord, så där svävar armbågen framför bröstet. Det syns som en hand mot hakan men är inte riktigt rätt.
+- `sitTalk`: den öppna munnen är en mörk springa som i full storlek kan likna ett hakskägg; i spelskala är den en pixel. I ruta 1 ligger handen bara ungefär 0,6 scenpixel över tangentbordet.
+- `sitDrink`: muggen har inget synligt öra, och i ruta 2 är huvudet roterat 11°, så glasögonen är lite kantigare.
+- `read`: bara den närmre handen syns (den andra skyms av boken), och boken kan tas för ett block eller en platta. Rörelsen i ruta 1 är diskret.
+- `drawPoseSprite` lägger inte till personens id i rutindex, så alla i samma pose byter ruta samtidigt (gäller redan `char.sit` och `char.type`).
