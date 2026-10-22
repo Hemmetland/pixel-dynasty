@@ -18,6 +18,7 @@
     "char.tired": { "file": "chars/tired.png", "fw": 92, "fh": 92, "ax": 46, "ay": 82, "frames": 2, "scale": 0.42, "note": "PixelLab-karaktär 77053f90, handritad trött med gäspning; samma underkropp som char.sit (Kör)" },
     "char.sitLaptop": { "file": "chars/sitLaptop.png", "fw": 92, "fh": 92, "ax": 46, "ay": 82, "frames": 4, "scale": 0.42, "note": "PixelLab-karaktär 77053f90, handritad sittande med laptop i knät; samma underkropp som char.sit (Kör)" },
     "char.cheer": { "file": "chars/cheer.png", "fw": 92, "fh": 92, "ax": 46, "ay": 82, "frames": 2, "scale": 0.42, "note": "PixelLab-karaktär 77053f90, handritad stående jubel med hopp; samma ben som char.stand (Kör)" },
+    "char.present": { "file": "chars/present.png", "fw": 92, "fh": 92, "ax": 46, "ay": 82, "frames": 2, "scale": 0.42, "note": "PixelLab-karaktär 77053f90, handritad stående presentation med pekpinne; samma ben som char.stand (Kör)" },
     "ui.dock.wizard": { "file": "ui/dock-wizard.png", "fw": 32, "fh": 32, "note": "handritad pixel för pixel (Kör)" },
     "ui.dock.research": { "file": "ui/dock-research.png", "fw": 32, "fh": 32, "note": "handritad pixel för pixel (Kör)" },
     "ui.dock.staff": { "file": "ui/dock-staff.png", "fw": 32, "fh": 32, "note": "handritad pixel för pixel (Kör)" },
