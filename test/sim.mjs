@@ -20,6 +20,7 @@ const casual = args.includes('--casual');
 const mid = args.includes('--mid');
 // --mmo: gör onlinespel när serverrummet finns, håller dem vid liv med uppdateringar och expansioner
 const mmo = args.includes('--mmo');
+const events = mmo && !args.includes('--no-events');
 // --bd: skriv ut årets pengar per kategori (för balansarbete)
 const bd = args.includes('--bd');
 const acc = {};
@@ -159,6 +160,8 @@ function manage(G) {
   // onlinespel: innehållsuppdatering när innehållet börjar bli gammalt, och servrar när det blir fullt
   if (mmo) for (const g of S.liveGames(G)) {
     if (g.live.fresh < 50 && !g.live.patch && G.money > S.livePatchCost(G, g) * 3) S.startLivePatch(G, g.id);
+    // evenemang när en konkurrent drar spelare eller innehållet börjar bli gammalt (om --events)
+    if (events && !S.eventReadyIn(G, g.live) && (S.rivalFactor(G, g) < 0.92) && G.money > S.liveEventCost(G, g) * 4) S.startLiveEvent(G, g.id);
     if (S.liveGames(G).reduce((a, x) => a + x.live.subs, 0) > S.serverCap(G) * 0.85 && S.facLevel(G, 'server') < 3 && G.money > S.facCost(G, 'server') * 2) S.buildFacility(G, 'server');
   }
   if (mmo && S.liveUnlocked(G) && S.facLevel(G, 'server') < 1 && G.money > S.facCost(G, 'server') * 3) S.buildFacility(G, 'server');
@@ -201,7 +204,7 @@ while (S.yearOf(G.t) < endYear && !G.over) {
       const n = S.nextTier(G);
       if (n) gate = ' | next: ' + S.officeReqs(G, n).map((r) => (r.ok ? '+' : '-') + r.id + ' ' + (r.id === 'avg' ? r.have.toFixed(1) : Math.round(r.have)) + '/' + r.need).join(' ');
     }
-    const lv = S.liveGames(G).map((g) => `[${g.title} subs ${Math.round(g.live.subs).toLocaleString()} fresh ${Math.round(g.live.fresh)} rev/m ${Math.round(S.liveMonth(G, g).rev).toLocaleString()} cost/m ${Math.round(S.liveMonth(G, g).cost).toLocaleString()} cap ${S.serverCap(G).toLocaleString()}]`).join(' ');
+    const lv = S.liveGames(G).map((g) => `[${g.title} subs ${Math.round(g.live.subs).toLocaleString()} fresh ${Math.round(g.live.fresh)} rev/m ${Math.round(S.liveMonth(G, g).rev).toLocaleString()} cost/m ${Math.round(S.liveMonth(G, g).cost).toLocaleString()} cap ${S.serverCap(G).toLocaleString()} rivals ${S.rivalFactor(G, g).toFixed(2)}]`).join(' ');
     console.log(`${y} $${Math.round(G.money).toLocaleString()} fans ${Math.round(G.fans).toLocaleString()} staff ${G.staff.length} tier ${G.office.tier} games ${G.games.length} avg(6) ${avg} yrRev $${Math.round(rev).toLocaleString()} res ${G.research.done.length}+${Object.values(G.research.levels || {}).reduce((a, b) => a + b, 0)} rp ${Math.round(G.rp)} loans ${Math.round(S.loanTotal(G))}${gate}${lv ? ' ' + lv : ''}`);
   }
 }
@@ -209,6 +212,14 @@ const dt = Date.now() - t0;
 if (args.includes('--legacy')) {
   const L = S.legacy(G);
   console.log(`legacy ${L.points} rank ${L.rank} ${JSON.stringify(L.parts)} rev $${Math.round(G.stats.revenue / 1e6)}M cash $${Math.round(G.money / 1e6)}M awards ${G.awards.length} best ${G.stats.bestScore} fans ${Math.round(G.fans)} tier ${G.office.tier}`);
+}
+// --live: onlinespelen och konkurrenternas MMO i slutet
+if (args.includes('--live')) {
+  for (const g of G.games.filter((x) => x.live)) {
+    const L = g.live;
+    console.log(`live ${S.yearOf(L.t0)}${L.closed ? '-' + S.yearOf(L.closed) : ''} ${g.title.en || g.title} score ${g.score} peak ${Math.round(L.peak).toLocaleString()} subs ${Math.round(L.subs).toLocaleString()} exps ${L.exps.length} events ${L.events || 0} evcost $${Math.round((L.evCost || 0) / 1e6)}M rev $${Math.round(L.rev / 1e6)}M cost $${Math.round(L.cost / 1e6)}M`);
+  }
+  for (const m of (G.market.mmos || [])) console.log(`rival ${S.yearOf(m.t0)}${m.closed ? '-' + S.yearOf(m.closed) : ''} ${m.studio} ${m.title.en} ${m.genre} score ${m.score}`);
 }
 console.log(G.over ? `GAME OVER ${S.yearOf(G.over.t)} (bankrupt) after ${G.games.length} games` : `Finished ${S.yearOf(G.t)}; money $${Math.round(G.money).toLocaleString()}; games ${G.games.length}; best ${G.stats.bestScore}; ach ${G.ach.length}; ${dt}ms`);
 if (args.includes('--parts')) {

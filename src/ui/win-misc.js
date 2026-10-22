@@ -72,7 +72,8 @@ regWin({
       .map((n) => {
         const d = dateOf(n.t);
         const vars = {};
-        for (const [k, v] of Object.entries(n.vars || {})) vars[k] = typeof v === 'string' ? `<b>${esc(v)}</b>` : v;
+        // strängar och {sv,en}-titlar (konkurrenternas spel) i fetstil
+        for (const [k, v] of Object.entries(n.vars || {})) vars[k] = typeof v === 'string' || (v && typeof v === 'object') ? `<b>${esc(L(v))}</b>` : v;
         return `<div class="in ${n.kind === 'good' ? 'good' : n.kind === 'bad' ? 'bad' : 'ok'}"><span class="ii">${icon(NIC[n.kind] || 'info')}</span><span style="flex:1">${t(n.key, vars)}</span><span class="faint" style="font-size:11px;white-space:nowrap">${d.year} · ${MONTHS[lang][d.month]}</span></div>`;
       })
       .join('')}</div>`;

@@ -17,7 +17,7 @@ import { openSequel } from './wizard.js';
 import { studioNotes } from './prompts.js';
 import { crowdNote } from './crowd.js';
 import { openExpansion } from './wizard.js';
-import { SUB_TIERS, OPS, PRICE_MIN, PRICE_MAX, PATCH_WEEKS, tierMix, liveMonth, serverCap, liveGames, livePatchCost, startLivePatch, setLivePrice, setLiveOps, closeLive } from '../sim/live.js';
+import { SUB_TIERS, OPS, PRICE_MIN, PRICE_MAX, PATCH_WEEKS, EVENT_WEEKS, SURGE_WEEKS, tierMix, liveMonth, serverCap, liveGames, livePatchCost, startLivePatch, setLivePrice, setLiveOps, closeLive, rivalMmos, rivalPull, eventOn, eventReadyIn, liveEventCost, startLiveEvent } from '../sim/live.js';
 
 // Stäng servrarna kräver två tryck: första trycket "armerar" knappen för det spelet
 let closeArmed = null;
@@ -49,7 +49,25 @@ function subsChart(L, w = 520, h = 120) {
   return `<svg viewBox="0 0 ${w} ${h}" class="lchart" style="height:${h}px" preserveAspectRatio="none">${arr.map((v, i) => `<rect x="${5 + i * bw}" y="${h - 6 - (v / hi) * (h - 14)}" width="${Math.max(1, bw - 1.5)}" height="${(v / hi) * (h - 14)}" rx="1.5" fill="#7cf29a" opacity=".75"/>`).join('')}</svg>`;
 }
 
-// Driftpanelen för ett onlinespel: spelare, intäkter, innehåll, serverlast, priser per nivå, drift och åtgärder
+// Konkurrenternas MMO som drar spelare från g, mest först
+function rivalList(G, g) {
+  const rows = rivalMmos(G)
+    .map((m) => ({ m, p: rivalPull(G, m, g) }))
+    .sort((a, b) => b.p - a.p)
+    .map(({ m, p }) => `<div class="ltier"><i class="ldot" style="background:${m.color}"></i><div style="flex:1;min-width:0"><b>${esc(L(m.title))}</b>${G.t - m.t0 < SURGE_WEEKS ? `<span class="tag" style="--c:var(--bug);margin-left:8px">${t('live.rivalNew')}</span>` : ''}
+      <div class="faint" style="font-size:11.5px">${esc(m.studio)} · ${L(GENRE[m.genre].name)} · ${m.score.toFixed(1)}</div></div><b class="num" style="color:var(--bug)">${t('live.rivalPull', { n: Math.max(1, Math.round(p * 100)) })}</b></div>`);
+  return `<div class="lbl" style="margin:16px 0 4px">${t('live.rivals')}</div><p class="hint" style="margin-bottom:8px">${t(rows.length ? 'live.rivalsHelp' : 'live.rivalsNone')}</p>${rows.length ? `<div class="col" style="gap:6px">${rows.join('')}</div>` : ''}`;
+}
+
+// Evenemangsknappen: pågår, väntar på nästa eller kan starta
+function eventBtn(G, g) {
+  const L = g.live;
+  const wait = eventReadyIn(G, L);
+  const label = eventOn(G, L) ? tn('live.eventOn', L.ev.until - G.t) : wait > 0 ? tn('live.eventWait', wait) : t('live.event') + ' · ' + money(liveEventCost(G, g));
+  return `<button class="btn" data-act="lv-event" data-id="${g.id}" ${wait > 0 ? 'disabled' : ''} data-tip="${esc(t('live.eventTip', { n: EVENT_WEEKS }))}">${icon('star')}${label}</button>`;
+}
+
+// Driftpanelen för ett onlinespel: spelare, intäkter, innehåll, serverlast, konkurrenter, priser per nivå, drift och åtgärder
 function livePanel(G, g) {
   const L = g.live;
   if (!L) return '';
@@ -80,6 +98,7 @@ function livePanel(G, g) {
       <div data-tip="${esc(t('live.loadTip', { n: fmtNum(used), m: fmtNum(cap) }))}"><div class="row" style="font-size:12.5px;margin-bottom:4px"><span>${t('live.load')}</span><span class="sp"></span><b class="num" style="color:${load > 1 ? 'var(--bug)' : load > 0.85 ? 'var(--warn)' : 'var(--text)'}">${Math.round(load * 100)}%</b></div>${bar(load * 100, load > 1 ? 'var(--bug)' : load > 0.85 ? 'var(--warn)' : 'var(--accent)', 'thin')}</div>
     </div>
     <div class="lbl" style="margin:16px 0 4px">${t('live.chart')}</div>${subsChart(L)}
+    ${rivalList(G, g)}
     <div class="lbl" style="margin:14px 0 4px">${t('live.tiers')}</div><p class="hint" style="margin-bottom:8px">${t('live.tierHelp')}</p>
     <div class="col" style="gap:6px">${tiers}</div>
     <div class="lbl" style="margin:16px 0 6px">${t('live.ops')}</div>
@@ -87,6 +106,7 @@ function livePanel(G, g) {
     <p class="hint" style="margin-top:6px">${t('live.opsHelp')}</p>
     <div class="row wrap" style="gap:8px;margin-top:14px">
       <button class="btn primary" data-act="lv-patch" data-id="${g.id}" ${L.patch ? 'disabled' : ''} data-tip="${esc(t('live.patchTip', { n: PATCH_WEEKS }))}">${icon('wrench')}${L.patch ? tn('live.patching', patchLeft) : t('live.patch') + ' · ' + money(livePatchCost(G, g))}</button>
+      ${eventBtn(G, g)}
       <button class="btn" data-act="lv-exp" data-id="${g.id}" ${G.job ? 'disabled' : ''}>${icon('plus')}${t('live.expand')}</button>
       <span class="sp"></span>
       <button class="btn ${armed ? 'danger' : 'ghost'}" data-act="lv-close" data-id="${g.id}">${icon('x')}${t(armed ? 'live.closeSure' : 'live.close')}</button>
@@ -196,6 +216,12 @@ act('lv-ops', (el) => {
 act('lv-patch', (el) => {
   const r = startLivePatch(UI.app.G, +el.dataset.id);
   if (r === true) sfx.play('click');
+  else errToast(r);
+  UI.refresh();
+});
+act('lv-event', (el) => {
+  const r = startLiveEvent(UI.app.G, +el.dataset.id);
+  if (r === true) sfx.play('coin');
   else errToast(r);
   UI.refresh();
 });

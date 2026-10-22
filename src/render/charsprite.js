@@ -1,6 +1,7 @@
 // Personer som sprite (PixelLab-karaktären i sidovy) i stället för den procedurella figuren. En enda karaktär finns, så den
 // färgbyts efter personens utseende: tröja, mössa, byxor, hud, hår och skor får personens färger med samma skuggning.
-// Färgbytet görs i full upplösning (rena palettfärger), sedan skalas bilden ner till scenens mått (manifestets scale) och kantas hårt.
+// Färgbytet görs i full upplösning (rena palettfärger), sedan skalas bilden ner till scenens mått (manifestets scale), kantas hårt
+// och varje pixel läggs på närmaste färg i den färgbytta paletten, så att figuren blir lika skarp som möblerna runt den.
 // Resultatet cachas per utseende. Saknas spriten returnerar funktionerna false så att den procedurella figuren ritas.
 import { hex2rgb } from '../core/util.js';
 import { getSprite, spritesVersion } from './sprites.js';
@@ -53,6 +54,17 @@ function build(s, look) {
     for (let j = 0; j < 3; j++) d[i + j] = Math.min(255, Math.round(t[j] * k));
   }
   fg.putImageData(img, 0, 0);
+  // paletten: de färger som finns i den färgbytta bilden (ett trettiotal per sprite)
+  const pal = [];
+  const seen = new Set();
+  for (let i = 0; i < d.length; i += 4) {
+    if (!d[i + 3]) continue;
+    const k = (d[i] << 16) | (d[i + 1] << 8) | d[i + 2];
+    if (!seen.has(k)) {
+      seen.add(k);
+      pal.push(d[i], d[i + 1], d[i + 2]);
+    }
+  }
   // ner till scenens skala, ruta för ruta så att grannrutor inte blöder in
   const W = Math.round(s.fw * s.scale);
   const H = Math.round(s.fh * s.scale);
@@ -65,8 +77,30 @@ function build(s, look) {
   for (let f = 0; f < s.frames; f++) g.drawImage(full, f * s.fw, 0, s.fw, s.fh, f * W, 0, W, H);
   const out = g.getImageData(0, 0, c.width, H);
   const o = out.data;
-  // hård kant: getImageData ger redan icke-förmultiplicerade färger, så halvgenomskinliga kantpixlar görs bara täckande
-  for (let i = 3; i < o.length; i += 4) o[i] = o[i] > 100 ? 255 : 0;
+  // hård kant (getImageData ger redan icke-förmultiplicerade färger, så halvgenomskinliga kantpixlar görs bara täckande)
+  // och närmaste palettfärg i stället för de blandfärger som nedskalningen ger
+  for (let i = 0; i < o.length; i += 4) {
+    if (o[i + 3] <= 100) {
+      o[i + 3] = 0;
+      continue;
+    }
+    o[i + 3] = 255;
+    let best = 0;
+    let bd = Infinity;
+    for (let j = 0; j < pal.length; j += 3) {
+      const dr = o[i] - pal[j];
+      const dg = o[i + 1] - pal[j + 1];
+      const db = o[i + 2] - pal[j + 2];
+      const e = 2 * dr * dr + 4 * dg * dg + 3 * db * db;
+      if (e < bd) {
+        bd = e;
+        best = j;
+      }
+    }
+    o[i] = pal[best];
+    o[i + 1] = pal[best + 1];
+    o[i + 2] = pal[best + 2];
+  }
   g.putImageData(out, 0, 0);
   return { c, W, H, ax: Math.round(s.ax * s.scale), ay: Math.round(s.ay * s.scale), frames: s.frames, v: spritesVersion() };
 }
@@ -99,12 +133,19 @@ export function drawCharSprite(ctx, key, x, y, look, frame = 0, dir = 1) {
 // Gående fotgängare; t = gångtid (fotgängarnas p.t, 6 per sekund). 6 rutor per steg-cykel i samma takt som den procedurella gången.
 export const drawWalkerSprite = (ctx, x, y, look, t, dir = 1) => drawCharSprite(ctx, 'char.walk', x, y, look, Math.floor(t * 1.5), dir);
 
-// Poser som har en sprite, med bildrutor per sekund: stående och sittande för sig. Stående poser som görs sittande
-// (prata eller dricka kaffe på en stol) och sittande poser utan sprite (läsa, sova, tänka) ritas procedurellt.
+// Poser som har en sprite, med bildrutor per sekund: stående och sittande för sig. Prata och dricka kaffe på en stol har
+// egna sittande sprites (char.sitTalk, char.sitDrink), liksom läsa och tänka. Saknas en sprite i manifestet, och för att
+// sova, ritas den procedurella figuren (med bok och mugg), så nya poser tas i bruk så fort de finns i manifestet.
 const STAND_SPRITE = { walk: ['char.walk', 9], stand: ['char.stand', 0], drink: ['char.drink', 3], talk: ['char.talk', 4.2] };
-const SEAT_SPRITE = { sit: ['char.sit', 1.5], sitIdle: ['char.sit', 1.5], type: ['char.type', 8] };
+const SEAT_SPRITE = {
+  sit: ['char.sit', 1.5], sitIdle: ['char.sit', 1.5], type: ['char.type', 8],
+  talk: ['char.sitTalk', 4.2], drink: ['char.sitDrink', 3], read: ['char.read', 1], think: ['char.think', 1.2],
+};
 // Personal i huset: ritar posen som sprite om en sådan finns (t = sekunder, seated = sitter på en stol), annars false.
+// Att prata på en stol har ingen rekvisita, så tills char.sitTalk finns ritas den som vanligt sittande.
 export function drawPoseSprite(ctx, x, y, look, pose, t, dir = 1, seated = false) {
-  const p = (seated || SEATED.has(pose) ? SEAT_SPRITE : STAND_SPRITE)[pose];
-  return !!p && drawCharSprite(ctx, p[0], x, y, look, Math.floor((t || 0) * p[1]), dir);
+  const seat = seated || SEATED.has(pose);
+  const p = (seat ? SEAT_SPRITE : STAND_SPRITE)[pose];
+  const draw = (q) => drawCharSprite(ctx, q[0], x, y, look, Math.floor((t || 0) * q[1]), dir);
+  return !!p && (draw(p) || (seat && pose === 'talk' && draw(SEAT_SPRITE.sit)));
 }

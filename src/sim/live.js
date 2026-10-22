@@ -1,9 +1,10 @@
 // Live-tjänstespel (MMO). Ett onlinespel släpps som vanligt men lever sedan vidare på abonnemang i tre nivåer
 // (Standard, Pro, Max) så länge servrarna är igång. Spelarbasen följer en målnivå som beror på spelets betyg,
 // hur färskt innehållet är, priserna, driften och hur gammalt spelet är. Innehållsuppdateringar och expansioner
-// (egna projekt) håller det vid liv. Kräver forskningen Serverrum och att serverrummet är byggt.
+// (egna projekt) håller det vid liv, och evenemang ger en kort knuff. Konkurrenterna släpper egna MMO som drar spelare.
+// Kräver forskningen Serverrum och att serverrummet är byggt.
 import { clamp } from '../core/util.js';
-import { chance } from '../core/rng.js';
+import { chance, hashStr } from '../core/rng.js';
 import { emit } from '../core/bus.js';
 import { t } from '../core/i18n.js';
 import { yearOf, priceOf, moneyScale, WEEKS_PER_MONTH, WEEKS_PER_YEAR } from './const.js';
@@ -36,6 +37,12 @@ const FRESH_DECAY = 1.1;
 export const PATCH_WEEKS = 8;
 const PATCH_FRESH = 30;
 const MILESTONES = [10000, 100000, 1000000, 5000000, 10000000];
+// Evenemang i spelet: pågår EVENT_WEEKS veckor, nästa kan starta EVENT_GAP veckor efter förra starten. Lockar tillbaka
+// spelare (målnivån × EVENT_LIFT), ger lite färskhet och halverar dragningen från konkurrenternas MMO medan det pågår.
+export const EVENT_WEEKS = 4;
+export const EVENT_GAP = 16;
+const EVENT_FRESH = 6;
+const EVENT_LIFT = 1.08;
 
 const fmtN = (n) => Math.round(n).toLocaleString('en-US').replace(/,/g, ' ');
 
@@ -76,7 +83,8 @@ export function liveTarget(G, g) {
   const age = Math.exp(-0.06 * years);
   const fresh = 0.4 + (0.6 * L.fresh) / 100;
   const price = Math.exp(-PRICE_ELAST * (tierMix(G, L).k - 1));
-  return L.pot * age * fresh * price * OPS[L.ops].mult;
+  const ev = eventOn(G, L) ? EVENT_LIFT : 1;
+  return L.pot * age * fresh * price * OPS[L.ops].mult * ev * rivalFactor(G, g);
 }
 // Intäkt och kostnad per månad med nuvarande spelare
 export function liveMonth(G, g) {
@@ -118,8 +126,66 @@ export function releaseExpansion(G, game) {
   note(G, 'live.news.expansion', { title: game.title, base: base.title }, game.score >= 7 ? 'good' : 'info');
 }
 
+// ── Konkurrenternas onlinespel ────────────────────────────────────
+// Från 1997 gör starka konkurrenter ibland sitt stora rollspel, actionspel, skjutspel eller strategispel som MMO. Det drar
+// spelare från dina onlinespel (mest i samma genre och de första månaderna) tills det stänger efter några år. Om ett släpp
+// blir MMO avgörs av en hash av fröet och släppet, så att konkurrenternas vanliga slumpföljd inte ändras.
+const RIVAL_P = { rpg: 0.3, action: 0.12, shooter: 0.12, strategy: 0.12 };
+const RIVAL_YEAR = 1997;
+const RIVAL_MAX = 3;
+const RIVAL_GAP = 96;
+export const SURGE_WEEKS = 16;
+const hash01 = (G, s) => hashStr((G.seed || 0) + ':' + s) / 4294967296;
+
+export const rivalMmos = (G) => ((G.market && G.market.mmos) || []).filter((m) => !m.closed);
+export const eventOn = (G, L) => !!(L.ev && G.t < L.ev.until);
+// Hur stor andel av spelarna konkurrentens MMO lockar från spelet g just nu
+export function rivalPull(G, m, g) {
+  if (m.closed) return 0;
+  const age = G.t - m.t0;
+  const base = clamp(0.06 + 0.045 * (m.score - 7), 0.02, 0.16);
+  const surge = age < SURGE_WEEKS ? 1 + 0.6 * (1 - age / SURGE_WEEKS) : 1;
+  const fade = clamp((m.end - G.t) / (2 * WEEKS_PER_YEAR), 0.3, 1);
+  const sim = (m.genre === g.genre ? 1 : m.genre === g.genre2 ? 0.7 : 0.45) + (m.topic === g.topic ? 0.25 : 0);
+  const q = clamp(1 + 0.3 * (m.score - g.score), 0.4, 1.8);
+  return base * surge * fade * sim * q * (g.live && eventOn(G, g.live) ? 0.5 : 1);
+}
+export const rivalFactor = (G, g) => clamp(1 - rivalMmos(G).reduce((a, m) => a + rivalPull(G, m, g), 0), 0.55, 1);
+
+function rivalWeek(G) {
+  const M = G.market;
+  if (!M) return;
+  if (!M.mmos) M.mmos = [];
+  // nya konkurrentsläpp sedan förra veckan (bara färska, så att en gammal sparfil inte får en hel hög på en gång)
+  const seen = M.mmoSeen || 0;
+  for (const r of M.releases) {
+    if (r.id <= seen) continue;
+    M.mmoSeen = Math.max(M.mmoSeen || 0, r.id);
+    const p = RIVAL_P[r.genre];
+    if (!p || r.t < G.t - 4 || yearOf(r.t) < RIVAL_YEAR || r.score < 6 || (r.scope !== 'large' && r.scope !== 'aaa')) continue;
+    if (rivalMmos(G).length >= RIVAL_MAX || G.t - (M.mmoT ?? -1e9) < RIVAL_GAP) continue;
+    if (hash01(G, 'mmo' + r.id) >= p * (r.scope === 'aaa' ? 1.5 : 1)) continue;
+    const years = clamp(3 + 1.6 * (r.score - 6) + 4 * hash01(G, 'life' + r.id), 3, 12);
+    r.mmo = true;
+    M.mmoT = G.t;
+    M.mmos.push({ id: r.id, studio: r.studio, color: r.color, title: r.title, genre: r.genre, topic: r.topic, score: r.score, t0: G.t, end: G.t + Math.round(years * WEEKS_PER_YEAR), closed: 0 });
+    if (liveGames(G).length) note(G, 'live.news.rival', { studio: r.studio, title: r.title }, 'bad');
+    else note(G, 'live.news.rivalInfo', { studio: r.studio, title: r.title }, 'info');
+  }
+  // gamla konkurrent-MMO stänger; deras spelare letar nytt och kommer snabbare till dina onlinespel
+  for (const m of M.mmos) {
+    if (m.closed || G.t < m.end) continue;
+    m.closed = G.t;
+    for (const g of liveGames(G)) g.live.boost = Math.max(g.live.boost, G.t + 8);
+    if (liveGames(G).length) note(G, 'live.news.rivalClosed', { studio: m.studio, title: m.title }, 'good');
+    else note(G, 'live.news.rivalGone', { studio: m.studio, title: m.title }, 'info');
+  }
+  while (M.mmos.length > 12 && M.mmos[0].closed) M.mmos.shift();
+}
+
 // Varje vecka: spelarna rör sig mot målnivån, abonnemangen betalas, servrarna kostar och ibland går de ner.
 export function liveWeek(G) {
+  rivalWeek(G);
   const games = liveGames(G);
   if (!games.length) return;
   const cap = serverCap(G);
@@ -133,6 +199,12 @@ export function liveWeek(G) {
       L.fresh = Math.min(100, L.fresh + PATCH_FRESH);
       L.patch = null;
       note(G, 'live.news.patch', { title: g.title }, 'good');
+    }
+    if (L.ev && G.t >= L.ev.until) {
+      const back = Math.round(L.subs - L.ev.subs0);
+      if (back > 0) note(G, 'live.news.eventEnd', { title: g.title, n: fmtN(back) }, 'good');
+      else note(G, 'live.news.eventFlat', { title: g.title }, 'info');
+      L.ev = null;
     }
     let target = liveTarget(G, g);
     // fullt på servrarna: nya spelare kommer inte in och några tröttnar på köerna
@@ -194,6 +266,29 @@ export function startLivePatch(G, id) {
   if (G.money < cost) return t('err.money');
   spend(G, cost, 'patches');
   g.live.patch = { t: G.t, until: G.t + PATCH_WEEKS };
+  return true;
+}
+// Evenemang: ungefär en åttondel av en månads standardintäkter plus en grundkostnad, startar direkt
+export function liveEventCost(G, g) {
+  const year = yearOf(G.t);
+  return Math.round((g.live.subs * subPrices(year)[0] * 0.12 + 8000 * moneyScale(year)) / 100) * 100;
+}
+// Veckor tills nästa evenemang kan starta (0 = nu)
+export const eventReadyIn = (G, L) => (L.evT == null ? 0 : Math.max(0, L.evT + EVENT_GAP - G.t));
+export function startLiveEvent(G, id) {
+  const g = liveOf(G, id);
+  if (!g) return false;
+  const L = g.live;
+  if (eventReadyIn(G, L) > 0) return t('err.liveEvent');
+  const cost = liveEventCost(G, g);
+  if (G.money < cost) return t('err.money');
+  spend(G, cost, 'liveEvents');
+  L.evT = G.t;
+  L.ev = { until: G.t + EVENT_WEEKS, subs0: L.subs };
+  L.events = (L.events || 0) + 1;
+  L.evCost = (L.evCost || 0) + cost;
+  L.fresh = Math.min(100, L.fresh + EVENT_FRESH);
+  L.boost = Math.max(L.boost, G.t + EVENT_WEEKS);
   return true;
 }
 // Pris för en nivå relativt standardpriset, i steg om 5 %

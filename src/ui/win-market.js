@@ -51,7 +51,7 @@ function chartsTab(G) {
       const ge = GENRE[r.genre];
       return `<div class="chart-row ${r.yours ? 'yours' : ''}"><div class="rk disp">${i + 1}</div>${coverImg({ id: r.id, title, topic: r.topic, genre: r.genre, platform: r.platform }, 40)}
         <div style="flex:1;min-width:0"><b>${esc(title)}</b>${r.yours ? `<span class="tag" style="--c:var(--accent);margin-left:8px">${t('mkt.you')}</span>` : ''}<div class="faint" style="font-size:12px">${esc(r.studio)}</div>
-        <div class="row wrap" style="gap:5px;margin-top:4px"><span class="chip c" style="--c:${ge.color}">${L(ge.name)}</span><span class="chip">${L(tp.name)}</span><span class="chip" style="--c:${PLATFORM[r.platform].color}">${esc(PLATFORM[r.platform].name)}</span></div></div>
+        <div class="row wrap" style="gap:5px;margin-top:4px"><span class="chip c" style="--c:${ge.color}">${L(ge.name)}</span><span class="chip">${L(tp.name)}</span><span class="chip" style="--c:${PLATFORM[r.platform].color}">${esc(PLATFORM[r.platform].name)}</span>${r.mmo ? `<span class="chip c" style="--c:var(--good)">${t('dev.liveChip')}</span>` : ''}</div></div>
         <div style="text-align:right"><div class="disp" style="font-size:26px;color:var(--gold)">${r.score.toFixed(1)}</div><div class="faint num" style="font-size:12px">${fmtNum(r.units)} ${t('mkt.units')}</div></div></div>`;
     })
     .join('')}</div>`;

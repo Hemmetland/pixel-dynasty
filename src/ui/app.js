@@ -242,7 +242,10 @@ export const app = {
   decorate(vars) {
     if (!vars) return vars;
     const o = { ...vars };
-    for (const k of Object.keys(o)) if (typeof o[k] === 'string' && k !== 'html') o[k] = `<b>${o[k]}</b>`;
+    for (const k of Object.keys(o)) {
+      if (o[k] && typeof o[k] === 'object') o[k] = `<b>${esc(L(o[k]))}</b>`;
+      else if (typeof o[k] === 'string' && k !== 'html') o[k] = `<b>${o[k]}</b>`;
+    }
     return o;
   },
 

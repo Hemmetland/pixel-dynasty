@@ -190,12 +190,12 @@ export function topSellers(G, weeks = 12, limit = 10) {
       const c = curveFor(r.score, r.tail || 1)[w];
       if (c) rev += r.total * c;
     }
-    if (rev > 0) rows.push({ title: r.title, studio: r.studio, color: r.color, score: r.score, rev, units: rev / r.price, platform: r.platform, genre: r.genre, topic: r.topic, yours: false, id: r.id });
+    if (rev > 0) rows.push({ title: r.title, studio: r.studio, color: r.color, score: r.score, rev, units: rev / r.price, platform: r.platform, genre: r.genre, topic: r.topic, yours: false, id: r.id, mmo: !!r.mmo });
   }
   for (const g of G.games) {
     const w0 = Math.max(0, g.weekly.length - weeks);
     const rev = g.weekly.slice(w0).reduce((a, b) => a + b, 0);
-    if (rev > 0) rows.push({ title: g.title, studio: G.studio, color: '#4de1d0', score: g.score, rev, units: rev / g.priceAt, platform: g.platform, genre: g.genre, topic: g.topic, yours: true, id: g.id, game: g });
+    if (rev > 0) rows.push({ title: g.title, studio: G.studio, color: '#4de1d0', score: g.score, rev, units: rev / g.priceAt, platform: g.platform, genre: g.genre, topic: g.topic, yours: true, id: g.id, game: g, mmo: !!g.live });
   }
   rows.sort((a, b) => b.rev - a.rev);
   return rows.slice(0, limit);
