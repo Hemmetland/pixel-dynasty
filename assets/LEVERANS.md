@@ -152,3 +152,20 @@ Enskilda rutor finns i `assets/pixellab/characters/dev/tired-east-hand/`. Radern
 - **Takt:** `tired: ['char.tired', 0.7]` i `SEAT_SPRITE` ger samma cykel som procedurella trött (4 rutor i 1,4/s, gäspningen i andra halvan). Posen varar 2,8 s, alltså en hopsjunkning och en gäspning.
 - **Färger:** 36 nyanser, alla redan i karaktären, ingen rekvisita.
 - **Begränsningar:** handen i knät är densamma som i `char.sit`, så den ser inte slappare ut. Den lyfta armen är lite tjockare och stelare än armarna i `think` och `sitDrink`. I spelskala är munnen en mörk pixel, så utan zzz-bubblan kan gäspningen också tas för en hostning.
+
+## Karaktären: laptop i soffan (handritat)
+
+| Remsa | Rutor | Nyckel | Innehåll |
+| --- | --- | --- | --- |
+| `assets/chars/sitLaptop.png` (368x92) | 4 | `char.sitLaptop` | sitter framåtlutad med huvudet böjt mot en grå laptop i knät (skärmen mot ansiktet). Händerna skriver: 0 närmre handen trycker, 1 den lyfts 2 px och den bortre handens fingertoppar syns, 2 som 0 med en liten nick, 3 som 1 |
+
+Enskilda rutor finns i `assets/pixellab/characters/dev/sitLaptop-east-hand/`. Raderna 59–91 är identiska med `sit-east-hand/0.png`; laptopen vilar på lårets kontur (rad 58) och sticker ut cirka 7 px förbi knät.
+
+```json
+"char.sitLaptop": { "file": "chars/sitLaptop.png", "fw": 92, "fh": 92, "ax": 46, "ay": 82, "frames": 4, "scale": 0.42, "note": "PixelLab-karaktär 77053f90, handritad sittande med laptop i knät; samma underkropp som char.sit (Kör)" }
+```
+
+- **Takt:** `laptop: ['char.sitLaptop', 8]` i `SEAT_SPRITE`, samma som `char.type`. 4 är ett lugnare alternativ. `drawPoseSprite` slår bara upp `laptop` i `SEAT_SPRITE` när `seated` är sant, så stående laptop vid serverracket förblir procedurell.
+- **Soffhöjd:** `F.sofa` har dynans topp på `fy-12`, 3 px högre än `chair2` (`fy-9`); `P.sofaM` 2 px och fåtöljen 1 px högre. Ritad på `fy` som i dag syns dynans översta rader bakom låren och det ser ut som att man sjunker ner i soffan med fötterna i golvet. Höjer man spriten 3 px hamnar låren på dynan men fötterna svävar. Jag rekommenderar ingen förskjutning.
+- **Färger:** 35 figurfärger från karaktären plus fem neutralgrå för laptopen (#2e2e33, #64646a, #8c8c92, #b4b4b8, #dcdcd8, mättnad högst 0,1), som ger `material()` = null på alla rader. Mössan ligger på rad 12–27, ingen `hatRow` behövs.
+- **Begränsningar:** skrivandet syns i spelskala som ett litet flimmer i en handklump, inte som två händer. Laptopen ligger mot knäna och färgbyts inte per person.
