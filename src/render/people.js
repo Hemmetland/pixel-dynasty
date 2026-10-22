@@ -15,7 +15,7 @@ export const POSE_FRAMES = {
 };
 export const POSES = Object.keys(POSE_FRAMES);
 export const HAIR_STYLES = 14;
-const SEATED = new Set(['sit', 'sitIdle', 'read', 'sleep', 'think', 'type']);
+export const SEATED = new Set(['sit', 'sitIdle', 'read', 'sleep', 'think', 'type']);
 
 const idx = (v, n) => (((v | 0) % n) + n) % n;
 const lum = (c) => {

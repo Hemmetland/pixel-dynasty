@@ -729,7 +729,7 @@ export class Scene {
         : { blink: a.blink, t: a.t, seated: a.state === 'work' && a.pose === 'drink' };
       const px = cx + a.x;
       const py = gy + a.fy + Math.round(a.ly || 0);
-      if (opts.seated || !drawPoseSprite(A, px, py, look, a.pose, a.t, a.dir)) drawPerson(A, px, py, look, a.pose, a.frame, a.dir, opts);
+      if (!drawPoseSprite(A, px, py, look, a.pose, a.t, a.dir, opts.seated)) drawPerson(A, px, py, look, a.pose, a.frame, a.dir, opts);
       if (a.pose === 'sleep') {
         const z = Math.floor(this.time * 2) % 3;
         drawText(A, 'Z', cx + a.x + 6 + z * 2, gy + a.fy - 32 - z * 3, '#cfe0ff', 1);

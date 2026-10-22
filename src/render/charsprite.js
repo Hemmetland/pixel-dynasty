@@ -4,7 +4,7 @@
 // Resultatet cachas per utseende. Saknas spriten returnerar funktionerna false så att den procedurella figuren ritas.
 import { hex2rgb } from '../core/util.js';
 import { getSprite, spritesVersion } from './sprites.js';
-import { lookColors } from './people.js';
+import { lookColors, SEATED } from './people.js';
 
 // Referensfärgen per material i originalbilden (den vanligaste nyansen); övriga nyanser behåller sin ljushet relativt den.
 const REF = { shirt: '#43a09d', hat: '#e88a38', pants: '#3f5b83', skin: '#f7b5a3', shoe: '#d41f30', hair: '#412425' };
@@ -65,14 +65,8 @@ function build(s, look) {
   for (let f = 0; f < s.frames; f++) g.drawImage(full, f * s.fw, 0, s.fw, s.fh, f * W, 0, W, H);
   const out = g.getImageData(0, 0, c.width, H);
   const o = out.data;
-  for (let i = 3; i < o.length; i += 4) {
-    if (o[i] > 100) {
-      // avmultiplicera halvgenomskinliga kantpixlar innan de görs täckande
-      const a = o[i] / 255;
-      for (let j = 1; j <= 3; j++) o[i - j] = Math.min(255, Math.round(o[i - j] / a));
-      o[i] = 255;
-    } else o[i] = 0;
-  }
+  // hård kant: getImageData ger redan icke-förmultiplicerade färger, så halvgenomskinliga kantpixlar görs bara täckande
+  for (let i = 3; i < o.length; i += 4) o[i] = o[i] > 100 ? 255 : 0;
   g.putImageData(out, 0, 0);
   return { c, W, H, ax: Math.round(s.ax * s.scale), ay: Math.round(s.ay * s.scale), frames: s.frames, v: spritesVersion() };
 }
@@ -105,10 +99,12 @@ export function drawCharSprite(ctx, key, x, y, look, frame = 0, dir = 1) {
 // Gående fotgängare; t = gångtid (fotgängarnas p.t, 6 per sekund). 6 rutor per steg-cykel i samma takt som den procedurella gången.
 export const drawWalkerSprite = (ctx, x, y, look, t, dir = 1) => drawCharSprite(ctx, 'char.walk', x, y, look, Math.floor(t * 1.5), dir);
 
-// Stående poser som har en sprite, med bildrutor per sekund. Sittande poser saknas i karaktären och ritas procedurellt.
-const POSE_SPRITE = { walk: ['char.walk', 9], stand: ['char.stand', 0], drink: ['char.drink', 3] };
-// Personal i huset: ritar posen som sprite om en sådan finns (t = sekunder), annars false.
-export function drawPoseSprite(ctx, x, y, look, pose, t, dir = 1) {
-  const p = POSE_SPRITE[pose];
+// Poser som har en sprite, med bildrutor per sekund: stående och sittande för sig. Stående poser som görs sittande
+// (prata eller dricka kaffe på en stol) och sittande poser utan sprite (läsa, sova, tänka) ritas procedurellt.
+const STAND_SPRITE = { walk: ['char.walk', 9], stand: ['char.stand', 0], drink: ['char.drink', 3], talk: ['char.talk', 4.2] };
+const SEAT_SPRITE = { sit: ['char.sit', 1.5], sitIdle: ['char.sit', 1.5], type: ['char.type', 8] };
+// Personal i huset: ritar posen som sprite om en sådan finns (t = sekunder, seated = sitter på en stol), annars false.
+export function drawPoseSprite(ctx, x, y, look, pose, t, dir = 1, seated = false) {
+  const p = (seated || SEATED.has(pose) ? SEAT_SPRITE : STAND_SPRITE)[pose];
   return !!p && drawCharSprite(ctx, p[0], x, y, look, Math.floor((t || 0) * p[1]), dir);
 }
