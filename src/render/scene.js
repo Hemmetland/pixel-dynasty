@@ -730,15 +730,17 @@ export class Scene {
       const px = cx + a.x;
       const py = gy + a.fy + Math.round(a.ly || 0);
       // spritens rutor förskjuts per person så att alla i samma pose inte byter ruta samtidigt
-      if (!drawPoseSprite(A, px, py, look, a.pose, a.t + ((a.id | 0) % 7) * 0.37, a.dir, opts.seated)) drawPerson(A, px, py, look, a.pose, a.frame, a.dir, opts);
+      const spr = drawPoseSprite(A, px, py, look, a.pose, a.t + ((a.id | 0) % 7) * 0.37, a.dir, opts.seated);
+      if (!spr) drawPerson(A, px, py, look, a.pose, a.frame, a.dir, opts);
       if (a.pose === 'sleep') {
+        // spritens huvud vilar mot bordet, lägre än den procedurella figurens
         const z = Math.floor(this.time * 2) % 3;
-        drawText(A, 'Z', cx + a.x + 6 + z * 2, gy + a.fy - 32 - z * 3, '#cfe0ff', 1);
+        drawText(A, 'Z', cx + a.x + 6 + z * 2, gy + a.fy - (spr ? 26 : 32) - z * 3, '#cfe0ff', 1, 'rgba(14,18,40,0.75)');
       }
     }
     // katten
     if (this.L.tier >= 0) drawCat(A, cx + this.cat.x, gy + (-4), this.cat.state, this.cat.frame, this.cat.dir, this.cat.kind);
-    if (this.cat.state === 'sleep') drawText(A, 'Z', cx + this.cat.x + 6, gy - 16 - (Math.floor(this.time * 2) % 3) * 2, '#cfe0ff', 1);
+    if (this.cat.state === 'sleep') drawText(A, 'Z', cx + this.cat.x + 6, gy - 16 - (Math.floor(this.time * 2) % 3) * 2, '#cfe0ff', 1, 'rgba(14,18,40,0.75)');
     // skorstensrök
     for (const s of this.smoke) {
       const k = s.life / s.max;
