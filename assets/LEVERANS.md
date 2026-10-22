@@ -119,3 +119,20 @@ Kända begränsningar:
 - `sitDrink`: muggen har inget synligt öra, och i ruta 2 är huvudet roterat 11°, så glasögonen är lite kantigare.
 - `read`: bara den närmre handen syns (den andra skyms av boken), och boken kan tas för ett block eller en platta. Rörelsen i ruta 1 är diskret.
 - `drawPoseSprite` lägger inte till personens id i rutindex, så alla i samma pose byter ruta samtidigt (gäller redan `char.sit` och `char.type`).
+
+## Karaktären: sover vid skrivbordet (handritat)
+
+| Remsa | Rutor | Nyckel | Innehåll |
+| --- | --- | --- | --- |
+| `assets/chars/sleep.png` (184x92) | 2 | `char.sleep` | sitter hopsjunken med ryggen i en båge, närmre underarmen platt på bordsskivan och huvudet liggande på den med ansiktet nedåt, ögat stängt och mössan mot skärmen. Ruta 1 andas: rygg och axel 2 px upp, huvudet 1 px |
+
+Enskilda rutor finns i `assets/pixellab/characters/dev/sleep-east-hand/`. Raderna 59–91 är identiska med `sit-east-hand/0.png`, så figuren hoppar inte från `char.sit`. Underarmens undersida ligger på rad 53, bordsskivans höjd (`fy-12`). Mössans knut slutar 1 scenpixel före skärmen i `desk2`.
+
+```json
+"char.sleep": { "file": "chars/sleep.png", "fw": 92, "fh": 92, "ax": 46, "ay": 82, "frames": 2, "scale": 0.42, "hatRow": 0.53, "note": "PixelLab-karaktär 77053f90, handritad sovande med huvudet mot bordet; samma underkropp som char.sit (Kör)" }
+```
+
+- **hatRow 0.53:** mössans lägsta pixel ligger på rad 48 (0,522 av rutan). Inga andra pixlar har mössans nyans, så alla värden mellan 0,522 och 0,532 fungerar. Med standardvärdet 0.3 färgbyts ingen av mössans 158 pixlar; med 0.53 färgbyts alla, och den som saknar mössa får hårfärg där.
+- **Takt:** procedurella sovandet andas på `sin(t*2.4)`, en andning per 2,6 sekunder. Samma tempo får man med `sleep: ['char.sleep', 0.75]` i `SEAT_SPRITE`.
+- **Färger:** 32 nyanser, alla redan i karaktären.
+- **Begränsningar:** bara den närmre armen syns. Det stängda ögat och de sneda glasögonen är 1 px-detaljer som försvinner i spelskala. zzz-bubblan ritas i dag vid `fy-32` till `fy-38`, ungefär 10–16 scenpixlar ovanför det sänkta huvudet; sänk den till runt `fy-26` för den här posen om den ser lösryckt ut.
