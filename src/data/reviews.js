@@ -136,9 +136,3 @@ export const NEUTRAL = {
     '-': { sv: ['Inget vi kommer att minnas om ett år.', 'Kompetent och ungefär lika spännande som en blankett.', 'Vi somnade två gånger. Vid skärmen.', 'Vi har sett bättre demoversioner.', 'Förpackningen fungerar utmärkt som underlägg.', 'Det här är spelets motsvarighet till en väntsal.', 'Studion kan bättre. Hoppas vi.'], en: ['Nothing we will remember in a year.', 'Competent, and about as exciting as a tax form.', 'We fell asleep twice. At the screen.', 'We have seen better demos.', 'The box makes an excellent coaster.', 'The gaming equivalent of a waiting room.', 'The studio can do better. We hope.'] },
   },
 };
-
-// Insiktsrader i rapporten (förklarar poängen för spelaren).
-export const FLAVOR_NEWS_HIT = {
-  sv: ['{studio} har fått en succé med {title}!', 'Kassaregistren ringer: {title} flyger ut ur butikerna.', '{title} är samtalsämnet i hela branschen.'],
-  en: ['{studio} has a hit with {title}!', 'Cash registers are ringing: {title} is flying off the shelves.', '{title} is the talk of the industry.'],
-};

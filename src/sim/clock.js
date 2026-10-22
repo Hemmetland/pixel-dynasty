@@ -111,6 +111,7 @@ export function checkAchievements(G) {
   for (const a of ACHIEVEMENTS) {
     if (!G.ach.includes(a.id) && a.check(G)) {
       G.ach.push(a.id);
+      note(G, 'news.ach', { name: a.name }, 'award', true);
       emit('achievement', a);
     }
   }

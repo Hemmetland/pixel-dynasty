@@ -3,7 +3,6 @@ import { yearOf, tOf } from './const.js';
 import { earn } from './studio.js';
 import { relUnitsTotal } from './market.js';
 import { note } from './news.js';
-import { L } from '../core/i18n.js';
 
 export const AWARD_CATS = [
   { id: 'goty', glyph: 'a_trophy', name: { sv: 'Årets spel', en: 'Game of the Year' }, reward: 1 },
@@ -57,10 +56,17 @@ export function runAwards(G) {
       earn(G, money, 'awards');
       G.awards.push({ year, cat: c.id, title: c.nominees[0].title });
     }
+    // krönikan (galan visas redan som prompt): en rad per år, med den främsta vinsten
+    if (wins.length) {
+      const top = wins[0];
+      const v = { title: top.nominees[0].title, cat: AWARD_CATS.find((a) => a.id === top.id).name, year, n: wins.length };
+      if (wins.length === 1) note(G, 'news.awardWin', v, 'award', true);
+      else note(G, 'news.awardWins', v, 'award', true);
+    }
     emit('awards', { wins: wins.length });
   } else {
     const w = cats[0].nominees[0];
-    note(G, 'news.awards', { year, title: L(w.title), studio: w.studio }, 'info');
+    note(G, 'news.awards', { year, title: w.title, studio: w.studio }, 'info');
   }
 }
 

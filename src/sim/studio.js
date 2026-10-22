@@ -2,6 +2,7 @@ import { clamp } from '../core/util.js';
 import { emit } from '../core/bus.js';
 import { yearOf, moneyScale } from './const.js';
 import { t } from '../core/i18n.js';
+import { note } from './news.js';
 
 // ── Kontor ───────────────────────────────────────────────────────
 // Att flytta till ett större kontor är en milstolpe. Utöver pengar (cost) krävs:
@@ -128,6 +129,7 @@ export function upgradeOffice(G) {
   const n = nextTier(G);
   spend(G, n.cost, 'office');
   G.office.tier = n.id;
+  note(G, 'news.office', { studio: G.studio, name: n.name }, 'good', true);
   emit('office', n);
   return true;
 }

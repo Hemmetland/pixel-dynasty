@@ -195,13 +195,22 @@ export const CLIENTS = [
   { sv: 'Pizzeria Napoli', en: 'Pizzeria Napoli' }, { sv: 'Elektronik-Expressen', en: 'Electronics Express' },
   { sv: 'Rymdmuseet', en: 'The Space Museum' }, { sv: 'Gymnasieskolan', en: 'The High School' },
 ];
+// Uppdrag med tidsfönster (y0–y1, år). Ett kontrakt sparar indexet, så nya uppdrag läggs alltid sist.
 export const BRIEFS = [
   { sv: 'Ett litet reklamspel till kampanjen', en: 'A small advergame for a campaign' },
   { sv: 'Utbildningsspel om multiplikation', en: 'Educational game about multiplication' },
   { sv: 'Demo att visa på mässan', en: 'A demo for the trade fair' },
-  { sv: 'Skärmsläckare med interaktivt spel', en: 'Screensaver with an interactive game' },
+  { sv: 'Skärmsläckare med interaktivt spel', en: 'Screensaver with an interactive game', y0: 1990, y1: 2005 },
   { sv: 'Quiz-spel för personalfesten', en: 'Quiz game for the staff party' },
-  { sv: 'Minispel till vår webbplats', en: 'Mini-game for our website' },
+  { sv: 'Minispel till vår webbplats', en: 'Mini-game for our website', y0: 1996 },
   { sv: 'Port av ett klassiskt brädspel', en: 'Port of a classic board game' },
-  { sv: 'Interaktiv instruktionsfilm', en: 'Interactive instruction video' },
+  { sv: 'Interaktiv instruktionsfilm', en: 'Interactive instruction video', y0: 1988, y1: 2008 },
+  { sv: 'Arkadspel till bowlinghallen', en: 'Arcade game for the bowling alley', y0: 1980, y1: 1993 },
+  { sv: 'Frågesport till text-tv', en: 'Teletext quiz game', y0: 1983, y1: 1999 },
+  { sv: 'Edutainment-cd till bokförlaget', en: 'Edutainment CD for a publisher', y0: 1993, y1: 2003 },
+  { sv: 'Flashspel till kampanjsajten', en: 'Flash game for a campaign site', y0: 2000, y1: 2011 },
+  { sv: 'Spel till sociala medier', en: 'Social media game', y0: 2008, y1: 2016 },
+  { sv: 'App till kundklubben', en: 'App for the loyalty club', y0: 2009 },
+  { sv: 'VR-demo till mässan', en: 'VR demo for the trade fair', y0: 2016 },
 ];
+export const briefOpen = (b, year) => year >= (b.y0 || 0) && year <= (b.y1 || 9999);

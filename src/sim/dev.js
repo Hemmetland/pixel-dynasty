@@ -264,6 +264,7 @@ export function cancelProject(G) {
 }
 
 // ── Utgivning ────────────────────────────────────────────────────
+const HIT_NEWS = ['news.hit1', 'news.hit2', 'news.hit3'];
 export function releaseGame(G) {
   const J = G.job;
   if (!J || J.state !== 'report') return null;
@@ -311,6 +312,13 @@ export function releaseGame(G) {
   }
   if (J.live) launchLive(G, game);
   else if (J.expansionOf) releaseExpansion(G, game);
+  // krönikan: släppet (betygsrapporten visas redan, så ingen toast). Expansioner har sin egen nyhet.
+  if (!J.expansionOf) {
+    const v = { title: game.title, studio: G.studio, v: game.score.toFixed(1) };
+    if (game.score >= 8) note(G, HIT_NEWS[game.id % HIT_NEWS.length], v, 'good', true);
+    else if (game.score < 5) note(G, 'news.flop', v, 'bad', true);
+    else note(G, 'news.release', v, 'info', true);
+  }
   // erfarenhet till teamet
   for (const w of workers(G)) {
     const skill = ['design', 'tech', 'speed', 'research'][rint(G, 0, 3)];

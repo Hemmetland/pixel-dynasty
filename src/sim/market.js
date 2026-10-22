@@ -9,6 +9,7 @@ import { SCOPES, yearOf, yfOf, priceOf, WEEKS_PER_MONTH } from './const.js';
 import { unitRev, curveFor } from './sales.js';
 import { SALES_TAIL } from './tempo.js';
 import { RESEARCH } from '../data/research.js';
+import { note } from './news.js';
 
 export function makeCompetitors(G) {
   const picks = shuffle(G, COMPETITORS).slice(0, 10);
@@ -88,6 +89,8 @@ export function releaseComp(G, c) {
   c.nextT = G.t + Math.round(rint(G, 36, 90) / (0.6 + strength * 0.6) / Math.min(1.8, 1 + (year - 1980) / 60));
   c.next = rollNext(G, yearOf(c.nextT));
   c.strength = clamp(c.strength + c.growth * (score >= mean ? 1 : 0.4) - 0.004, 0.45, 1.7);
+  // krönikan: konkurrenternas storspel (samma gräns som toasten i gränssnittet)
+  if (score >= 8.6) note(G, 'news.rivalHit', { studio: c.name, title, v: score.toFixed(1) }, 'info', true);
   emit('compRelease', rel);
   return rel;
 }

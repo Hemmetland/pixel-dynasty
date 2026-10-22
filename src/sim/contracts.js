@@ -1,6 +1,6 @@
 import { rnd, rint, rrange, pick } from '../core/rng.js';
 import { emit } from '../core/bus.js';
-import { CLIENTS, BRIEFS } from '../data/events.js';
+import { CLIENTS, BRIEFS, briefOpen } from '../data/events.js';
 import { PLATFORM, techMult } from '../data/platforms.js';
 import { SCOPES, yearOf, moneyScale, TICKS_PER_WEEK } from './const.js';
 import { earn } from './studio.js';
@@ -16,10 +16,14 @@ export function makeContract(G) {
   const reqD = Math.round(par * ticks * rrange(G, 0.55, 0.85));
   const reqT = Math.round(par * ticks * rrange(G, 0.55, 0.85));
   const ppp = 11 * moneyScale(year);
+  // uppdrag som passar året och en uppdragsgivare som inte redan har ett erbjudande ute (samma antal slumpdrag som förr)
+  const briefs = BRIEFS.map((b, i) => i).filter((i) => briefOpen(BRIEFS[i], year));
+  const busy = new Set((G.contracts || []).map((c) => c.client));
+  const clients = CLIENTS.map((c, i) => i).filter((i) => !busy.has(i));
   return {
     id: G.uid++,
-    client: rint(G, 0, CLIENTS.length - 1),
-    brief: rint(G, 0, BRIEFS.length - 1),
+    client: clients[rint(G, 0, clients.length - 1)],
+    brief: briefs[rint(G, 0, briefs.length - 1)],
     weeks, reqD, reqT,
     reward: Math.round(((reqD + reqT) * ppp * rrange(G, 0.9, 1.35)) / 50) * 50,
     expires: G.t + rint(G, 6, 14),
