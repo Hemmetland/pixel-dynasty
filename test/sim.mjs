@@ -21,6 +21,8 @@ const mid = args.includes('--mid');
 // --mmo: gör onlinespel när serverrummet finns, håller dem vid liv med uppdateringar och expansioner
 const mmo = args.includes('--mmo');
 const events = mmo && !args.includes('--no-events');
+// --f2p: gör onlinespelen till gratisspel från 2010
+const f2p = mmo && args.includes('--f2p');
 // --bd: skriv ut årets pengar per kategori (för balansarbete)
 const bd = args.includes('--bd');
 const acc = {};
@@ -160,9 +162,10 @@ function manage(G) {
   // onlinespel: innehållsuppdatering när innehållet börjar bli gammalt, och servrar när det blir fullt
   if (mmo) for (const g of S.liveGames(G)) {
     if (g.live.fresh < 50 && !g.live.patch && G.money > S.livePatchCost(G, g) * 3) S.startLivePatch(G, g.id);
+    if (f2p && year >= 2010 && S.canGoF2P(G, g.live)) S.goF2P(G, g.id);
     // evenemang när en konkurrent drar spelare eller innehållet börjar bli gammalt (om --events)
     if (events && !S.eventReadyIn(G, g.live) && (S.rivalFactor(G, g) < 0.92) && G.money > S.liveEventCost(G, g) * 4) S.startLiveEvent(G, g.id);
-    if (S.liveGames(G).reduce((a, x) => a + x.live.subs, 0) > S.serverCap(G) * 0.85 && S.facLevel(G, 'server') < 3 && G.money > S.facCost(G, 'server') * 2) S.buildFacility(G, 'server');
+    if (S.liveLoad(G) > S.serverCap(G) * 0.85 && S.facLevel(G, 'server') < 3 && G.money > S.facCost(G, 'server') * 2) S.buildFacility(G, 'server');
   }
   if (mmo && S.liveUnlocked(G) && S.facLevel(G, 'server') < 1 && G.money > S.facCost(G, 'server') * 3) S.buildFacility(G, 'server');
   // lån vid behov
@@ -217,7 +220,7 @@ if (args.includes('--legacy')) {
 if (args.includes('--live')) {
   for (const g of G.games.filter((x) => x.live)) {
     const L = g.live;
-    console.log(`live ${S.yearOf(L.t0)}${L.closed ? '-' + S.yearOf(L.closed) : ''} ${g.title.en || g.title} score ${g.score} peak ${Math.round(L.peak).toLocaleString()} subs ${Math.round(L.subs).toLocaleString()} exps ${L.exps.length} events ${L.events || 0} evcost $${Math.round((L.evCost || 0) / 1e6)}M rev $${Math.round(L.rev / 1e6)}M cost $${Math.round(L.cost / 1e6)}M`);
+    console.log(`live ${S.yearOf(L.t0)}${L.closed ? '-' + S.yearOf(L.closed) : ''} ${g.title.en || g.title} score ${g.score}${L.model === 'f2p' ? ' f2p' : ''} peak ${Math.round(L.peak).toLocaleString()} subs ${Math.round(L.subs).toLocaleString()} exps ${L.exps.length} events ${L.events || 0} evcost $${Math.round((L.evCost || 0) / 1e6)}M rev $${Math.round(L.rev / 1e6)}M cost $${Math.round(L.cost / 1e6)}M`);
   }
   for (const m of (G.market.mmos || [])) console.log(`rival ${S.yearOf(m.t0)}${m.closed ? '-' + S.yearOf(m.closed) : ''} ${m.studio} ${m.title.en} ${m.genre} score ${m.score}`);
 }

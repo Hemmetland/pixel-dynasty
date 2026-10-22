@@ -2,6 +2,8 @@
 // (Standard, Pro, Max) så länge servrarna är igång. Spelarbasen följer en målnivå som beror på spelets betyg,
 // hur färskt innehållet är, priserna, driften och hur gammalt spelet är. Innehållsuppdateringar och expansioner
 // (egna projekt) håller det vid liv, och evenemang ger en kort knuff. Konkurrenterna släpper egna MMO som drar spelare.
+// Från 2008 kan ett onlinespel bli gratis att spela (L.model = 'f2p'): abonnemangen ersätts av en butik i spelet, med
+// många fler spelare som var för sig betalar mindre. Abonnemang tappar sakta i lockelse efter 2009.
 // Kräver forskningen Serverrum och att serverrummet är byggt.
 import { clamp } from '../core/util.js';
 import { chance, hashStr } from '../core/rng.js';
@@ -44,6 +46,32 @@ export const EVENT_GAP = 16;
 const EVENT_FRESH = 6;
 const EVENT_LIFT = 1.08;
 
+// Gratisspel: från F2P_YEAR. Spelarpotentialen × F2P_POT; butikens nivåer ger intäkt per spelare och månad (andel av
+// standardpriset) och påverkar hur många som stannar. En gratisspelare belastar servrarna och kostar som F2P_LOAD av en
+// prenumerant, och räknas som F2P_PAY av en betalande när kostnader och expansionsköp räknas. En aggressiv butik ger mer
+// direkt men spelarna sjunker sakta mot en mycket lägre nivå.
+export const F2P_YEAR = 2008;
+const F2P_POT = 4.5;
+const F2P_LOAD = 0.3;
+const F2P_PAY = 0.25;
+export const SHOP = [
+  { arpu: 0.2, mult: 1.15 },
+  { arpu: 0.3, mult: 1 },
+  { arpu: 0.44, mult: 0.62 },
+];
+export const isF2P = (L) => L.model === 'f2p';
+// Spelare omräknade till betalande (för kostnader och köp) och till serverlast
+export const payBase = (L) => L.subs * (isF2P(L) ? F2P_PAY : 1);
+const loadOf = (L) => L.subs * (isF2P(L) ? F2P_LOAD : 1);
+export const liveLoad = (G) => liveGames(G).reduce((a, g) => a + loadOf(g.live), 0);
+// Abonnemang lockar lite mindre för varje år efter 2009 (−2 % per år, som lägst 80 %)
+const subEra = (year) => clamp(1 - 0.02 * (year - 2009), 0.8, 1);
+// Intäkt per spelare och månad
+export function liveArpu(G, L) {
+  if (isF2P(L)) return subPrices(yearOf(G.t))[0] * SHOP[L.shop | 0].arpu;
+  return tierMix(G, L).arpu;
+}
+
 const fmtN = (n) => Math.round(n).toLocaleString('en-US').replace(/,/g, ' ');
 // Spelets historia för spelardiagrammet: evenemang, klar uppdatering och serveravbrott (expansionerna finns i L.exps).
 // Saknas i sparningar från före diagrammarkörerna och skapas då vid första händelsen.
@@ -82,7 +110,7 @@ export function serverCap(G) {
   return Math.round(facLevel(G, 'server') * 150000 * Math.pow(1.12, Math.max(0, year - 1997)) * (G.research.done.includes('f_cloud') ? 2 : 1));
 }
 // Driftkostnad per spelare och månad
-export const costPerSub = (G, L) => 0.28 * subPrices(yearOf(G.t))[0] * OPS[L.ops].cost;
+export const costPerSub = (G, L) => 0.28 * subPrices(yearOf(G.t))[0] * OPS[L.ops].cost * (isF2P(L) ? F2P_LOAD : 1);
 
 // Vilken spelarbas spelet drar mot just nu
 export function liveTarget(G, g) {
@@ -90,7 +118,7 @@ export function liveTarget(G, g) {
   const years = Math.max(0, G.t - L.t0) / WEEKS_PER_YEAR;
   const age = Math.exp(-0.06 * years);
   const fresh = 0.4 + (0.6 * L.fresh) / 100;
-  const price = Math.exp(-PRICE_ELAST * (tierMix(G, L).k - 1));
+  const price = isF2P(L) ? F2P_POT * SHOP[L.shop | 0].mult : Math.exp(-PRICE_ELAST * (tierMix(G, L).k - 1)) * subEra(yearOf(G.t));
   const ev = eventOn(G, L) ? EVENT_LIFT : 1;
   return L.pot * age * fresh * price * OPS[L.ops].mult * ev * rivalFactor(G, g);
 }
@@ -98,7 +126,7 @@ export function liveTarget(G, g) {
 export function liveMonth(G, g) {
   const L = g.live;
   if (!L || L.closed) return { rev: 0, cost: 0 };
-  return { rev: L.subs * tierMix(G, L).arpu, cost: L.subs * costPerSub(G, L) };
+  return { rev: L.subs * liveArpu(G, L), cost: L.subs * costPerSub(G, L) };
 }
 export const liveCostMonth = (G) => liveGames(G).reduce((a, g) => a + liveMonth(G, g).cost, 0);
 
@@ -126,7 +154,7 @@ export function releaseExpansion(G, game) {
   }
   const L = base.live;
   const buy = clamp(0.3 + 0.1 * (game.score - 6), 0.1, 0.7);
-  game.total = (L.subs * buy + (game.total / game.priceAt) * 0.15) * game.priceAt * 0.75;
+  game.total = (payBase(L) * buy + (game.total / game.priceAt) * 0.15) * game.priceAt * 0.75;
   L.fresh = 100;
   L.pot *= 1 + clamp(0.06 * (game.score - 5.5), -0.1, 0.25);
   L.exps.push(game.id);
@@ -200,7 +228,7 @@ export function liveWeek(G) {
   const games = liveGames(G);
   if (!games.length) return;
   const cap = serverCap(G);
-  const total = games.reduce((a, g) => a + g.live.subs, 0);
+  const total = liveLoad(G);
   const over = cap > 0 ? Math.max(0, total / cap - 1) : 1;
   let weekRev = 0;
   for (const g of games) {
@@ -226,11 +254,10 @@ export function liveWeek(G) {
       else note(G, 'live.news.eventFlat', { title: g.title }, 'info');
       L.ev = null;
     }
-    const mix = tierMix(G, L);
-    const rev = (L.subs * mix.arpu) / WEEKS_PER_MONTH;
+    const rev = (L.subs * liveArpu(G, L)) / WEEKS_PER_MONTH;
     const cost = (L.subs * costPerSub(G, L)) / WEEKS_PER_MONTH;
     if (rev > 0) {
-      earn(G, rev, 'subs');
+      earn(G, rev, isF2P(L) ? 'shop' : 'subs');
       G.stats.revenue += rev;
       L.rev += rev;
       weekRev += rev;
@@ -240,7 +267,7 @@ export function liveWeek(G) {
       L.cost += cost;
     }
     // nöjda spelare blir fans, ett dåligt spel tappar dem
-    G.fans = Math.max(0, G.fans + L.subs * 0.00025 * (g.score - 5));
+    G.fans = Math.max(0, G.fans + payBase(L) * 0.00025 * (g.score - 5));
     if (L.subs > 500 && chance(G, OPS[L.ops].outage + over * 0.08)) {
       L.subs *= 0.96;
       L.fresh = Math.max(0, L.fresh - 4);
@@ -251,7 +278,7 @@ export function liveWeek(G) {
     for (const m of MILESTONES) {
       if (L.subs >= m && L.ms < m) {
         L.ms = m;
-        note(G, 'live.news.subs', { title: g.title, n: fmtN(m) }, 'good');
+        note(G, isF2P(L) ? 'live.news.players' : 'live.news.subs', { title: g.title, n: fmtN(m) }, 'good');
       }
     }
     if (G.t % WEEKS_PER_MONTH === 0) {
@@ -270,7 +297,7 @@ const liveOf = (G, id) => {
 // Innehållsuppdatering: ungefär en halv månads standardintäkter plus en grundkostnad, klar efter PATCH_WEEKS veckor
 export function livePatchCost(G, g) {
   const year = yearOf(G.t);
-  return Math.round((g.live.subs * subPrices(year)[0] * 0.5 + 20000 * moneyScale(year)) / 100) * 100;
+  return Math.round((payBase(g.live) * subPrices(year)[0] * 0.5 + 20000 * moneyScale(year)) / 100) * 100;
 }
 export function startLivePatch(G, id) {
   const g = liveOf(G, id);
@@ -285,7 +312,7 @@ export function startLivePatch(G, id) {
 // Evenemang: ungefär en åttondel av en månads standardintäkter plus en grundkostnad, startar direkt
 export function liveEventCost(G, g) {
   const year = yearOf(G.t);
-  return Math.round((g.live.subs * subPrices(year)[0] * 0.12 + 8000 * moneyScale(year)) / 100) * 100;
+  return Math.round((payBase(g.live) * subPrices(year)[0] * 0.12 + 8000 * moneyScale(year)) / 100) * 100;
 }
 // Veckor tills nästa evenemang kan starta (0 = nu)
 export const eventReadyIn = (G, L) => (L.evT == null ? 0 : Math.max(0, L.evT + EVENT_GAP - G.t));
@@ -317,6 +344,29 @@ export function setLiveOps(G, id, ops) {
   const g = liveOf(G, id);
   if (!g || !OPS[ops]) return false;
   g.live.ops = ops;
+  return true;
+}
+// Gör spelet gratis att spela (går inte att ångra): butiken ersätter abonnemangen, nyheten lockar många nya spelare
+// och innehållet känns lite fräschare. En del gamla prenumeranter tycker att spelet har blivit billigare.
+export const canGoF2P = (G, L) => !!L && !L.closed && !isF2P(L) && yearOf(G.t) >= F2P_YEAR;
+export function goF2P(G, id) {
+  const g = liveOf(G, id);
+  if (!g || !canGoF2P(G, g.live)) return false;
+  const L = g.live;
+  L.model = 'f2p';
+  L.shop = 1;
+  L.f2pT = G.t;
+  L.fresh = Math.min(100, L.fresh + 10);
+  L.boost = Math.max(L.boost, G.t + 12);
+  mark(G, L, 'f2p');
+  G.fans = Math.max(0, G.fans - G.fans * 0.01);
+  note(G, 'live.news.f2p', { title: g.title }, 'good');
+  return true;
+}
+export function setLiveShop(G, id, i) {
+  const g = liveOf(G, id);
+  if (!g || !isF2P(g.live) || !SHOP[i]) return false;
+  g.live.shop = i;
   return true;
 }
 // Stäng servrarna: intäkterna och kostnaderna upphör, och några av spelarna blir besvikna.

@@ -112,7 +112,7 @@ ok(true, 'alla händelser körda');
   GL.games.push({ id: 7700, title: 'Online', t: GL.t - 20, score: 8, weekly: [1], total: 1e6, priceAt: 50, topic: 'fantasy', genre: 'rpg', platform: 'pc', scope: 'aaa', audience: 'everyone', revenue: 0, units: 0, insights: [], reviews: [], flags: [] });
   S.launchLive(GL, GL.games[GL.games.length - 1]);
   const lv = GL.games[GL.games.length - 1].live;
-  lv.subs = 200000; lv.fresh = 50; lv.boost = GL.t + 4;
+  lv.subs = 200000; lv.pot = 250000; lv.fresh = 50; lv.boost = GL.t + 4;
   const liveEvs = EVENTS.filter((e) => (e.needs || []).includes('live'));
   ok(liveEvs.length >= 6 && liveEvs.every((e) => e.when(GL)), 'onlinespelets händelser kan dras med ett stort onlinespel');
   ok(liveEvs.every((e) => !e.when(G)), 'onlinespelets händelser dras inte utan onlinespel');
@@ -126,6 +126,22 @@ ok(true, 'alla händelser körda');
     if (l2.subs !== before[0] || l2.fresh !== before[1]) moved++;
   });
   ok(moved >= 10, 'onlinespelets händelser ändrar spelare eller innehåll (' + moved + ' val)');
+  // gratisspel: först från 2008, går inte att ångra, butiken styr intäkten per spelare
+  const G3f = JSON.parse(JSON.stringify(GL));
+  G3f.office.fac.server = { lvl: 3, slot: 0 };
+  const gf = G3f.games[G3f.games.length - 1];
+  G3f.t = 48 * 27;
+  ok(S.goF2P(G3f, gf.id) === false && gf.live.model !== 'f2p', 'gratisspel går inte före 2008');
+  G3f.t = 48 * 30;
+  const subRev = S.liveMonth(G3f, gf).rev;
+  const subTarget = S.liveTarget(G3f, gf);
+  ok(S.goF2P(G3f, gf.id) === true && S.isF2P(gf.live) && !S.canGoF2P(G3f, gf.live), 'gratisspel från 2010, och bara en gång');
+  ok(S.liveTarget(G3f, gf) > 3 * subTarget && S.liveMonth(G3f, gf).rev < subRev, 'gratisspel: fler spelare som mål, mindre per spelare');
+  const arpu = [0, 1, 2].map((i) => (S.setLiveShop(G3f, gf.id, i), S.liveArpu(G3f, gf.live)));
+  ok(arpu[0] < arpu[1] && arpu[1] < arpu[2], 'butikens nivåer ger stigande intäkt per spelare');
+  S.setLiveShop(G3f, gf.id, 1);
+  for (let i = 0; i < 48; i++) S.liveWeek(G3f), G3f.t++;
+  ok(gf.live.subs > 300000 && Number.isFinite(G3f.money), 'gratisspelet växer under ett år (' + Math.round(gf.live.subs) + ' spelare)');
 }
 // bailout + konkurs
 const G3 = S.newGame({ studio: 'B', seed: 3 }); S.makeCompetitors(G3); S.initWorld(G3);

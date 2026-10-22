@@ -1,7 +1,7 @@
 // Händelser. fx-nycklar: money (skalas med år), rp, fans, hype, hypeNext, bugs, bugsFrac, D, T, mood,
 // crunch (veckor), salesMult (för nästa spel), loseStaff, raiseRandom, res (text efteråt), rand: [[sannolikhet, fx], …]
 // För onlinespel (needs 'live'): subs (andel av spelarna, ±), fresh (innehållets färskhet, poäng) och
-// subsMoney (pengar som andel av en månads standardabonnemang för spelets alla spelare, ±).
+// subsMoney (pengar som andel av en månads standardabonnemang för spelets betalande spelare, ±).
 // kind: 'studio' (månadsslump) eller 'dev' (under utveckling)
 // needs (valfritt): 'staff', 'game', 'oldGame' eller 'live' (det största onlinespelet som är igång) väljs när händelsen
 // dras och fylls i som {name} och {title} i texterna.

@@ -7,7 +7,7 @@ import { SCOPE_TEMPO } from './tempo.js';
 import { earn, spend } from './studio.js';
 import { parPerTick } from './score.js';
 import { note } from './news.js';
-import { subPrices } from './live.js';
+import { subPrices, payBase } from './live.js';
 
 // Det största onlinespelet som är igång, eller null
 const liveTop = (G) => G.games.reduce((a, g) => (g.live && !g.live.closed && (!a || g.live.subs > a.live.subs) ? g : a), null);
@@ -130,7 +130,7 @@ export function applyFx(G, fx, out = [], ctx = {}, dry = false) {
     const lg = own && own.live && !own.live.closed ? own : liveTop(G);
     const lv = lg && lg.live;
     if (lv && fx.subsMoney) {
-      const v = Math.round((fx.subsMoney * lv.subs * subPrices(year)[0]) / 10) * 10;
+      const v = Math.round((fx.subsMoney * payBase(lv) * subPrices(year)[0]) / 10) * 10;
       if (!dry) {
         if (v > 0) earn(G, v, 'events');
         else spend(G, -v, 'events');
