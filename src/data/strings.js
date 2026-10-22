@@ -477,6 +477,7 @@ export const STRINGS = {
   'wiz.fmtLive': ['Onlinespel (MMO)', 'Online game (MMO)'],
   'wiz.fmtHelp': ['Ett onlinespel lever vidare efter släppet på abonnemang i tre nivåer. Det tar 25 % längre tid att göra, måste vara Stort eller AAA och kostar serverdrift per spelare. Håll det levande med uppdateringar och expansioner.', 'An online game lives on after release through subscriptions in three tiers. It takes 25% longer to make, must be Large or AAA and costs server time per player. Keep it alive with updates and expansions.'],
   'wiz.fmtNeedServer': ['Bygg serverrummet i studion först.', 'Build the server room in the studio first.'],
+  'wiz.fmtNeedScope': ['Forska fram Stora produktioner först: ett onlinespel måste vara Stort eller AAA.', 'Research Big Productions first: an online game must be Large or AAA.'],
   'wiz.expansion': ['Expansion', 'Expansion'],
   'wiz.expHelp': ['En expansion till ett onlinespel som är igång: samma värld, plattform och målgrupp. Spelarna köper den, innehållet blir färskt och nya spelare lockas.', 'An expansion for a running online game: same world, platform and audience. Players buy it, the content feels fresh and new players join.'],
   'wiz.expOf': ['Expansion till {title}', 'Expansion for {title}'],

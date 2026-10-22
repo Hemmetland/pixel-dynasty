@@ -13,7 +13,7 @@ import { buyLicense, licenseCost } from '../sim/actions.js';
 import { randomTitle, trendWeeksLeft } from '../sim/market.js';
 import { focusHTML, bindFocus } from './focus.js';
 import { lang } from '../core/i18n.js';
-import { clamp } from '../core/util.js';
+import { clamp, fmtNum } from '../core/util.js';
 import { workers } from '../sim/people.js';
 import { liveUnlocked, canGoLive, liveGames, LIVE_SCOPES, EXP_SCOPES, LIVE_DEV } from '../sim/live.js';
 import { TITLE_PARTS } from '../data/names.js';
@@ -113,12 +113,15 @@ function expansionTitle(g) {
 // Format (vanligt spel eller onlinespel) och expansioner till onlinespel som är igång. Syns när serverforskningen är klar.
 function formatHTML(G) {
   if (!liveUnlocked(G)) return '';
-  const can = canGoLive(G);
+  // onlinespel kräver serverrummet och minst en av storlekarna Stor/AAA
+  const server = canGoLive(G);
+  const scopeOk = LIVE_SCOPES.some((id) => G.u.scopes.includes(id));
+  const can = server && scopeOk;
   const lives = liveGames(G);
   const fmt = `<div class="wz-sec"><div class="lbl">${t('wiz.format')}</div><div class="seg"><button class="${!W.live && !W.expansionOf ? 'on' : ''}" data-act="w-fmt" data-id="game">${t('wiz.fmtGame')}</button><button class="${W.live ? 'on' : ''}" data-act="w-fmt" data-id="live" ${can ? '' : 'disabled'}>${icon('globe')}${t('wiz.fmtLive')}</button></div>
-    <p class="hint" style="margin-top:6px">${can ? t('wiz.fmtHelp') : `${icon('lock')} ${t('wiz.fmtNeedServer')}`}</p></div>`;
+    <p class="hint" style="margin-top:6px">${can ? t('wiz.fmtHelp') : `${icon('lock')} ${t(server ? 'wiz.fmtNeedScope' : 'wiz.fmtNeedServer')}`}</p></div>`;
   const exp = lives.length
-    ? `<div class="wz-sec"><div class="lbl">${t('wiz.expansion')}</div><div class="row wrap">${lives.map((g) => `<button class="chip btnchip ${W.expansionOf === g.id ? 'on' : ''}" data-act="w-exp" data-id="${g.id}">${icon('globe')}${esc(g.title)}<span class="muted">${Math.round(g.live.subs).toLocaleString('sv-SE')}</span></button>`).join('')}</div><p class="hint" style="margin-top:6px">${t('wiz.expHelp')}</p></div>`
+    ? `<div class="wz-sec"><div class="lbl">${t('wiz.expansion')}</div><div class="row wrap">${lives.map((g) => `<button class="chip btnchip ${W.expansionOf === g.id ? 'on' : ''}" data-act="w-exp" data-id="${g.id}">${icon('globe')}${esc(g.title)}<span class="muted">${fmtNum(g.live.subs)}</span></button>`).join('')}</div><p class="hint" style="margin-top:6px">${t('wiz.expHelp')}</p></div>`
     : '';
   return fmt + exp;
 }
@@ -453,7 +456,7 @@ act('w-seq', (el) => {
 });
 act('w-fmt', (el) => {
   const G = UI.app.G;
-  W.live = el.dataset.id === 'live' && canGoLive(G);
+  W.live = el.dataset.id === 'live' && canGoLive(G) && LIVE_SCOPES.some((id) => G.u.scopes.includes(id));
   if (W.expansionOf) {
     W.expansionOf = null;
     if (!W.titleAuto) W.title = '';

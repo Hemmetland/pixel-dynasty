@@ -141,6 +141,8 @@ img.px { display: block; flex: none; image-rendering: pixelated; }
 .ic.px { align-items: center; justify-content: center; }
 .dk:hover .ic.px { transform: none; }
 .dk.on .ic.px img { filter: drop-shadow(0 0 5px rgba(77, 225, 208, 0.7)); }
+/* pixelikonen fyller knappen: pricken flyttas ut mot hörnet så att den inte täcker motivet */
+.dk:has(.ic.px) .dot { right: 10px; top: 3px; }
 @keyframes glowp { 0%, 100% { box-shadow: 0 10px 26px -8px rgba(77, 225, 208, 0.75), 0 0 0 0 rgba(77, 225, 208, 0.55); } 50% { box-shadow: 0 10px 26px -8px rgba(77, 225, 208, 0.75), 0 0 0 9px rgba(77, 225, 208, 0); } }
 @keyframes pulse { 0%, 100% { transform: scale(1); } 50% { transform: scale(1.25); } }
 
@@ -755,6 +757,8 @@ svg.lchart .axt { font: 600 10px var(--font); fill: var(--faint); }
   .dk .ic { width: 22px; height: 22px; }
   .dk .dot { right: 22%; }
   .dk .badge { left: calc(50% + 4px); right: auto; top: 2px; min-width: 16px; height: 16px; padding: 0 4px; font-size: 10px; line-height: 16px; }
+  .dk:has(.ic.px) .dot { right: 3px; top: 3px; width: 7px; height: 7px; }
+  .dk:has(.ic.px) .badge { left: auto; right: 1px; top: 1px; }
   .dk:hover { transform: none; }
   #overlay { padding: 56px 6px 6px; }
   .win-head { padding: 10px 10px 8px 14px; flex-wrap: wrap; row-gap: 8px; }
