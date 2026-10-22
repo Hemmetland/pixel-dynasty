@@ -1,7 +1,7 @@
 import { emit } from '../core/bus.js';
 import { ACHIEVEMENTS } from '../data/achievements.js';
 import { PLATFORMS, launchTime } from '../data/platforms.js';
-import { dateOf, yearOf, TICKS_PER_WEEK, WEEKS_PER_MONTH } from './const.js';
+import { dateOf, yearOf, TICKS_PER_WEEK, WEEKS_PER_MONTH, WEEKS_PER_YEAR, START_YEAR } from './const.js';
 import { devTick } from './dev.js';
 import { researchTick } from './research.js';
 import { contractTick, refreshContracts } from './contracts.js';
@@ -43,10 +43,9 @@ function weekly(G) {
   updateMood(G);
   rollDevEvent(G);
   const d = dateOf(G.t);
-  // plattformsnyheter
+  // plattformsnyheter, en gång: veckan då plattformen kommer ut (lanseringen ligger alltid på en hel vecka)
   for (const p of PLATFORMS) {
-    const lt = launchTime(p);
-    if (d.yf >= lt && d.yf - lt < 1 / 48 + 1e-9 && p.id !== 'pc') note(G, 'news.platform', { name: p.name, maker: p.maker }, 'platform');
+    if (p.id !== 'pc' && G.t === Math.round((launchTime(p) - START_YEAR) * WEEKS_PER_YEAR)) note(G, 'news.platform', { name: p.name, maker: p.maker }, 'platform');
   }
   if (d.month === 5 && d.week === 1) expoOffer(G);
   if (d.month === 11 && d.week === 3) runAwards(G);
