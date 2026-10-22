@@ -263,6 +263,7 @@ function eventPrompt(app, G, p, finish) {
   const ev = EV[p.ev];
   if (!ev) return finish();
   const vars = eventVars(G, p);
+  const live = (ev.needs || []).includes('live');
   const choices = ev.choices
     .map((c, i) => {
       const chips = previewChips(G, c.fx, p);
@@ -270,7 +271,7 @@ function eventPrompt(app, G, p, finish) {
     })
     .join('');
   UI.modal(`
-    <div class="win-head"><div class="wi" style="--wc:var(--warn)">${icon(ev.kind === 'dev' ? 'wrench' : 'mail')}</div><h2>${L(ev.title)}<div class="sub">${t(ev.kind === 'dev' ? 'ev.dev' : 'ev.studio')}</div></h2></div>
+    <div class="win-head"><div class="wi" style="--wc:${live ? 'var(--good)' : 'var(--warn)'}">${icon(ev.kind === 'dev' ? 'wrench' : live ? 'globe' : 'mail')}</div><h2>${L(ev.title)}<div class="sub">${t(ev.kind === 'dev' ? 'ev.dev' : live ? 'ev.live' : 'ev.studio')}</div></h2></div>
     <div class="win-body" id="ev-body"><p class="evtext">${evText(ev.body, vars)}</p><div class="choices">${choices}</div></div>`,
     (el) => {
       act('ev-pick', (b) => {
@@ -292,9 +293,9 @@ function eventPrompt(app, G, p, finish) {
   );
   sfx.play('notify');
 }
-const FX_TIP = { money: 'hud.money', rp: 'hud.rp', fans: 'hud.fans', hype: 'stat.hype', design: 'stat.design', tech: 'stat.tech', bugs: 'stat.bugs', mood: 'ev.fx.mood', sales: 'ev.fx.sales', staff: 'ev.fx.staff', raise: 'ev.fx.raiseTip', risk: 'ev.fx.riskTip' };
+const FX_TIP = { money: 'hud.money', rp: 'hud.rp', fans: 'hud.fans', hype: 'stat.hype', design: 'stat.design', tech: 'stat.tech', bugs: 'stat.bugs', mood: 'ev.fx.mood', sales: 'ev.fx.sales', staff: 'ev.fx.staff', raise: 'ev.fx.raiseTip', risk: 'ev.fx.riskTip', subs: 'ev.fx.subs', fresh: 'ev.fx.fresh' };
 function fxChip(o) {
-  const map = { money: ['money', 'var(--money)'], rp: ['flask', 'var(--rp)'], fans: ['heart', 'var(--fans)'], hype: ['fire', 'var(--hot)'], design: ['bulb', 'var(--design)'], tech: ['cpu', 'var(--tech)'], bugs: ['bug', 'var(--bug)'], mood: ['coffee', 'var(--warn)'], sales: ['chart', 'var(--accent)'], staff: ['team', 'var(--bug)'], raise: ['money', 'var(--warn)'], crunch: ['hourglass', 'var(--warn)'], risk: ['dice', 'var(--accent)'] };
+  const map = { money: ['money', 'var(--money)'], rp: ['flask', 'var(--rp)'], fans: ['heart', 'var(--fans)'], hype: ['fire', 'var(--hot)'], design: ['bulb', 'var(--design)'], tech: ['cpu', 'var(--tech)'], bugs: ['bug', 'var(--bug)'], mood: ['coffee', 'var(--warn)'], sales: ['chart', 'var(--accent)'], staff: ['team', 'var(--bug)'], raise: ['money', 'var(--warn)'], crunch: ['hourglass', 'var(--warn)'], risk: ['dice', 'var(--accent)'], subs: ['globe', 'var(--good)'], fresh: ['sparkle', 'var(--accent)'] };
   const [ic, col] = map[o.k] || ['info', 'var(--accent)'];
   let v = typeof o.v === 'number' ? (o.k === 'money' ? (o.v > 0 ? '+' : '') + money(o.v) : (o.v > 0 ? '+' : '') + fmtNum(o.v)) : o.v;
   let tip = FX_TIP[o.k] ? t(FX_TIP[o.k]) : '';

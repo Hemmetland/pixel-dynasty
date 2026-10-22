@@ -45,6 +45,14 @@ const EVENT_FRESH = 6;
 const EVENT_LIFT = 1.08;
 
 const fmtN = (n) => Math.round(n).toLocaleString('en-US').replace(/,/g, ' ');
+// Spelets historia för spelardiagrammet: evenemang, klar uppdatering och serveravbrott (expansionerna finns i L.exps).
+// Saknas i sparningar från före diagrammarkörerna och skapas då vid första händelsen.
+const MARKS_MAX = 60;
+function mark(G, L, k) {
+  const a = L.marks || (L.marks = []);
+  a.push({ t: G.t, k });
+  if (a.length > MARKS_MAX) a.shift();
+}
 
 // Forskningen är klar (alternativet syns) / serverrummet är byggt (det går att starta)
 export const liveUnlocked = (G) => G.u.facs.includes('server');
@@ -101,7 +109,7 @@ export function launchLive(G, game) {
   game.total *= 0.55;
   game.live = {
     t0: G.t, pot: units * 0.18 * Math.exp(0.3 * (game.score - 7)), subs: 0, peak: 0, fresh: 100,
-    price: [1, 1, 1], ops: 1, patch: null, closed: 0, rev: 0, cost: 0, hist: [], outages: 0, ms: 0, exps: [],
+    price: [1, 1, 1], ops: 1, patch: null, closed: 0, rev: 0, cost: 0, hist: [], outages: 0, ms: 0, exps: [], marks: [],
     boost: G.t + 10, hype: game.hype || 0,
   };
   G.stats.liveLaunched = (G.stats.liveLaunched || 0) + 1;
@@ -201,6 +209,7 @@ export function liveWeek(G) {
     if (L.patch && G.t >= L.patch.until) {
       L.fresh = Math.min(100, L.fresh + PATCH_FRESH);
       L.patch = null;
+      mark(G, L, 'patch');
       note(G, 'live.news.patch', { title: g.title }, 'good');
     }
     let target = liveTarget(G, g);
@@ -236,6 +245,7 @@ export function liveWeek(G) {
       L.subs *= 0.96;
       L.fresh = Math.max(0, L.fresh - 4);
       L.outages++;
+      mark(G, L, 'down');
       note(G, over > 0 ? 'live.news.overload' : 'live.news.outage', { title: g.title }, 'bad');
     }
     for (const m of MILESTONES) {
@@ -290,6 +300,7 @@ export function startLiveEvent(G, id) {
   L.evT = G.t;
   L.ev = { until: G.t + EVENT_WEEKS, subs0: L.subs };
   L.events = (L.events || 0) + 1;
+  mark(G, L, 'ev');
   L.evCost = (L.evCost || 0) + cost;
   L.fresh = Math.min(100, L.fresh + EVENT_FRESH);
   L.boost = Math.max(L.boost, G.t + EVENT_WEEKS + 1);

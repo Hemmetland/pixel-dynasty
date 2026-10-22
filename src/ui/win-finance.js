@@ -5,6 +5,7 @@ import { payroll } from '../sim/people.js';
 import { moneyScale, yearOf, dateOf } from '../sim/const.js';
 import { lang } from '../core/i18n.js';
 import { liveCostMonth } from '../sim/live.js';
+import { plot, gridLines } from './chart.js';
 
 function lineChart(pts, color, w = 560, h = 190) {
   if (pts.length < 2) return `<div class="empty" style="padding:30px">${t('fin.noData')}</div>`;
@@ -17,17 +18,17 @@ function lineChart(pts, color, w = 560, h = 190) {
   const Y = (v) => pad.t + (1 - (v - lo) / (hi - lo)) * (h - pad.t - pad.b);
   const d = pts.map((p, i) => `${i ? 'L' : 'M'}${X(i).toFixed(1)} ${Y(p.v).toFixed(1)}`).join(' ');
   const area = `${d} L${X(pts.length - 1)} ${Y(Math.max(lo, 0))} L${X(0)} ${Y(Math.max(lo, 0))} Z`;
-  const zero = lo < 0 ? `<line x1="${pad.l}" x2="${w - pad.r}" y1="${Y(0)}" y2="${Y(0)}" stroke="rgba(255,107,92,.5)" stroke-dasharray="4 4"/>` : '';
+  const zero = lo < 0 ? `<line x1="${pad.l}" x2="${w - pad.r}" y1="${Y(0)}" y2="${Y(0)}" stroke="rgba(255,107,92,.5)" stroke-dasharray="4 4" vector-effect="non-scaling-stroke"/>` : '';
   const last = pts[pts.length - 1];
-  const ticks = [0, 0.5, 1].map((f) => {
+  const labels = [0, 0.5, 1].map((f) => {
     const i = Math.round(f * (pts.length - 1));
     const d_ = dateOf(pts[i].t);
-    return `<text x="${X(i)}" y="${h - 4}" text-anchor="${f === 0 ? 'start' : f === 1 ? 'end' : 'middle'}" class="axt">${MONTHS[lang][d_.month]} ${d_.year}</text>`;
-  }).join('');
-  return `<svg viewBox="0 0 ${w} ${h}" class="lchart" preserveAspectRatio="none"><defs><linearGradient id="fg" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="${color}" stop-opacity=".4"/><stop offset="1" stop-color="${color}" stop-opacity="0"/></linearGradient></defs>
-    ${[0.25, 0.5, 0.75].map((f) => `<line x1="${pad.l}" x2="${w - pad.r}" y1="${pad.t + f * (h - pad.t - pad.b)}" y2="${pad.t + f * (h - pad.t - pad.b)}" stroke="rgba(150,172,255,.1)"/>`).join('')}
-    ${zero}<path d="${area}" fill="url(#fg)"/><path d="${d}" fill="none" stroke="${color}" stroke-width="2.4" stroke-linejoin="round" stroke-linecap="round"/>
-    <circle cx="${X(pts.length - 1)}" cy="${Y(last.v)}" r="4.5" fill="#fff" stroke="${color}" stroke-width="2"/>${ticks}</svg>`;
+    return { x: X(i), y: h - 8, text: `${MONTHS[lang][d_.month]} ${d_.year}`, at: f === 0 ? 'start' : f === 1 ? 'end' : 'middle' };
+  });
+  const svg = `<defs><linearGradient id="fg" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="${color}" stop-opacity=".4"/><stop offset="1" stop-color="${color}" stop-opacity="0"/></linearGradient></defs>
+    ${gridLines(pad.l, w - pad.r, [0.25, 0.5, 0.75].map((f) => pad.t + f * (h - pad.t - pad.b)))}
+    ${zero}<path d="${area}" fill="url(#fg)"/><path d="${d}" fill="none" stroke="${color}" stroke-width="2.4" stroke-linejoin="round" stroke-linecap="round" vector-effect="non-scaling-stroke"/>`;
+  return plot({ w, h, svg, labels, dot: { x: X(pts.length - 1), y: Y(last.v), c: color } });
 }
 
 const CAT_KEYS = ['sales', 'subs', 'servers', 'contracts', 'awards', 'events', 'loan', 'other', 'salaries', 'rent', 'facilities', 'marketing', 'research', 'licenses', 'interest', 'engines', 'office', 'patches'];

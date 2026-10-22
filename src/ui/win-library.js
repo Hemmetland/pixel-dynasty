@@ -9,7 +9,8 @@ import { REVIEWERS } from '../data/reviews.js';
 import { reviewTexts } from '../sim/score.js';
 import { patchGame } from '../sim/actions.js';
 import { patchCost } from '../sim/sales.js';
-import { SCOPES, dateOf } from '../sim/const.js';
+import { SCOPES, dateOf, START_YEAR, WEEKS_PER_YEAR } from '../sim/const.js';
+import { plot, gridLines } from './chart.js';
 import { MONTHS } from './core.js';
 import { fmtNum } from '../core/util.js';
 import { lang } from '../core/i18n.js';
@@ -35,18 +36,92 @@ function salesChart(g, w = 520, h = 150) {
   const hi = Math.max(...arr, 1);
   const bw = (w - 10) / Math.max(arr.length, 24);
   const bars = arr.map((v, i) => `<rect x="${5 + i * bw}" y="${h - 18 - (v / hi) * (h - 30)}" width="${Math.max(1, bw - 1.5)}" height="${(v / hi) * (h - 30)}" rx="1.5" fill="url(#sg)"/>`).join('');
-  return `<svg viewBox="0 0 ${w} ${h}" class="lchart" style="height:${h}px" preserveAspectRatio="none"><defs><linearGradient id="sg" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#4de1d0"/><stop offset="1" stop-color="#4de1d0" stop-opacity=".25"/></linearGradient></defs>
-    ${[0.33, 0.66].map((f) => `<line x1="5" x2="${w - 5}" y1="${(h - 18) * f + 5}" y2="${(h - 18) * f + 5}" stroke="rgba(150,172,255,.1)"/>`).join('')}${bars}
-    <text x="5" y="${h - 4}" class="axt">${t('lib.week')} 1</text><text x="${w - 5}" y="${h - 4}" text-anchor="end" class="axt">${t('lib.week')} ${arr.length}</text></svg>`;
+  const svg = `<defs><linearGradient id="sg" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#4de1d0"/><stop offset="1" stop-color="#4de1d0" stop-opacity=".25"/></linearGradient></defs>
+    ${gridLines(5, w - 5, [0.33, 0.66].map((f) => (h - 18) * f + 5))}${bars}`;
+  const labels = [
+    { x: 5, y: h - 7, text: `${t('lib.week')} 1`, at: 'start' },
+    { x: w - 5, y: h - 7, text: `${t('lib.week')} ${arr.length}`, at: 'end' },
+  ];
+  return plot({ w, h, svg, labels });
 }
 
-// Prenumeranter per månad som staplar
-function subsChart(L, w = 520, h = 120) {
-  const arr = L.hist.map((x) => x.v);
-  if (arr.length < 2) return `<div class="hint" style="padding:10px 0">${t('live.chartEmpty')}</div>`;
-  const hi = Math.max(...arr, 1);
-  const bw = (w - 10) / Math.max(arr.length, 24);
-  return `<svg viewBox="0 0 ${w} ${h}" class="lchart" style="height:${h}px" preserveAspectRatio="none">${arr.map((v, i) => `<rect x="${5 + i * bw}" y="${h - 6 - (v / hi) * (h - 14)}" width="${Math.max(1, bw - 1.5)}" height="${(v / hi) * (h - 14)}" rx="1.5" fill="#7cf29a" opacity=".75"/>`).join('')}</svg>`;
+// Ett rimligt tak för y-axeln: 1, 2, 2,5 eller 5 gånger en tiopotens
+const niceMax = (v) => {
+  const p = Math.pow(10, Math.floor(Math.log10(Math.max(1, v))));
+  return [1, 2, 2.5, 5, 10].map((k) => k * p).find((x) => x >= v);
+};
+// Markörerna i spelardiagrammet: ikon, färg och tips
+const MARK = {
+  exp: ['plus', 'var(--gold)', 'live.mk.exp'],
+  ev: ['star', 'var(--fans)', 'live.mk.ev'],
+  patch: ['wrench', 'var(--accent)', 'live.mk.patch'],
+  down: ['x', 'var(--bug)', 'live.mk.down'],
+  rival: ['flag', '', 'live.mk.rival'],
+};
+const LEGEND = { exp: 'live.lg.exp', ev: 'live.lg.ev', patch: 'live.lg.patch', down: 'live.lg.down', rival: 'live.lg.rival' };
+const when = (tt) => {
+  const d = dateOf(tt);
+  return `${MONTHS[lang][d.month]} ${d.year}`;
+};
+
+// Spelare per månad som en yta, med expansioner, evenemang, uppdateringar, avbrott och konkurrenternas MMO utmärkta
+function subsChart(G, g, w = 560, h = 172) {
+  const lv = g.live;
+  const pts = lv.hist.slice();
+  if (!pts.length || G.t > pts[pts.length - 1].t) pts.push({ t: G.t, v: Math.round(lv.subs) });
+  if (pts.length < 2) return `<div class="hint" style="padding:10px 0">${t('live.chartEmpty')}</div>`;
+  const pad = { l: 6, r: 10, t: 46, b: 20 };
+  const t0 = pts[0].t;
+  const t1 = Math.max(t0 + 1, pts[pts.length - 1].t);
+  const hi = niceMax(Math.max(...pts.map((p) => p.v), 1) * 1.08);
+  const X = (tt) => pad.l + ((tt - t0) / (t1 - t0)) * (w - pad.l - pad.r);
+  const Y = (v) => pad.t + (1 - v / hi) * (h - pad.t - pad.b);
+  const line = pts.map((p, i) => `${i ? 'L' : 'M'}${X(p.t).toFixed(1)} ${Y(p.v).toFixed(1)}`).join(' ');
+  const base = Y(0).toFixed(1);
+  const area = `${line} L${X(t1).toFixed(1)} ${base} L${X(t0).toFixed(1)} ${base} Z`;
+  // årtal längs x-axeln, glesare för långlivade spel
+  const y0 = Math.ceil(t0 / WEEKS_PER_YEAR);
+  const y1 = Math.floor(t1 / WEEKS_PER_YEAR);
+  const step = Math.max(1, Math.ceil((y1 - y0 + 1) / 6));
+  const labels = [];
+  for (let y = y0; y <= y1; y += step) {
+    const x = X(y * WEEKS_PER_YEAR);
+    if (x > pad.l + 14 && x < w - pad.r - 14) labels.push({ x, y: h - 8, text: String(START_YEAR + y) });
+  }
+  if (!labels.length) labels.push({ x: pad.l, y: h - 8, text: when(t0), at: 'start' });
+  for (const f of [1, 0.5]) labels.push({ x: pad.l + 2, y: Y(hi * f) - 7, text: fmtNum(hi * f), at: 'start', cls: f === 1 ? 'hi' : '' });
+  // markörer: expansioner (från lv.exps), händelserna i lv.marks och konkurrenternas MMO som startade under tiden
+  const raw = [];
+  for (const id of lv.exps) {
+    const e = G.games.find((x) => x.id === id);
+    if (e) raw.push({ t: e.t, k: 'exp', tip: t('live.mk.exp', { title: e.title }) });
+  }
+  for (const m of lv.marks || []) if (MARK[m.k]) raw.push({ t: m.t, k: m.k, tip: t(MARK[m.k][2]) });
+  for (const m of (G.market && G.market.mmos) || []) if (m.t0 >= t0 && m.t0 <= t1) raw.push({ t: m.t0, k: 'rival', c: m.color, tip: t('live.mk.rival', { studio: m.studio, title: L(m.title) }) });
+  raw.sort((a, b) => a.t - b.t);
+  // två rader överst så att markörer nära varandra inte täcker varandra; en tredje får vänta till nästa lucka
+  const rows = [-1e9, -1e9];
+  const gap = w * 0.055;
+  const marks = [];
+  const vlines = [];
+  for (const r of raw) {
+    const x = Math.max(pad.l + 8, Math.min(w - pad.r - 4, X(r.t)));
+    const row = rows.findIndex((last) => x - last >= gap);
+    if (row < 0) continue;
+    rows[row] = x;
+    const [ic, col] = MARK[r.k];
+    marks.push({ x, y: 9 + row * 17, c: r.c || col, ic, tip: `${r.tip} · ${when(r.t)}` });
+    vlines.push(`<line x1="${x.toFixed(1)}" x2="${x.toFixed(1)}" y1="${(17 + row * 17).toFixed(1)}" y2="${base}" stroke="${r.c || col}" stroke-opacity=".35" stroke-dasharray="2 3" vector-effect="non-scaling-stroke"/>`);
+  }
+  const last = pts[pts.length - 1];
+  const svg = `<defs><linearGradient id="lg" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#7cf29a" stop-opacity=".38"/><stop offset="1" stop-color="#7cf29a" stop-opacity="0"/></linearGradient></defs>
+    ${gridLines(pad.l, w - pad.r, [Y(hi), Y(hi / 2), Y(0)])}${vlines.join('')}
+    <path d="${area}" fill="url(#lg)"/><path d="${line}" fill="none" stroke="#7cf29a" stroke-width="2.2" stroke-linejoin="round" stroke-linecap="round" vector-effect="non-scaling-stroke"/>`;
+  const used = Object.keys(MARK).filter((k) => raw.some((r) => r.k === k));
+  const legend = used.length
+    ? `<div class="row wrap pl-legend">${used.map((k) => `<span style="--c:${k === 'rival' ? 'var(--muted)' : MARK[k][1]}">${icon(MARK[k][0])}${t(LEGEND[k])}</span>`).join('')}</div>`
+    : '';
+  return plot({ w, h, svg, labels, marks, dot: { x: X(last.t), y: Y(last.v), c: '#7cf29a' } }) + legend;
 }
 
 // Konkurrenternas MMO som drar spelare från g, mest först. Andelarna skalas så att de tillsammans blir den verkliga
@@ -101,7 +176,7 @@ function livePanel(G, g) {
       <div data-tip="${esc(t('live.freshTip'))}"><div class="row" style="font-size:12.5px;margin-bottom:4px"><span>${t('live.fresh')}</span><span class="sp"></span><b style="color:${fcol}">${t(FRESH_KEY[fk])}</b></div>${bar(L.fresh, fcol, 'thin')}</div>
       <div data-tip="${esc(t('live.loadTip', { n: fmtNum(used), m: fmtNum(cap) }))}"><div class="row" style="font-size:12.5px;margin-bottom:4px"><span>${t('live.load')}</span><span class="sp"></span><b class="num" style="color:${load > 1 ? 'var(--bug)' : load > 0.85 ? 'var(--warn)' : 'var(--text)'}">${Math.round(load * 100)}%</b></div>${bar(load * 100, load > 1 ? 'var(--bug)' : load > 0.85 ? 'var(--warn)' : 'var(--accent)', 'thin')}</div>
     </div>
-    <div class="lbl" style="margin:16px 0 4px">${t('live.chart')}</div>${subsChart(L)}
+    <div class="lbl" style="margin:16px 0 4px">${t('live.chart')}</div>${subsChart(G, g)}
     ${rivalList(G, g)}
     <div class="lbl" style="margin:14px 0 4px">${t('live.tiers')}</div><p class="hint" style="margin-bottom:8px">${t('live.tierHelp')}</p>
     <div class="col" style="gap:6px">${tiers}</div>

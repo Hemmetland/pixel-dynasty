@@ -7,9 +7,14 @@ import { SCOPE_TEMPO } from './tempo.js';
 import { earn, spend } from './studio.js';
 import { parPerTick } from './score.js';
 import { note } from './news.js';
+import { subPrices } from './live.js';
+
+// Det största onlinespelet som är igång, eller null
+const liveTop = (G) => G.games.reduce((a, g) => (g.live && !g.live.closed && (!a || g.live.subs > a.live.subs) ? g : a), null);
 
 // Vem och vad händelsen handlar om väljs när den dras, så att texten och effekten gäller samma person och spel.
-// needs: 'staff' = en anställd (inte grundaren), 'game' = senaste släppta spelet, 'oldGame' = studions bästa äldre spel.
+// needs: 'staff' = en anställd (inte grundaren), 'game' = senaste släppta spelet, 'oldGame' = studions bästa äldre spel,
+// 'live' = det största onlinespelet som är igång.
 function eventContext(G, ev) {
   const ctx = {};
   const needs = ev.needs || [];
@@ -22,6 +27,10 @@ function eventContext(G, ev) {
     const old = G.games.slice(0, -1);
     const best = (old.length ? old : G.games).reduce((a, g) => (g.score > a.score ? g : a));
     ctx.game = best.id;
+  }
+  if (needs.includes('live')) {
+    const lg = liveTop(G);
+    if (lg) ctx.game = lg.id;
   }
   return ctx;
 }
@@ -114,6 +123,32 @@ export function applyFx(G, fx, out = [], ctx = {}, dry = false) {
   if (fx.mood) {
     if (!dry) for (const s of G.staff) s.mood = clamp(s.mood + fx.mood, 0, 100);
     out.push({ k: 'mood', v: fx.mood });
+  }
+  // onlinespelet händelsen gäller (ctx.game), annars det största som är igång; utan onlinespel händer ingenting
+  if (fx.subs || fx.fresh || fx.subsMoney) {
+    const own = G.games.find((g) => g.id === ctx.game);
+    const lg = own && own.live && !own.live.closed ? own : liveTop(G);
+    const lv = lg && lg.live;
+    if (lv && fx.subsMoney) {
+      const v = Math.round((fx.subsMoney * lv.subs * subPrices(year)[0]) / 10) * 10;
+      if (!dry) {
+        if (v > 0) earn(G, v, 'events');
+        else spend(G, -v, 'events');
+      }
+      out.push({ k: 'money', v });
+    }
+    if (lv && fx.subs) {
+      const v = Math.round(lv.subs * fx.subs);
+      if (!dry) {
+        lv.subs = Math.max(0, lv.subs + v);
+        lv.peak = Math.max(lv.peak, lv.subs);
+      }
+      out.push({ k: 'subs', v });
+    }
+    if (lv && fx.fresh) {
+      if (!dry) lv.fresh = clamp(lv.fresh + fx.fresh, 0, 100);
+      out.push({ k: 'fresh', v: fx.fresh });
+    }
   }
   if (fx.salesMult) {
     if (!dry) (G.flags.salesQ = G.flags.salesQ || []).push(fx.salesMult);

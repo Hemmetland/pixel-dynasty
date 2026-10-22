@@ -1,7 +1,10 @@
 // Händelser. fx-nycklar: money (skalas med år), rp, fans, hype, hypeNext, bugs, bugsFrac, D, T, mood,
 // crunch (veckor), salesMult (för nästa spel), loseStaff, raiseRandom, res (text efteråt), rand: [[sannolikhet, fx], …]
+// För onlinespel (needs 'live'): subs (andel av spelarna, ±), fresh (innehållets färskhet, poäng) och
+// subsMoney (pengar som andel av en månads standardabonnemang för spelets alla spelare, ±).
 // kind: 'studio' (månadsslump) eller 'dev' (under utveckling)
-// needs (valfritt): 'staff', 'game' eller 'oldGame' väljs när händelsen dras och fylls i som {name} och {title} i texterna.
+// needs (valfritt): 'staff', 'game', 'oldGame' eller 'live' (det största onlinespelet som är igång) väljs när händelsen
+// dras och fylls i som {name} och {title} i texterna.
 // fx.res = { sv, en }: text som visas efter valet (även i slumpgrenar).
 const E = (id, kind, weight, when, title, body, choices, needs) => ({ id, kind, weight, when, title, body, choices, needs });
 const C = (sv, en, fx, dsv, den) => ({ label: { sv, en }, fx, hint: dsv ? { sv: dsv, en: den } : null });
@@ -9,6 +12,9 @@ const R = (sv, en) => ({ sv, en });
 
 const Y = (G) => 1980 + Math.floor(G.t / 48); // år (48 veckor per år)
 const lastGenre = (G) => (G.games.length ? G.games[G.games.length - 1].genre : null);
+// Spelarna i det största onlinespelet som är igång (0 utan onlinespel)
+const liveTop = (G) => G.games.reduce((a, g) => (g.live && !g.live.closed && (!a || g.live.subs > a.live.subs) ? g : a), null);
+const liveSubs = (G) => (liveTop(G) ? liveTop(G).live.subs : 0);
 
 export const EVENTS = [
   E('fan_mail', 'studio', 1, (G) => G.fans > 30,
@@ -139,6 +145,48 @@ export const EVENTS = [
     { sv: 'VR-utvecklingskit', en: 'VR dev kits' },
     { sv: 'En tillverkare erbjuder er tidiga VR-kit att experimentera med.', en: 'A manufacturer offers you early VR kits to experiment with.' },
     [C('Ta emot dem', 'Take them', { money: -2000, rp: 60, mood: 6, res: R('Teamet tappar tidsuppfattningen med glasögonen på.', 'The team loses all sense of time with the headsets on.') }), C('Inte än', 'Not yet', {})]),
+
+  // ── Onlinespel ───────────────────────────────────────────────
+  E('live_goldfarm', 'studio', 0.7, (G) => liveSubs(G) > 5000,
+    { sv: 'Guldfarmare i spelet', en: 'Gold farmers in the game' },
+    { sv: 'Arméer av automatiska konton farmar guld i {title} och säljer det för riktiga pengar. Priserna i spelet rusar och vanliga spelare klagar.', en: 'Armies of automated accounts farm gold in {title} and sell it for real money. In-game prices are soaring and regular players are complaining.' },
+    [C('Bannvåg', 'Ban wave', { subs: -0.02, fresh: 5, subsMoney: -0.06, res: R('Tusentals konton stängs över en natt. Forumen jublar.', 'Thousands of accounts are closed overnight. The forums cheer.') }, 'Färre konton men nöjdare spelare', 'Fewer accounts but happier players'),
+      C('Låt det vara', 'Leave it', { rand: [[0.5, { res: R('Farmarna flyttar till ett annat spel. Problemet löste sig självt.', 'The farmers move on to another game. The problem solved itself.') }], [0.5, { subs: -0.05, fresh: -10, res: R('Priserna skenar och många ärliga spelare säger upp sig.', 'Prices run wild and many honest players cancel.') }]] }, 'Gratis, men kan bli dyrt', 'Free, but it may cost you')], ['live']),
+  E('live_exploit', 'studio', 0.6, (G) => liveSubs(G) > 2000,
+    { sv: 'Dupliceringsbugg', en: 'Duplication exploit' },
+    { sv: 'Spelare har hittat ett sätt att kopiera sällsynta föremål i {title}. En video om det sprids snabbt.', en: 'Players found a way to copy rare items in {title}. A video about it is spreading fast.' },
+    [C('Rulla tillbaka servrarna', 'Roll back the servers', { subs: -0.03, fresh: -3, res: R('Allt återställs till i tisdags. Fuskarna är sura, och några som inte fuskade också.', 'Everything is restored to last Tuesday. The cheaters are annoyed, and so are some who did not cheat.') }, 'Säkert, men alla tappar en veckas spelande', 'Safe, but everyone loses a week of play'),
+      C('Snabbfix över helgen', 'Hotfix over the weekend', { subsMoney: -0.05, mood: -6, rand: [[0.7, { res: R('Fixen går ut söndag natt. Få märkte något.', 'The fix goes out on Sunday night. Few noticed a thing.') }], [0.3, { subs: -0.04, res: R('Fixen missade en variant av buggen och föremålen fortsätter att dyka upp.', 'The fix missed a variant of the bug and the items keep turning up.') }]] }, 'Teamet jobbar helg', 'The team works the weekend')], ['live']),
+  E('live_worldfirst', 'studio', 0.6, (G) => liveSubs(G) > 20000,
+    { sv: 'Jakten på världsförsta', en: 'Race for world first' },
+    { sv: 'De största gillena tävlar om att först besegra den svåraste bossen i {title}. Tusentals vill titta.', en: 'The biggest guilds are racing to be first to beat the hardest boss in {title}. Thousands want to watch.' },
+    [C('Sponsra och sänd', 'Sponsor and stream it', { subsMoney: -0.08, subs: 0.04, fresh: 5, fansRel: 0.01, res: R('Sändningen slår rekord och nya spelare skapar konton för att vara med nästa gång.', 'The stream breaks records and new players sign up to be part of it next time.') }, 'Kostar, men lockar spelare', 'Costs money, but draws players'),
+      C('Låt gillena sköta det', 'Let the guilds handle it', { subs: 0.01, res: R('Det blir en het helg på forumen ändå.', 'The forums have a heated weekend anyway.') })], ['live']),
+  E('live_queue', 'studio', 0.8, (G) => liveSubs(G) > 5000 && G.t < liveTop(G).live.boost,
+    { sv: 'Köer för att logga in', en: 'Login queues' },
+    { sv: 'Efter den senaste lanseringen står tusentals i kö för att komma in i {title}. På kvällarna är kön över en timme lång.', en: 'Since the latest launch, thousands are queueing to get into {title}. In the evenings the queue is over an hour long.' },
+    [C('Hyr extra servrar', 'Rent extra servers', { subsMoney: -0.1, subs: 0.03, res: R('Kön försvinner över en natt och nykomlingarna stannar.', 'The queue is gone overnight and the newcomers stay.') }, 'Dyrt, men ingen tröttnar', 'Pricey, but nobody gives up'),
+      C('Be dem ha tålamod', 'Ask for patience', { subs: -0.04, fansRel: -0.005, res: R('Många ger upp i kön och köper något annat.', 'Many give up in the queue and buy something else.') })], ['live']),
+  E('live_rmt', 'studio', 0.5, (G) => Y(G) >= 2004 && liveSubs(G) > 10000,
+    { sv: 'Handel med riktiga pengar', en: 'Real-money trading' },
+    { sv: 'Spelare säljer svärd och rustningar från {title} på auktionssajter för riktiga pengar. Vill ni ha en del av kakan?', en: 'Players sell swords and armour from {title} on auction sites for real money. Do you want a slice?' },
+    [C('Öppna en officiell marknad', 'Open an official market', { subsMoney: 0.35, subs: -0.02, fansRel: -0.01, res: R('Marknaden drar in pengar från första dagen, men en del tycker att spelet har blivit till salu.', 'The market makes money from day one, but some feel the game is now for sale.') }, 'Intäkter, men en del spelare surnar', 'Revenue, but some players sour'),
+      C('Förbjud handeln', 'Ban the trading', { subs: -0.01, fresh: 3, fansRel: 0.005, res: R('Spelarna uppskattar att allt i spelet måste förtjänas.', 'Players appreciate that everything in the game has to be earned.') })], ['live']),
+  E('live_fanfest', 'studio', 0.5, (G) => Y(G) >= 2000 && liveSubs(G) > 50000,
+    { sv: 'Fanträff', en: 'Fan convention' },
+    { sv: 'Spelarna i {title} vill träffas på riktigt. Ett gille har redan bokat en lokal och frågar om ni vill vara med.', en: 'The players of {title} want to meet in person. A guild has already booked a venue and asks if you want to join.' },
+    [C('Gör en stor mässa av det', 'Make it a big show', { subsMoney: -0.12, subs: 0.04, fansRel: 0.02, mood: 6, res: R('Ni visar en första glimt av nästa expansion och salen exploderar.', 'You show a first glimpse of the next expansion and the hall erupts.') }, 'Dyrt, men spelarna minns det länge', 'Pricey, but players will remember it'),
+      C('Skicka två utvecklare och godis', 'Send two devs and some candy', { money: -600, mood: 4, subs: 0.01, res: R('Spelarna älskar att få träffa dem som bygger spelet.', 'Players love meeting the people who build the game.') })], ['live']),
+  E('live_wedding', 'studio', 0.4, (G) => liveSubs(G) > 3000,
+    { sv: 'Bröllop i spelet', en: 'An in-game wedding' },
+    { sv: 'Två spelare som träffades i {title} gifter sig i spelets största stad. Hela gillet kommer i sina finaste rustningar.', en: 'Two players who met in {title} are getting married in the game\'s biggest city. Their whole guild shows up in their finest armour.' },
+    [C('Ge dem en unik ring', 'Gift them a unique ring', { fansRel: 0.01, subs: 0.005, res: R('Bilderna på ringen sprids långt utanför spelet.', 'Pictures of the ring spread far beyond the game.') }),
+      C('Gratulera på forumet', 'Congratulate them on the forum', { mood: 3, res: R('Tråden fylls av hjärtan.', 'The thread fills up with hearts.') })], ['live']),
+  E('live_addiction', 'studio', 0.5, (G) => Y(G) >= 2005 && liveSubs(G) > 100000,
+    { sv: 'Debatt om spelberoende', en: 'Gaming addiction debate' },
+    { sv: 'En tidning skriver att {title} är så beroendeframkallande att folk missar jobbet. Politiker vill ha regler.', en: 'A newspaper writes that {title} is so addictive that people skip work. Politicians want rules.' },
+    [C('Inför pauspåminnelser', 'Add break reminders', { subs: -0.02, fansRel: 0.01, res: R('Debatten lugnar sig och föräldrar skriver tackbrev.', 'The debate calms down and parents write thank-you letters.') }),
+      C('Försvara spelet', 'Defend the game', { rand: [[0.5, { res: R('Intervjun går bra och debatten dör ut.', 'The interview goes well and the debate fades.') }], [0.5, { subs: -0.03, fansRel: -0.01, res: R('Det låter defensivt och fler tidningar hakar på.', 'It sounds defensive and more papers pile on.') }]] }, 'Kan gå åt båda håll', 'Could go either way')], ['live']),
 
   // ── Under utveckling ─────────────────────────────────────────
   E('dev_idea', 'dev', 1.4, (G) => G.job && G.job.phase < 3,

@@ -104,6 +104,29 @@ for (const ev of EVENTS) {
   S.cancelProject(G);
 }
 ok(true, 'alla händelser körda');
+// händelser för onlinespel: gäller det största spelet som är igång och ändrar dess spelare och innehåll
+{
+  const GL = JSON.parse(JSON.stringify(G));
+  GL.pending = [];
+  GL.t = 48 * 26; // 2006, så att även de senare händelserna är möjliga
+  GL.games.push({ id: 7700, title: 'Online', t: GL.t - 20, score: 8, weekly: [1], total: 1e6, priceAt: 50, topic: 'fantasy', genre: 'rpg', platform: 'pc', scope: 'aaa', audience: 'everyone', revenue: 0, units: 0, insights: [], reviews: [], flags: [] });
+  S.launchLive(GL, GL.games[GL.games.length - 1]);
+  const lv = GL.games[GL.games.length - 1].live;
+  lv.subs = 200000; lv.fresh = 50; lv.boost = GL.t + 4;
+  const liveEvs = EVENTS.filter((e) => (e.needs || []).includes('live'));
+  ok(liveEvs.length >= 6 && liveEvs.every((e) => e.when(GL)), 'onlinespelets händelser kan dras med ett stort onlinespel');
+  ok(liveEvs.every((e) => !e.when(G)), 'onlinespelets händelser dras inte utan onlinespel');
+  let moved = 0;
+  for (const ev of liveEvs) ev.choices.forEach((c, i) => {
+    const G2 = JSON.parse(JSON.stringify(GL));
+    const l2 = G2.games[G2.games.length - 1].live;
+    G2.pending = [{ type: 'event', id: 9001, ev: ev.id, game: 7700 }];
+    const before = [l2.subs, l2.fresh];
+    try { S.resolveEvent(G2, 9001, i); } catch (e) { ok(false, 'onlinehändelse ' + ev.id + ' val ' + i + ': ' + e.message); }
+    if (l2.subs !== before[0] || l2.fresh !== before[1]) moved++;
+  });
+  ok(moved >= 10, 'onlinespelets händelser ändrar spelare eller innehåll (' + moved + ' val)');
+}
 // bailout + konkurs
 const G3 = S.newGame({ studio: 'B', seed: 3 }); S.makeCompetitors(G3); S.initWorld(G3);
 G3.money = -5000;

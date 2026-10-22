@@ -544,8 +544,17 @@ input[type='range']::-moz-range-thumb { width: 18px; height: 18px; border-radius
 .trendc.hot { border-color: rgba(255, 138, 74, 0.35); }
 .trendc.cold { border-color: rgba(138, 208, 255, 0.3); }
 .dotc { width: 12px; height: 12px; border-radius: 50%; box-shadow: 0 0 10px currentColor; }
-svg.lchart { width: 100%; height: 190px; display: block; }
-svg.lchart .axt { font: 600 10px var(--font); fill: var(--faint); }
+.plot { position: relative; width: 100%; }
+.plot > svg { position: absolute; inset: 0; width: 100%; height: 100%; display: block; overflow: visible; }
+.plot .pl { position: absolute; transform: translate(var(--tx, -50%), -50%); font: 600 10px var(--font); color: var(--faint); white-space: nowrap; pointer-events: none; }
+.plot .pl.hi { color: var(--muted); }
+.plot .pl-dot { position: absolute; width: 9px; height: 9px; border-radius: 50%; background: #fff; border: 2px solid var(--c); transform: translate(-50%, -50%); box-shadow: 0 0 10px color-mix(in srgb, var(--c) 60%, transparent); }
+.plot .pl-mk { position: absolute; transform: translate(-50%, -50%); width: 17px; height: 17px; border-radius: 6px; display: grid; place-items: center; color: var(--c); background: color-mix(in srgb, var(--c) 20%, var(--solid)); border: 1px solid color-mix(in srgb, var(--c) 70%, transparent); cursor: default; }
+.plot .pl-mk .ic { width: 11px; height: 11px; }
+.plot .pl-mk:hover { background: color-mix(in srgb, var(--c) 40%, var(--solid)); z-index: 1; }
+.pl-legend { gap: 6px 14px; margin-top: 6px; font-size: 11.5px; color: var(--muted); }
+.pl-legend span { display: inline-flex; align-items: center; gap: 5px; }
+.pl-legend .ic { width: 12px; height: 12px; color: var(--c); }
 .counter .v.sm { font-size: 15px; }
 @media (max-width: 860px) { #overlay .win .grid[style*='1.5fr 1fr'] { grid-template-columns: 1fr !important; } }
 
