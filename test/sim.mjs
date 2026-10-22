@@ -222,6 +222,12 @@ if (args.includes('--live')) {
   for (const m of (G.market.mmos || [])) console.log(`rival ${S.yearOf(m.t0)}${m.closed ? '-' + S.yearOf(m.closed) : ''} ${m.studio} ${m.title.en} ${m.genre} score ${m.score}`);
 }
 if (args.includes('--ach')) console.log('ach ' + G.ach.join(' '));
+// --news: krönikans rader per nyckel (de senaste 150)
+if (args.includes('--news')) {
+  const n = {};
+  for (const x of G.news) n[x.key] = (n[x.key] || 0) + 1;
+  console.log('news ' + Object.entries(n).sort((a, b) => b[1] - a[1]).map(([k, v]) => k + ' ' + v).join(', '));
+}
 console.log(G.over ? `GAME OVER ${S.yearOf(G.over.t)} (bankrupt) after ${G.games.length} games` : `Finished ${S.yearOf(G.t)}; money $${Math.round(G.money).toLocaleString()}; games ${G.games.length}; best ${G.stats.bestScore}; ach ${G.ach.length}; ${dt}ms`);
 if (args.includes('--parts')) {
   for (const g of G.games.filter((_, i) => i % 3 === 0)) {
