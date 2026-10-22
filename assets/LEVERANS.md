@@ -136,3 +136,19 @@ Enskilda rutor finns i `assets/pixellab/characters/dev/sleep-east-hand/`. Radern
 - **Takt:** procedurella sovandet andas på `sin(t*2.4)`, en andning per 2,6 sekunder. Samma tempo får man med `sleep: ['char.sleep', 0.75]` i `SEAT_SPRITE`.
 - **Färger:** 32 nyanser, alla redan i karaktären.
 - **Begränsningar:** bara den närmre armen syns. Det stängda ögat och de sneda glasögonen är 1 px-detaljer som försvinner i spelskala. zzz-bubblan ritas i dag vid `fy-32` till `fy-38`, ungefär 10–16 scenpixlar ovanför det sänkta huvudet; sänk den till runt `fy-26` för den här posen om den ser lösryckt ut.
+
+## Karaktären: trött vid skrivbordet (handritat)
+
+| Remsa | Rutor | Nyckel | Innehåll |
+| --- | --- | --- | --- |
+| `assets/chars/tired.png` (184x92) | 2 | `char.tired` | 0: hopsjunken, axlarna 3 px lägre, huvudet hänger framåt och nedåt med halvslutna ögon, handen i knät. 1: gäspning: axlarna tillbaka, ögonen hårt stängda, käken nere och en lös näve framför munnen |
+
+Enskilda rutor finns i `assets/pixellab/characters/dev/tired-east-hand/`. Raderna 59–91 är identiska med `sit-east-hand/0.png`. Mössan ligger på rad 13–27 i båda rutorna, så ingen `hatRow` behövs.
+
+```json
+"char.tired": { "file": "chars/tired.png", "fw": 92, "fh": 92, "ax": 46, "ay": 82, "frames": 2, "scale": 0.42, "note": "PixelLab-karaktär 77053f90, handritad trött med gäspning; samma underkropp som char.sit (Kör)" }
+```
+
+- **Takt:** `tired: ['char.tired', 0.7]` i `SEAT_SPRITE` ger samma cykel som procedurella trött (4 rutor i 1,4/s, gäspningen i andra halvan). Posen varar 2,8 s, alltså en hopsjunkning och en gäspning.
+- **Färger:** 36 nyanser, alla redan i karaktären, ingen rekvisita.
+- **Begränsningar:** handen i knät är densamma som i `char.sit`, så den ser inte slappare ut. Den lyfta armen är lite tjockare och stelare än armarna i `think` och `sitDrink`. I spelskala är munnen en mörk pixel, så utan zzz-bubblan kan gäspningen också tas för en hostning.
