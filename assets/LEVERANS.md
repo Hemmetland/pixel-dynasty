@@ -202,3 +202,27 @@ Enskilda rutor finns i `assets/pixellab/characters/dev/present-east-hand/`. Rade
 - **Takt:** `present: ['char.present', 3]` i `STAND_SPRITE`, samma tempo som procedurella `floor(t*3) % 4`.
 - **Färger:** 33 nyanser, alla redan i karaktären. Pinnen använder tre neutrala källfärger (#96a2c2, #1c1923, #eee8ec) som ger `material()` = null. Mössan ligger på rad 10–24, ingen `hatRow` behövs.
 - **Begränsningar:** pinnen blir 2 scenpixlar bred, lite tjockare än den procedurella, eftersom en tunnare försvann mot antingen den vita tavlan eller den mörka marknadstavlan. Trycket och munrörelsen är ungefär en scenpixel. Kroppen lutar inte framåt (det gjorde glasögonen till en blå klump i spelskala).
+
+## Frisyr 1: kort hår utan mössa och glasögon (första omgången)
+
+Variant `#1` av karaktären: samma kropp, poser, rutor och ankare, bara huvudet bytt. Kort hår tätt mot skallen (toppen 3–4 px under den gamla mössan), polisong, kort nacke och synligt öra. Utan glasögon ritas ögat med fransrad, ögonvita, pupill och blå iris; `type` behåller sitt sänkta ögonlock. Allt utanför huvudet är pixel för pixel som grundremsan (ändringar bara på rad 9–34).
+
+Håret använder bara hårmaterialets färger (#472b2f, #412425, #301b1a) och konturen #181311 (null), så det färgbyts till personens hårfärg, även ljusa färger som blont. Inga mösspixlar finns kvar, så ingen `hatRow` behövs.
+
+| Remsa | Rutor | Nyckel |
+| --- | --- | --- |
+| `assets/chars/hair1/walk.png` | 6 | `char.walk#1` |
+| `assets/chars/hair1/stand.png` | 1 | `char.stand#1` |
+| `assets/chars/hair1/sit.png` | 2 | `char.sit#1` |
+| `assets/chars/hair1/type.png` | 4 | `char.type#1` |
+
+Enskilda rutor finns i `assets/pixellab/characters/dev/hair1/<nyckel>/`. Övriga poser följer.
+
+```json
+"char.walk#1":  { "file": "chars/hair1/walk.png",  "fw": 92, "fh": 92, "ax": 46, "ay": 82, "frames": 6, "scale": 0.42, "note": "Frisyr 1, kort hår utan mössa och glasögon (Kör)" },
+"char.stand#1": { "file": "chars/hair1/stand.png", "fw": 92, "fh": 92, "ax": 46, "ay": 82, "frames": 1, "scale": 0.42, "note": "Frisyr 1, kort hår utan mössa och glasögon (Kör)" },
+"char.sit#1":   { "file": "chars/hair1/sit.png",   "fw": 92, "fh": 92, "ax": 46, "ay": 82, "frames": 2, "scale": 0.42, "note": "Frisyr 1, kort hår utan mössa och glasögon (Kör)" },
+"char.type#1":  { "file": "chars/hair1/type.png",  "fw": 92, "fh": 92, "ax": 46, "ay": 82, "frames": 4, "scale": 0.42, "note": "Frisyr 1, kort hår utan mössa och glasögon (Kör)" }
+```
+
+Kända begränsningar: hjässans höjd skiljer cirka 1 px mellan vissa rutor (vald så att konturen ger så få lösa mörka pixlar som möjligt i spelskala). I `walk` ruta 0–2 finns en vit pixel vid örat som redan fanns i PixelLab-rutorna.
