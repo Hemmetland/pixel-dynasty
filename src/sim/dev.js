@@ -301,12 +301,13 @@ export function releaseGame(G) {
   // en uppföljare som slår föregångaren växer serien och lockar nya fans; annars tröttnar serien lite
   if (prev) {
     game.fatigue = (prev.fatigue || 0) + (game.score >= prev.score ? 0 : 1);
-    if (game.score >= prev.score) {
+    // ett svagt spel som knappt slår ett ännu svagare original lockar ingen
+    if (game.score >= prev.score && game.score >= 6) {
       const fans = Math.round(Math.max(50, (prev.fansGained || 0) * 0.1));
       G.fans += fans;
       game.fansGained += fans;
       note(G, 'news.seqBetter', { title: game.title, prev: prev.title }, 'good');
-    } else note(G, 'news.seqWorse', { title: game.title, prev: prev.title }, 'info');
+    } else if (game.score < prev.score) note(G, 'news.seqWorse', { title: game.title, prev: prev.title }, 'info');
   }
   if (J.live) launchLive(G, game);
   else if (J.expansionOf) releaseExpansion(G, game);

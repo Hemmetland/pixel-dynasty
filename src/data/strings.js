@@ -302,7 +302,7 @@ export const STRINGS = {
   'over.best': ['Bästa betyg', 'Best score'],
   'over.total': ['Totala intäkter', 'Total revenue'],
   'over.again': ['Försök igen', 'Try again'],
-  'end.title': ['Branschlegend', 'Industry legend'],
+  'end.title': ['Fyrtio år i branschen', 'Forty years in the business'],
   'end.text': ['Du har drivit en studio i fyrtio år. Branschen ser helt annorlunda ut nu, och det är delvis din förtjänst. Du kan fortsätta spela hur länge du vill.', 'You have run a studio for forty years. The industry looks completely different now, partly thanks to you. You can keep playing as long as you like.'],
   'end.rank0': ['Kultstudio', 'Cult studio'],
   'end.rank1': ['Branschnamn', 'Industry name'],
