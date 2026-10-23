@@ -188,6 +188,49 @@ ok(true, 'alla händelser körda');
   ok(rp && rp.kind === 'remaster' && rp.revenue > 0 && classic.remastered && !S.remasterable(GP, classic) && GP.stats.remasters === 1, 'remastern släpps och säljer, och bara en gång (' + Math.round(rp?.revenue || 0) + ')');
   ok(GP.rng === rng0, 'remastern rör inte spelets slumpföljd');
 }
+// spelserier och licensaffärer: erbjudanden ur fröet, ett avtal per serie, royalty, filmpremiär som ger hype till nästa spel
+{
+  const GF = S.newGame({ studio: 'L', seed: 13 }); S.makeCompetitors(GF); S.initWorld(GF);
+  GF.t = 48 * 14; GF.money = 1e6; GF.fans = 100000;
+  const base = { weekly: [1], total: 2e6, priceAt: 30, topic: 'space', genre: 'action', platform: 'nova', scope: 'medium', audience: 'everyone', units: 0, insights: [], reviews: [], flags: [], hype: 40, ended: true };
+  const root = { ...base, id: 8900, title: 'Rymdjakt', score: 8, revenue: 5e6, t: GF.t - 48 * 4 };
+  const seq = { ...base, id: 8901, title: 'Rymdjakt 2', score: 8.4, revenue: 8e6, t: GF.t - 48, sequelOf: 8900 };
+  const solo = { ...base, id: 8902, title: 'Ensam', score: 9, revenue: 9e6, t: GF.t - 30 };
+  GF.games.push(root, seq, solo);
+  S.frWeek(GF);
+  ok(!GF.fr, 'licensaffärer kräver forskning');
+  const sl = S.seriesList(GF);
+  ok(sl.length === 1 && sl[0].id === 8900 && sl[0].games.length === 2 && S.rootOf(GF, seq) === root && Math.abs(sl[0].revenue - 13e6) < 1, 'ett spel med uppföljare blir en serie');
+  GF.u.flags.merch = true;
+  const rng0 = GF.rng;
+  for (let i = 0; i < 3 && !(GF.fr && GF.fr.offers.length); i++) { S.frWeek(GF); GF.t++; }
+  const o = GF.fr.offers[0];
+  ok(o && o.series === 8900 && o.up > 0, 'serien får ett erbjudande (' + o?.kind + ' ' + o?.partner + ')');
+  const m0 = GF.money;
+  ok(S.acceptOffer(GF, o.id) === true && GF.money === m0 + o.up && S.activeDeal(GF, 8900), 'avtalet ger förskottet');
+  GF.fr.offers.push({ ...o, id: GF.uid++ });
+  ok(S.canAccept(GF, GF.fr.offers.at(-1).id) === 'busy', 'en serie har ett avtal åt gången');
+  S.declineOffer(GF, GF.fr.offers.at(-1).id);
+  // ett filmavtal efter det första: betyget 8 ger fans, biointäkter och hype till nästa spel
+  for (let i = 0; i < 100; i++) { GF.t++; S.frWeek(GF); }
+  const d0 = GF.fr.deals[0];
+  ok(d0.done && (!d0.roy || Math.abs(d0.paid - d0.roy) < d0.roy * 0.01), 'avtalet löper ut' + (d0.roy ? ' och royaltyn blir den utlovade' : ''));
+  GF.fr.offers = [{ id: GF.uid++, series: 8900, title: 'Rymdjakt', kind: 'film', partner: 'Test Films', color: '#fff', q: 8, lo: 7, hi: 9, up: 1000, until: GF.t + 12 }];
+  GF.fr.next = GF.t + 999;
+  const f0 = GF.fans;
+  const h0 = S.seriesHype(GF, 8900);
+  const n0 = GF.stats.films || 0;
+  ok(S.acceptOffer(GF, GF.fr.offers[0].id) === true, 'filmavtalet tecknas');
+  for (let i = 0; i < 81; i++) { GF.t++; S.frWeek(GF); }
+  const film = GF.fr.deals.filter((d) => d.kind === 'film').at(-1);
+  ok(film.done && film.box > 0 && GF.fans > f0 && GF.stats.films === n0 + 1 && S.seriesHype(GF, 8900) > h0, 'filmen har premiär och ger fans, biointäkter och hype');
+  const h = S.seriesHype(GF, 8900);
+  ok(S.takeSeriesHype(GF, seq) === h && S.seriesHype(GF, 8900) === 0, 'hypen går till seriens nästa spel');
+  ok(GF.rng === rng0, 'licensaffärerna rör inte spelets slumpföljd');
+  const GL = JSON.parse(JSON.stringify(GF));
+  for (let i = 0; i < 30; i++) { GL.t++; S.frWeek(GL); }
+  ok(Number.isFinite(GL.money) && Number.isFinite(GL.fans), 'licensaffärerna fortsätter efter sparning');
+}
 // förlag: pitchar kommer ur fröet, förskott vid underskrift, två avtal åt gången, spelet släpps med ett betyg i intervallet
 {
   const GB = S.newGame({ studio: 'F', seed: 12 }); S.makeCompetitors(GB); S.initWorld(GB);

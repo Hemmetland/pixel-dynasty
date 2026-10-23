@@ -27,6 +27,8 @@ const f2p = mmo && args.includes('--f2p');
 const ports = args.includes('--ports');
 // --publish: ger ut andra studiors spel när demons intervall har mitten 7 eller mer
 const publish = args.includes('--publish');
+// --lic: gör uppföljare till spel med betyg 7+ och tar licensaffärer (prylar och serietidningar, film med rykte 6.5+)
+const lic = args.includes('--lic');
 // --bd: skriv ut årets pengar per kategori (för balansarbete)
 const bd = args.includes('--bd');
 const acc = {};
@@ -93,7 +95,8 @@ function chooseBest(G, plat, scope) {
     }
   }
   const aud = G.u.aud.includes('everyone') ? 'everyone' : G.u.aud[0];
-  return { title: 'Game ' + (G.games.length + 1), topic: best[0], genre: best[1], platform: plat.id, scope, audience: aud };
+  const prev = lic && G.u.flags.sequels ? G.games.filter((g) => g.topic === best[0] && g.genre === best[1] && !g.expansionOf && !g.live && g.score >= 7).pop() : null;
+  return { title: 'Game ' + (G.games.length + 1), topic: best[0], genre: best[1], platform: plat.id, scope, audience: aud, sequelOf: prev ? prev.id : null };
 }
 
 function handlePending(G) {
@@ -121,7 +124,7 @@ function manage(G) {
   // forskning
   if (!casual || G.t % 16 === 0) for (const r of RESEARCH.slice().sort((a, b) => a.rp - b.rp)) {
     if (G.research.active.length >= S.researchSlots(G)) break;
-    if ((r.id === 'b_port' && !ports) || (r.id === 'b_publish' && !publish)) continue;
+    if ((r.id === 'b_port' && !ports) || (r.id === 'b_publish' && !publish) || (r.id === 'b_merch' && !lic)) continue;
     if (S.canResearch(G, r.id) === true && r.rp <= G.rp) S.startResearch(G, r.id);
   }
   // förfiningar när det finns plats över och råd (pengarna med marginal)
@@ -156,6 +159,8 @@ function manage(G) {
   }
   // förlag: skriv på pitchar med intervallmitt 7+ när det finns plats och pengar med marginal
   if (publish && S.canPublish(G)) for (const p of S.pubOf(G).pitches.slice()) if ((p.lo + p.hi) / 2 >= 7 && G.money > p.advance * 4 && S.signPitch(G, p.id) === true && verbose) console.log(`  sign ${year}: ${p.studio} ${p.scope} demo ${p.lo}-${p.hi} advance $${p.advance}`);
+  // licensaffärer: prylar och serietidningar alltid, film när ryktets mitt är 6.5 eller mer
+  if (lic && S.canFranchise(G)) for (const o of S.frOf(G).offers.slice()) if ((o.kind !== 'film' || (o.lo + o.hi) / 2 >= 6.5) && S.acceptOffer(G, o.id) === true && verbose) console.log(`  deal ${year}: ${o.kind} ${o.partner} up $${o.up}${o.roy ? ' roy $' + o.roy : ''}${o.q ? ' film ' + o.lo + '-' + o.hi + ' (' + o.q + ')' : ''}`);
   // licenser
   for (const p of PLATFORMS) {
     if (S.canLicense(G, p.id) === true && true) {
@@ -267,6 +272,11 @@ if (publish) {
   const ds = S.pubOf(G).deals.filter((d) => d.out);
   const done = ds.filter((d) => d.ended);
   console.log(`published ${G.stats.published || 0}; label profit $${Math.round(S.labelProfit(G)).toLocaleString()} on $${Math.round(G.stats.pubCost || 0).toLocaleString()}; of last ${done.length} finished ${done.filter((d) => d.revenue < d.advance + (d.cost || 0)).length} lost money`);
+}
+if (lic) {
+  const F = S.frOf(G);
+  const films = F.deals.filter((d) => d.kind === 'film' && d.done);
+  console.log(`series ${S.seriesList(G).length}; licensing $${Math.round(S.licIncome(G)).toLocaleString()}; deals ${F.deals.length} (${['merch', 'comic', 'film'].map((k) => k + ' ' + F.deals.filter((d) => d.kind === k).length).join(', ')}); films ${films.map((d) => d.q).join(' ')}`);
 }
 if (ports) {
   const pr = G.games.flatMap((g) => g.ports || []);

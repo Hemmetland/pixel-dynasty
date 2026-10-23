@@ -10,6 +10,7 @@ import { SCOPES, SCOPE_IDS, AUDIENCES, yearOf, yfOf, engineMult } from '../sim/c
 import { startProject, platformOpen, teamOutput, baseHype } from '../sim/dev.js';
 import { phaseCats, idealFocus, normFocus, techWeight, platFit, startFocus, seqFatigue } from '../sim/score.js';
 import { franchiseMult } from '../sim/sales.js';
+import { seriesHype, rootOf } from '../sim/franchise.js';
 import { buyLicense, licenseCost } from '../sim/actions.js';
 import { randomTitle, trendWeeksLeft } from '../sim/market.js';
 import { focusHTML, bindFocus } from './focus.js';
@@ -115,14 +116,15 @@ function expansionTitle(g) {
 const seqPrev = (G) => (W.sequelOf ? G.games.find((g) => g.id === W.sequelOf) : null);
 const seqHype = (G) => {
   const p = seqPrev(G);
-  return p ? Math.min(18, p.score * 1.6) : 0;
+  return p ? Math.min(18, p.score * 1.6) + seriesHype(G, rootOf(G, p).id) : 0;
 };
 function seqHint(G) {
   const p = seqPrev(G);
   if (!p) return `<p class="hint" style="margin-top:6px">${t('wiz.seqHelp')}</p>`;
   const tired = Math.round((1 - seqFatigue(p)) * 100);
   const n = Math.round((franchiseMult(p) - 1) * 100);
-  return `<p class="hint" style="margin-top:6px">${t(n > 0 ? 'wiz.seqPick' : 'wiz.seqWeak', { n, score: p.score.toFixed(1) })}${tired ? ' ' + t('wiz.seqTired', { n: tired }) : ''}</p>`;
+  const h = Math.round(seriesHype(G, rootOf(G, p).id));
+  return `<p class="hint" style="margin-top:6px">${t(n > 0 ? 'wiz.seqPick' : 'wiz.seqWeak', { n, score: p.score.toFixed(1) })}${tired ? ' ' + t('wiz.seqTired', { n: tired }) : ''}${h ? ' ' + t('wiz.seqLic', { n: (h > 0 ? '+' : '') + h }) : ''}</p>`;
 }
 // Format (vanligt spel eller onlinespel) och expansioner till onlinespel som är igång. Syns när serverforskningen är klar.
 function formatHTML(G) {
@@ -296,7 +298,7 @@ function summary(G) {
     ${W.live || W.expansionOf ? `<div class="kv"><span>${t('wiz.format')}</span><b>${W.live ? t('wiz.fmtLive') : esc(t('wiz.expOf', { title: G.games.find((g) => g.id === W.expansionOf)?.title || '' }))}</b></div>` : ''}
     <div class="kv"><span>${t('wiz.duration')}</span><b>${weeksOf(W.scope)} ${t('ui.weeksShort')}</b></div>
     <div class="kv"><span>${t('wiz.team')}</span><b>${workers(G).length} ${tn('wiz.people', workers(G).length)}</b></div>
-    <div class="kv"><span>${t('wiz.startHype')}</span><b>${Math.round(baseHype(G) + seqHype(G))}</b></div>
+    <div class="kv"><span>${t('wiz.startHype')}</span><b>${Math.max(0, Math.round(baseHype(G) + seqHype(G)))}</b></div>
     ${cost ? `<div class="kv"><span>${t('wiz.license')}</span><b>${money(cost)}</b></div>` : ''}
     <div class="ready" style="--c:${VCOL[vk]}">
       <div class="row"><span class="lbl">${t('wiz.readiness')}</span><span class="sp"></span><b style="color:${VCOL[vk]}">${t(vtxt)}</b></div>

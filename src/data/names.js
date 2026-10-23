@@ -31,6 +31,12 @@ export const INDIES = [
   ['Kvarnen Spel', '#f2c84a'], ['Odd Socks', '#ff7aa8'], ['Tin Robot', '#9ab0c8'], ['Starling Games', '#5ab0ff'],
   ['Brass Beetle', '#e0b040'], ['Quiet Harbor', '#4ad0c0'], ['Sockerbit', '#ff9ad0'], ['Ember & Ash', '#ff7050'],
 ];
+// Licenspartner för spelserier: leksaker och prylar, serietidningar och böcker, film (med en grundkvalitet per filmbolag)
+export const PARTNERS = {
+  merch: [['Tinbolt Toys', '#f2b84a'], ['Plopp & Co', '#5fc4e8'], ['Figurverket', '#c77dff'], ['Brickwhistle', '#7bd88f'], ['Kidzmo', '#ff7b9c']],
+  comic: [['Inkpot Comics', '#8ab4ff'], ['Rutpress', '#ffb08a'], ['Quill & Frame', '#e0c070'], ['Paneltryck', '#8ae8c0']],
+  film: [['Lumenwood Pictures', '#ffd66a', 7.2], ['Kestrel Films', '#9ab0ff', 6.5], ['Bluefjord Studios', '#5ad0e8', 5.8], ['Pinecrest Pictures', '#8ac87a', 6.8], ['Ottervale Films', '#ff9a7a', 5.2]],
+};
 export const COMPETITORS = [
   ['Brightside Games', '#ffcf4a'], ['Kraken Studios', '#4ae0c8'], ['Hexa Interactive', '#9b7bff'],
   ['Polar Pixel', '#7ad0ff'], ['Nimbus Entertainment', '#e8e8ff'], ['Ironclad Soft', '#ff7a5c'],

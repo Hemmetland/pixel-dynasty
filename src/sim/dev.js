@@ -15,6 +15,7 @@ import { startSales, forecast } from './sales.js';
 import { crowding } from './market.js';
 import { note } from './news.js';
 import { LIVE_SCOPES, EXP_SCOPES, LIVE_DEV, canGoLive, launchLive, releaseExpansion } from './live.js';
+import { takeSeriesHype } from './franchise.js';
 
 export const RP_RATE = 0.05;
 // Satser som beskriver "per projekt" skalas mot projektets längd (tempo) så att ett längre projekt inte tappar mer hype
@@ -66,7 +67,7 @@ export function startProject(G, cfg) {
     polishDone: 0,
     phase: 0,
     focus: [normFocus(phaseCats(G, 0), cfg.focus0 || f0[0]), normFocus(phaseCats(G, 1), f0[1]), normFocus(phaseCats(G, 2), f0[2])],
-    D: 0, T: 0, bugs: 0, hype: baseHype(G) + (sequel ? Math.min(18, sequel.score * 1.6) : 0),
+    D: 0, T: 0, bugs: 0, hype: clamp(baseHype(G) + (sequel ? Math.min(18, sequel.score * 1.6) + takeSeriesHype(G, sequel) : 0), 0, 100),
     marketing: [],
     crunch: false,
     cost: 0,

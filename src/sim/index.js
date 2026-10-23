@@ -19,3 +19,4 @@ export * from './live.js';
 export * from './legacy.js';
 export * from './ports.js';
 export * from './publish.js';
+export * from './franchise.js';

@@ -31,7 +31,7 @@ function lineChart(pts, color, w = 560, h = 190) {
   return plot({ w, h, svg, labels, dot: { x: X(pts.length - 1), y: Y(last.v), c: color } });
 }
 
-const CAT_KEYS = ['sales', 'subs', 'shop', 'servers', 'contracts', 'awards', 'events', 'loan', 'other', 'salaries', 'rent', 'facilities', 'marketing', 'research', 'licenses', 'interest', 'engines', 'office', 'patches', 'ports', 'publishing'];
+const CAT_KEYS = ['sales', 'subs', 'shop', 'servers', 'contracts', 'awards', 'events', 'loan', 'other', 'salaries', 'rent', 'facilities', 'marketing', 'research', 'licenses', 'interest', 'engines', 'office', 'patches', 'ports', 'publishing', 'licensing'];
 
 regWin({
   id: 'finance',

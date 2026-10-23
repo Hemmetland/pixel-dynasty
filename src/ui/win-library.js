@@ -10,6 +10,7 @@ import { reviewTexts } from '../sim/score.js';
 import { patchGame } from '../sim/actions.js';
 import { patchCost } from '../sim/sales.js';
 import { SCOPES, dateOf, yfOf, START_YEAR, WEEKS_PER_YEAR } from '../sim/const.js';
+import { FR_KINDS, frOf, seriesList, activeDeal, seriesHype, canFranchise, canAccept, acceptOffer, declineOffer, licIncome } from '../sim/franchise.js';
 import { REMASTER_AGE, REMASTER_MIN, portsOf, portable, remasterable, portCost, portWeeks, portScore, portForecast, portTargets, remasterTargets, startPort, portRevenue } from '../sim/ports.js';
 import { plot, gridLines } from './chart.js';
 import { MONTHS } from './core.js';
@@ -223,7 +224,51 @@ function listView(G) {
         <div class="disp" style="font-size:39px;color:${scoreColor(g.score)};align-self:flex-start">${g.score.toFixed(1)}</div></button>`;
     })
     .join('');
-  return `<div class="grid" style="grid-template-columns:repeat(auto-fill,minmax(310px,1fr))">${cards}</div>`;
+  return `${seriesPanel(G)}<div class="grid" style="grid-template-columns:repeat(auto-fill,minmax(310px,1fr))">${cards}</div>`;
+}
+
+// Spelserier överst i biblioteket: erbjudanden om licensaffärer och en rad per serie med avtal, filmer och sparad hype
+const KIND_KEY = { merch: 'fr.kind.merch', comic: 'fr.kind.comic', film: 'fr.kind.film' };
+const TERM_KEY = { merch: 'fr.term.merch', comic: 'fr.term.comic', film: 'fr.term.film' };
+function offerCard(G, o) {
+  o.seen = true;
+  const K = FR_KINDS[o.kind];
+  const ok = canAccept(G, o.id) === true;
+  const terms = t(TERM_KEY[o.kind], { up: money(o.up), roy: money(o.roy || 0), h: K.hype || 0, studio: esc(o.partner), lo: o.lo?.toFixed(1), hi: o.hi?.toFixed(1) });
+  return `<div class="card fr-offer" style="--c:${o.color}"><div class="row" style="gap:12px;flex-wrap:wrap;align-items:flex-start">
+    <span class="fr-ic">${icon(K.ic)}</span>
+    <div style="flex:1;min-width:190px"><div class="faint" style="font-size:12px"><b style="color:${o.color}">${esc(o.partner)}</b> · ${t(KIND_KEY[o.kind])}</div><b class="h3" style="display:block;overflow-wrap:anywhere">${esc(o.title)}</b>
+      <div class="hint" style="margin-top:4px">${terms} ${t('fr.binds', { n: K.weeks })}</div>
+      ${o.kind === 'film' ? `<span class="tag" style="--c:${scoreColor((o.lo + o.hi) / 2)};margin-top:6px">${t('fr.rep', { lo: o.lo.toFixed(1), hi: o.hi.toFixed(1) })}</span> ` : ''}<span class="faint" style="font-size:12px">${t('pub.expires', { n: Math.max(1, o.until - G.t) })}</span></div>
+    <div class="fr-side"><div><div class="lbl">${t('pub.advance')}</div><div class="disp num" style="font-size:24px;color:var(--money)">${money(o.up)}</div></div>
+      <div class="row" style="gap:6px;margin-top:6px;justify-content:flex-end"><button class="btn sm ghost" data-act="fr-no" data-id="${o.id}">${t('fr.decline')}</button><button class="btn sm primary" data-act="fr-yes" data-id="${o.id}" ${ok ? '' : 'disabled'}>${icon('check')}${t('fr.accept')}</button></div></div>
+  </div></div>`;
+}
+function seriesRow(G, s) {
+  const F = frOf(G);
+  const d = activeDeal(G, s.id);
+  const K = d && FR_KINDS[d.kind];
+  const left = d ? Math.max(0, d.until - G.t) : 0;
+  const deal = d ? `<span class="chip c" style="--c:var(--design)">${icon(K.ic)}${t(KIND_KEY[d.kind])} · ${d.kind === 'film' ? t('fr.premiere', { n: left }) : t('fr.left', { n: left })}</span>` : '';
+  const films = F.deals
+    .filter((x) => x.series === s.id && x.kind === 'film' && x.done)
+    .map((x) => `<span class="chip c" style="--c:${scoreColor(x.q)}" data-tip="${esc(t('fr.filmTip', { studio: esc(x.partner), v: x.q.toFixed(1), box: money(x.box || 0), fans: (x.fans >= 0 ? '+' : '') + fmtNum(x.fans || 0) }))}">${icon('film')}${t('fr.film', { v: x.q.toFixed(1) })}</span>`)
+    .join('');
+  const h = Math.round(seriesHype(G, s.id));
+  const hype = h ? `<span class="tag" style="--c:${h > 0 ? 'var(--good)' : 'var(--bug)'}">${t('fr.hype', { n: (h > 0 ? '+' : '') + h })}</span>` : '';
+  return `<button class="pt-row fr-row" data-act="lib-open" data-id="${s.last.id}"><b class="fr-t">${esc(s.root.title)}</b><span class="faint">${t('fr.games', { n: s.games.length })}</span><b class="num" style="color:${scoreColor(s.avg)}" data-tip="${esc(t('fr.avg'))}">${s.avg.toFixed(1)}</b><span class="fr-chips">${deal}${films}${hype}</span><span class="sp"></span><b class="num" style="color:var(--money)" data-tip="${esc(t('fr.rev'))}">${money(s.revenue)}</b></button>`;
+}
+function seriesPanel(G) {
+  const list = seriesList(G);
+  if (!list.length) return '';
+  const on = canFranchise(G);
+  const offers = on ? frOf(G).offers.map((o) => offerCard(G, o)).join('') : '';
+  const inc = licIncome(G);
+  const foot = !on ? `${icon('lock')} ${t('fr.locked')}` : offers ? t('fr.help') : `${t('fr.none')} ${t('fr.help')}`;
+  return `<div class="card" style="margin-bottom:16px"><div class="row" style="margin-bottom:6px"><div class="lbl">${t('fr.head')}</div><span class="sp"></span>${inc > 0 ? `<span class="faint" style="font-size:12px">${t('fr.total', { v: money(inc) })}</span>` : ''}</div>
+    ${offers ? `<div class="col" style="gap:10px;margin:6px 0 12px">${offers}</div>` : ''}
+    ${list.slice(0, 6).map((s) => seriesRow(G, s)).join('')}
+    <div class="hint" style="margin-top:8px">${foot}</div></div>`;
 }
 
 // Porteringar: färdiga porter med betyg och intäkter, pågående portering och knappar för de plattformar som går att porta till
@@ -347,6 +392,16 @@ act('lib-port', (el) => {
   const r = startPort(UI.app.G, +el.dataset.id, el.dataset.p, el.dataset.kind || 'port');
   if (r === true) sfx.play('coin');
   else if (r) errToast(r);
+  UI.refresh();
+});
+act('fr-yes', (el) => {
+  const r = acceptOffer(UI.app.G, +el.dataset.id);
+  if (r === true) sfx.play('coin');
+  else if (r) errToast(r);
+  UI.refresh();
+});
+act('fr-no', (el) => {
+  declineOffer(UI.app.G, +el.dataset.id);
   UI.refresh();
 });
 act('lib-patch', (el) => {
