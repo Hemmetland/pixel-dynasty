@@ -338,3 +338,50 @@ Enskilda rutor finns i `assets/pixellab/characters/dev/hair2/<nyckel>/`. Allt un
 
 - **`sleep#2`** behöver ingen `hatRow`.
 - **Begränsningar:** i `sleep` blir hårmassan cirka 6 px högre än i `#1` och läses mer som en knut än en hästsvans. `drink` ruta 1 har en liten ögla mellan svansen och skallen (syns bara i full storlek). I `read` och `sitLaptop` är bakhuvudet lite plattare. På ljust hår syns hårbandet och konturen mot nacken som mörka prickar i spelskala.
+
+## Frisyr 3: lockigt hår utan mössa och glasögon (alla 16 nycklar)
+
+Variant `#3`: samma ansikte och öga som `#1` och `#2`, men håret är ett runt, lockigt moln (kort afro). Toppen ligger 4 px högre än i `#1` och bakhuvudet 5 px längre bak. Tre runda lockar bildar kronan, fler lockar buktar bakhuvudet och nacken, och en lockig lugg ligger över pannan. Lockarna är cirka 5 px stora med 2 px skuggfickor så att strukturen överlever nedskalningen till 0,42. Håret använder bara hårmaterialets färger (#472b2f, #412425, #301b1a), ljus uppifrån vänster; konturen (#181311) färgbyts inte. Kronans form väljs en gång per remsa så att lockarna inte hoppar mellan rutorna.
+
+| Remsa | Rutor | Nyckel |
+| --- | --- | --- |
+| `assets/chars/hair3/walk.png` | 6 | `char.walk#3` |
+| `assets/chars/hair3/stand.png` | 1 | `char.stand#3` |
+| `assets/chars/hair3/drink.png` | 6 | `char.drink#3` |
+| `assets/chars/hair3/sit.png` | 2 | `char.sit#3` |
+| `assets/chars/hair3/type.png` | 4 | `char.type#3` |
+| `assets/chars/hair3/talk.png` | 4 | `char.talk#3` |
+| `assets/chars/hair3/sitTalk.png` | 4 | `char.sitTalk#3` |
+| `assets/chars/hair3/sitDrink.png` | 6 | `char.sitDrink#3` |
+| `assets/chars/hair3/read.png` | 2 | `char.read#3` |
+| `assets/chars/hair3/think.png` | 2 | `char.think#3` |
+| `assets/chars/hair3/sleep.png` | 2 | `char.sleep#3` |
+| `assets/chars/hair3/tired.png` | 2 | `char.tired#3` |
+| `assets/chars/hair3/sitLaptop.png` | 4 | `char.sitLaptop#3` |
+| `assets/chars/hair3/cheer.png` | 2 | `char.cheer#3` |
+| `assets/chars/hair3/present.png` | 2 | `char.present#3` |
+| `assets/chars/hair3/sitCheer.png` | 2 | `char.sitCheer#3` |
+
+Enskilda rutor finns i `assets/pixellab/characters/dev/hair3/<nyckel>/`. Allt under rad 60 är identiskt med grundremsorna. Utanför huvudet ändrades bara: 4 till 6 huvpixlar vid nacken i `sitDrink` ruta 2 till 4 och i `think`, och 8 till 12 pixlar av den bortre, lyfta ärmen bakom huvudet i `cheer` och `sitCheer`, där lockarna ligger framför ärmen. Den närmre armen, muggen, boken, laptopen och händerna är orörda. Lockarna täcker örats översta 3 pixlar; nedre delen av örat syns.
+
+```json
+"char.walk#3": { "file": "chars/hair3/walk.png", "fw": 92, "fh": 92, "ax": 46, "ay": 82, "frames": 6, "scale": 0.42, "note": "Frisyr 3, lockigt hår utan mössa och glasögon (Kör)" },
+"char.stand#3": { "file": "chars/hair3/stand.png", "fw": 92, "fh": 92, "ax": 46, "ay": 82, "frames": 1, "scale": 0.42, "note": "Frisyr 3, lockigt hår utan mössa och glasögon (Kör)" },
+"char.drink#3": { "file": "chars/hair3/drink.png", "fw": 92, "fh": 92, "ax": 46, "ay": 82, "frames": 6, "scale": 0.42, "note": "Frisyr 3, lockigt hår utan mössa och glasögon (Kör)" },
+"char.sit#3": { "file": "chars/hair3/sit.png", "fw": 92, "fh": 92, "ax": 46, "ay": 82, "frames": 2, "scale": 0.42, "note": "Frisyr 3, lockigt hår utan mössa och glasögon (Kör)" },
+"char.type#3": { "file": "chars/hair3/type.png", "fw": 92, "fh": 92, "ax": 46, "ay": 82, "frames": 4, "scale": 0.42, "note": "Frisyr 3, lockigt hår utan mössa och glasögon (Kör)" },
+"char.talk#3": { "file": "chars/hair3/talk.png", "fw": 92, "fh": 92, "ax": 46, "ay": 82, "frames": 4, "scale": 0.42, "note": "Frisyr 3, lockigt hår utan mössa och glasögon (Kör)" },
+"char.sitTalk#3": { "file": "chars/hair3/sitTalk.png", "fw": 92, "fh": 92, "ax": 46, "ay": 82, "frames": 4, "scale": 0.42, "note": "Frisyr 3, lockigt hår utan mössa och glasögon (Kör)" },
+"char.sitDrink#3": { "file": "chars/hair3/sitDrink.png", "fw": 92, "fh": 92, "ax": 46, "ay": 82, "frames": 6, "scale": 0.42, "note": "Frisyr 3, lockigt hår utan mössa och glasögon (Kör)" },
+"char.read#3": { "file": "chars/hair3/read.png", "fw": 92, "fh": 92, "ax": 46, "ay": 82, "frames": 2, "scale": 0.42, "note": "Frisyr 3, lockigt hår utan mössa och glasögon (Kör)" },
+"char.think#3": { "file": "chars/hair3/think.png", "fw": 92, "fh": 92, "ax": 46, "ay": 82, "frames": 2, "scale": 0.42, "note": "Frisyr 3, lockigt hår utan mössa och glasögon (Kör)" },
+"char.sleep#3": { "file": "chars/hair3/sleep.png", "fw": 92, "fh": 92, "ax": 46, "ay": 82, "frames": 2, "scale": 0.42, "note": "Frisyr 3, lockigt hår utan mössa och glasögon (Kör)" },
+"char.tired#3": { "file": "chars/hair3/tired.png", "fw": 92, "fh": 92, "ax": 46, "ay": 82, "frames": 2, "scale": 0.42, "note": "Frisyr 3, lockigt hår utan mössa och glasögon (Kör)" },
+"char.sitLaptop#3": { "file": "chars/hair3/sitLaptop.png", "fw": 92, "fh": 92, "ax": 46, "ay": 82, "frames": 4, "scale": 0.42, "note": "Frisyr 3, lockigt hår utan mössa och glasögon (Kör)" },
+"char.cheer#3": { "file": "chars/hair3/cheer.png", "fw": 92, "fh": 92, "ax": 46, "ay": 82, "frames": 2, "scale": 0.42, "note": "Frisyr 3, lockigt hår utan mössa och glasögon (Kör)" },
+"char.present#3": { "file": "chars/hair3/present.png", "fw": 92, "fh": 92, "ax": 46, "ay": 82, "frames": 2, "scale": 0.42, "note": "Frisyr 3, lockigt hår utan mössa och glasögon (Kör)" },
+"char.sitCheer#3": { "file": "chars/hair3/sitCheer.png", "fw": 92, "fh": 92, "ax": 46, "ay": 82, "frames": 2, "scale": 0.42, "note": "Frisyr 3, lockigt hår utan mössa och glasögon (Kör)" }
+```
+
+- **`sleep#3`** behöver ingen `hatRow`.
+- **Begränsningar:** på ljust hår lämnar den knottriga kronan några ensamma mörka pixlar överst i spelskala (fler än den släta kronan i `#1`, men de syns knappt mot den mörka bakgrunden). I svart och mörkbrunt hår blir strukturen svag eftersom hårets tre nyanser ligger nära varandra, så håret läses mest som en stor rund kalufs. I de vridna huvudena i `read`, `sitLaptop` och `drink` ruta 1 blir lockstrukturen lite brusigare; kronan är handskuren tillbaka till två lockar i `read` och `sitLaptop`.
