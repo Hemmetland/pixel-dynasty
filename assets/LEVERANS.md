@@ -265,3 +265,20 @@ Enskilda rutor finns i `assets/pixellab/characters/dev/hair1/<nyckel>/`.
 - **Utanför huvudet** ändrades bara några pixlar: i `cheer` syns den lyfta bortre armen där mössan tidigare täckte den, och i `drink` och `walk` försvann några lösa källpixlar.
 - **`sleep#1`** behöver ingen `hatRow` (inga mösspixlar), men värdet 0.53 skadar inte.
 - **Begränsningar:** den mörka konturen på hjässan kan ge en eller två mörka hörnpixlar på ljust hår i spelskala (högst cirka 4 per ruta, värst i `drink` 0 och 4). `drink` ruta 1, 3 och 4 har ett enkelt upprätt öga i ett lutat ansikte, och i `sleep` är huvudet mindre än mössan var, så handen på bordet syns helt.
+
+## Karaktären: jubel vid skrivbordet (handritat, sittande)
+
+| Remsa | Rutor | Nyckel | Innehåll |
+| --- | --- | --- | --- |
+| `assets/chars/sitCheer.png` (184x92) | 2 | `char.sitCheer` | sitter med båda armarna i ett V och knutna nävar över huvudet, stort skratt. Ruta 1: ryggen rätas 2 px och armarna går 2 px högre, som ett glädjeskutt på stolen |
+
+Enskilda rutor finns i `assets/pixellab/characters/dev/sitCheer-east-hand/`. Överkroppen är stående `char.cheer` flyttad 3 px ner (samma förhållande som mellan `east.png` och `sit-east-hand/0.png`), med armarna lite mer isär så att nävarna går fria från mössan. Raderna 59–91 är identiska med `sit-east-hand/0.png`. Den bortre näven ligger cirka 7 scenpixlar från skärmen i `desk2`.
+
+```json
+"char.sitCheer": { "file": "chars/sitCheer.png", "fw": 92, "fh": 92, "ax": 46, "ay": 82, "frames": 2, "scale": 0.42, "note": "PixelLab-karaktär 77053f90, handritad sittande jubel vid skrivbordet; samma underkropp som char.sit (Kör)" }
+```
+
+- **Takt:** `cheer: ['char.sitCheer', 5]` i `SEAT_SPRITE`, samma som procedurella `floor(t*5) % 2` och stående `char.cheer`.
+- **Färger:** 34 nyanser, alla redan i karaktären. Mössan ligger på rad 11–27, ingen `hatRow` behövs.
+- **Begränsningar:** ansiktet är cirka 5 scenpixlar brett, så munnen växlar mellan mörk och mörkrosa mellan rutorna, vilket ser ut som skratt men inte lika tydligt som den procedurella figurens vita tänder. Ruta 1 läses som att sitta upp rak, inte som ett riktigt lyft från stolen.
+- **Frisyrer:** `char.sitCheer#1` (kort hår) och `#2` följer, så att ingen byter frisyr när de jublar.
