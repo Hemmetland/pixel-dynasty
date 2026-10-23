@@ -10,7 +10,7 @@ import { reviewTexts } from '../sim/score.js';
 import { patchGame } from '../sim/actions.js';
 import { patchCost } from '../sim/sales.js';
 import { SCOPES, dateOf, yfOf, START_YEAR, WEEKS_PER_YEAR } from '../sim/const.js';
-import { PORT_WEEKS, portsOf, portable, portCost, portScore, portTargets, startPort, portRevenue } from '../sim/ports.js';
+import { PORT_WEEKS, portsOf, portable, portCost, portScore, portForecast, portTargets, startPort, portRevenue } from '../sim/ports.js';
 import { plot, gridLines } from './chart.js';
 import { MONTHS } from './core.js';
 import { fmtNum } from '../core/util.js';
@@ -249,12 +249,13 @@ function portsPanel(G, g) {
       .map((p) => {
         const pl = PLATFORM[p.id];
         const v = portScore(G, g, p.id);
+        const rev = p.licensed ? portForecast(G, g, p.id) : 0;
         const pot = potential(pl, yf);
         const tip = p.licensed
-          ? t('port.tip', { plat: esc(pl.name), v: v.toFixed(1), o: g.score.toFixed(1), size: t(SIZE_KEY[pot < 15 ? 0 : pot < 35 ? 1 : 2]), cost: money(cost), n: PORT_WEEKS[g.scope] })
+          ? t('port.tip', { plat: esc(pl.name), v: v.toFixed(1), o: g.score.toFixed(1), rev: money(rev), size: t(SIZE_KEY[pot < 15 ? 0 : pot < 35 ? 1 : 2]), cost: money(cost), n: PORT_WEEKS[g.scope] })
           : t('port.needLicense');
         const off = !p.licensed || !!P || G.money < cost;
-        return `<button class="btn sm" data-act="lib-port" data-id="${g.id}" data-p="${p.id}" ${off ? 'disabled' : ''} data-tip="${esc(tip)}">${p.licensed ? '' : icon('lock')}${esc(pl.name)}${p.licensed ? ` <b class="num" style="color:${scoreColor(v)}">${v.toFixed(1)}</b>` : ''}</button>`;
+        return `<button class="btn sm" data-act="lib-port" data-id="${g.id}" data-p="${p.id}" ${off ? 'disabled' : ''} data-tip="${esc(tip)}">${p.licensed ? '' : icon('lock')}${esc(pl.name)}${p.licensed ? ` <b class="num" style="color:${scoreColor(v)}">${v.toFixed(1)}</b><span class="num" style="color:${rev >= cost ? 'var(--money)' : 'var(--bug)'}">≈${money(rev)}</span>` : ''}</button>`;
       })
       .join('');
     body = `${work}${other ? `<div class="hint">${t('port.busyWith', { title: esc(other.title), plat: esc(PLATFORM[P.platform].name) })}</div>` : ''}

@@ -16,7 +16,7 @@ import { note } from './news.js';
 // är redan känt (ingen ny hype, inga uppföljarfans) och åldras: grafiken ser daterad ut några år senare, och en svagare
 // maskin kräver nedskärningar. Porterna ligger på originalet (g.ports), inte i G.games, så de räknas inte som nya spel.
 export const PORT_WEEKS = { small: 6, medium: 10, large: 16, aaa: 24 };
-const PORT_COST = { small: 10000, medium: 50000, large: 240000, aaa: 800000 };
+const PORT_COST = { small: 4000, medium: 35000, large: 240000, aaa: 800000 };
 // Andelen av ett nytt spels försäljning; varje tidigare port av samma spel tar 20 % till (köparna har redan spelet).
 export const PORT_MULT = 0.25;
 const AGE_LOSS = 0.3; // betyg per år efter det första
@@ -66,24 +66,28 @@ export function startPort(G, id, pid) {
   return true;
 }
 
+// Portens försäljning utan slump om den släpps vid tiden at: som ett nytt spel på den nya plattformen då, men utan
+// uppföljarbonus, nyhetsvärde och trängsel, och med PORT_MULT (mindre för varje tidigare port av spelet).
+export function portForecast(G, g, pid, at = G.t + PORT_WEEKS[g.scope]) {
+  const copy = {
+    ...g, platform: pid, t: at, score: portScore(G, g, pid, at), sequelOf: null, novel: false, crowd: 1,
+    hype: 15 + 0.2 * (g.hype || 0),
+    parts: { bugRatio: (g.parts?.bugRatio ?? 0) * (g.patched ? 0.2 : 1) },
+    salesMult: PORT_MULT * Math.pow(0.8, portsOf(g).length),
+  };
+  return forecast(G, copy, { noise: false });
+}
+
 function finishPort(G) {
   const P = G.port;
   G.port = null;
   const g = G.games.find((x) => x.id === P.game);
   if (!g) return;
   const score = portScore(G, g, P.platform, G.t);
-  const n = portsOf(g).length;
-  // forecast räknar som för ett nytt spel på den nya plattformen i dag, utan uppföljarbonus, nyhetsvärde och trängsel
-  const copy = {
-    ...g, platform: P.platform, t: G.t, score, sequelOf: null, novel: false, crowd: 1,
-    hype: 15 + 0.2 * (g.hype || 0),
-    parts: { bugRatio: (g.parts?.bugRatio ?? 0) * (g.patched ? 0.2 : 1) },
-    salesMult: PORT_MULT * Math.pow(0.8, n),
-  };
   // egen slump ur fröet, så att en portering inte flyttar resten av spelets slumpföljd
   const R = { rng: hashStr(`${G.seed || 0}:port:${g.id}:${P.platform}`) | 0 };
   const noise = clamp(gauss(R, 1, 0.1), 0.78, 1.25);
-  const port = { platform: P.platform, t: G.t, score, cost: P.cost, total: forecast(G, copy, { noise: false }) * noise, priceAt: priceOf(yearOf(G.t)), tail: SALES_TAIL, revenue: 0, units: 0, weekly: [], ended: false };
+  const port = { platform: P.platform, t: G.t, score, cost: P.cost, total: portForecast(G, g, P.platform, G.t) * noise, priceAt: priceOf(yearOf(G.t)), tail: SALES_TAIL, revenue: 0, units: 0, weekly: [], ended: false };
   g.ports = [...portsOf(g), port];
   G.stats.ports = (G.stats.ports || 0) + 1;
   note(G, 'news.port', { title: g.title, plat: PLATFORM[P.platform].name, v: score.toFixed(1) }, score >= 7 ? 'good' : 'info');

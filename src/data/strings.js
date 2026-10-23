@@ -634,7 +634,7 @@ export const STRINGS = {
   'port.needLicense': ['Kräver licens för plattformen.', 'Needs a license for the platform.'],
   'port.working': ['Porteras till {plat}', 'Being ported to {plat}'],
   'port.expect': ['Väntat betyg', 'Expected score'],
-  'port.tip': ['{plat}: väntat betyg {v} (originalet {o}). Plattformens storlek just nu: {size}. Kostnad {cost}, klart om {n} veckor.', '{plat}: expected score {v} (original {o}). Platform size right now: {size}. Costs {cost}, done in {n} weeks.'],
+  'port.tip': ['{plat}: väntat betyg {v} (originalet {o}) och försäljning för cirka {rev}, men det kan slå 20 % åt båda hållen. Plattformens storlek just nu: {size}. Kostnad {cost}, klart om {n} veckor.', '{plat}: expected score {v} (original {o}) and sales of about {rev}, give or take 20 %. Platform size right now: {size}. Costs {cost}, done in {n} weeks.'],
   'port.size.0': ['liten', 'small'],
   'port.size.1': ['medel', 'medium'],
   'port.size.2': ['stor', 'large'],
