@@ -122,9 +122,12 @@ function build(s, look) {
 }
 
 // Frisyrvarianter 'nyckel#1'–'nyckel#3' (kort hår, hästsvans, lockigt; samma rutor och ankare, bara huvudet bytt): den som
-// har mössa eller hatt ritas med grundspriten, övriga får en av de varianter som finns efter frisyren. En variant används
-// först när den finns för alla char.*-remsor, annars skulle personen byta frisyr mellan poserna.
+// har mössa eller hatt ritas med grundspriten, övriga får den variant som liknar deras egen frisyr (people.js HAIR) och
+// annars någon av dem som finns. En variant används först när den finns för alla char.*-remsor, annars skulle personen
+// byta frisyr mellan poserna.
 const HAIR_VARIANTS = [1, 2, 3];
+// kort, raspat, långt, knut, afro, piggar, lugg, hästsvans, page, mohawk, flint, lockigt, tuppkam, fläta
+const HAIR_KIND = [1, 1, 2, 2, 3, 1, 1, 2, 2, 1, 1, 3, 1, 2];
 let fullVer = -1;
 let fullV = [];
 function fullVariants() {
@@ -137,7 +140,8 @@ function fullVariants() {
 const hairVariant = (look) => {
   const C = lookColors(look);
   const vs = fullVariants();
-  return C.hatted || !vs.length ? 0 : vs[C.style % vs.length];
+  if (C.hatted || !vs.length) return 0;
+  return vs.includes(HAIR_KIND[C.style]) ? HAIR_KIND[C.style] : vs[C.style % vs.length];
 };
 
 // Ritar personen som sprite 'key' (t.ex. 'char.walk', 'char.stand', 'char.drink') med fötterna i (x, y), ruta frame.
