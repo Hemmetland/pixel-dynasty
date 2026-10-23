@@ -47,6 +47,7 @@ export const ACHIEVEMENTS = [
   A('exp3', 'a_globe', 'Levande värld', 'Living World', 'Släpp tre expansioner till samma onlinespel.', 'Release three expansions for the same online game.', (G) => G.games.some((g) => g.live && g.live.exps.length >= 3)),
   A('events10', 'a_globe', 'Festfixare', 'Party Planner', 'Ordna tio evenemang i dina onlinespel.', 'Run ten events in your online games.', (G) => liveEvents(G) >= 10),
   A('outlast', 'a_globe', 'Sist kvar', 'Last One Standing', 'Ha ett onlinespel igång när en konkurrents MMO stänger.', 'Have an online game running when a rival MMO shuts down.', (G) => (G.stats.outlasted || 0) >= 1),
+  A('ports3', 'a_globe', 'Överallt', 'Everywhere', 'Porta ett spel till tre andra plattformar.', 'Port one game to three other platforms.', (G) => G.games.some((g) => (g.ports?.length || 0) >= 3)),
   A('legend', 'a_clock', 'Legend', 'Legend', 'Spela till år 2020.', 'Play until the year 2020.', (G) => G.t >= 48 * 40),
 ];
 export const ACH = Object.fromEntries(ACHIEVEMENTS.map((a) => [a.id, a]));

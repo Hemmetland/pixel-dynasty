@@ -23,6 +23,8 @@ const mmo = args.includes('--mmo');
 const events = mmo && !args.includes('--no-events');
 // --f2p: gör onlinespelen till gratisspel från 2010
 const f2p = mmo && args.includes('--f2p');
+// --ports: porterar spel med betyg 7+ till den licensierade plattform som väntas ge bäst betyg
+const ports = args.includes('--ports');
 // --bd: skriv ut årets pengar per kategori (för balansarbete)
 const bd = args.includes('--bd');
 const acc = {};
@@ -117,12 +119,26 @@ function manage(G) {
   // forskning
   if (!casual || G.t % 16 === 0) for (const r of RESEARCH.slice().sort((a, b) => a.rp - b.rp)) {
     if (G.research.active.length >= S.researchSlots(G)) break;
+    if (r.id === 'b_port' && !ports) continue;
     if (S.canResearch(G, r.id) === true && r.rp <= G.rp) S.startResearch(G, r.id);
   }
   // förfiningar när det finns plats över och råd (pengarna med marginal)
   if (!casual) for (const r of REFINES) {
     if (G.research.active.length >= S.researchSlots(G)) break;
     if (S.canResearch(G, r.id) === true && G.money > S.researchCost(G, r.id).money * 5) S.startResearch(G, r.id);
+  }
+  // porteringar: bästa väntade betyg gånger plattformens storlek, bara för spel med betyg 7+
+  if (ports && G.u.flags.ports && !G.port) {
+    let best = null;
+    for (const g of G.games) {
+      if (g.score < 7 || !S.portable(G, g)) continue;
+      for (const p of S.portTargets(G, g)) {
+        const s = S.portScore(G, g, p.id);
+        const v = Math.exp(0.62 * (s - 6.5)) * potential(PLATFORMS.find((x) => x.id === p.id), S.yfOf(G.t));
+        if (p.licensed && s >= 6.5 && (!best || v > best.v)) best = { g, p: p.id, s, v };
+      }
+    }
+    if (best && G.money > S.portCost(G, best.g) * 3 && S.startPort(G, best.g.id, best.p) === true && verbose) console.log(`  port ${year}: ${best.g.title} ${best.g.platform} -> ${best.p} score ${best.s} cost $${S.portCost(G, best.g)}`);
   }
   // licenser
   for (const p of PLATFORMS) {
@@ -230,6 +246,10 @@ if (args.includes('--news')) {
   const n = {};
   for (const x of G.news) n[x.key] = (n[x.key] || 0) + 1;
   console.log('news ' + Object.entries(n).sort((a, b) => b[1] - a[1]).map(([k, v]) => k + ' ' + v).join(', '));
+}
+if (ports) {
+  const pr = G.games.flatMap((g) => g.ports || []);
+  console.log(`ports ${pr.length}; revenue $${Math.round(pr.reduce((a, p) => a + p.revenue, 0)).toLocaleString()}; cost $${Math.round(pr.reduce((a, p) => a + p.cost, 0)).toLocaleString()}`);
 }
 console.log(G.over ? `GAME OVER ${S.yearOf(G.over.t)} (bankrupt) after ${G.games.length} games` : `Finished ${S.yearOf(G.t)}; money $${Math.round(G.money).toLocaleString()}; games ${G.games.length}; best ${G.stats.bestScore}; ach ${G.ach.length}; ${dt}ms`);
 if (args.includes('--parts')) {

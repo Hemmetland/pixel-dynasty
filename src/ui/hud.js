@@ -295,13 +295,21 @@ function taskRows(G, job) {
     const n = J.marketing.length;
     mkt = { id: 'mkt', grp: 2, ic: 'megaphone', c: 'var(--hot)', name: t('pn.rowMkt'), sub: n === 1 ? t('pn.rowMktSub1') : t('pn.rowMktSub', { n }), pct: J.hype, tip: t('pn.rowMktTip', { n, title: esc(J.title) }), go: 'marketing' };
   }
+  let port = null;
+  const P = G.port;
+  const pg = P ? G.games.find((g) => g.id === P.game) : null;
+  if (pg) {
+    const p = ((G.t - P.t0) / Math.max(1, P.until - P.t0)) * 100;
+    const plat = PLATFORM[P.platform].name;
+    port = { id: 'port', grp: 2, ic: 'gamepad', c: 'var(--design)', name: pg.title, sub: t('pn.rowPort', { plat }), pct: p, tip: t('pn.rowPortTip', { title: esc(pg.title), plat: esc(plat), pct: pct(p) }), go: 'library' };
+  }
   let sales = null;
   const lg = G.games.length ? G.games[G.games.length - 1] : null;
   if (lg && !lg.ended && lg.total > 0) {
     const p = (lg.revenue / lg.total) * 100;
     sales = { id: 's' + lg.id, grp: 3, ic: 'chart', c: 'var(--money)', name: lg.title, sub: t('pn.rowSales'), pct: p, tip: t('pn.rowSalesTip', { title: esc(lg.title), pct: pct(p), rev: money(lg.revenue), total: money(lg.total) }), go: 'library' };
   }
-  return [job, res[0], mkt, res[1], sales, res[2]].filter(Boolean).slice(0, 3).sort((a, b) => a.grp - b.grp);
+  return [job, res[0], mkt, port, res[1], sales, res[2]].filter(Boolean).slice(0, 3).sort((a, b) => a.grp - b.grp);
 }
 
 const rowHTML = (r) => {

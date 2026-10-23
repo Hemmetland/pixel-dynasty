@@ -42,6 +42,8 @@ function dress(look, r, remix) {
   const ri = (a, b) => a + Math.floor(r() * (b - a + 1));
   const acc = look.acc | 0;
   if (remix) {
+    // grundslumpen drar hårfärg 0-7, där 7 är blått: det ska vara en ovanlig färgning, så den blir en naturlig färg här
+    if (look.hairColor === 7) look.hairColor = ri(0, 6);
     if (r() < 0.5) look.hair = ri(7, LOOK_N.hair - 1);
     if (r() < 0.16) look.hairColor = FANTASY_HAIR[ri(0, FANTASY_HAIR.length - 1)];
     if (r() < 0.4) look.shirt = ri(12, LOOK_N.shirt - 1);

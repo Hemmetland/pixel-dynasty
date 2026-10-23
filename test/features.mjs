@@ -143,6 +143,35 @@ ok(true, 'alla händelser körda');
   for (let i = 0; i < 48; i++) S.liveWeek(G3f), G3f.t++;
   ok(gf.live.subs > 300000 && Number.isFinite(G3f.money), 'gratisspelet växer under ett år (' + Math.round(gf.live.subs) + ' spelare)');
 }
+// porteringar: kräver forskning och licens, ett spel i taget, betyget åldras, säljer veckovis utan att röra G.rng
+{
+  const GP = S.newGame({ studio: 'P', seed: 11 }); S.makeCompetitors(GP); S.initWorld(GP);
+  GP.t = 48 * 10; // 1990
+  GP.money = 5e6;
+  GP.fans = 20000;
+  const base = { title: 'Port', score: 8.5, weekly: [1], total: 2e6, priceAt: 30, topic: 'space', genre: 'action', platform: 'hikari8', scope: 'medium', audience: 'everyone', revenue: 0, units: 0, insights: [], reviews: [], flags: [], hype: 40 };
+  const g = { ...base, id: 8800, t: GP.t - 30 };
+  const old = { ...base, id: 8801, t: GP.t - 48 * 6 };
+  GP.games.push(g, old);
+  ok(S.canPort(GP, g, 'pc') === 'locked', 'portering kräver forskning');
+  GP.u.flags.ports = true;
+  ok(S.portTargets(GP, g).some((p) => p.id === 'pc' && p.licensed) && !S.portTargets(GP, g).some((p) => p.id === 'hikari8'), 'porten går till andra öppna plattformar');
+  ok(S.canPort(GP, g, 'vortex16') === 'license', 'portering kräver licens');
+  ok(S.portScore(GP, old, 'pc') < S.portScore(GP, g, 'pc') - 1, 'ett gammalt spel tappar betyg som port');
+  const rng0 = GP.rng;
+  const money0 = GP.money;
+  ok(S.startPort(GP, g.id, 'pc') === true && GP.port && GP.money === money0 - S.portCost(GP, g) && S.canPort(GP, old, 'pc') === 'busy', 'porteringen startar, kostar och tar teamet');
+  for (let i = 0; i < 30; i++) { GP.t++; S.portWeek(GP); }
+  const pt = g.ports && g.ports[0];
+  ok(!GP.port && pt && pt.platform === 'pc' && pt.revenue > 0 && pt.total > 0 && pt.total < g.total, 'porten släpps och säljer (' + Math.round(pt?.revenue || 0) + ')');
+  ok(GP.rng === rng0, 'porteringen rör inte spelets slumpföljd');
+  ok(!S.portTargets(GP, g).some((p) => p.id === 'pc'), 'samma plattform kan inte porteras två gånger');
+  const live = { ...base, id: 8802, t: GP.t - 10, live: { closed: false } };
+  ok(S.canPort(GP, live, 'pc') === 'locked', 'onlinespel porteras inte');
+  const GJ = JSON.parse(JSON.stringify(GP));
+  for (let i = 0; i < 20; i++) { GJ.t++; S.portWeek(GJ); }
+  ok(Number.isFinite(GJ.money) && GJ.games[0].ports[0].weekly.length > 20, 'porten säljer vidare efter sparning');
+}
 // bailout + konkurs
 const G3 = S.newGame({ studio: 'B', seed: 3 }); S.makeCompetitors(G3); S.initWorld(G3);
 G3.money = -5000;

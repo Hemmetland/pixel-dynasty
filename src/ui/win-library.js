@@ -4,12 +4,13 @@ import { glyphImg } from '../render/glyphs.js';
 import { coverImg } from '../render/covers.js';
 import { TOPIC } from '../data/topics.js';
 import { GENRE } from '../data/genres.js';
-import { PLATFORM } from '../data/platforms.js';
+import { PLATFORM, potential } from '../data/platforms.js';
 import { REVIEWERS } from '../data/reviews.js';
 import { reviewTexts } from '../sim/score.js';
 import { patchGame } from '../sim/actions.js';
 import { patchCost } from '../sim/sales.js';
-import { SCOPES, dateOf, START_YEAR, WEEKS_PER_YEAR } from '../sim/const.js';
+import { SCOPES, dateOf, yfOf, START_YEAR, WEEKS_PER_YEAR } from '../sim/const.js';
+import { PORT_WEEKS, portsOf, portable, portCost, portScore, portTargets, startPort, portRevenue } from '../sim/ports.js';
 import { plot, gridLines } from './chart.js';
 import { MONTHS } from './core.js';
 import { fmtNum } from '../core/util.js';
@@ -217,12 +218,51 @@ function listView(G) {
         ${coverImg(spec(g), 72)}
         <div style="flex:1;min-width:0;text-align:left"><b class="h3" style="display:block;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${esc(g.title)}</b>
           <div class="row wrap" style="gap:5px;margin:6px 0"><span class="chip c" style="--c:${ge.color}">${L(ge.name)}</span><span class="chip">${L(tp.name)}</span>${g.expansionOf ? `<span class="chip c" style="--c:var(--good)">${t('dev.expChip')}</span>` : ''}</div>
-          <div class="faint" style="font-size:12px">${esc(PLATFORM[g.platform].name)} · ${dateOf(g.t).year}</div>
-          <div class="row" style="gap:12px;margin-top:6px;font-size:12.5px"><span style="color:var(--money)">${money(g.revenue + (g.live ? g.live.rev : 0))}</span>${g.live && !g.live.closed ? `<span class="tag" style="--c:var(--good)">${t('live.tag')} · ${fmtNum(g.live.subs)}</span>` : `<span class="faint">${g.ended ? t('lib.ended') : t('lib.onSale')}</span>`}</div></div>
+          <div class="faint" style="font-size:12px">${esc(PLATFORM[g.platform].name)} · ${dateOf(g.t).year}${portsOf(g).length ? ' · ' + tn('lib.ports', portsOf(g).length) : ''}</div>
+          <div class="row" style="gap:12px;margin-top:6px;font-size:12.5px"><span style="color:var(--money)">${money(g.revenue + (g.live ? g.live.rev : 0) + portRevenue(g))}</span>${g.live && !g.live.closed ? `<span class="tag" style="--c:var(--good)">${t('live.tag')} · ${fmtNum(g.live.subs)}</span>` : `<span class="faint">${g.ended ? t('lib.ended') : t('lib.onSale')}</span>`}</div></div>
         <div class="disp" style="font-size:39px;color:${scoreColor(g.score)};align-self:flex-start">${g.score.toFixed(1)}</div></button>`;
     })
     .join('');
   return `<div class="grid" style="grid-template-columns:repeat(auto-fill,minmax(310px,1fr))">${cards}</div>`;
+}
+
+// Porteringar: färdiga porter med betyg och intäkter, pågående portering och knappar för de plattformar som går att porta till
+const SIZE_KEY = ['port.size.0', 'port.size.1', 'port.size.2'];
+function portsPanel(G, g) {
+  const done = portsOf(g);
+  if (!done.length && (g.live || g.expansionOf)) return '';
+  const rows = done
+    .map((p) => `<div class="pt-row"><span class="chip">${esc(PLATFORM[p.platform].name)}</span><span class="faint">${dateOf(p.t).year}</span><b class="num" style="color:${scoreColor(p.score)}">${p.score.toFixed(1)}</b><span class="sp"></span><b class="num" style="color:var(--money)">${money(p.revenue)}</b><span class="faint pt-st">${p.ended ? t('lib.ended') : t('lib.onSale')}</span></div>`)
+    .join('');
+  let body = '';
+  if (!portable(G, g)) body = g.live || g.expansionOf ? '' : `<span class="hint">${icon('lock')} ${t('port.locked')}</span>`;
+  else {
+    const P = G.port;
+    const mine = P && P.game === g.id;
+    const work = mine
+      ? `<div class="pt-row" data-tip="${esc(t('port.working', { plat: esc(PLATFORM[P.platform].name) }))}"><span class="chip c" style="--c:var(--design)">${icon('gamepad')}${esc(PLATFORM[P.platform].name)}</span><div style="flex:1">${bar(((G.t - P.t0) / Math.max(1, P.until - P.t0)) * 100, 'var(--design)', 'thin')}</div><span class="faint pt-st">${t('pn.weeksLeft', { n: Math.max(0, P.until - G.t) })}</span></div>`
+      : '';
+    const other = P && !mine ? G.games.find((x) => x.id === P.game) : null;
+    const cost = portCost(G, g);
+    const yf = yfOf(G.t);
+    const btns = portTargets(G, g)
+      .map((p) => {
+        const pl = PLATFORM[p.id];
+        const v = portScore(G, g, p.id);
+        const pot = potential(pl, yf);
+        const tip = p.licensed
+          ? t('port.tip', { plat: esc(pl.name), v: v.toFixed(1), o: g.score.toFixed(1), size: t(SIZE_KEY[pot < 15 ? 0 : pot < 35 ? 1 : 2]), cost: money(cost), n: PORT_WEEKS[g.scope] })
+          : t('port.needLicense');
+        const off = !p.licensed || !!P || G.money < cost;
+        return `<button class="btn sm" data-act="lib-port" data-id="${g.id}" data-p="${p.id}" ${off ? 'disabled' : ''} data-tip="${esc(tip)}">${p.licensed ? '' : icon('lock')}${esc(pl.name)}${p.licensed ? ` <b class="num" style="color:${scoreColor(v)}">${v.toFixed(1)}</b>` : ''}</button>`;
+      })
+      .join('');
+    body = `${work}${other ? `<div class="hint">${t('port.busyWith', { title: esc(other.title), plat: esc(PLATFORM[P.platform].name) })}</div>` : ''}
+      ${btns ? `<div class="row wrap" style="gap:6px;margin-top:8px"><span class="lbl">${t('port.to')} · ${money(cost)}</span>${btns}</div>` : mine ? '' : `<div class="hint">${t('port.none')}</div>`}
+      <div class="hint" style="margin-top:8px">${t('port.help')}</div>`;
+  }
+  if (!rows && !body) return '';
+  return `<div class="card" style="margin-top:16px"><div class="row" style="margin-bottom:6px"><div class="lbl">${t('port.head')}</div><span class="sp"></span>${done.length ? `<span class="faint" style="font-size:12px">${t('port.total', { v: money(portRevenue(g)) })}</span>` : ''}</div>${rows}${body}</div>`;
 }
 
 function detailView(G, id) {
@@ -250,6 +290,7 @@ function detailView(G, id) {
     </div>
     ${livePanel(G, g)}
     <div class="card" style="margin-top:16px"><div class="row" style="margin-bottom:6px"><div class="lbl">${t('lib.sales')}</div><span class="sp"></span><span class="faint" style="font-size:12px">${g.ended ? t('lib.ended') : t('lib.forecast', { v: money(g.total) })}</span></div>${salesChart(g)}</div>
+    ${portsPanel(G, g)}
     <div class="grid" style="grid-template-columns:repeat(auto-fit,minmax(240px,1fr));margin-top:16px">${texts.map((r, i) => `<div class="rev show" style="--c:${REVIEWERS[i].color}"><div class="rv-h"><div class="rv-av">${icon(['cpu', 'book', 'heart', 'skull'][i])}</div><div style="flex:1"><b>${L(REVIEWERS[i].name)}</b></div><div class="rv-s num" style="color:${scoreColor(r.score)}">${r.score.toFixed(1)}</div></div><div class="rv-t"><b>${esc(r.headline)}</b>${r.detail ? `<p>${esc(r.detail)}</p>` : ''}</div></div>`).join('')}</div>
     ${g.insights?.length ? `<div class="card" style="margin-top:16px"><div class="lbl" style="margin-bottom:8px">${t('rep.notes')}</div><div class="ins">${studioNotes(g, g)}${crowdNote(G, g, true)}</div></div>` : ''}
     <div class="row wrap" style="gap:10px;margin-top:16px">
@@ -287,6 +328,12 @@ act('lib-seq', (el) => {
   const g = G.games.find((x) => x.id === +el.dataset.id);
   UI.close(true);
   openSequel(G, g);
+});
+act('lib-port', (el) => {
+  const r = startPort(UI.app.G, +el.dataset.id, el.dataset.p);
+  if (r === true) sfx.play('coin');
+  else if (r) errToast(r);
+  UI.refresh();
 });
 act('lib-patch', (el) => {
   const G = UI.app.G;

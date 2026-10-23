@@ -57,6 +57,7 @@ export function newGame(opts = {}) {
     licenses: ['pc'],
     games: [],
     job: null,
+    port: null,
     contracts: [],
     engines: [],
     know: { combos: {}, focus: {} },

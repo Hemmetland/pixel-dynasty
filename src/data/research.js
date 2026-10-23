@@ -71,6 +71,7 @@ export const RESEARCH = [
   R('b_mkt4', 'biz', 'Nätkampanjer', 'Online Campaigns', 'Marknadsföring: Trailers och communities.', 'Marketing: Trailers and communities.', 520, 0, 6, ['b_mkt3'], 1998, { mkt: ['online'] }, {}, 'm_online'),
   R('b_mkt5', 'biz', 'Influencer-avtal', 'Influencer Deals', 'Marknadsföring: Streamers och kreatörer.', 'Marketing: Streamers and creators.', 1300, 0, 6, ['b_mkt4'], 2008, { mkt: ['influencer'] }, {}, 'm_influencer'),
   R('b_expo', 'biz', 'Mässmonter', 'Convention Booth', 'Visa upp pågående spel på årsmässan.', 'Show work-in-progress at the annual expo.', 70, 0, 4, ['b_mkt1'], 1983, { flags: ['expo'] }, {}, 'f_expo'),
+  R('b_port', 'biz', 'Porteringsteam', 'Porting Team', 'Låt ett externt team porta släppta spel till andra plattformar du har licens för.', 'Have an outside team port released games to other platforms you hold a license for.', 60, 5000, 4, ['b_mkt1'], 1983, { flags: ['ports'] }, {}, 'gp_console'),
   R('b_train', 'biz', 'Utbildningslokal', 'Training Room', 'Anläggning: Utbildningsrum.', 'Facility: Training Room.', 70, 0, 4, ['s_train1'], 1983, { facs: ['training'] }, {}, 'f_training'),
   R('b_qa', 'biz', 'QA-avdelning', 'QA Department', 'Anläggning: QA-labb som fixar buggar snabbare.', 'Facility: QA lab that fixes bugs faster.', 60, 0, 4, ['q_triage'], 1984, { facs: ['qa'] }, {}, 'f_qa'),
   R('b_fun', 'biz', 'Spelrum', 'Game Room', 'Anläggning: Arkad och sittsäckar höjer humöret.', 'Facility: Arcade and beanbags lift morale.', 90, 0, 4, [], 1985, { facs: ['gameroom'] }, {}, 'f_gameroom'),
