@@ -180,14 +180,13 @@ export const drawWalkerSprite = (ctx, x, y, look, t, dir = 1) => drawCharSprite(
 // Poser som har en sprite, med bildrutor per sekund: stående och sittande för sig. Prata och dricka kaffe på en stol har
 // egna sittande sprites (char.sitTalk, char.sitDrink, där klunken 0,1,2,2,2,1 är inbakad), liksom läsa och tänka (vid
 // skrivbordet, armbågen på bordet), sova (huvudet mot bordet), gäspa (crunch) och laptop i knät (soffan; stående laptop vid
-// racket är procedurell). Stående jubel (spelrummet) och presentation med pekpinne vid tavlan har egna sprites; jubel på
-// stolen är procedurellt. Saknas en sprite
-// i manifestet ritas den procedurella figuren.
+// racket är procedurell). Jubel har egna sprites både stående (spelrummet) och på stolen (när studion firar), liksom
+// presentation med pekpinne vid tavlan. Saknas en sprite i manifestet ritas den procedurella figuren.
 const STAND_SPRITE = { walk: ['char.walk', 9], stand: ['char.stand', 0], drink: ['char.drink', 3], talk: ['char.talk', 4.2], cheer: ['char.cheer', 5], present: ['char.present', 3] };
 const SEAT_SPRITE = {
   sit: ['char.sit', 1.5], sitIdle: ['char.sit', 1.5], type: ['char.type', 8],
   talk: ['char.sitTalk', 4.2], drink: ['char.sitDrink', 3], read: ['char.read', 1], think: ['char.think', 1.2],
-  sleep: ['char.sleep', 0.75], tired: ['char.tired', 0.7], laptop: ['char.sitLaptop', 8],
+  sleep: ['char.sleep', 0.75], tired: ['char.tired', 0.7], laptop: ['char.sitLaptop', 8], cheer: ['char.sitCheer', 5],
 };
 // Personal i huset: ritar posen som sprite om en sådan finns (t = sekunder, seated = sitter på en stol), annars false.
 // Att prata på en stol har ingen rekvisita, så utan char.sitTalk ritas den som vanligt sittande.
