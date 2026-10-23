@@ -226,3 +226,42 @@ Enskilda rutor finns i `assets/pixellab/characters/dev/hair1/<nyckel>/`. Övriga
 ```
 
 Kända begränsningar: hjässans höjd skiljer cirka 1 px mellan vissa rutor (vald så att konturen ger så få lösa mörka pixlar som möjligt i spelskala). I `walk` ruta 0–2 finns en vit pixel vid örat som redan fanns i PixelLab-rutorna.
+
+### Frisyr 1: resten av poserna
+
+Nu har variant `#1` alla 15 nycklar. De fyra första (walk, stand, sit, type) är oförändrade sedan förra leveransen.
+
+| Remsa | Rutor | Nyckel |
+| --- | --- | --- |
+| `assets/chars/hair1/drink.png` | 6 | `char.drink#1` |
+| `assets/chars/hair1/talk.png` | 4 | `char.talk#1` |
+| `assets/chars/hair1/sitTalk.png` | 4 | `char.sitTalk#1` |
+| `assets/chars/hair1/sitDrink.png` | 6 | `char.sitDrink#1` |
+| `assets/chars/hair1/read.png` | 2 | `char.read#1` |
+| `assets/chars/hair1/think.png` | 2 | `char.think#1` |
+| `assets/chars/hair1/sleep.png` | 2 | `char.sleep#1` |
+| `assets/chars/hair1/tired.png` | 2 | `char.tired#1` |
+| `assets/chars/hair1/sitLaptop.png` | 4 | `char.sitLaptop#1` |
+| `assets/chars/hair1/cheer.png` | 2 | `char.cheer#1` |
+| `assets/chars/hair1/present.png` | 2 | `char.present#1` |
+
+Enskilda rutor finns i `assets/pixellab/characters/dev/hair1/<nyckel>/`.
+
+```json
+"char.drink#1": { "file": "chars/hair1/drink.png", "fw": 92, "fh": 92, "ax": 46, "ay": 82, "frames": 6, "scale": 0.42, "note": "Frisyr 1, kort hår utan mössa och glasögon (Kör)" },
+"char.talk#1": { "file": "chars/hair1/talk.png", "fw": 92, "fh": 92, "ax": 46, "ay": 82, "frames": 4, "scale": 0.42, "note": "Frisyr 1, kort hår utan mössa och glasögon (Kör)" },
+"char.sitTalk#1": { "file": "chars/hair1/sitTalk.png", "fw": 92, "fh": 92, "ax": 46, "ay": 82, "frames": 4, "scale": 0.42, "note": "Frisyr 1, kort hår utan mössa och glasögon (Kör)" },
+"char.sitDrink#1": { "file": "chars/hair1/sitDrink.png", "fw": 92, "fh": 92, "ax": 46, "ay": 82, "frames": 6, "scale": 0.42, "note": "Frisyr 1, kort hår utan mössa och glasögon (Kör)" },
+"char.read#1": { "file": "chars/hair1/read.png", "fw": 92, "fh": 92, "ax": 46, "ay": 82, "frames": 2, "scale": 0.42, "note": "Frisyr 1, kort hår utan mössa och glasögon (Kör)" },
+"char.think#1": { "file": "chars/hair1/think.png", "fw": 92, "fh": 92, "ax": 46, "ay": 82, "frames": 2, "scale": 0.42, "note": "Frisyr 1, kort hår utan mössa och glasögon (Kör)" },
+"char.sleep#1": { "file": "chars/hair1/sleep.png", "fw": 92, "fh": 92, "ax": 46, "ay": 82, "frames": 2, "scale": 0.42, "note": "Frisyr 1, kort hår utan mössa och glasögon (Kör)" },
+"char.tired#1": { "file": "chars/hair1/tired.png", "fw": 92, "fh": 92, "ax": 46, "ay": 82, "frames": 2, "scale": 0.42, "note": "Frisyr 1, kort hår utan mössa och glasögon (Kör)" },
+"char.sitLaptop#1": { "file": "chars/hair1/sitLaptop.png", "fw": 92, "fh": 92, "ax": 46, "ay": 82, "frames": 4, "scale": 0.42, "note": "Frisyr 1, kort hår utan mössa och glasögon (Kör)" },
+"char.cheer#1": { "file": "chars/hair1/cheer.png", "fw": 92, "fh": 92, "ax": 46, "ay": 82, "frames": 2, "scale": 0.42, "note": "Frisyr 1, kort hår utan mössa och glasögon (Kör)" },
+"char.present#1": { "file": "chars/hair1/present.png", "fw": 92, "fh": 92, "ax": 46, "ay": 82, "frames": 2, "scale": 0.42, "note": "Frisyr 1, kort hår utan mössa och glasögon (Kör)" }
+```
+
+- **Så byggdes huvudena:** samma uppritade huvud i alla poser, flyttat eller roterat exakt som posens eget huvud (läsa och laptop 12° framåt, tänka 7°, kaffe 11°, trött -20°, sova 90°). `drink` är PixelLab-rutor, där huvudet passades in ruta för ruta.
+- **Utanför huvudet** ändrades bara några pixlar: i `cheer` syns den lyfta bortre armen där mössan tidigare täckte den, och i `drink` och `walk` försvann några lösa källpixlar.
+- **`sleep#1`** behöver ingen `hatRow` (inga mösspixlar), men värdet 0.53 skadar inte.
+- **Begränsningar:** den mörka konturen på hjässan kan ge en eller två mörka hörnpixlar på ljust hår i spelskala (högst cirka 4 per ruta, värst i `drink` 0 och 4). `drink` ruta 1, 3 och 4 har ett enkelt upprätt öga i ett lutat ansikte, och i `sleep` är huvudet mindre än mössan var, så handen på bordet syns helt.
