@@ -23,6 +23,14 @@ export const STUDIO_NAMES = [
   'Nordlys Games', 'Garage Gold', 'Kitchen Table Studios', 'Brightside Bytes', 'Pixel Pioneers', 'Lantern Works',
   'Mossy Rock Games', 'Tiny Titan Studio', 'Late Night Labs', 'Blue Tape Games', 'Copper Cat', 'Wild Cursor',
 ];
+// Små oberoende studior som söker förlag (förlagsverksamheten), med färg för kortet.
+export const INDIES = [
+  ['Fjällbit', '#7ad0ff'], ['Night Owl Works', '#b8a0ff'], ['Paper Lantern', '#ffb08a'], ['Rusty Spoon', '#e88a5a'],
+  ['Hollow Oak', '#8ac87a'], ['Pocket Comet', '#ffd66a'], ['Glasbruket', '#8ae8e0'], ['Little Lighthouse', '#ff8a9a'],
+  ['Basement Bard', '#c8a0ff'], ['Snowdrift Studio', '#d8e8ff'], ['Two Ferns', '#6cc86a'], ['Moth & Moon', '#a0a8ff'],
+  ['Kvarnen Spel', '#f2c84a'], ['Odd Socks', '#ff7aa8'], ['Tin Robot', '#9ab0c8'], ['Starling Games', '#5ab0ff'],
+  ['Brass Beetle', '#e0b040'], ['Quiet Harbor', '#4ad0c0'], ['Sockerbit', '#ff9ad0'], ['Ember & Ash', '#ff7050'],
+];
 export const COMPETITORS = [
   ['Brightside Games', '#ffcf4a'], ['Kraken Studios', '#4ae0c8'], ['Hexa Interactive', '#9b7bff'],
   ['Polar Pixel', '#7ad0ff'], ['Nimbus Entertainment', '#e8e8ff'], ['Ironclad Soft', '#ff7a5c'],

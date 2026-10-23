@@ -25,6 +25,8 @@ const events = mmo && !args.includes('--no-events');
 const f2p = mmo && args.includes('--f2p');
 // --ports: porterar spel med betyg 7+ till den licensierade plattform som väntas ge bäst betyg
 const ports = args.includes('--ports');
+// --publish: ger ut andra studiors spel när demons intervall har mitten 7 eller mer
+const publish = args.includes('--publish');
 // --bd: skriv ut årets pengar per kategori (för balansarbete)
 const bd = args.includes('--bd');
 const acc = {};
@@ -119,7 +121,7 @@ function manage(G) {
   // forskning
   if (!casual || G.t % 16 === 0) for (const r of RESEARCH.slice().sort((a, b) => a.rp - b.rp)) {
     if (G.research.active.length >= S.researchSlots(G)) break;
-    if (r.id === 'b_port' && !ports) continue;
+    if ((r.id === 'b_port' && !ports) || (r.id === 'b_publish' && !publish)) continue;
     if (S.canResearch(G, r.id) === true && r.rp <= G.rp) S.startResearch(G, r.id);
   }
   // förfiningar när det finns plats över och råd (pengarna med marginal)
@@ -140,6 +142,8 @@ function manage(G) {
     }
     if (best && G.money > S.portCost(G, best.g) * 3 && S.startPort(G, best.g.id, best.p) === true && verbose) console.log(`  port ${year}: ${best.g.title} ${best.g.platform} -> ${best.p} score ${best.s} cost $${S.portCost(G, best.g)}`);
   }
+  // förlag: skriv på pitchar med intervallmitt 7+ när det finns plats och pengar med marginal
+  if (publish && S.canPublish(G)) for (const p of S.pubOf(G).pitches.slice()) if ((p.lo + p.hi) / 2 >= 7 && G.money > p.advance * 4 && S.signPitch(G, p.id) === true && verbose) console.log(`  sign ${year}: ${p.studio} ${p.scope} demo ${p.lo}-${p.hi} advance $${p.advance}`);
   // licenser
   for (const p of PLATFORMS) {
     if (S.canLicense(G, p.id) === true && true) {
@@ -246,6 +250,11 @@ if (args.includes('--news')) {
   const n = {};
   for (const x of G.news) n[x.key] = (n[x.key] || 0) + 1;
   console.log('news ' + Object.entries(n).sort((a, b) => b[1] - a[1]).map(([k, v]) => k + ' ' + v).join(', '));
+}
+if (publish) {
+  const ds = S.pubOf(G).deals.filter((d) => d.out);
+  const done = ds.filter((d) => d.ended);
+  console.log(`published ${G.stats.published || 0}; label profit $${Math.round(S.labelProfit(G)).toLocaleString()} on $${Math.round(G.stats.pubCost || 0).toLocaleString()}; of last ${done.length} finished ${done.filter((d) => d.revenue < d.advance + (d.cost || 0)).length} lost money`);
 }
 if (ports) {
   const pr = G.games.flatMap((g) => g.ports || []);

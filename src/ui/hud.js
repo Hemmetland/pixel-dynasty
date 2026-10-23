@@ -476,7 +476,7 @@ export function updateDock(G) {
   set('studio', 'dot', canUpgradeOffice(G) === true);
   const lic = Object.keys(PLATFORM).some((id) => canLicense(G, id) === true && PLATFORM[id].license > 0 && G.money > PLATFORM[id].license * 3 && PLATFORM[id].weight > 18);
   set('market', 'dot', lic && G.flags.seenPlat !== G.t);
-  set('contracts', 'badge', !G.job && G.contracts.length ? G.contracts.length : 0);
+  set('contracts', 'badge', (!G.job ? G.contracts.length : 0) + (G.pub ? G.pub.pitches.filter((p) => !p.seen).length : 0));
   for (const b of $$('.dk', els.dock)) b.classList.toggle('on', UI.cur === b.dataset.key);
 }
 

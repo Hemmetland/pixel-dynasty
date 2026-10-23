@@ -1,6 +1,6 @@
 // Mäter progressionstakten: kör simulatorbotten över flera seeds och sammanfattar
 // när kontoren byggs ut, hur pengarna växer och hur första spelen betygsätts.
-// node test/pacing.mjs [--seeds=6] [--diff=normal] [--casual|--mid] [--ports] [--end=2020]
+// node test/pacing.mjs [--seeds=6] [--diff=normal] [--casual|--mid] [--ports] [--publish] [--end=2020]
 import { execFile } from 'node:child_process';
 import { promisify } from 'node:util';
 import { fileURLToPath } from 'node:url';
@@ -15,12 +15,14 @@ const end = opt('end', '2020');
 const casual = args.includes('--casual');
 const mid = args.includes('--mid');
 const ports = args.includes('--ports');
+const publish = args.includes('--publish');
 
 async function one(seed) {
   const a = [resolve(here, 'sim.mjs'), `--seed=${seed}`, `--diff=${diff}`, `--end=${end}`, '-v'];
   if (casual) a.push('--casual');
   if (mid) a.push('--mid');
   if (ports) a.push('--ports');
+  if (publish) a.push('--publish');
   const { stdout } = await run('node', a, { maxBuffer: 1 << 26 });
   const years = [];
   const rel = [];

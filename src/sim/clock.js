@@ -9,6 +9,7 @@ import { engineTick } from './engines.js';
 import { salesWeek } from './sales.js';
 import { liveWeek } from './live.js';
 import { portWeek } from './ports.js';
+import { pubWeek } from './publish.js';
 import { monthlyMarket, updateTrends } from './market.js';
 import { rollDevEvent, rollStudioEvent } from './events.js';
 import { runAwards, expoOffer } from './awards.js';
@@ -41,6 +42,7 @@ function weekly(G) {
   for (const s of G.staff) if (s.trainSkill && s.trainUntil <= G.t) finishTraining(G, s);
   salesWeek(G);
   portWeek(G);
+  pubWeek(G);
   liveWeek(G);
   updateMood(G);
   rollDevEvent(G);

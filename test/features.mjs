@@ -172,6 +172,30 @@ ok(true, 'alla händelser körda');
   for (let i = 0; i < 20; i++) { GJ.t++; S.portWeek(GJ); }
   ok(Number.isFinite(GJ.money) && GJ.games[0].ports[0].weekly.length > 20, 'porten säljer vidare efter sparning');
 }
+// förlag: pitchar kommer ur fröet, förskott vid underskrift, två avtal åt gången, spelet släpps med ett betyg i intervallet
+{
+  const GB = S.newGame({ studio: 'F', seed: 12 }); S.makeCompetitors(GB); S.initWorld(GB);
+  GB.t = 48 * 15; GB.money = 2e7; GB.fans = 50000;
+  S.pubWeek(GB);
+  ok(!GB.pub, 'förlaget kräver forskning');
+  GB.u.flags.publish = true;
+  const rng0 = GB.rng;
+  for (let i = 0; i < 20; i++) { GB.t++; S.pubWeek(GB); }
+  const P = GB.pub;
+  ok(P && P.pitches.length >= 2 && P.pitches.every((p) => p.lo <= p.q && p.q <= p.hi && p.advance > 0), 'pitchar med demointervall och förskott (' + P.pitches.length + ')');
+  ok(GB.rng === rng0, 'förlaget rör inte spelets slumpföljd');
+  const [a, b] = P.pitches;
+  const m0 = GB.money;
+  ok(S.signPitch(GB, a.id) === true && GB.money === m0 - a.advance && S.signPitch(GB, b.id) === true, 'två avtal går att skriva på');
+  GB.t++; S.pubWeek(GB); GB.t += 8; S.pubWeek(GB);
+  const c = S.pubOf(GB).pitches[0];
+  ok(!c || S.canSign(GB, c.id) === 'full', 'ett tredje avtal får vänta');
+  ok(S.runCampaign(GB, a.id) === true && S.runCampaign(GB, a.id) === false, 'en kampanj per spel');
+  for (let i = 0; i < 60; i++) { GB.t++; S.pubWeek(GB); }
+  const d = S.pubOf(GB).deals.find((x) => x.id === a.id);
+  ok(d.out && d.score === d.q && d.revenue > 0 && GB.stats.published >= 2, 'spelet släpps och säljer (' + Math.round(d.revenue) + ' på förskott ' + d.advance + ')');
+  ok(Number.isFinite(S.labelProfit(GB)), 'förlagets resultat räknas');
+}
 // bailout + konkurs
 const G3 = S.newGame({ studio: 'B', seed: 3 }); S.makeCompetitors(G3); S.initWorld(G3);
 G3.money = -5000;
