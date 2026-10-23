@@ -282,3 +282,11 @@ Enskilda rutor finns i `assets/pixellab/characters/dev/sitCheer-east-hand/`. Öv
 - **Färger:** 34 nyanser, alla redan i karaktären. Mössan ligger på rad 11–27, ingen `hatRow` behövs.
 - **Begränsningar:** ansiktet är cirka 5 scenpixlar brett, så munnen växlar mellan mörk och mörkrosa mellan rutorna, vilket ser ut som skratt men inte lika tydligt som den procedurella figurens vita tänder. Ruta 1 läses som att sitta upp rak, inte som ett riktigt lyft från stolen.
 - **Frisyrer:** `char.sitCheer#1` (kort hår) och `#2` följer, så att ingen byter frisyr när de jublar.
+
+### Frisyr 1: jubel vid skrivbordet
+
+```json
+"char.sitCheer#1": { "file": "chars/hair1/sitCheer.png", "fw": 92, "fh": 92, "ax": 46, "ay": 82, "frames": 2, "scale": 0.42, "note": "Frisyr 1, kort hår utan mössa och glasögon (Kör)" }
+```
+
+Byggd som `cheer#1`: samma huvud, och den bortre armen syns där mössan tidigare täckte den. Rutor i `assets/pixellab/characters/dev/hair1/sitCheer/`. Därmed har `#1` alla 16 nycklar.
