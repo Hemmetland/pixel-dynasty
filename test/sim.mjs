@@ -140,7 +140,19 @@ function manage(G) {
         if (p.licensed && s >= 6.5 && (!best || v > best.v)) best = { g, p: p.id, s, v };
       }
     }
-    if (best && G.money > S.portCost(G, best.g) * 3 && S.startPort(G, best.g.id, best.p) === true && verbose) console.log(`  port ${year}: ${best.g.title} ${best.g.platform} -> ${best.p} score ${best.s} cost $${S.portCost(G, best.g)}`);
+    // remaster först om någon väntas ge minst dubbla kostnaden tillbaka
+    let rem = null;
+    for (const g of G.games) {
+      if (!S.remasterable(G, g)) continue;
+      const c = S.portCost(G, g, 'remaster');
+      for (const p of S.remasterTargets(G, g)) {
+        const v = p.licensed ? S.portForecast(G, g, p.id, undefined, 'remaster') / c : 0;
+        if (v >= 2 && (!rem || v > rem.v)) rem = { g, p: p.id, v, c };
+      }
+    }
+    if (rem && G.money > rem.c * 3) {
+      if (S.startPort(G, rem.g.id, rem.p, 'remaster') === true && verbose) console.log(`  remaster ${year}: ${rem.g.title} ${rem.g.platform} -> ${rem.p} x${rem.v.toFixed(1)} cost $${rem.c}`);
+    } else if (best && G.money > S.portCost(G, best.g) * 3 && S.startPort(G, best.g.id, best.p) === true && verbose) console.log(`  port ${year}: ${best.g.title} ${best.g.platform} -> ${best.p} score ${best.s} cost $${S.portCost(G, best.g)}`);
   }
   // förlag: skriv på pitchar med intervallmitt 7+ när det finns plats och pengar med marginal
   if (publish && S.canPublish(G)) for (const p of S.pubOf(G).pitches.slice()) if ((p.lo + p.hi) / 2 >= 7 && G.money > p.advance * 4 && S.signPitch(G, p.id) === true && verbose) console.log(`  sign ${year}: ${p.studio} ${p.scope} demo ${p.lo}-${p.hi} advance $${p.advance}`);
@@ -258,6 +270,9 @@ if (publish) {
 }
 if (ports) {
   const pr = G.games.flatMap((g) => g.ports || []);
+  const rm = pr.filter((p) => p.kind === 'remaster');
+  if (process.env.REMDBG) for (const g of G.games) for (const p of (g.ports || []).filter((x) => x.kind === 'remaster')) console.log(`   ${S.yearOf(g.t)}->${S.yearOf(p.t)} ${g.scope} ${g.platform}->${p.platform} ${g.score}->${p.score} orig $${Math.round(g.revenue / 1e6)}M rem $${Math.round(p.revenue / 1e6)}M cost $${Math.round(p.cost / 1e6)}M`);
+  if (rm.length) console.log(`remasters ${rm.length}; revenue $${Math.round(rm.reduce((a, p) => a + p.revenue, 0)).toLocaleString()}; cost $${Math.round(rm.reduce((a, p) => a + p.cost, 0)).toLocaleString()}; scores ${rm.map((p) => p.score).join(' ')}`);
   console.log(`ports ${pr.length}; revenue $${Math.round(pr.reduce((a, p) => a + p.revenue, 0)).toLocaleString()}; cost $${Math.round(pr.reduce((a, p) => a + p.cost, 0)).toLocaleString()}`);
 }
 console.log(G.over ? `GAME OVER ${S.yearOf(G.over.t)} (bankrupt) after ${G.games.length} games` : `Finished ${S.yearOf(G.t)}; money $${Math.round(G.money).toLocaleString()}; games ${G.games.length}; best ${G.stats.bestScore}; ach ${G.ach.length}; ${dt}ms`);

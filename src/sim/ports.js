@@ -2,8 +2,8 @@ import { clamp } from '../core/util.js';
 import { gauss, hashStr } from '../core/rng.js';
 import { emit } from '../core/bus.js';
 import { t } from '../core/i18n.js';
-import { PLATFORM, PLATFORMS, platTier } from '../data/platforms.js';
-import { yearOf, priceOf, WEEKS_PER_YEAR } from './const.js';
+import { PLATFORM, PLATFORMS, platTier, potential } from '../data/platforms.js';
+import { yearOf, yfOf, priceOf, WEEKS_PER_YEAR } from './const.js';
 import { SALES_TAIL } from './tempo.js';
 import { spend, earn } from './studio.js';
 import { platformOpen } from './dev.js';
@@ -15,7 +15,12 @@ import { note } from './news.js';
 // jobbar vid sidan av studions eget projekt, ett spel i taget. Porten säljer till den nya plattformens publik, men spelet
 // är redan känt (ingen ny hype, inga uppföljarfans) och åldras: grafiken ser daterad ut några år senare, och en svagare
 // maskin kräver nedskärningar. Porterna ligger på originalet (g.ports), inte i G.games, så de räknas inte som nya spel.
+// En remaster (kind 'remaster', egen forskning) är en större omgörning av en gammal klassiker för dagens maskiner: inget
+// åldrande, lite nostalgi på betyget och mer hype, men dyrare och bara en per spel.
 export const PORT_WEEKS = { small: 6, medium: 10, large: 16, aaa: 24 };
+export const REMASTER_AGE = 10; // år
+export const REMASTER_MIN = 7; // originalets betyg
+const REMASTER = { cost: 4, weeks: 1.5, mult: 0.3, bonus: 0.2, fit: 0.3 };
 const PORT_COST = { small: 4000, medium: 35000, large: 240000, aaa: 800000 };
 // Andelen av ett nytt spels försäljning; varje tidigare port av samma spel tar 20 % till (köparna har redan spelet).
 export const PORT_MULT = 0.25;
@@ -24,18 +29,24 @@ const DOWN_LOSS = 0.7; // betyg per teknisk generation nedåt
 
 export const portsOf = (g) => g.ports || [];
 export const portable = (G, g) => !!g && !g.live && !g.expansionOf && G.u.flags.ports;
+// Remaster: forskningen, minst tio år gammalt, betyg 7+ och ingen remaster förut
+export const remasterable = (G, g) => portable(G, g) && G.u.flags.remaster && !g.remastered && g.score >= REMASTER_MIN && G.t - g.t >= REMASTER_AGE * WEEKS_PER_YEAR;
 
-export function portCost(G, g) {
-  return Math.round((PORT_COST[g.scope] * Math.pow(1.07, yearOf(G.t) - 1980)) / 100) * 100;
+export function portCost(G, g, kind = 'port') {
+  return Math.round((PORT_COST[g.scope] * Math.pow(1.07, yearOf(G.t) - 1980) * (kind === 'remaster' ? REMASTER.cost : 1)) / 100) * 100;
 }
+export const portWeeks = (g, kind = 'port') => Math.round(PORT_WEEKS[g.scope] * (kind === 'remaster' ? REMASTER.weeks : 1));
 
 // Betyget porten väntas få (utan slump) när den släpps vid tiden at (i förväg: nu plus porteringstiden): originalets
-// betyg, minus ålder och nedskärningar, plus eller minus hur väl genren passar den nya plattformen.
-export function portScore(G, g, pid, at = G.t + PORT_WEEKS[g.scope]) {
-  const fit = platFit(pid, g.genre, g.genre2) - platFit(g.platform, g.genre, g.genre2);
+// betyg, minus ålder och nedskärningar, plus eller minus hur väl genren passar den nya plattformen. En remaster åldras
+// inte och får lite nostalgi i stället.
+export function portScore(G, g, pid, at, kind = 'port') {
+  at ??= G.t + portWeeks(g, kind);
+  const fit = clamp((platFit(pid, g.genre, g.genre2) - platFit(g.platform, g.genre, g.genre2)) * 2.5, -1, kind === 'remaster' ? REMASTER.fit : 0.6);
+  if (kind === 'remaster') return Math.round(clamp(g.score + REMASTER.bonus + fit, 1, 10) * 10) / 10;
   const down = Math.max(0, platTier(PLATFORM[g.platform], yearOf(g.t)) - platTier(PLATFORM[pid], yearOf(at)));
   const age = Math.max(0, (at - g.t) / WEEKS_PER_YEAR - 1);
-  const s = g.score - AGE_LOSS * age - DOWN_LOSS * down + clamp(fit * 2.5, -1, 0.6);
+  const s = g.score - AGE_LOSS * age - DOWN_LOSS * down + fit;
   return Math.round(clamp(s, 1, 10) * 10) / 10;
 }
 
@@ -46,34 +57,47 @@ export function portTargets(G, g) {
   return PLATFORMS.filter((p) => p.id !== g.platform && !done.has(p.id) && platformOpen(G, p.id)).map((p) => ({ id: p.id, licensed: G.licenses.includes(p.id) }));
 }
 
-export function canPort(G, g, pid) {
-  if (!portable(G, g)) return 'locked';
+// Plattformar för en remaster: dagens generation (högst en generation under den bästa som säljer nu), även originalets
+// egen plattform om den fortfarande är aktuell
+export function remasterTargets(G, g) {
+  const year = yearOf(G.t);
+  const yf = yfOf(G.t);
+  let best = 1;
+  for (const p of PLATFORMS) if (potential(p, yf) > 12) best = Math.max(best, platTier(p, year));
+  return PLATFORMS.filter((p) => platformOpen(G, p.id) && potential(p, yf) > 6 && platTier(p, year) >= best - 1).map((p) => ({ id: p.id, licensed: G.licenses.includes(p.id) }));
+}
+
+export function canPort(G, g, pid, kind = 'port') {
+  if (kind === 'remaster' ? !remasterable(G, g) : !portable(G, g)) return 'locked';
   if (G.port) return 'busy';
-  if (!portTargets(G, g).some((p) => p.id === pid)) return 'done';
+  if (!(kind === 'remaster' ? remasterTargets : portTargets)(G, g).some((p) => p.id === pid)) return 'done';
   if (!G.licenses.includes(pid)) return 'license';
-  if (G.money < portCost(G, g)) return 'money';
+  if (G.money < portCost(G, g, kind)) return 'money';
   return true;
 }
 
-export function startPort(G, id, pid) {
+export function startPort(G, id, pid, kind = 'port') {
   const g = G.games.find((x) => x.id === id);
-  const ok = canPort(G, g, pid);
+  const ok = canPort(G, g, pid, kind);
   if (ok !== true) return ok === 'money' ? t('err.money') : ok === 'busy' ? t('port.busy') : ok === 'license' ? t('port.needLicense') : false;
-  const cost = portCost(G, g);
+  const cost = portCost(G, g, kind);
   spend(G, cost, 'ports');
-  G.port = { game: g.id, platform: pid, t0: G.t, until: G.t + PORT_WEEKS[g.scope], cost };
-  emit('portStart', { game: g, platform: pid });
+  G.port = { game: g.id, platform: pid, t0: G.t, until: G.t + portWeeks(g, kind), cost, kind };
+  emit('portStart', { game: g, platform: pid, kind });
   return true;
 }
 
 // Portens försäljning utan slump om den släpps vid tiden at: som ett nytt spel på den nya plattformen då, men utan
-// uppföljarbonus, nyhetsvärde och trängsel, och med PORT_MULT (mindre för varje tidigare port av spelet).
-export function portForecast(G, g, pid, at = G.t + PORT_WEEKS[g.scope]) {
+// uppföljarbonus, nyhetsvärde och trängsel, och med PORT_MULT (mindre för varje tidigare port av spelet). En remaster
+// säljer som ett halvt nytt spel med mer hype, utan buggar.
+export function portForecast(G, g, pid, at, kind = 'port') {
+  at ??= G.t + portWeeks(g, kind);
+  const rem = kind === 'remaster';
   const copy = {
-    ...g, platform: pid, t: at, score: portScore(G, g, pid, at), sequelOf: null, novel: false, crowd: 1,
-    hype: 15 + 0.2 * (g.hype || 0),
-    parts: { bugRatio: (g.parts?.bugRatio ?? 0) * (g.patched ? 0.2 : 1) },
-    salesMult: PORT_MULT * Math.pow(0.8, portsOf(g).length),
+    ...g, platform: pid, t: at, score: portScore(G, g, pid, at, kind), sequelOf: null, novel: false, crowd: 1,
+    hype: (rem ? 20 : 15) + (rem ? 0.25 : 0.2) * (g.hype || 0),
+    parts: { bugRatio: rem ? 0 : (g.parts?.bugRatio ?? 0) * (g.patched ? 0.2 : 1) },
+    salesMult: rem ? REMASTER.mult : PORT_MULT * Math.pow(0.8, portsOf(g).filter((p) => p.kind !== 'remaster').length),
   };
   return forecast(G, copy, { noise: false });
 }
@@ -83,14 +107,18 @@ function finishPort(G) {
   G.port = null;
   const g = G.games.find((x) => x.id === P.game);
   if (!g) return;
-  const score = portScore(G, g, P.platform, G.t);
+  const kind = P.kind || 'port';
+  const score = portScore(G, g, P.platform, G.t, kind);
   // egen slump ur fröet, så att en portering inte flyttar resten av spelets slumpföljd
-  const R = { rng: hashStr(`${G.seed || 0}:port:${g.id}:${P.platform}`) | 0 };
+  const R = { rng: hashStr(`${G.seed || 0}:${kind}:${g.id}:${P.platform}`) | 0 };
   const noise = clamp(gauss(R, 1, 0.1), 0.78, 1.25);
-  const port = { platform: P.platform, t: G.t, score, cost: P.cost, total: portForecast(G, g, P.platform, G.t) * noise, priceAt: priceOf(yearOf(G.t)), tail: SALES_TAIL, revenue: 0, units: 0, weekly: [], ended: false };
+  const port = { platform: P.platform, kind, t: G.t, score, cost: P.cost, total: portForecast(G, g, P.platform, G.t, kind) * noise, priceAt: priceOf(yearOf(G.t)), tail: SALES_TAIL, revenue: 0, units: 0, weekly: [], ended: false };
   g.ports = [...portsOf(g), port];
-  G.stats.ports = (G.stats.ports || 0) + 1;
-  note(G, 'news.port', { title: g.title, plat: PLATFORM[P.platform].name, v: score.toFixed(1) }, score >= 7 ? 'good' : 'info');
+  if (kind === 'remaster') {
+    g.remastered = true;
+    G.stats.remasters = (G.stats.remasters || 0) + 1;
+  } else G.stats.ports = (G.stats.ports || 0) + 1;
+  note(G, kind === 'remaster' ? 'news.remaster' : 'news.port', { title: g.title, plat: PLATFORM[P.platform].name, v: score.toFixed(1) }, score >= 7 ? 'good' : 'info');
   emit('ported', { game: g, port });
 }
 

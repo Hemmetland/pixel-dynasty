@@ -301,7 +301,7 @@ function taskRows(G, job) {
   if (pg) {
     const p = ((G.t - P.t0) / Math.max(1, P.until - P.t0)) * 100;
     const plat = PLATFORM[P.platform].name;
-    port = { id: 'port', grp: 2, ic: 'gamepad', c: 'var(--design)', name: pg.title, sub: t('pn.rowPort', { plat }), pct: p, tip: t('pn.rowPortTip', { title: esc(pg.title), plat: esc(plat), pct: pct(p) }), go: 'library' };
+    port = { id: 'port', grp: 2, ic: 'gamepad', c: 'var(--design)', name: pg.title, sub: t(P.kind === 'remaster' ? 'pn.rowRemaster' : 'pn.rowPort', { plat }), pct: p, tip: t(P.kind === 'remaster' ? 'pn.rowRemasterTip' : 'pn.rowPortTip', { title: esc(pg.title), plat: esc(plat), pct: pct(p) }), go: 'library' };
   }
   let sales = null;
   const lg = G.games.length ? G.games[G.games.length - 1] : null;

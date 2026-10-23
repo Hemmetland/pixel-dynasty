@@ -10,7 +10,7 @@ import { reviewTexts } from '../sim/score.js';
 import { patchGame } from '../sim/actions.js';
 import { patchCost } from '../sim/sales.js';
 import { SCOPES, dateOf, yfOf, START_YEAR, WEEKS_PER_YEAR } from '../sim/const.js';
-import { PORT_WEEKS, portsOf, portable, portCost, portScore, portForecast, portTargets, startPort, portRevenue } from '../sim/ports.js';
+import { REMASTER_AGE, REMASTER_MIN, portsOf, portable, remasterable, portCost, portWeeks, portScore, portForecast, portTargets, remasterTargets, startPort, portRevenue } from '../sim/ports.js';
 import { plot, gridLines } from './chart.js';
 import { MONTHS } from './core.js';
 import { fmtNum } from '../core/util.js';
@@ -228,38 +228,51 @@ function listView(G) {
 
 // Porteringar: färdiga porter med betyg och intäkter, pågående portering och knappar för de plattformar som går att porta till
 const SIZE_KEY = ['port.size.0', 'port.size.1', 'port.size.2'];
+// En knapp per plattform: väntat betyg och väntad försäljning (grön om den väntas betala kostnaden)
+function portBtn(G, g, p, kind, cost) {
+  const pl = PLATFORM[p.id];
+  const rem = kind === 'remaster';
+  const v = portScore(G, g, p.id, undefined, kind);
+  const rev = p.licensed ? portForecast(G, g, p.id, undefined, kind) : 0;
+  const pot = potential(pl, yfOf(G.t));
+  const tip = p.licensed
+    ? t(rem ? 'port.remTip' : 'port.tip', { plat: esc(pl.name), v: v.toFixed(1), o: g.score.toFixed(1), rev: money(rev), size: t(SIZE_KEY[pot < 15 ? 0 : pot < 35 ? 1 : 2]), cost: money(cost), n: portWeeks(g, kind) })
+    : t('port.needLicense');
+  const off = !p.licensed || !!G.port || G.money < cost;
+  return `<button class="btn sm" data-act="lib-port" data-id="${g.id}" data-p="${p.id}"${rem ? ' data-kind="remaster"' : ''} ${off ? 'disabled' : ''} data-tip="${esc(tip)}">${p.licensed ? '' : icon('lock')}${esc(pl.name)}${p.licensed ? ` <b class="num" style="color:${scoreColor(v)}">${v.toFixed(1)}</b><span class="num" style="color:${rev >= cost ? 'var(--money)' : 'var(--bug)'}">≈${money(rev)}</span>` : ''}</button>`;
+}
+
 function portsPanel(G, g) {
   const done = portsOf(g);
   if (!done.length && (g.live || g.expansionOf)) return '';
+  const tag = `<span class="chip c" style="--c:var(--hot)">${t('port.remTag')}</span>`;
   const rows = done
-    .map((p) => `<div class="pt-row"><span class="chip">${esc(PLATFORM[p.platform].name)}</span><span class="faint">${dateOf(p.t).year}</span><b class="num" style="color:${scoreColor(p.score)}">${p.score.toFixed(1)}</b><span class="sp"></span><b class="num" style="color:var(--money)">${money(p.revenue)}</b><span class="faint pt-st">${p.ended ? t('lib.ended') : t('lib.onSale')}</span></div>`)
+    .map((p) => `<div class="pt-row"><span class="chip">${esc(PLATFORM[p.platform].name)}</span>${p.kind === 'remaster' ? tag : ''}<span class="faint">${dateOf(p.t).year}</span><b class="num" style="color:${scoreColor(p.score)}">${p.score.toFixed(1)}</b><span class="sp"></span><b class="num" style="color:var(--money)">${money(p.revenue)}</b><span class="faint pt-st">${p.ended ? t('lib.ended') : t('lib.onSale')}</span></div>`)
     .join('');
   let body = '';
   if (!portable(G, g)) body = g.live || g.expansionOf ? '' : `<span class="hint">${icon('lock')} ${t('port.locked')}</span>`;
   else {
     const P = G.port;
     const mine = P && P.game === g.id;
+    const prem = P?.kind === 'remaster';
     const work = mine
-      ? `<div class="pt-row" data-tip="${esc(t('port.working', { plat: esc(PLATFORM[P.platform].name) }))}"><span class="chip c" style="--c:var(--design)">${icon('gamepad')}${esc(PLATFORM[P.platform].name)}</span><div style="flex:1">${bar(((G.t - P.t0) / Math.max(1, P.until - P.t0)) * 100, 'var(--design)', 'thin')}</div><span class="faint pt-st">${t('pn.weeksLeft', { n: Math.max(0, P.until - G.t) })}</span></div>`
+      ? `<div class="pt-row" data-tip="${esc(t(prem ? 'port.remWorking' : 'port.working', { plat: esc(PLATFORM[P.platform].name) }))}"><span class="chip c" style="--c:var(--design)">${icon('gamepad')}${esc(PLATFORM[P.platform].name)}</span>${prem ? tag : ''}<div style="flex:1">${bar(((G.t - P.t0) / Math.max(1, P.until - P.t0)) * 100, 'var(--design)', 'thin')}</div><span class="faint pt-st">${t('pn.weeksLeft', { n: Math.max(0, P.until - G.t) })}</span></div>`
       : '';
     const other = P && !mine ? G.games.find((x) => x.id === P.game) : null;
     const cost = portCost(G, g);
-    const yf = yfOf(G.t);
-    const btns = portTargets(G, g)
-      .map((p) => {
-        const pl = PLATFORM[p.id];
-        const v = portScore(G, g, p.id);
-        const rev = p.licensed ? portForecast(G, g, p.id) : 0;
-        const pot = potential(pl, yf);
-        const tip = p.licensed
-          ? t('port.tip', { plat: esc(pl.name), v: v.toFixed(1), o: g.score.toFixed(1), rev: money(rev), size: t(SIZE_KEY[pot < 15 ? 0 : pot < 35 ? 1 : 2]), cost: money(cost), n: PORT_WEEKS[g.scope] })
-          : t('port.needLicense');
-        const off = !p.licensed || !!P || G.money < cost;
-        return `<button class="btn sm" data-act="lib-port" data-id="${g.id}" data-p="${p.id}" ${off ? 'disabled' : ''} data-tip="${esc(tip)}">${p.licensed ? '' : icon('lock')}${esc(pl.name)}${p.licensed ? ` <b class="num" style="color:${scoreColor(v)}">${v.toFixed(1)}</b><span class="num" style="color:${rev >= cost ? 'var(--money)' : 'var(--bug)'}">≈${money(rev)}</span>` : ''}</button>`;
-      })
-      .join('');
-    body = `${work}${other ? `<div class="hint">${t('port.busyWith', { title: esc(other.title), plat: esc(PLATFORM[P.platform].name) })}</div>` : ''}
-      ${btns ? `<div class="row wrap" style="gap:6px;margin-top:8px"><span class="lbl">${t('port.to')} · ${money(cost)}</span>${btns}</div>` : mine ? '' : `<div class="hint">${t('port.none')}</div>`}
+    const btns = portTargets(G, g).map((p) => portBtn(G, g, p, 'port', cost)).join('');
+    // remaster: knappar när spelet är gammalt nog, annars en rad om när det går (eller att forskningen saknas)
+    let rem = '';
+    const classic = !g.remastered && g.score >= REMASTER_MIN && !(mine && prem);
+    if (remasterable(G, g)) {
+      const rc = portCost(G, g, 'remaster');
+      const rb = remasterTargets(G, g).map((p) => portBtn(G, g, p, 'remaster', rc)).join('');
+      if (rb) rem = `<div class="row wrap" style="gap:6px;margin-top:8px"><span class="lbl">${t('port.remTo')} · ${money(rc)}</span>${rb}</div>`;
+    } else if (classic && G.u.flags.remaster) rem = `<div class="hint" style="margin-top:8px">${t('port.remSoon', { year: dateOf(g.t + REMASTER_AGE * WEEKS_PER_YEAR).year })}</div>`;
+    else if (classic && G.t - g.t >= REMASTER_AGE * WEEKS_PER_YEAR) rem = `<div class="hint" style="margin-top:8px">${icon('lock')} ${t('port.remLocked')}</div>`;
+    const busy = other ? `<div class="hint">${t(prem ? 'port.remBusyWith' : 'port.busyWith', { title: esc(other.title), plat: esc(PLATFORM[P.platform].name) })}</div>` : '';
+    body = `${work}${busy}
+      ${btns ? `<div class="row wrap" style="gap:6px;margin-top:8px"><span class="lbl">${t('port.to')} · ${money(cost)}</span>${btns}</div>` : mine ? '' : `<div class="hint">${t('port.none')}</div>`}${rem}
       <div class="hint" style="margin-top:8px">${t('port.help')}</div>`;
   }
   if (!rows && !body) return '';
@@ -331,7 +344,7 @@ act('lib-seq', (el) => {
   openSequel(G, g);
 });
 act('lib-port', (el) => {
-  const r = startPort(UI.app.G, +el.dataset.id, el.dataset.p);
+  const r = startPort(UI.app.G, +el.dataset.id, el.dataset.p, el.dataset.kind || 'port');
   if (r === true) sfx.play('coin');
   else if (r) errToast(r);
   UI.refresh();

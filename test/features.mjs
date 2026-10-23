@@ -171,6 +171,22 @@ ok(true, 'alla händelser körda');
   const GJ = JSON.parse(JSON.stringify(GP));
   for (let i = 0; i < 20; i++) { GJ.t++; S.portWeek(GJ); }
   ok(Number.isFinite(GJ.money) && GJ.games[0].ports[0].weekly.length > 20, 'porten säljer vidare efter sparning');
+  // remaster: egen forskning, minst tio år gammalt och betyg 7+, inget åldrande, bara en per spel
+  const classic = { ...base, id: 8803, t: GP.t - 48 * 11 };
+  const weak = { ...base, id: 8804, t: GP.t - 48 * 11, score: 6.2 };
+  GP.games.push(classic, weak);
+  ok(!S.remasterable(GP, classic), 'remaster kräver forskning');
+  GP.u.flags.remaster = true;
+  ok(S.remasterable(GP, classic) && !S.remasterable(GP, g) && !S.remasterable(GP, weak), 'bara gamla spel med betyg 7+ kan få en remaster');
+  const rt = S.remasterTargets(GP, classic).find((p) => p.licensed);
+  ok(rt && S.portScore(GP, classic, rt.id, undefined, 'remaster') > S.portScore(GP, classic, rt.id), 'remastern åldras inte (' + rt?.id + ')');
+  ok(S.portCost(GP, classic, 'remaster') > S.portCost(GP, classic) && S.portWeeks(classic, 'remaster') > S.portWeeks(classic), 'remastern kostar mer och tar längre tid');
+  const m1 = GP.money;
+  ok(S.startPort(GP, classic.id, rt.id, 'remaster') === true && GP.port.kind === 'remaster' && GP.money === m1 - S.portCost(GP, classic, 'remaster'), 'remastern startar');
+  for (let i = 0; i < 30; i++) { GP.t++; S.portWeek(GP); }
+  const rp = classic.ports && classic.ports[0];
+  ok(rp && rp.kind === 'remaster' && rp.revenue > 0 && classic.remastered && !S.remasterable(GP, classic) && GP.stats.remasters === 1, 'remastern släpps och säljer, och bara en gång (' + Math.round(rp?.revenue || 0) + ')');
+  ok(GP.rng === rng0, 'remastern rör inte spelets slumpföljd');
 }
 // förlag: pitchar kommer ur fröet, förskott vid underskrift, två avtal åt gången, spelet släpps med ett betyg i intervallet
 {
