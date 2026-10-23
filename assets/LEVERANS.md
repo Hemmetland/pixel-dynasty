@@ -290,3 +290,51 @@ Enskilda rutor finns i `assets/pixellab/characters/dev/sitCheer-east-hand/`. Öv
 ```
 
 Byggd som `cheer#1`: samma huvud, och den bortre armen syns där mössan tidigare täckte den. Rutor i `assets/pixellab/characters/dev/hair1/sitCheer/`. Därmed har `#1` alla 16 nycklar.
+
+
+## Frisyr 2: hästsvans utan mössa och glasögon (alla 16 nycklar)
+
+Variant `#2`: samma ansikte och öga som `#1`, men håret är bakåtkammat med en knut, ett mörkt hårband och en hästsvans som hänger ner till axelhöjd (cirka 4 px tjock, smalnar av mot spetsen). I `walk` svänger svansen -1 till +1 px med stegen, i lutade poser hänger den rakt ner, och i jublen svänger den bakåt på skuttet. Håret och svansen använder hårmaterialets färger; hårbandet och konturen (#181311) färgbyts inte.
+
+| Remsa | Rutor | Nyckel |
+| --- | --- | --- |
+| `assets/chars/hair2/walk.png` | 6 | `char.walk#2` |
+| `assets/chars/hair2/stand.png` | 1 | `char.stand#2` |
+| `assets/chars/hair2/drink.png` | 6 | `char.drink#2` |
+| `assets/chars/hair2/sit.png` | 2 | `char.sit#2` |
+| `assets/chars/hair2/type.png` | 4 | `char.type#2` |
+| `assets/chars/hair2/talk.png` | 4 | `char.talk#2` |
+| `assets/chars/hair2/sitTalk.png` | 4 | `char.sitTalk#2` |
+| `assets/chars/hair2/sitDrink.png` | 6 | `char.sitDrink#2` |
+| `assets/chars/hair2/read.png` | 2 | `char.read#2` |
+| `assets/chars/hair2/think.png` | 2 | `char.think#2` |
+| `assets/chars/hair2/sleep.png` | 2 | `char.sleep#2` |
+| `assets/chars/hair2/tired.png` | 2 | `char.tired#2` |
+| `assets/chars/hair2/sitLaptop.png` | 4 | `char.sitLaptop#2` |
+| `assets/chars/hair2/cheer.png` | 2 | `char.cheer#2` |
+| `assets/chars/hair2/present.png` | 2 | `char.present#2` |
+| `assets/chars/hair2/sitCheer.png` | 2 | `char.sitCheer#2` |
+
+Enskilda rutor finns i `assets/pixellab/characters/dev/hair2/<nyckel>/`. Allt under rad 60 är identiskt med grundremsorna. Utanför huvudet och svansen ändrades bara: 18 huvpixlar per ruta i `sleep` (under svansen) och den lyfta närmre armen i `cheer` och `sitCheer`, där hårbandet och svansen ritas ovanpå armen.
+
+```json
+"char.walk#2": { "file": "chars/hair2/walk.png", "fw": 92, "fh": 92, "ax": 46, "ay": 82, "frames": 6, "scale": 0.42, "note": "Frisyr 2, långt hår i hästsvans utan mössa och glasögon (Kör)" },
+"char.stand#2": { "file": "chars/hair2/stand.png", "fw": 92, "fh": 92, "ax": 46, "ay": 82, "frames": 1, "scale": 0.42, "note": "Frisyr 2, långt hår i hästsvans utan mössa och glasögon (Kör)" },
+"char.drink#2": { "file": "chars/hair2/drink.png", "fw": 92, "fh": 92, "ax": 46, "ay": 82, "frames": 6, "scale": 0.42, "note": "Frisyr 2, långt hår i hästsvans utan mössa och glasögon (Kör)" },
+"char.sit#2": { "file": "chars/hair2/sit.png", "fw": 92, "fh": 92, "ax": 46, "ay": 82, "frames": 2, "scale": 0.42, "note": "Frisyr 2, långt hår i hästsvans utan mössa och glasögon (Kör)" },
+"char.type#2": { "file": "chars/hair2/type.png", "fw": 92, "fh": 92, "ax": 46, "ay": 82, "frames": 4, "scale": 0.42, "note": "Frisyr 2, långt hår i hästsvans utan mössa och glasögon (Kör)" },
+"char.talk#2": { "file": "chars/hair2/talk.png", "fw": 92, "fh": 92, "ax": 46, "ay": 82, "frames": 4, "scale": 0.42, "note": "Frisyr 2, långt hår i hästsvans utan mössa och glasögon (Kör)" },
+"char.sitTalk#2": { "file": "chars/hair2/sitTalk.png", "fw": 92, "fh": 92, "ax": 46, "ay": 82, "frames": 4, "scale": 0.42, "note": "Frisyr 2, långt hår i hästsvans utan mössa och glasögon (Kör)" },
+"char.sitDrink#2": { "file": "chars/hair2/sitDrink.png", "fw": 92, "fh": 92, "ax": 46, "ay": 82, "frames": 6, "scale": 0.42, "note": "Frisyr 2, långt hår i hästsvans utan mössa och glasögon (Kör)" },
+"char.read#2": { "file": "chars/hair2/read.png", "fw": 92, "fh": 92, "ax": 46, "ay": 82, "frames": 2, "scale": 0.42, "note": "Frisyr 2, långt hår i hästsvans utan mössa och glasögon (Kör)" },
+"char.think#2": { "file": "chars/hair2/think.png", "fw": 92, "fh": 92, "ax": 46, "ay": 82, "frames": 2, "scale": 0.42, "note": "Frisyr 2, långt hår i hästsvans utan mössa och glasögon (Kör)" },
+"char.sleep#2": { "file": "chars/hair2/sleep.png", "fw": 92, "fh": 92, "ax": 46, "ay": 82, "frames": 2, "scale": 0.42, "note": "Frisyr 2, långt hår i hästsvans utan mössa och glasögon (Kör)" },
+"char.tired#2": { "file": "chars/hair2/tired.png", "fw": 92, "fh": 92, "ax": 46, "ay": 82, "frames": 2, "scale": 0.42, "note": "Frisyr 2, långt hår i hästsvans utan mössa och glasögon (Kör)" },
+"char.sitLaptop#2": { "file": "chars/hair2/sitLaptop.png", "fw": 92, "fh": 92, "ax": 46, "ay": 82, "frames": 4, "scale": 0.42, "note": "Frisyr 2, långt hår i hästsvans utan mössa och glasögon (Kör)" },
+"char.cheer#2": { "file": "chars/hair2/cheer.png", "fw": 92, "fh": 92, "ax": 46, "ay": 82, "frames": 2, "scale": 0.42, "note": "Frisyr 2, långt hår i hästsvans utan mössa och glasögon (Kör)" },
+"char.present#2": { "file": "chars/hair2/present.png", "fw": 92, "fh": 92, "ax": 46, "ay": 82, "frames": 2, "scale": 0.42, "note": "Frisyr 2, långt hår i hästsvans utan mössa och glasögon (Kör)" },
+"char.sitCheer#2": { "file": "chars/hair2/sitCheer.png", "fw": 92, "fh": 92, "ax": 46, "ay": 82, "frames": 2, "scale": 0.42, "note": "Frisyr 2, långt hår i hästsvans utan mössa och glasögon (Kör)" }
+```
+
+- **`sleep#2`** behöver ingen `hatRow`.
+- **Begränsningar:** i `sleep` blir hårmassan cirka 6 px högre än i `#1` och läses mer som en knut än en hästsvans. `drink` ruta 1 har en liten ögla mellan svansen och skallen (syns bara i full storlek). I `read` och `sitLaptop` är bakhuvudet lite plattare. På ljust hår syns hårbandet och konturen mot nacken som mörka prickar i spelskala.
