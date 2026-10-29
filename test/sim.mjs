@@ -152,6 +152,11 @@ function manage(G) {
         const v = p.licensed ? S.portForecast(G, g, p.id, undefined, 'remaster') / c : 0;
         if (v >= 2 && (!rem || v > rem.v)) rem = { g, p: p.id, v, c };
       }
+      if (process.env.REMDBG && !g.remSeen) {
+        g.remSeen = true;
+        const best = Math.max(0, ...S.remasterTargets(G, g).filter((p) => p.licensed).map((p) => S.portForecast(G, g, p.id, undefined, 'remaster') / c));
+        console.log(`   cand ${year} ${g.scope} score ${g.score} best x${best.toFixed(2)}`);
+      }
     }
     if (rem && G.money > rem.c * 3) {
       if (S.startPort(G, rem.g.id, rem.p, 'remaster') === true && verbose) console.log(`  remaster ${year}: ${rem.g.title} ${rem.g.platform} -> ${rem.p} x${rem.v.toFixed(1)} cost $${rem.c}`);

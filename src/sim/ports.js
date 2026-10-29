@@ -20,7 +20,8 @@ import { note } from './news.js';
 export const PORT_WEEKS = { small: 6, medium: 10, large: 16, aaa: 24 };
 export const REMASTER_AGE = 10; // år
 export const REMASTER_MIN = 7; // originalets betyg
-const REMASTER = { cost: 4, weeks: 1.5, mult: 0.3, bonus: 0.2, fit: 0.3 };
+// cost: gånger en vanlig ports pris, högre för små spel som annars blir ett givet köp
+const REMASTER = { cost: { small: 10, medium: 7, large: 4.5, aaa: 4.5 }, weeks: 1.5, mult: 0.3, bonus: 0.2, fit: 0.3 };
 const PORT_COST = { small: 4000, medium: 35000, large: 240000, aaa: 800000 };
 // Andelen av ett nytt spels försäljning; varje tidigare port av samma spel tar 20 % till (köparna har redan spelet).
 export const PORT_MULT = 0.25;
@@ -33,7 +34,7 @@ export const portable = (G, g) => !!g && !g.live && !g.expansionOf && G.u.flags.
 export const remasterable = (G, g) => portable(G, g) && G.u.flags.remaster && !g.remastered && g.score >= REMASTER_MIN && G.t - g.t >= REMASTER_AGE * WEEKS_PER_YEAR;
 
 export function portCost(G, g, kind = 'port') {
-  return Math.round((PORT_COST[g.scope] * Math.pow(1.07, yearOf(G.t) - 1980) * (kind === 'remaster' ? REMASTER.cost : 1)) / 100) * 100;
+  return Math.round((PORT_COST[g.scope] * Math.pow(1.07, yearOf(G.t) - 1980) * (kind === 'remaster' ? REMASTER.cost[g.scope] : 1)) / 100) * 100;
 }
 export const portWeeks = (g, kind = 'port') => Math.round(PORT_WEEKS[g.scope] * (kind === 'remaster' ? REMASTER.weeks : 1));
 
