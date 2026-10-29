@@ -124,7 +124,7 @@ export const featOf = (S) => (S.policy === 'closed' ? FEAT.closed * S.reach : FE
 // Släpp: ett pc-spel säljer mer av att synas i butiken, och ett exklusivt spel säljs bara där
 export function storeRelease(G, g) {
   const S = G.store;
-  if (!S || !isPcPlat(g.platform)) return;
+  if (!S || S.paused || !isPcPlat(g.platform)) return;
   const feat = featOf(S);
   g.total *= 1 + feat;
   g.storeFeat = feat;
@@ -137,6 +137,13 @@ export function storeRelease(G, g) {
   else if (g.score < 5) S.trust = clamp(S.trust - 3, 0, 100);
 }
 
+// Var fjärde vecka blir de senaste fyra veckorna butikens månad
+function rollMonth(G, S) {
+  if ((G.t - S.t0) % 4 !== 3) return;
+  S.lm = S.m;
+  S.m = blank();
+}
+
 // Andelen av ett spels pc-försäljning som går genom butiken
 const via = (S, x) => (x.storeEx ? 1 : S.reach);
 
@@ -144,6 +151,14 @@ const via = (S, x) => (x.storeEx ? 1 : S.reach);
 export function storeWeek(G) {
   if (!canStore(G)) return;
   const S = G.store || openStore(G);
+  if (S.paused) {
+    // pausad: inga intäkter eller kostnader, men användarna och förlagen försvinner och förtroendet sjunker
+    S.dev = 0;
+    S.reach *= 0.97;
+    S.trust = clamp(S.trust - 0.3, 0, 100);
+    rollMonth(G, S);
+    return;
+  }
   // utvecklarna kommer och går långsamt, förtroendet söker sitt jämviktsläge och räckvidden sitt mål
   S.dev += clamp(devTarget(S) - S.dev, -0.05, 0.03);
   if (S.policy === 'closed') S.dev = 0;
@@ -221,10 +236,7 @@ export function storeWeek(G) {
   };
   add(S.m);
   add(S.tot);
-  if ((G.t - S.t0) % 4 === 3) {
-    S.lm = S.m;
-    S.m = blank();
-  }
+  rollMonth(G, S);
   G.stats.storeNet = (G.stats.storeNet || 0) + inc - c.ops - c.sup - c.ads - pay;
   // milstolpar i användarbasen
   const users = storeUsers(G, S);
@@ -270,6 +282,14 @@ export function setAds(G, i) {
   S.ads = i;
   return true;
 }
+// Pausa butiken (eller öppna den igen): ett sätt ut för en studio där butiken inte bär sig
+export function setPaused(G, on) {
+  const S = G.store;
+  if (!S || !!S.paused === !!on) return false;
+  S.paused = !!on;
+  note(G, on ? 'news.storePaused' : 'news.storeResumed', { studio: G.studio }, 'info');
+  return true;
+}
 export function setExclusive(G, on) {
   const S = G.store;
   if (!S) return false;
@@ -279,7 +299,7 @@ export function setExclusive(G, on) {
 
 // Månadens fasta kostnader (för finansfönstrets utgiftstakt)
 export function storeCostMonth(G) {
-  if (!G.store) return 0;
+  if (!G.store || G.store.paused) return 0;
   const c = storeCosts(G);
   return (c.ops + c.sup + c.ads) * 4;
 }

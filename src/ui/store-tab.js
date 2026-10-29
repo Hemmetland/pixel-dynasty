@@ -4,7 +4,7 @@ import { fmtNum } from '../core/util.js';
 import { yearOf } from '../sim/const.js';
 import {
   OTHER_CUT, PAY_FEE, FEES, SUPPORT, ADS, canStore, storeUsers, discOf, reachTarget, storeScale, featOf, switchLeft,
-  setPolicy, setFee, setSupport, setAds, setExclusive,
+  setPolicy, setFee, setSupport, setAds, setExclusive, setPaused,
 } from '../sim/store.js';
 
 // Marknadsfönstrets flik Egen butik: användare, förtroende och upptäckbarhet, strategin (sluten eller öppen), avgiften,
@@ -29,8 +29,9 @@ function seg(items, cur, actName, tip) {
   return `<div class="seg wrap-seg">${items.map((label, i) => `<button class="${cur === i ? 'on' : ''}" data-act="${actName}" data-i="${i}" ${tip ? `data-tip="${esc(tip(i))}"` : ''}>${label}</button>`).join('')}</div>`;
 }
 
-function econ(S) {
-  // senaste fyra veckorna och allt sedan butiken öppnade
+function econ(G, S) {
+  // senaste fyra veckorna (hittills, innan den första månaden är slut) och allt sedan butiken öppnade
+  const early = G.t - S.t0 < 4;
   const rows = (o) => [
     ['dist.r.own', o.own],
     ['dist.r.group', o.group],
@@ -42,13 +43,14 @@ function econ(S) {
   ];
   const net = (o) => o.own + o.group + o.ext - o.ops - o.pay - o.sup - o.ads;
   const cell = (v) => `<b class="num ${v >= 0 ? 'up' : 'down'}">${v > 0 ? '+' : ''}${money(v)}</b>`;
-  const lm = rows(S.lm);
+  const cur = early ? S.m : S.lm;
+  const lm = rows(cur);
   const tot = rows(S.tot);
   const body = lm
     .map(([k], i) => (Math.abs(tot[i][1]) < 1 ? '' : `<div class="dist-erow"><span>${t(k, { pct: Math.round(PAY_FEE * 100) })}</span>${cell(lm[i][1])}${cell(tot[i][1])}</div>`))
     .join('');
-  return `<div class="dist-econ"><div class="dist-erow faint"><span></span><span>${t('dist.month')}</span><span>${t('dist.since', { year: yearOf(S.t0) })}</span></div>${body}
-    <div class="divider"></div><div class="dist-erow"><span><b>${t('dist.net')}</b></span>${cell(net(S.lm))}${cell(net(S.tot))}</div></div>
+  return `<div class="dist-econ"><div class="dist-erow faint"><span></span><span>${t(early ? 'dist.monthSoFar' : 'dist.month')}</span><span>${t('dist.since', { year: yearOf(S.t0) })}</span></div>${body}
+    <div class="divider"></div><div class="dist-erow"><span><b>${t('dist.net')}</b></span>${cell(net(cur))}${cell(net(S.tot))}</div></div>
     ${S.tot.feat >= 1 ? `<p class="hint" style="margin-top:8px">${t('dist.feat', { v: money(S.tot.feat) })}</p>` : ''}`;
 }
 
@@ -62,6 +64,14 @@ export function storeTab(G) {
   const wait = switchLeft(G, S);
   const open = S.policy === 'open';
   const supCost = (i) => t('dist.costTip', { v: money((SUPPORT[i].base + SUPPORT[i].per * S.reach) * y) });
+  if (S.paused) {
+    return `<div class="card dist-opt on" style="--c:var(--warn)"><div class="row wrap" style="gap:10px">${icon('pause')}<div class="hint" style="flex:1 1 220px">${t('dist.paused')}</div><button class="btn primary sm" data-act="dist-pause" data-v="0">${icon('play')}${t('dist.resume')}</button></div></div>
+      <div class="grid" style="grid-template-columns:repeat(auto-fit,minmax(150px,1fr));margin-top:14px">
+        <div class="counter" style="--c:var(--accent)"><div class="v num">${fmtNum(Math.round(storeUsers(G, S)))}</div><div class="k">${t('dist.users')}</div></div>
+        <div class="counter" style="--c:${tone(S.trust)}"><div class="v num">${Math.round(S.trust)}</div><div class="k">${t('dist.trust')}</div></div>
+      </div>
+      <div class="card" style="margin-top:18px"><div class="lbl" style="margin-bottom:8px">${t('dist.econ')}</div>${econ(G, S)}</div>`;
+  }
   return `<p class="hint" style="margin-bottom:12px">${icon('cart')} ${t('dist.help', { pct: Math.round(OTHER_CUT * 100) })}</p>
     <div class="grid" style="grid-template-columns:repeat(auto-fit,minmax(150px,1fr))">
       <div class="counter" style="--c:var(--accent)" data-tip="${esc(t('dist.usersTip', { pct: pct(tgt) }))}"><div class="v num">${fmtNum(Math.round(users))}</div><div class="k">${t('dist.users')}</div><div class="faint" style="font-size:11px;margin-top:4px">${t('dist.usersK', { pct: pct(S.reach) })}, ${t('dist.toward', { pct: pct(tgt) })}</div></div>
@@ -84,7 +94,7 @@ export function storeTab(G) {
         <div class="seg"><button class="${S.ex ? '' : 'on'}" data-act="dist-ex" data-v="0">${t('dist.exOff')}</button><button class="${S.ex ? 'on' : ''}" data-act="dist-ex" data-v="1">${t('dist.exOn')}</button></div>
         <p class="hint" style="margin-top:6px">${t('dist.exHelp')}</p></div>
     </div>
-    <div class="card" style="margin-top:18px"><div class="lbl" style="margin-bottom:8px">${t('dist.econ')}</div>${econ(S)}</div>`;
+    <div class="card" style="margin-top:18px"><div class="row wrap" style="margin-bottom:8px;gap:8px"><div class="lbl">${t('dist.econ')}</div><span class="sp"></span><button class="btn sm ghost" data-act="dist-pause" data-v="1" data-tip="${esc(t('dist.pauseTip'))}">${icon('pause')}${t('dist.pause')}</button></div>${econ(G, S)}</div>`;
 }
 
 act('dist-pol', (el) => {
@@ -103,6 +113,10 @@ act('dist-sup', (el) => {
 });
 act('dist-ads', (el) => {
   setAds(UI.app.G, +el.dataset.i);
+  UI.refresh();
+});
+act('dist-pause', (el) => {
+  if (setPaused(UI.app.G, el.dataset.v === '1')) sfx.play('click');
   UI.refresh();
 });
 act('dist-ex', (el) => {

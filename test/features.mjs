@@ -299,6 +299,11 @@ ok(true, 'alla händelser körda');
   ok(S.setPolicy(GS, 'closed') === true && B.trust === Math.max(0, t0 - 15), 'att stänga butiken kostar förtroende');
   GS.t++; S.storeWeek(GS);
   ok(B.dev === 0, 'en sluten butik har inga andra förlag');
+  const ops0 = B.tot.ops, r0 = B.reach, m1 = GS.money;
+  ok(S.setPaused(GS, true) && S.storeCostMonth(GS) === 0, 'butiken går att pausa');
+  for (let i = 0; i < 8; i++) { GS.t++; S.storeWeek(GS); }
+  ok(B.tot.ops === ops0 && GS.money === m1 && B.reach < r0, 'en pausad butik kostar inget men tappar användare');
+  ok(S.setPaused(GS, false) && !B.paused, 'och öppnar igen');
   ok(GS.rng === rng0, 'butiken rör inte spelets slumpföljd');
   const GJ = JSON.parse(JSON.stringify(GS));
   for (let i = 0; i < 30; i++) { GJ.t++; S.storeWeek(GJ); }
