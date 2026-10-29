@@ -529,3 +529,22 @@ Stående vid skrivbordet och hälsar på en ny kollega, 4 rutor: den närmre arm
 ```
 
 - **Begränsningar:** överarmen är lång och nästan vågrät, så i full storlek ser armen lite stel ut; i spelskala läses den bra. I ruta 2 är handleden böjd bakåt för att handen ska behålla formen av en öppen hand. Ruta 0 är tätast: handen ligger 2 till 3 px från mössan och lockarna. Mot det ljusa fönstret i utvecklarrummet på nivå 3 har handen mindre kontrast, men konturen håller den läsbar.
+
+## Gå med flyttlåda: `char.walkBox` med frisyr 1, 2 och 3
+
+Gångcykel med en stängd brun flyttlåda framför bröstet, 6 rutor i samma ordning och takt som `char.walk`. Varje ruta är `walk.png`:s ruta med samma nummer: ben, fötter, huvud och kroppens gungning är pixelidentiska. Båda de svingande armarna är bortmålade; den närmre armen går snett ner över lådans sida och handen håller om lådans nedre främre hörn, den bortre armen är dold bakom lådan. Lådan följer gungningen i varje ruta. Grundremsan och de tre frisyrerna levereras samtidigt.
+
+- **Remsor:** `assets/chars/walkBox.png`, `assets/chars/hair1/walkBox.png`, `assets/chars/hair2/walkBox.png`, `assets/chars/hair3/walkBox.png` (6 rutor var). Enskilda rutor finns i `assets/pixellab/characters/dev/walkBox-east-hand/` och `dev/hair1/walkBox/`, `dev/hair2/walkBox/`, `dev/hair3/walkBox/`.
+- **Takt:** 9 bilder/s som `walk`: `STAND_SPRITE.walkBox = ['char.walkBox', 9]`.
+- **Mått:** lådan är 22 × 16 px (x 42 till 63, rad 37 till 52 i ruta 0) med ljus ovansida, tejpremsa, skuggad framkant och undersida; framkanten ligger 11 px framför bröstet. Handen x 60 till 65, rad 47 till 52. Hakan ligger på rad 32, så fyra rader är fria ovanför lådan. Fötterna är orörda.
+- **Färger:** tre nya bruna kartongfärger, `#e0b06a`, `#ab7c45`, `#7e5833` (nyans 30 till 36, mättnad under 0,7), plus figurens egen kontur `#1c1923`. Alla ger `material()` = null på alla rader (aldrig mössa, hår eller hud). Mössan är `walk`:s, så ingen `hatRow` behövs.
+- **Frisyrerna:** varje variant är `hairN/walk.png`:s ruta med samma lådlager, så hästsvansen svänger som i `walk#2`. Lådan och armen är identiska i alla fyra remsor och möter aldrig håret.
+
+```json
+"char.walkBox": { "file": "chars/walkBox.png", "fw": 92, "fh": 92, "ax": 46, "ay": 82, "frames": 6, "scale": 0.42, "note": "Går med flyttlåda, handritad (Kör)" },
+"char.walkBox#1": { "file": "chars/hair1/walkBox.png", "fw": 92, "fh": 92, "ax": 46, "ay": 82, "frames": 6, "scale": 0.42, "note": "Frisyr 1, kort hår (Kör)" },
+"char.walkBox#2": { "file": "chars/hair2/walkBox.png", "fw": 92, "fh": 92, "ax": 46, "ay": 82, "frames": 6, "scale": 0.42, "note": "Frisyr 2, hästsvans (Kör)" },
+"char.walkBox#3": { "file": "chars/hair3/walkBox.png", "fw": 92, "fh": 92, "ax": 46, "ay": 82, "frames": 6, "scale": 0.42, "note": "Frisyr 3, lockigt hår (Kör)" }
+```
+
+- **Begränsningar:** i spelskala syns lådans mörka överkant bara i ruta 3 till 5 (nedskalningen av gungningen), så kanten fladdrar lite vid 9 bilder/s, precis som huvudet i `walk`. Med orange, senapsgula eller rostfärgade tröjor blir kontrasten mot lådan lägre; ruta 0 är svagast. Tejpen syns i spelskala bara som ett mörkt hack i överkanten.
