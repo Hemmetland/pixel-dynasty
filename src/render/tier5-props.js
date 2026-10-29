@@ -134,16 +134,12 @@ export function reception(ctx, x, fy, w = 34) {
   crownIcon(ctx, x + Math.floor(w / 2) - 7, fy - 12, NEON.cyan);
   R(ctx, x + 2, fy - 2, w - 4, 1, NEON.cyan);
   RA(ctx, x + 1, fy - 3, w - 2, 3, NEON.cyan, 0.22);
-  // på disken: liten skärm, holografisk projektor och orkidé
-  R(ctx, x + 2, fy - 23, 7, 6, '#10162a');
-  R(ctx, x + 3, fy - 22, 5, 4, '#3a6a9a');
-  R(ctx, x + 3, fy - 22, 5, 1, '#7ab4e0');
-  R(ctx, x + 5, fy - 18, 1, 1, '#3a4054');
-  holoBase(ctx, x + Math.floor(w / 2) + 1, fy - 17, 6);
-  R(ctx, x + w - 6, fy - 20, 3, 3, MARBLE.hi);
-  R(ctx, x + w - 5, fy - 24, 1, 4, '#4a8a4a');
-  R(ctx, x + w - 5, fy - 25, 2, 1, '#ff8ac8');
-  R(ctx, x + w - 3, fy - 22, 1, 2, '#ff8ac8');
+  // på disken: holografisk projektor och orkidé till höger, receptionisten står bakom den vänstra halvan
+  holoBase(ctx, x + w - 7, fy - 17, 6);
+  R(ctx, x + w - 3, fy - 20, 3, 3, MARBLE.hi);
+  R(ctx, x + w - 2, fy - 24, 1, 4, '#4a8a4a');
+  R(ctx, x + w - 2, fy - 25, 2, 1, '#ff8ac8');
+  R(ctx, x + w, fy - 22, 1, 2, '#ff8ac8');
 }
 // Trofévägg: glasskåp med två hyllor (P.trophyShelf ritar pokaler och spelboxar) och guldplakett. x = vänsterkant.
 export function trophyWall(ctx, x, fy, awards, games, label) {

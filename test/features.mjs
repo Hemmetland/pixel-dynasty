@@ -303,7 +303,14 @@ ok(true, 'alla händelser körda');
   ok(S.setPaused(GS, true) && S.storeCostMonth(GS) === 0, 'butiken går att pausa');
   for (let i = 0; i < 8; i++) { GS.t++; S.storeWeek(GS); }
   ok(B.tot.ops === ops0 && GS.money === m1 && B.reach < r0, 'en pausad butik kostar inget men tappar användare');
+  const exg = { id: 'exg', platform: 'pc', score: 8, total: 1e6, t: GS.t - 6, tail: 1, priceAt: 30, weekly: [], revenue: 0, units: 0, fansGained: 0, storeEx: true };
+  GS.games.push(exg);
+  S.salesWeek(GS);
+  const exPaused = exg.weekly[exg.weekly.length - 1];
   ok(S.setPaused(GS, false) && !B.paused, 'och öppnar igen');
+  GS.t++; S.salesWeek(GS);
+  ok(exPaused === 0 && !exg.ended && exg.weekly[exg.weekly.length - 1] > 0, 'ett exklusivt spel säljs inte medan butiken är pausad');
+  GS.games.pop();
   ok(GS.rng === rng0, 'butiken rör inte spelets slumpföljd');
   const GJ = JSON.parse(JSON.stringify(GS));
   for (let i = 0; i < 30; i++) { GJ.t++; S.storeWeek(GJ); }

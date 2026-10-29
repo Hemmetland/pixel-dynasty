@@ -147,8 +147,8 @@ const floorY = (room, L) => -4 - room.floor * L.pitch;
 const LOBBY = {
   windows: (rx, fy) => [{ x: rx + 5, y: fy - 41, w: 15, h: 33, kind: 'plain' }],
   stations: (rx) => [
-    // bakom diskens högra ände, vänd mot entrén (på rx + 25 stod receptionisten ovanpå disken)
-    { kind: 'reception', x: rx + 51, dir: -1, pose: 'stand' },
+    // bakom diskens vänstra halva, vänd mot entrén; scene.js målar diskens front ovanpå (FRONT nedan)
+    { kind: 'reception', x: rx + 31, dir: -1, pose: 'stand' },
     { kind: 'stand', x: rx + 14, dir: 1, pose: 'stand' },
     { kind: 'window', x: rx + 8, dir: 1, pose: 'stand' },
   ],
@@ -171,7 +171,7 @@ const LOBBY = {
   lights: (rx, fy) => [{ x: rx + 35, y: fy - 28, r: 34, i: 0.5, c: [1, 0.92, 0.7], kind: 1, pri: 1 }],
   dynamic(A, cx, gy, L, r, t) {
     const fy = floorY(r, L);
-    holoGlobeDyn(A, cx + r.x0 + 36, gy + fy - 24, 4, t);
+    holoGlobeDyn(A, cx + r.x0 + 39, gy + fy - 24, 4, t);
     // kristallkronan glittrar
     [[-9, 11], [-3, 12], [4, 12], [10, 11], [-6, 12], [3, 12]].forEach(([dx, dy], i) => {
       if ((Math.floor(t * 4) + i * 2) % 7 !== 0) return;
@@ -403,6 +403,14 @@ const MOCAP = {
   },
 };
 
+// Den som står vid en disk ritas bakom den: scene.js kopierar de här rutorna (x, y, b, h, i husets koordinater) från det
+// statiska lagret ovanpå personen. Lobbyn: receptionsdiskens marmorskiva och front (T.reception på rx + 24, 22 px bred).
+export const FRONT = {
+  tw_lobby: (rx, fy) => [
+    [rx + 23, fy - 17, 24, 3],
+    [rx + 24, fy - 14, 22, 14],
+  ],
+};
 export const TW_ROOMS = { tw_lobby: LOBBY, tw_board: BOARD, tw_skybar: SKYBAR, tw_cafe: CAFE, tw_server: SERVER, tw_mocap: MOCAP, ...DEV };
 
 // ── Anläggningsplatserna: tolv olika rum när de är tomma, och guldinredning när något är byggt ──

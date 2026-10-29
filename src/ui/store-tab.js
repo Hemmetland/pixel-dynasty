@@ -30,8 +30,8 @@ function seg(items, cur, actName, tip) {
 }
 
 function econ(G, S) {
-  // senaste fyra veckorna (hittills, innan den första månaden är slut) och allt sedan butiken öppnade
-  const early = G.t - S.t0 < 4;
+  // senaste fyra veckorna (hittills, innan den första månaden är slut: vecka 3 har månaden redan rullats) och allt sedan butiken öppnade
+  const early = G.t - S.t0 < 3;
   const rows = (o) => [
     ['dist.r.own', o.own],
     ['dist.r.group', o.group],

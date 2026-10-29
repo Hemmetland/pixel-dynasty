@@ -11,6 +11,7 @@ import { drawEmote, EMOTE_LIFE } from './emotes.js';
 import { drawTextOutlined, drawText, textWidth } from './font.js';
 import { TOPIC } from '../data/topics.js';
 import { drawCat } from './props.js';
+import { FRONT } from './tier5-rooms.js';
 import { yearOf, dateOf } from '../sim/const.js';
 import { lang } from '../core/i18n.js';
 import { glMethods } from './gl/scene-gl.js';
@@ -687,6 +688,23 @@ export class Scene {
     return this.crowd ? a.state === 'work' && !DESK_IDLE.has(a.pose) : a.pose === 'sit' || a.pose === 'drink';
   }
 
+  // Står någon vid en disk (receptionen på nivå 5) målas diskens front från det statiska lagret igen ovanpå personen,
+  // bara inom personens bredd, så att den syns bakom disken
+  drawFront(A, a, cx, gy) {
+    const s = a.m.s;
+    const st = this.statics;
+    const room = s && st && this.L.rooms.find((r) => r.id === s.room);
+    const fr = room && FRONT[room.def];
+    if (!fr || Math.abs(a.x - s.x) > 0.5) return;
+    const x0 = Math.round(a.x) - 9;
+    const x1 = Math.round(a.x) + 9;
+    for (const [x, y, w, h] of fr(room.x0, s.fy)) {
+      const l = Math.max(x, x0);
+      const r = Math.min(x + w, x1);
+      if (r > l) A.drawImage(st.layer, l + st.w / 2, y + st.h, r - l, h, cx + l, gy + y, r - l, h);
+    }
+  }
+
   drawDynamic(A, cx, gy, night) {
     const G = this.G;
     const L = this.L;
@@ -739,6 +757,7 @@ export class Scene {
       // spritens rutor förskjuts per person så att alla i samma pose inte byter ruta samtidigt
       const spr = drawPoseSprite(A, px, py, look, a.pose, a.t + ((a.id | 0) % 7) * 0.37, a.dir, opts.seated);
       if (!spr) drawPerson(A, px, py, look, a.pose, a.frame, a.dir, opts);
+      if (a.state === 'at' && a.m) this.drawFront(A, a, cx, gy);
       if (a.pose === 'sleep') {
         // spritens huvud vilar mot bordet, lägre än den procedurella figurens
         const z = Math.floor(this.time * 2) % 3;

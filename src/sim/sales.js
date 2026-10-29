@@ -95,6 +95,9 @@ export function salesWeek(G) {
     }
     let rev = g.total * curve[w];
     if (g.patched) rev *= 1 + (g.patchBoost ?? 0.12);
+    // ett exklusivt pc-spel säljs bara i den egna butiken och står still medan den är pausad
+    const shut = g.storeEx && G.store?.paused;
+    if (shut) rev = 0;
     g.weekly.push(rev);
     g.revenue += rev;
     weekRev += rev;
@@ -107,7 +110,7 @@ export function salesWeek(G) {
     G.fans = Math.max(0, G.fans + dfans);
     g.fansGained += dfans;
     if (w === 0) emit('sales', { game: g, rev });
-    if (w > 14 && rev < g.total * 0.0012) g.ended = true;
+    if (w > 14 && rev < g.total * 0.0012 && !shut) g.ended = true;
   }
   if (weekRev > 0) emit('revenue', { amount: weekRev });
 }

@@ -139,7 +139,8 @@ export function portWeek(G) {
         p.ended = true;
         continue;
       }
-      const rev = p.total * curve[w];
+      const shut = p.storeEx && G.store?.paused; // exklusiv i den pausade butiken
+      const rev = shut ? 0 : p.total * curve[w];
       p.weekly.push(rev);
       p.revenue += rev;
       const units = rev / p.priceAt;
@@ -149,7 +150,7 @@ export function portWeek(G) {
       // en port ger hälften så många nya (eller förlorade) fans per såld enhet som ett nytt spel
       const df = units * (p.score - 5.2) * 0.006;
       G.fans = Math.max(0, G.fans + (df < 0 ? Math.max(df, -G.fans * 0.005) : df));
-      if (w > 14 && rev < p.total * 0.0012) p.ended = true;
+      if (w > 14 && rev < p.total * 0.0012 && !shut) p.ended = true;
     }
   }
 }
