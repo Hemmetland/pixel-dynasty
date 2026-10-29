@@ -322,7 +322,7 @@ function endAct(S, scene, act) {
     if (a.act === act) {
       a.act = null;
       a.m = null;
-      a.carry = false;
+      a.carry = a.carry && a.state !== 'leave'; // laptopen följer med tillbaka till skrivbordet
       a.cool = rand(S, 10, 26);
       if (!m.host && a.state !== 'leave') a.state = 'walkto';
     }
@@ -608,6 +608,7 @@ export function updateCrowd(scene, dt) {
         } else {
           if (a.state === 'enter') a.hello = 1.6;
           a.state = 'work';
+          a.carry = false;
           a.dir = 1;
           a.deskT = 0;
         }
