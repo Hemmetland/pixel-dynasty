@@ -257,6 +257,57 @@ ok(true, 'alla händelser körda');
   for (let i = 0; i < 48; i++) { GJ.pending.length = 0; S.stepTick(GJ); }
   ok(Number.isFinite(GJ.money) && GJ.comps.filter((y) => y.owned).length === S.ACQ_MAX, 'dotterbolagen finns kvar efter sparning');
 }
+// koncernledning: stabil ekonomi för köp, verksamheter för integration, ledningens kapacitet, budget, VD, synergier och försäljning
+{
+  const GK = S.newGame({ studio: 'K', seed: 21 }); S.makeCompetitors(GK); S.initWorld(GK);
+  while (S.yearOf(GK.t) < 2004) { GK.money = 1e9; GK.pending.length = 0; S.stepTick(GK); }
+  GK.u.flags.acquire = true;
+  GK.office.tier = 3;
+  const [a, b, d] = GK.comps.slice(0, 3);
+  GK.money = 0;
+  ok(S.canAcquire(GK, a.id) === 'unstable' && typeof S.acquire(GK, a.id) === 'string', 'köp kräver en stabil ekonomi (stabilitet ' + S.stability(GK) + ')');
+  GK.money = 1e9;
+  ok(S.stability(GK) >= S.STABLE_MIN && S.acquire(GK, a.id) === true && S.acquire(GK, b.id) === true, 'köp med stabil ekonomi (stabilitet ' + S.stability(GK) + ')');
+  const sa = a.sub;
+  ok(sa && sa.mode === 'free' && sa.staff > 0 && S.shareOf(GK, a) === S.BASE_SHARE, 'dotterbolaget har personal (' + Math.round(sa.staff) + ') och grundandelen');
+  ok(S.canIntegrate(GK, a.id) === 'locked', 'integration kräver forskningen Koncernledning');
+  GK.u.flags.group = true;
+  GK.engines.length = 0; GK.u.flags.publish = false; GK.store = null; GK.fac = {}; GK.games.forEach((g) => { g.live = null; g.ports = []; }); if (GK.fr) GK.fr.deals = [];
+  ok(S.opsCount(GK) === 1 && S.canIntegrate(GK, a.id) === 'ops' && S.setMode(GK, a.id, 'int') === 'ops', 'integration kräver ' + S.OPS_MIN + ' verksamheter');
+  GK.u.flags.publish = true;
+  const cost = S.integCost(GK, a);
+  const m0 = GK.money;
+  ok(cost > 0 && S.setMode(GK, a.id, 'int') === true && sa.mode === 'int' && GK.money === m0 - cost, 'integrationen kostar ' + cost);
+  ok(S.setMode(GK, b.id, 'int') === true && S.groupLoad(GK) === 2 && !S.overloaded(GK), 'två integrerade bolag ryms i ledningen (' + S.groupLoad(GK) + '/' + S.groupCap(GK) + ')');
+  const rng0 = GK.rng;
+  for (let i = 0; i < 70; i++) { GK.t++; S.groupWeek(GK); }
+  ok(GK.rng === rng0, 'koncernen rör inte spelets slumpföljd');
+  ok(sa.integ >= 1 && sa.done && S.shareOf(GK, a) > S.BASE_SHARE + 0.2, 'integrationen blir klar och ger en större andel (' + Math.round(S.shareOf(GK, a) * 100) + ' %)');
+  ok(Math.abs(S.costSave(GK) - Math.min(S.COST_MAX, S.COST * 2)) < 1e-9 && S.promoOwn(GK) === 0, 'delade tjänster sänker kostnaderna, korspromotion kräver marknadsavdelning');
+  const st0 = sa.staff;
+  ok(S.setSubBudget(GK, a.id, 2) === true, 'satsa på dotterbolaget');
+  const m1 = GK.money;
+  for (let i = 0; i < 48; i++) { GK.t++; S.groupWeek(GK); }
+  ok(sa.staff > st0 * 1.08 && sa.inv > 0 && GK.money < m1 && S.groupCostMonth(GK) > 0, 'satsningen kostar och växer bolaget (' + Math.round(st0) + ' -> ' + Math.round(sa.staff) + ')');
+  for (let i = 0; i < 3; i++) GK.staff.push(S.makeCandidate(GK, 1));
+  const boss = S.ceoCandidates(GK)[0];
+  const n0 = GK.staff.length;
+  ok(boss && S.setCeo(GK, a.id, boss.id) === true && GK.staff.length === n0 - 1 && sa.ceo === boss && S.loadOf(a) === S.LOAD.ceo, 'VD ur personalen lämnar studion och tar mindre av ledningen');
+  ok(typeof S.divest(GK, a.id) === 'string' && a.owned, 'bolag med VD kan inte säljas');
+  ok(S.recallCeo(GK, a.id) === true && GK.staff.length === n0 && !sa.ceo, 'VD:n kallas hem');
+  ok(S.acquire(GK, d.id) === true && S.setMode(GK, d.id, 'int') === true && S.overloaded(GK), 'tre integrerade bolag överbelastar ledningen på nivå 3');
+  for (let i = 0; i < 4; i++) { GK.t++; S.groupWeek(GK); }
+  ok(GK.flags.groupOver && d.sub.integ === 0, 'överbelastad ledning: integrationen står still');
+  const v = S.sellPrice(GK, d);
+  const m2 = GK.money;
+  ok(S.divest(GK, d.id) === true && !d.owned && !d.sub && GK.money === m2 + v && !S.overloaded(GK), 'sälj ett dotterbolag för ' + v);
+  delete b.sub;
+  GK.t++; S.groupWeek(GK);
+  ok(b.sub && b.sub.mode === 'free', 'gamla sparfiler får dotterbolagens styrning');
+  const GJ = JSON.parse(JSON.stringify(GK));
+  for (let i = 0; i < 48; i++) { GJ.pending.length = 0; S.stepTick(GJ); }
+  ok(Number.isFinite(GJ.money) && GJ.comps.find((y) => y.id === a.id).sub.mode === 'int', 'koncernen finns kvar efter sparning');
+}
 // egen butik: kräver forskning, sluten eller öppen, avgiften, exklusiva spel, marginalen på egna pc-spel
 {
   const GS = S.newGame({ studio: 'B', seed: 15 }); S.makeCompetitors(GS); S.initWorld(GS);

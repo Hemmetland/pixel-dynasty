@@ -12,6 +12,7 @@ import { portWeek } from './ports.js';
 import { pubWeek } from './publish.js';
 import { frWeek } from './franchise.js';
 import { subWeek } from './acquire.js';
+import { groupWeek, costSave } from './group.js';
 import { storeWeek } from './store.js';
 import { monthlyMarket, updateTrends } from './market.js';
 import { rollDevEvent, rollStudioEvent } from './events.js';
@@ -48,6 +49,7 @@ function weekly(G) {
   pubWeek(G);
   frWeek(G);
   subWeek(G);
+  groupWeek(G);
   storeWeek(G);
   liveWeek(G);
   updateMood(G);
@@ -65,8 +67,10 @@ function weekly(G) {
 function monthly(G, d) {
   // Kostnader
   const sal = payroll(G);
-  const rent = rentOf(G);
-  const upkeep = facUpkeep(G);
+  // koncernens delade tjänster sänker hyran och driften
+  const save = 1 - costSave(G);
+  const rent = Math.round(rentOf(G) * save);
+  const upkeep = Math.round(facUpkeep(G) * save);
   const interest = Math.round(loanInterest(G));
   if (sal) spend(G, sal, 'salaries');
   if (rent) spend(G, rent, 'rent');

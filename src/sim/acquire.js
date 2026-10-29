@@ -4,13 +4,16 @@ import { yearOf, WEEKS_PER_YEAR } from './const.js';
 import { spend, earn } from './studio.js';
 import { curveFor } from './sales.js';
 import { note } from './news.js';
+import { BASE_SHARE, STABLE_MIN, stability, subOf, shareOf } from './group.js';
 
 // Uppköp: med forskningen Uppköp kan studion köpa en konkurrent. Den fortsätter släppa spel som förut (samma slumpföljd),
 // men som dotterbolag: du får SUB_SHARE av försäljningen av spelen den släpper efter köpet, och dess släpp krockar inte
 // längre med dina (se crowding i market.js). Priset sätts efter studions försäljning de senaste åren och dess styrka.
-// Några konkurrenter blir alltid kvar (ACQ_MAX).
+// Några konkurrenter blir alltid kvar (ACQ_MAX). Ett köp kräver en stabil ekonomi, och ett dotterbolag kan säljas igen.
+// Styrningen av dotterbolagen (personal, integration, budget, VD och synergier) finns i group.js.
 export const ACQ_MAX = 4;
-export const SUB_SHARE = 0.35;
+export const SUB_SHARE = BASE_SHARE;
+export const SELL = 0.8; // ett dotterbolag säljs för den andelen av vad det skulle kosta att köpa
 const PRICE_YEARS = 4; // år av försäljning som värderas
 const PRICE_MULT = 7; // gånger årsförsäljningen
 
@@ -37,17 +40,19 @@ export function canAcquire(G, id) {
   if (!c) return 'gone';
   if (c.owned) return 'owned';
   if (ownedComps(G).length >= ACQ_MAX) return 'max';
+  if (stability(G) < STABLE_MIN) return 'unstable';
   if (G.money < acqPrice(G, c)) return 'money';
   return true;
 }
 
 export function acquire(G, id) {
   const ok = canAcquire(G, id);
-  if (ok !== true) return ok === 'money' ? t('err.money') : ok === 'max' ? t('acq.max', { n: ACQ_MAX }) : false;
+  if (ok !== true) return ok === 'money' ? t('err.money') : ok === 'max' ? t('acq.max', { n: ACQ_MAX }) : ok === 'unstable' ? t('acq.unstable', { n: STABLE_MIN }) : false;
   const c = G.comps.find((x) => x.id === id);
   const price = acqPrice(G, c);
   spend(G, price, 'acquisitions');
-  Object.assign(c, { owned: true, ownedT: G.t, paid: price, subRev: 0 });
+  Object.assign(c, { owned: true, ownedT: G.t, paid: price, subRev: 0, sub: null });
+  subOf(G, c);
   G.stats.acquired = (G.stats.acquired || 0) + 1;
   note(G, 'news.acquired', { studio: c.name, v: yearOf(G.t) }, 'good');
   emit('acquired', c);
@@ -64,7 +69,7 @@ export function subWeek(G) {
     const w = G.t - r.t;
     const curve = curveFor(r.score, r.tail || 1);
     if (w < 0 || w >= curve.length) continue;
-    const rev = r.total * curve[w] * SUB_SHARE;
+    const rev = r.total * curve[w] * shareOf(G, c);
     c.subRev += rev;
     earn(G, rev, 'subsidiaries');
     G.stats.subRev = (G.stats.subRev || 0) + rev;
@@ -74,3 +79,17 @@ export function subWeek(G) {
 
 // Dotterbolagens samlade intäkter och vad de har kostat
 export const subIncome = (G) => G.stats.subRev || 0;
+
+// Sälj ett dotterbolag (VD:n måste först kallas hem): det blir en konkurrent igen
+export const sellPrice = (G, c) => Math.round((acqPrice(G, c) * SELL) / 1000) * 1000;
+export function divest(G, id) {
+  const c = ownedComps(G).find((x) => x.id === id);
+  if (!c) return false;
+  if (c.sub && c.sub.ceo) return t('grp.ceoFirst');
+  const v = sellPrice(G, c);
+  earn(G, v, 'acquisitions');
+  Object.assign(c, { owned: false, soldT: G.t, sub: null });
+  note(G, 'news.divested', { studio: c.name, v: yearOf(G.t) }, 'info');
+  emit('divested', c);
+  return true;
+}

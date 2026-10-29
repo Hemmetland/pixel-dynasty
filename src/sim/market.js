@@ -10,6 +10,7 @@ import { unitRev, curveFor } from './sales.js';
 import { SALES_TAIL } from './tempo.js';
 import { RESEARCH } from '../data/research.js';
 import { note } from './news.js';
+import { subRelease, subCadence } from './group.js';
 
 export function makeCompetitors(G) {
   const picks = shuffle(G, COMPETITORS).slice(0, 10);
@@ -71,9 +72,11 @@ export function releaseComp(G, c) {
   const genre = GENRE[nx.genre];
   const strength = c.strength;
   const mean = compMean(c, year);
-  const score = clamp(Math.round(gauss(G, mean, 1.15) * 10) / 10, 1.8, 9.7);
+  let score = clamp(Math.round(gauss(G, mean, 1.15) * 10) / 10, 1.8, 9.7);
   const scope = compScope(G, year, strength);
-  const total = unitRev(year) * Math.max(0.4, potential(plat, yf)) * Math.exp(0.62 * (score - 6.5)) * SCOPES[scope].rev * (0.6 + strength * 0.5) * (1 + (c.games > 3 ? 0.2 : 0)) * clamp(gauss(G, 1, 0.2), 0.6, 1.5) * 0.85;
+  let total = unitRev(year) * Math.max(0.4, potential(plat, yf)) * Math.exp(0.62 * (score - 6.5)) * SCOPES[scope].rev * (0.6 + strength * 0.5) * (1 + (c.games > 3 ? 0.2 : 0)) * clamp(gauss(G, 1, 0.2), 0.6, 1.5) * 0.85;
+  // ett dotterbolag: personalstyrkan, VD:n och koncernens synergier (efter slumpdragningarna)
+  if (c.owned) [score, total] = subRelease(G, c, plat.id, score, total);
   const enOf = (x) => (typeof x === 'string' ? x : x?.en || '');
   const taken = new Set(G.market.releases.map((x) => enOf(x.title)));
   for (const g of G.games) taken.add(enOf(g.title));
@@ -87,6 +90,7 @@ export function releaseComp(G, c) {
   c.games++;
   c.best = Math.max(c.best, score);
   c.nextT = G.t + Math.round(rint(G, 36, 90) / (0.6 + strength * 0.6) / Math.min(1.8, 1 + (year - 1980) / 60));
+  if (c.owned) c.nextT = subCadence(G, c, c.nextT);
   c.next = rollNext(G, yearOf(c.nextT));
   c.strength = clamp(c.strength + c.growth * (score >= mean ? 1 : 0.4) - 0.004, 0.45, 1.7);
   // krönikan: konkurrenternas allra största spel, högst ett per halvår så att krönikan mest handlar om din studio

@@ -15,6 +15,8 @@ import { CATEGORIES } from '../data/categories.js';
 import { idealFocus } from '../sim/score.js';
 import { canStore } from '../sim/store.js';
 import { storeTab } from './store-tab.js';
+import { groupTab } from './group-tab.js';
+import { STABLE_MIN, stability } from '../sim/group.js';
 import { ACQ_MAX, SUB_SHARE, canAcquireAny, ownedComps, compYearly, acqPrice, canAcquire, acquire, subIncome } from '../sim/acquire.js';
 
 const M = { tab: 'plat' };
@@ -122,8 +124,9 @@ function acqCell(G, c) {
   if (!canAcquireAny(G)) return '';
   if (c.owned) return `<div class="acq-cell" data-tip="${esc(t('acq.ownedTip', { year: dateOf(c.ownedT).year, paid: money(c.paid || 0), rev: money(c.subRev || 0) }))}"><span class="tag" style="--c:var(--good)">${t('acq.owned')}</span><div class="num" style="font-size:12px;color:var(--money);margin-top:4px">${t('acq.rev', { v: money(c.subRev || 0) })}</div></div>`;
   const price = acqPrice(G, c);
-  const ok = canAcquire(G, c.id) === true;
-  const tip = t('acq.tip', { v: money(compYearly(G, c)), pct: Math.round(SUB_SHARE * 100) });
+  const can = canAcquire(G, c.id);
+  const ok = can === true;
+  const tip = t('acq.tip', { v: money(compYearly(G, c)), pct: Math.round(SUB_SHARE * 100) }) + (can === 'unstable' ? ` ${t('acq.unstableNow', { n: STABLE_MIN, v: stability(G) })}` : '');
   return `<div class="acq-cell"><button class="btn sm" data-act="m-acq" data-id="${c.id}" ${ok ? '' : 'disabled'} data-tip="${esc(tip)}">${icon('crown')}${t('acq.buy', { v: money(price) })}</button></div>`;
 }
 
@@ -143,8 +146,8 @@ function rivalsTab(G) {
     .join('')}</div>`;
 }
 
-// Fliken Egen butik visas från 2001 (låst tills forskningen är klar)
-const tabsOf = (G) => ['plat', 'charts', 'trends', 'insights', 'rivals', ...(canStore(G) || yearOf(G.t) >= 2001 ? ['store'] : [])];
+// Fliken Egen butik visas från 2001 (låst tills forskningen är klar), fliken Koncern med forskningen Uppköp
+const tabsOf = (G) => ['plat', 'charts', 'trends', 'insights', 'rivals', ...(canAcquireAny(G) || ownedComps(G).length ? ['group'] : []), ...(canStore(G) || yearOf(G.t) >= 2001 ? ['store'] : [])];
 
 regWin({
   id: 'market',
@@ -155,7 +158,7 @@ regWin({
   headExtra: (G) => `<div class="tabs">${tabsOf(G).map((k) => `<button class="tab ${M.tab === k ? 'on' : ''}" data-act="m-tab" data-id="${k}">${t('mkt.tab.' + k)}</button>`).join('')}</div>`,
   render(G) {
     if (!tabsOf(G).includes(M.tab)) M.tab = 'plat';
-    return M.tab === 'plat' ? platformsTab(G) : M.tab === 'charts' ? chartsTab(G) : M.tab === 'trends' ? trendsTab(G) : M.tab === 'insights' ? insightsTab(G) : M.tab === 'store' ? storeTab(G) : rivalsTab(G);
+    return M.tab === 'plat' ? platformsTab(G) : M.tab === 'charts' ? chartsTab(G) : M.tab === 'trends' ? trendsTab(G) : M.tab === 'insights' ? insightsTab(G) : M.tab === 'store' ? storeTab(G) : M.tab === 'group' ? groupTab(G) : rivalsTab(G);
   },
   onOpen(G) {
     G.flags.seenPlat = G.t;

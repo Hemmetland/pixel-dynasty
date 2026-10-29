@@ -6,6 +6,7 @@ import { moneyScale, yearOf, dateOf } from '../sim/const.js';
 import { lang } from '../core/i18n.js';
 import { liveCostMonth } from '../sim/live.js';
 import { storeCostMonth } from '../sim/store.js';
+import { costSave, groupCostMonth } from '../sim/group.js';
 import { plot, gridLines } from './chart.js';
 
 function lineChart(pts, color, w = 560, h = 190) {
@@ -32,7 +33,7 @@ function lineChart(pts, color, w = 560, h = 190) {
   return plot({ w, h, svg, labels, dot: { x: X(pts.length - 1), y: Y(last.v), c: color } });
 }
 
-const CAT_KEYS = ['sales', 'subs', 'shop', 'servers', 'contracts', 'awards', 'events', 'loan', 'other', 'salaries', 'rent', 'facilities', 'marketing', 'research', 'licenses', 'interest', 'engines', 'office', 'patches', 'ports', 'publishing', 'licensing', 'subsidiaries', 'acquisitions', 'store', 'storeOps'];
+const CAT_KEYS = ['sales', 'subs', 'shop', 'servers', 'contracts', 'awards', 'events', 'loan', 'other', 'salaries', 'rent', 'facilities', 'marketing', 'research', 'licenses', 'interest', 'engines', 'office', 'patches', 'ports', 'publishing', 'licensing', 'subsidiaries', 'acquisitions', 'groupInvest', 'integration', 'store', 'storeOps'];
 
 regWin({
   id: 'finance',
@@ -51,7 +52,7 @@ regWin({
       .sort((a, b) => b[1] - a[1])
       .map(([k, v]) => `<div class="kv"><span>${t('fin.c.' + k)}</span><b class="${v >= 0 ? 'up' : 'down'}">${v >= 0 ? '+' : ''}${money(v)}</b></div>`)
       .join('');
-    const burn = payroll(G) + rentOf(G) + facUpkeep(G) + loanInterest(G) + liveCostMonth(G) + storeCostMonth(G);
+    const burn = payroll(G) + (rentOf(G) + facUpkeep(G)) * (1 - costSave(G)) + loanInterest(G) + liveCostMonth(G) + storeCostMonth(G) + groupCostMonth(G);
     const runway = burn > 0 ? Math.max(0, G.money / burn) : 99; // i skuld finns ingen marginal kvar
     const room = Math.max(0, loanLimit(G) - loanTotal(G));
     const step = Math.max(1000, Math.round((20000 * moneyScale(yearOf(G.t))) / 2000) * 1000);
