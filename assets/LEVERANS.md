@@ -431,3 +431,30 @@ Stående vid ett serverrack, 4 rutor: lätt framåtlutad, blicken ner mot arbete
 ```
 
 - **Begränsningar:** vridningen är diskret i spelskala och läses som en arbetsrörelse snarare än en tydligt roterande handled. I full storlek kan den bortre, öppna handen se ut som en stopphand; i spelskala läses den som en hand mot racket.
+
+## Prata i telefon i receptionen: `char.phone` med frisyr 1, 2 och 3
+
+Stående vid receptionsdisken, 4 rutor: den närmre handen håller en grå trådlös lur mot örat (luren går längs käken och mikrofonen sticker fram under hakan), den bortre underarmen gestikulerar med öppen handflata framför kroppen, och munnen pratar (munnen från `talk`). Huvudet är upprätt och oflyttat. Grundremsan och de tre frisyrerna levereras samtidigt.
+
+| Ruta | Mun | Gesthand (handleden) |
+| --- | --- | --- |
+| 0 | öppen | rad 46 |
+| 1 | stängd | rad 44 |
+| 2 | öppen | rad 42 |
+| 3 | stängd | rad 44 |
+
+- **Remsor:** `assets/chars/phone.png`, `assets/chars/hair1/phone.png`, `assets/chars/hair2/phone.png`, `assets/chars/hair3/phone.png` (4 rutor var). Enskilda rutor finns i `assets/pixellab/characters/dev/phone-east-hand/` och `dev/hair1/phone/`, `dev/hair2/phone/`, `dev/hair3/phone/`.
+- **Takt:** 4,2 bilder/s som `talk`: `STAND_SPRITE.phone = ['char.phone', 4.2]`.
+- **Mått:** benen och skorna (rad 64 och nedåt) är `east.png`, sulorna på rad 80. Handen vid örat täcker x 39 till 48, rad 20 till 29, och luren x 47 till 56, rad 26 till 34. Gesthanden landar i höjd med disken (diskens ovansida ligger på sprite-rad 41,4).
+- **Färger:** luren använder fem nya grå rekvisitafärger (`#22232a`, `#3a3c46`, `#5a5d69`, `#8a8d99`, `#c0c3cc`, nyans 225 till 233, mättnad högst 0,2) som alla ger `material()` = null på alla rader. Mössan ligger ovanför rad 27,6, så ingen `hatRow` behövs.
+- **Frisyrerna:** handen, armen och luren ritas efter huvudet och ligger framför håret i alla tre frisyrer; det lagret är identiskt i alla fyra remsor. Utanför huvudet är varianterna pixelidentiska med grundremsan.
+
+```json
+"char.phone": { "file": "chars/phone.png", "fw": 92, "fh": 92, "ax": 46, "ay": 82, "frames": 4, "scale": 0.42, "note": "Pratar i telefon, handritad (Kör)" },
+"char.phone#1": { "file": "chars/hair1/phone.png", "fw": 92, "fh": 92, "ax": 46, "ay": 82, "frames": 4, "scale": 0.42, "note": "Frisyr 1, kort hår (Kör)" },
+"char.phone#2": { "file": "chars/hair2/phone.png", "fw": 92, "fh": 92, "ax": 46, "ay": 82, "frames": 4, "scale": 0.42, "note": "Frisyr 2, hästsvans (Kör)" },
+"char.phone#3": { "file": "chars/hair3/phone.png", "fw": 92, "fh": 92, "ax": 46, "ay": 82, "frames": 4, "scale": 0.42, "note": "Frisyr 3, lockigt hår (Kör)" }
+```
+
+- **Receptionsplatsen:** på nivå 3 (x0+34, dir 1, `F.receptionDesk`) och nivå 4 (x0+40, dir 1, `P.receptionM`) står disken framför personen. På nivå 5 står platsen på x0+25 ovanpå diskens vänstra ände och skärm (`T.reception` på x0+23 till 46); x0+51 med dir -1 fungerar där (diskens östra ände, vänd mot dörren, 37 px från ståplatsen på x0+14). `KINDS.lobby` använder `face: 'partner'`, vilket vänder receptionisten till dir -1 på nivå 3 och 4 så att disken hamnar bakom; telefonposen bör använda platsens egen riktning.
+- **Begränsningar:** i full storlek läses det tydligt som ett telefonsamtal, i spelskala bara måttligt: den närmre armen smälter ihop med bålen, och i svart hår kan lurens mörka underkant se ut som ett pipskägg. Handen och luren står stilla; bara munnen och gesthanden rör sig. I ruta 2 kommer gesthanden nära den närmre armbågen.
