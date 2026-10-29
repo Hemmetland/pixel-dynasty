@@ -179,10 +179,14 @@ export const drawWalkerSprite = (ctx, x, y, look, t, dir = 1) => drawCharSprite(
 
 // Poser som har en sprite, med bildrutor per sekund: stående och sittande för sig. Prata och dricka kaffe på en stol har
 // egna sittande sprites (char.sitTalk, char.sitDrink, där klunken 0,1,2,2,2,1 är inbakad), liksom läsa och tänka (vid
-// skrivbordet, armbågen på bordet), sova (huvudet mot bordet), gäspa (crunch) och laptop i knät (soffan; stående laptop vid
-// racket är procedurell). Jubel har egna sprites både stående (spelrummet) och på stolen (när studion firar), liksom
-// presentation med pekpinne vid tavlan, spel på arkadmaskinen, att skruva i ett serverrack och att prata i telefon i receptionen. Saknas en sprite i manifestet ritas den procedurella figuren.
-const STAND_SPRITE = { walk: ['char.walk', 9], stand: ['char.stand', 0], drink: ['char.drink', 3], talk: ['char.talk', 4.2], cheer: ['char.cheer', 5], present: ['char.present', 3], play: ['char.play', 7], fix: ['char.fix', 5], phone: ['char.phone', 4.2] };
+// skrivbordet, armbågen på bordet), sova (huvudet mot bordet), gäspa (crunch) och laptop i knät (soffan; stående med laptop
+// vid racket, i labbet och i QA har char.laptop). Jubel har egna sprites både stående (spelrummet) och på stolen (när studion
+// firar), liksom presentation med pekpinne vid tavlan, spel på arkadmaskinen, att skruva i ett serverrack och att prata i
+// telefon i receptionen. Saknas en sprite i manifestet ritas den procedurella figuren.
+const STAND_SPRITE = {
+  walk: ['char.walk', 9], stand: ['char.stand', 0], drink: ['char.drink', 3], talk: ['char.talk', 4.2], cheer: ['char.cheer', 5], present: ['char.present', 3],
+  play: ['char.play', 7], fix: ['char.fix', 5], phone: ['char.phone', 4.2], laptop: ['char.laptop', 8], walkLaptop: ['char.walkLaptop', 9],
+};
 const SEAT_SPRITE = {
   sit: ['char.sit', 1.5], sitIdle: ['char.sit', 1.5], type: ['char.type', 8],
   talk: ['char.sitTalk', 4.2], drink: ['char.sitDrink', 3], read: ['char.read', 1], think: ['char.think', 1.2],
@@ -194,5 +198,6 @@ export function drawPoseSprite(ctx, x, y, look, pose, t, dir = 1, seated = false
   const seat = seated || SEATED.has(pose);
   const p = (seat ? SEAT_SPRITE : STAND_SPRITE)[pose];
   const draw = (q) => drawCharSprite(ctx, q[0], x, y, look, Math.floor((t || 0) * q[1]), dir);
-  return !!p && (draw(p) || (seat && pose === 'talk' && draw(SEAT_SPRITE.sit)));
+  // att gå med laptopen ritas som vanlig gång tills char.walkLaptop finns (då ser den gående ut som den som står vid racket)
+  return !!p && (draw(p) || (seat && pose === 'talk' && draw(SEAT_SPRITE.sit)) || (pose === 'walkLaptop' && draw(STAND_SPRITE.walk)));
 }

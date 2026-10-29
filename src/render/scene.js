@@ -755,7 +755,9 @@ export class Scene {
       const px = cx + a.x;
       const py = gy + a.fy + Math.round(a.ly || 0);
       // spritens rutor förskjuts per person så att alla i samma pose inte byter ruta samtidigt
-      const spr = drawPoseSprite(A, px, py, look, a.pose, a.t + ((a.id | 0) % 7) * 0.37, a.dir, opts.seated);
+      // den som bär laptopen till racket har posen 'laptop' även när den går (people.js ritar då gången med laptop)
+      const sp = a.carry && a.pose === 'laptop' && a.state !== 'at' ? 'walkLaptop' : a.pose;
+      const spr = drawPoseSprite(A, px, py, look, sp, a.t + ((a.id | 0) % 7) * 0.37, a.dir, opts.seated);
       if (!spr) drawPerson(A, px, py, look, a.pose, a.frame, a.dir, opts);
       if (a.state === 'at' && a.m) this.drawFront(A, a, cx, gy);
       if (a.pose === 'sleep') {
