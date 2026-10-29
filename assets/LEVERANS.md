@@ -575,3 +575,22 @@ Stående handslag, 4 rutor: den närmre armen sträcks fram i brösthöjd med l�
 ```
 
 - **Begränsningar:** med fronten låst vid x 66 överlappar händerna bara 2 px, så i full storlek ser det mer ut som två knytnävar mot varandra med tummarna uppe; i spelskala läses det som ett grepp. Den spegelvända partnern skakar med vänster hand. I mötesrummet på nivå 3 smälter ljus hud nästan ihop med bordskanten i ruta 3, och i styrelserummet på nivå 5 smälter mörk hud in mot de mörka stolsryggarna.
+
+## Gå med kaffemugg: `char.walkCup` med frisyr 1, 2 och 3
+
+Gångcykel tillbaka från kaffemaskinen, 6 rutor i samma ordning och takt som `char.walk`. Ben, fötter, huvud, kroppens gungning och den bortre armens sving är pixelidentiska med `walk.png`; bara den närmre armen är utbytt mot en arm böjd i armbågen som håller en vit mugg i brösthöjd framför kroppen och inte svingar. Muggen följer gungningen, och en ljus ångslinga syns i ruta 0 och 3. Grundremsan och de tre frisyrerna levereras samtidigt.
+
+- **Remsor:** `assets/chars/walkCup.png`, `assets/chars/hair1/walkCup.png`, `assets/chars/hair2/walkCup.png`, `assets/chars/hair3/walkCup.png` (6 rutor var). Enskilda rutor finns i `assets/pixellab/characters/dev/walkCup-east-hand/` och `dev/hair1/walkCup/`, `dev/hair2/walkCup/`, `dev/hair3/walkCup/`.
+- **Takt:** 9 bilder/s som `walk`: `STAND_SPRITE.walkCup = ['char.walkCup', 9]`, med samma reserv till `walk` som `walkLaptop` och `walkBox`.
+- **Mått:** muggens kropp x 59 till 66, rad 39 till 46 (6 × 5 px vitt inom konturen), handtaget x 67 till 68, rad 41 till 44, ånga rad 36 till 38 i ruta 0 och 3. Knytnäven x 56 till 60, rad 41 till 46. Muggen och ångan håller minst 8 px till ansiktet. Fötterna är orörda.
+- **Färger:** muggens färger från `char.sitDrink` (vit kropp, ljus kant, mörkt kaffe och kontur), som alla ger `material()` = null. Inga nya färger. Mössan är `walk`:s, så ingen `hatRow` behövs.
+- **Frisyrerna:** varje variant är `hairN/walk.png`:s ruta med samma arm- och mugglager, så hästsvansen svänger som i `walk#2`. Lagret ritas sist och är identiskt i alla fyra remsor.
+
+```json
+"char.walkCup": { "file": "chars/walkCup.png", "fw": 92, "fh": 92, "ax": 46, "ay": 82, "frames": 6, "scale": 0.42, "note": "Går med kaffemugg, handritad (Kör)" },
+"char.walkCup#1": { "file": "chars/hair1/walkCup.png", "fw": 92, "fh": 92, "ax": 46, "ay": 82, "frames": 6, "scale": 0.42, "note": "Frisyr 1, kort hår (Kör)" },
+"char.walkCup#2": { "file": "chars/hair2/walkCup.png", "fw": 92, "fh": 92, "ax": 46, "ay": 82, "frames": 6, "scale": 0.42, "note": "Frisyr 2, hästsvans (Kör)" },
+"char.walkCup#3": { "file": "chars/hair3/walkCup.png", "fw": 92, "fh": 92, "ax": 46, "ay": 82, "frames": 6, "scale": 0.42, "note": "Frisyr 3, lockigt hår (Kör)" }
+```
+
+- **Begränsningar:** muggen är 10 × 8 px med handtaget, lite större än 6 × 6, eftersom det vita annars krympte till en pixel bakom handen i spelskala. Mitten av överkanten visar mörkt kaffe i stället för en helt ljus kant; med ljus kant flöt mugg och ånga ihop till en vit pelare som såg ut som en tumme upp. I spelskala blir muggen 2 × 2 vita pixlar med mörk ovansida och mörkt handtag, och ångan en ljus pixel. Framför det vita kylskåpet syns muggen bara genom kanten, kaffet och handtaget.
