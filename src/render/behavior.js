@@ -132,6 +132,14 @@ const KINDS = {
       return [[st.find((s) => s.kind === 'reception'), 'talk'], [st.find((s) => s.kind === 'stand'), 'talk']];
     },
   },
+  // receptionisten tar ett samtal (bara med den ritade telefonposen), vänd som platsen så att disken är framför
+  phone: {
+    min: 1, max: 1, dur: [7, 13], w: [0.5, 0.9], face: 'fixed',
+    slots(S, f) {
+      if (!getSprite('char.phone')) return [];
+      return [[stationsIn(S, f, 'lobby').find((s) => s.kind === 'reception'), 'phone']];
+    },
+  },
   coffee: {
     min: 1, max: 2, dur: [8, 14], w: [2.2, 2], face: 'partner',
     slots(S, f) {
@@ -386,6 +394,8 @@ function scriptPose(S, act, m, a) {
       return setPose(a, speak ? 'talk' : m.listen === 'sit' ? 'sitIdle' : m.listen, true);
     case 'lobby':
       return setPose(a, speak ? 'talk' : 'stand', false);
+    case 'phone':
+      return setPose(a, 'phone', false);
     case 'coffee':
       if (m.role === 'coffee') return setPose(a, speak && act.m.length > 1 ? 'talk' : 'drink', false);
       return setPose(a, speak ? 'talk' : 'drink', false);
@@ -684,6 +694,7 @@ const EMO_ACT = {
   meeting: [['question', 1], ['exclam', 1], ['bulb', 1.2]],
   lounge: [['heart', 1.6], ['exclam', 0.6], ['bulb', 0.5]],
   lobby: [['heart', 1], ['exclam', 1]],
+  phone: [['exclam', 1], ['question', 0.8]],
   coffee: [['coffee', 4], ['heart', 0.5]],
   server: [['exclam', 2], ['sweat', 1.2], ['bulb', 0.5]],
   board: [['bulb', 2], ['question', 1]],

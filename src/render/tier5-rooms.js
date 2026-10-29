@@ -147,7 +147,8 @@ const floorY = (room, L) => -4 - room.floor * L.pitch;
 const LOBBY = {
   windows: (rx, fy) => [{ x: rx + 5, y: fy - 41, w: 15, h: 33, kind: 'plain' }],
   stations: (rx) => [
-    { kind: 'reception', x: rx + 25, dir: 1, pose: 'stand' },
+    // bakom diskens högra ände, vänd mot entrén (på rx + 25 stod receptionisten ovanpå disken)
+    { kind: 'reception', x: rx + 51, dir: -1, pose: 'stand' },
     { kind: 'stand', x: rx + 14, dir: 1, pose: 'stand' },
     { kind: 'window', x: rx + 8, dir: 1, pose: 'stand' },
   ],
