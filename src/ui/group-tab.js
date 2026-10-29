@@ -66,7 +66,7 @@ function confirmRow(kind, id, label, warn) {
 
 function ceoCtl(G, c, s) {
   if (s.ceo) {
-    return `<div class="row wrap" style="gap:8px">${icon('user')}<span><b>${esc(s.ceo.name)}</b> <span class="faint">· ${t('grp.ceoRating', { n: ceoRating(G, s.ceo) })}</span></span><span class="sp"></span><button class="btn sm ghost" data-act="grp-recall" data-id="${c.id}">${t('grp.recall')}</button></div>`;
+    return `<div class="row wrap" style="gap:8px">${icon('user')}<span><b>${esc(s.ceo.name)}</b> <span class="faint">· ${t('grp.ceoRating', { n: ceoRating(G, s.ceo) })}</span></span><span class="sp"></span><button class="btn sm ghost" data-act="grp-recall" data-id="${c.id}" data-tip="${esc(t('grp.recallTip'))}">${t('grp.recall')}</button></div>`;
   }
   if (GS.pick !== c.id) return `<div class="row wrap" style="gap:8px"><span class="faint" style="font-size:12.5px">${t('grp.ceoNone')}</span><span class="sp"></span><button class="btn sm" data-act="grp-pick" data-id="${c.id}">${icon('crown')}${t('grp.ceoPick')}</button></div>`;
   const cands = ceoCandidates(G).slice(0, 4);

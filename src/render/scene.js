@@ -235,7 +235,8 @@ export class Scene {
     const G = this.G;
     const L = this.L;
     const ids = new Set(G.staff.map((s) => s.id));
-    for (const [id, a] of this.actors) if (!ids.has(id) && !a.leaving) a.leaving = true;
+    // den som slutar (eller blir VD för ett dotterbolag) går ut med en flyttlåda
+    for (const [id, a] of this.actors) if (!ids.has(id) && !a.leaving) a.leaving = a.box = true;
     // Studiohuset: personalen fördelas över våningarna (behavior.js), annars i skrivbordsordning
     const order = this.crowd ? this.crowd.nav.order : null;
     G.staff.forEach((st, i) => {
@@ -259,6 +260,7 @@ export class Scene {
           a.x = L.left - 6;
           a.state = 'enter';
           a.pose = 'walk';
+          a.box = true; // nyanställda kommer in med en flyttlåda
         }
         this.actors.set(st.id, a);
       } else if (a.desk !== di) {
@@ -756,7 +758,7 @@ export class Scene {
       const py = gy + a.fy + Math.round(a.ly || 0);
       // spritens rutor förskjuts per person så att alla i samma pose inte byter ruta samtidigt
       // den som bär laptopen till racket har posen 'laptop' även när den går (people.js ritar då gången med laptop)
-      const sp = a.carry && a.pose === 'laptop' && a.state !== 'at' ? 'walkLaptop' : a.pose;
+      const sp = a.carry && a.pose === 'laptop' && a.state !== 'at' ? 'walkLaptop' : a.box && a.pose === 'walk' ? 'walkBox' : a.pose;
       const spr = drawPoseSprite(A, px, py, look, sp, a.t + ((a.id | 0) % 7) * 0.37, a.dir, opts.seated);
       if (!spr) drawPerson(A, px, py, look, a.pose, a.frame, a.dir, opts);
       if (a.state === 'at' && a.m) this.drawFront(A, a, cx, gy);

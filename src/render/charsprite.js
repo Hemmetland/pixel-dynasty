@@ -187,6 +187,7 @@ export const drawWalkerSprite = (ctx, x, y, look, t, dir = 1) => drawCharSprite(
 const STAND_SPRITE = {
   walk: ['char.walk', 9], stand: ['char.stand', 0], drink: ['char.drink', 3], talk: ['char.talk', 4.2], cheer: ['char.cheer', 5], present: ['char.present', 3],
   play: ['char.play', 7], fix: ['char.fix', 5], phone: ['char.phone', 4.2], laptop: ['char.laptop', 8], walkLaptop: ['char.walkLaptop', 9], wave: ['char.wave', 5],
+  walkBox: ['char.walkBox', 9],
 };
 const SEAT_SPRITE = {
   sit: ['char.sit', 1.5], sitIdle: ['char.sit', 1.5], type: ['char.type', 8],
@@ -199,6 +200,6 @@ export function drawPoseSprite(ctx, x, y, look, pose, t, dir = 1, seated = false
   const seat = seated || SEATED.has(pose);
   const p = (seat ? SEAT_SPRITE : STAND_SPRITE)[pose];
   const draw = (q) => drawCharSprite(ctx, q[0], x, y, look, Math.floor((t || 0) * q[1]), dir);
-  // att gå med laptopen ritas som vanlig gång tills char.walkLaptop finns (då ser den gående ut som den som står vid racket)
-  return !!p && (draw(p) || (seat && pose === 'talk' && draw(SEAT_SPRITE.sit)) || (pose === 'walkLaptop' && draw(STAND_SPRITE.walk)));
+  // att gå med laptopen eller flyttlådan ritas som vanlig gång tills char.walkLaptop och char.walkBox finns
+  return !!p && (draw(p) || (seat && pose === 'talk' && draw(SEAT_SPRITE.sit)) || ((pose === 'walkLaptop' || pose === 'walkBox') && draw(STAND_SPRITE.walk)));
 }

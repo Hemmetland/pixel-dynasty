@@ -609,6 +609,7 @@ export function updateCrowd(scene, dt) {
           if (a.state === 'enter') a.hello = 1.6;
           a.state = 'work';
           a.carry = false;
+          a.box = false;
           a.dir = 1;
           a.deskT = 0;
         }
