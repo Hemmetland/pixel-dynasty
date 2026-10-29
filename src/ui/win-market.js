@@ -13,6 +13,8 @@ import { TOPICS } from '../data/topics.js';
 import { GENRES } from '../data/genres.js';
 import { CATEGORIES } from '../data/categories.js';
 import { idealFocus } from '../sim/score.js';
+import { canStore } from '../sim/store.js';
+import { storeTab } from './store-tab.js';
 import { ACQ_MAX, SUB_SHARE, canAcquireAny, ownedComps, compYearly, acqPrice, canAcquire, acquire, subIncome } from '../sim/acquire.js';
 
 const M = { tab: 'plat' };
@@ -141,15 +143,19 @@ function rivalsTab(G) {
     .join('')}</div>`;
 }
 
+// Fliken Egen butik visas från 2001 (låst tills forskningen är klar)
+const tabsOf = (G) => ['plat', 'charts', 'trends', 'insights', 'rivals', ...(canStore(G) || yearOf(G.t) >= 2001 ? ['store'] : [])];
+
 regWin({
   id: 'market',
   icon: 'chart',
   color: 'var(--design)',
   size: 'xl',
   title: () => t('mkt.title'),
-  headExtra: () => `<div class="tabs">${['plat', 'charts', 'trends', 'insights', 'rivals'].map((k) => `<button class="tab ${M.tab === k ? 'on' : ''}" data-act="m-tab" data-id="${k}">${t('mkt.tab.' + k)}</button>`).join('')}</div>`,
+  headExtra: (G) => `<div class="tabs">${tabsOf(G).map((k) => `<button class="tab ${M.tab === k ? 'on' : ''}" data-act="m-tab" data-id="${k}">${t('mkt.tab.' + k)}</button>`).join('')}</div>`,
   render(G) {
-    return M.tab === 'plat' ? platformsTab(G) : M.tab === 'charts' ? chartsTab(G) : M.tab === 'trends' ? trendsTab(G) : M.tab === 'insights' ? insightsTab(G) : rivalsTab(G);
+    if (!tabsOf(G).includes(M.tab)) M.tab = 'plat';
+    return M.tab === 'plat' ? platformsTab(G) : M.tab === 'charts' ? chartsTab(G) : M.tab === 'trends' ? trendsTab(G) : M.tab === 'insights' ? insightsTab(G) : M.tab === 'store' ? storeTab(G) : rivalsTab(G);
   },
   onOpen(G) {
     G.flags.seenPlat = G.t;

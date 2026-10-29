@@ -1,0 +1,111 @@
+import { esc, icon, t, tn, UI, act, bar, money, errToast } from './core.js';
+import { sfx } from '../audio/sfx.js';
+import { fmtNum } from '../core/util.js';
+import { yearOf } from '../sim/const.js';
+import {
+  OTHER_CUT, PAY_FEE, FEES, SUPPORT, ADS, canStore, storeUsers, discOf, reachTarget, storeScale, featOf, switchLeft,
+  setPolicy, setFee, setSupport, setAds, setExclusive,
+} from '../sim/store.js';
+
+// Marknadsfönstrets flik Egen butik: användare, förtroende och upptäckbarhet, strategin (sluten eller öppen), avgiften,
+// support, marknadsföring, exklusiva spel och butikens ekonomi.
+const pct = (v) => Math.round(v * 100);
+const POL_KEY = { closed: ['dist.closed', 'dist.closedD'], open: ['dist.open', 'dist.openD'] };
+const SUP_KEY = ['dist.sup.0', 'dist.sup.1', 'dist.sup.2'];
+const ADS_KEY = ['dist.ads.0', 'dist.ads.1', 'dist.ads.2', 'dist.ads.3'];
+const tone = (v) => (v >= 60 ? 'var(--good)' : v >= 35 ? 'var(--warn)' : 'var(--bug)');
+
+function policyCard(G, S, id) {
+  const on = S.policy === id;
+  const wait = switchLeft(G, S);
+  const info = t('dist.featNow', { pct: Math.round(featOf(S) * 100) }) + (id === 'open' ? ` · ${t('dist.extNow', { v: money(S.lm.ext) })}` : '');
+  return `<div class="card dist-opt ${on ? 'on' : ''}" style="--c:${id === 'closed' ? 'var(--gold)' : 'var(--accent)'}">
+    <div class="row" style="gap:8px;margin-bottom:6px">${icon(id === 'closed' ? 'lock' : 'globe')}<b>${t(POL_KEY[id][0])}</b><span class="sp"></span>${on ? `<span class="tag" style="--c:var(--good)">${t('dist.chosen')}</span>` : `<button class="btn sm" data-act="dist-pol" data-id="${id}" ${wait > 0 ? 'disabled' : ''}>${t('dist.choose')}</button>`}</div>
+    <div class="hint">${t(POL_KEY[id][1])}</div>
+    ${on ? `<div class="faint" style="font-size:12px;margin-top:8px">${info}</div>` : ''}</div>`;
+}
+
+function seg(items, cur, actName, tip) {
+  return `<div class="seg wrap-seg">${items.map((label, i) => `<button class="${cur === i ? 'on' : ''}" data-act="${actName}" data-i="${i}" ${tip ? `data-tip="${esc(tip(i))}"` : ''}>${label}</button>`).join('')}</div>`;
+}
+
+function econ(S) {
+  // senaste fyra veckorna och allt sedan butiken öppnade
+  const rows = (o) => [
+    ['dist.r.own', o.own],
+    ['dist.r.group', o.group],
+    ['dist.r.ext', o.ext],
+    ['dist.c.ops', -o.ops],
+    ['dist.c.pay', -o.pay],
+    ['dist.c.sup', -o.sup],
+    ['dist.c.ads', -o.ads],
+  ];
+  const net = (o) => o.own + o.group + o.ext - o.ops - o.pay - o.sup - o.ads;
+  const cell = (v) => `<b class="num ${v >= 0 ? 'up' : 'down'}">${v > 0 ? '+' : ''}${money(v)}</b>`;
+  const lm = rows(S.lm);
+  const tot = rows(S.tot);
+  const body = lm
+    .map(([k], i) => (Math.abs(tot[i][1]) < 1 ? '' : `<div class="dist-erow"><span>${t(k, { pct: Math.round(PAY_FEE * 100) })}</span>${cell(lm[i][1])}${cell(tot[i][1])}</div>`))
+    .join('');
+  return `<div class="dist-econ"><div class="dist-erow faint"><span></span><span>${t('dist.month')}</span><span>${t('dist.since', { year: yearOf(S.t0) })}</span></div>${body}
+    <div class="divider"></div><div class="dist-erow"><span><b>${t('dist.net')}</b></span>${cell(net(S.lm))}${cell(net(S.tot))}</div></div>
+    ${S.tot.feat >= 1 ? `<p class="hint" style="margin-top:8px">${t('dist.feat', { v: money(S.tot.feat) })}</p>` : ''}`;
+}
+
+export function storeTab(G) {
+  const S = G.store;
+  if (!canStore(G) || !S) return `<div class="empty">${icon('cart')}<div class="hint" style="max-width:480px">${t('dist.locked')}</div></div>`;
+  const users = storeUsers(G, S);
+  const disc = discOf(S) * 100;
+  const tgt = reachTarget(G, S);
+  const y = storeScale(G);
+  const wait = switchLeft(G, S);
+  const open = S.policy === 'open';
+  const supCost = (i) => t('dist.costTip', { v: money((SUPPORT[i].base + SUPPORT[i].per * S.reach) * y) });
+  return `<p class="hint" style="margin-bottom:12px">${icon('cart')} ${t('dist.help', { pct: Math.round(OTHER_CUT * 100) })}</p>
+    <div class="grid" style="grid-template-columns:repeat(auto-fit,minmax(150px,1fr))">
+      <div class="counter" style="--c:var(--accent)" data-tip="${esc(t('dist.usersTip', { pct: pct(tgt) }))}"><div class="v num">${fmtNum(Math.round(users))}</div><div class="k">${t('dist.users')}</div><div class="faint" style="font-size:11px;margin-top:4px">${t('dist.usersK', { pct: pct(S.reach) })}, ${t('dist.toward', { pct: pct(tgt) })}</div></div>
+      <div class="counter" style="--c:${tone(S.trust)}" data-tip="${esc(t('dist.trustTip'))}"><div class="v num">${Math.round(S.trust)}</div><div class="k">${t('dist.trust')}</div><div style="margin-top:6px">${bar(S.trust, tone(S.trust), 'thin')}</div></div>
+      <div class="counter" style="--c:${tone(disc)}" data-tip="${esc(t('dist.discTip'))}"><div class="v num">${Math.round(disc)}</div><div class="k">${t('dist.disc')}</div><div style="margin-top:6px">${bar(disc, tone(disc), 'thin')}</div></div>
+      ${open ? `<div class="counter" style="--c:var(--design)" data-tip="${esc(t('dist.devsTip'))}"><div class="v num">${t('dist.pct', { n: pct(S.dev) })}</div><div class="k">${t('dist.devs')}</div><div class="faint" style="font-size:11px;margin-top:4px">${t('dist.devsK')}</div></div>` : ''}
+    </div>
+    <div class="lbl" style="margin:18px 0 8px">${t('dist.policy')}</div>
+    <div class="dist-pol">${policyCard(G, S, 'closed')}${policyCard(G, S, 'open')}</div>
+    ${wait > 0 ? `<p class="hint" style="margin-top:8px">${icon('clock')} ${tn('dist.switchWait', wait)}</p>` : open ? `<p class="hint" style="margin-top:8px">${t('dist.closeWarn')}</p>` : ''}
+    <div class="dist-ctl">
+      <div><div class="lbl" style="margin-bottom:6px">${t('dist.fee')}</div>
+        <div class="seg wrap-seg">${FEES.map((f) => `<button class="${S.fee === f ? 'on' : ''}" data-act="dist-fee" data-v="${f}" ${open ? '' : 'disabled'}>${t('dist.pct', { n: Math.round(f * 100) })}</button>`).join('')}</div>
+        <p class="hint" style="margin-top:6px">${open ? t('dist.feeHelp') : t('dist.feeClosed')}</p></div>
+      <div><div class="lbl" style="margin-bottom:6px">${t('dist.support')}</div>${seg(SUP_KEY.map((k) => t(k)), S.support, 'dist-sup', supCost)}
+        <p class="hint" style="margin-top:6px">${t('dist.supHelp')}</p></div>
+      <div><div class="lbl" style="margin-bottom:6px">${t('dist.ads')}</div>${seg(ADS_KEY.map((k) => t(k)), S.ads, 'dist-ads', (i) => t('dist.costTip', { v: money(ADS[i] * y) }))}
+        <p class="hint" style="margin-top:6px">${t('dist.adsHelp')}</p></div>
+      <div><div class="lbl" style="margin-bottom:6px">${t('dist.ex')}</div>
+        <div class="seg"><button class="${S.ex ? '' : 'on'}" data-act="dist-ex" data-v="0">${t('dist.exOff')}</button><button class="${S.ex ? 'on' : ''}" data-act="dist-ex" data-v="1">${t('dist.exOn')}</button></div>
+        <p class="hint" style="margin-top:6px">${t('dist.exHelp')}</p></div>
+    </div>
+    <div class="card" style="margin-top:18px"><div class="lbl" style="margin-bottom:8px">${t('dist.econ')}</div>${econ(S)}</div>`;
+}
+
+act('dist-pol', (el) => {
+  const r = setPolicy(UI.app.G, el.dataset.id);
+  if (r === true) sfx.play('fanfare');
+  else if (r) errToast(r);
+  UI.refresh();
+});
+act('dist-fee', (el) => {
+  if (setFee(UI.app.G, +el.dataset.v)) sfx.play('click');
+  UI.refresh();
+});
+act('dist-sup', (el) => {
+  setSupport(UI.app.G, +el.dataset.i);
+  UI.refresh();
+});
+act('dist-ads', (el) => {
+  setAds(UI.app.G, +el.dataset.i);
+  UI.refresh();
+});
+act('dist-ex', (el) => {
+  setExclusive(UI.app.G, el.dataset.v === '1');
+  UI.refresh();
+});

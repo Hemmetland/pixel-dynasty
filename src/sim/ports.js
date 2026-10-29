@@ -10,6 +10,7 @@ import { platformOpen } from './dev.js';
 import { platFit } from './score.js';
 import { forecast, curveFor } from './sales.js';
 import { note } from './news.js';
+import { storeRelease } from './store.js';
 
 // Porteringar: ett externt team för över ett släppt spel till en annan plattform som studion har licens för. Teamet
 // jobbar vid sidan av studions eget projekt, ett spel i taget. Porten säljer till den nya plattformens publik, men spelet
@@ -114,6 +115,7 @@ function finishPort(G) {
   const R = { rng: hashStr(`${G.seed || 0}:${kind}:${g.id}:${P.platform}`) | 0 };
   const noise = clamp(gauss(R, 1, 0.1), 0.78, 1.25);
   const port = { platform: P.platform, kind, t: G.t, score, cost: P.cost, total: portForecast(G, g, P.platform, G.t, kind) * noise, priceAt: priceOf(yearOf(G.t)), tail: SALES_TAIL, revenue: 0, units: 0, weekly: [], ended: false };
+  storeRelease(G, port);
   g.ports = [...portsOf(g), port];
   if (kind === 'remaster') {
     g.remastered = true;

@@ -21,3 +21,4 @@ export * from './ports.js';
 export * from './publish.js';
 export * from './franchise.js';
 export * from './acquire.js';
+export * from './store.js';

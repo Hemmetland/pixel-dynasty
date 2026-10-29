@@ -10,6 +10,7 @@ S.makeCompetitors(G); S.initWorld(G);
 G.money = 5e6; G.fans = 5000;
 // forskning
 for (const r of RESEARCH) { G.research.done.push(r.id); S.applyUnlocks(G, r); }
+delete G.u.flags.store; // butiken (och dess veckokostnader) testas för sig längre ner
 G.t = 48 * 20 + 3; // 2000
 G.office.tier = 3;
 ok(S.buildFacility(G, 'lab') === true, 'bygg labb');
@@ -255,6 +256,53 @@ ok(true, 'alla händelser körda');
   const GJ = JSON.parse(JSON.stringify(GA));
   for (let i = 0; i < 48; i++) { GJ.pending.length = 0; S.stepTick(GJ); }
   ok(Number.isFinite(GJ.money) && GJ.comps.filter((y) => y.owned).length === S.ACQ_MAX, 'dotterbolagen finns kvar efter sparning');
+}
+// egen butik: kräver forskning, sluten eller öppen, avgiften, exklusiva spel, marginalen på egna pc-spel
+{
+  const GS = S.newGame({ studio: 'B', seed: 15 }); S.makeCompetitors(GS); S.initWorld(GS);
+  GS.t = 48 * 24; GS.money = 1e8; GS.fans = 2e5;
+  S.storeWeek(GS);
+  ok(!GS.store, 'butiken kräver forskning');
+  GS.u.flags.store = true;
+  const rng0 = GS.rng;
+  GS.t++; S.storeWeek(GS);
+  const B = GS.store;
+  ok(B && B.policy === 'closed' && B.reach > 0, 'butiken öppnar sluten');
+  for (let i = 0; i < 40; i++) { GS.t++; S.storeWeek(GS); }
+  ok(B.reach > 0.05 && B.dev === 0 && B.tot.ext === 0 && B.tot.ops > 0, 'en sluten butik växer utan andra förlag (räckvidd ' + B.reach.toFixed(3) + ')');
+  const pc = { platform: 'pc', total: 1e6, score: 8 };
+  S.storeRelease(GS, pc);
+  ok(pc.total > 1e6 && pc.storeFeat > 0 && !pc.storeEx, 'ett pc-spel säljer mer i butiken (+' + Math.round(pc.storeFeat * 100) + ' %)');
+  const con = { platform: 'nova2', total: 1e6, score: 8 };
+  S.storeRelease(GS, con);
+  ok(con.total === 1e6, 'konsolspel påverkas inte');
+  const g = { id: 99001, platform: 'pc', t: GS.t, weekly: [], score: 8 };
+  GS.games.push(g);
+  GS.t++; g.weekly.push(70000);
+  const own0 = B.tot.own;
+  S.storeWeek(GS);
+  ok(Math.abs(B.tot.own - own0 - 70000 / 0.7 * 0.3 * B.reach) < 1, 'du behåller butiksavgiften på dina pc-spel');
+  ok(S.setPolicy(GS, 'open') === true && B.policy === 'open' && typeof S.setPolicy(GS, 'closed') === 'string', 'öppna butiken, sedan väntetid innan nästa byte');
+  for (let i = 0; i < 30; i++) { GS.t++; S.storeWeek(GS); }
+  ok(B.dev > 0.3 && B.tot.ext > 0, 'andra förlag kommer och betalar avgift (' + Math.round(B.dev * 100) + ' %)');
+  const tr = B.trust;
+  ok(S.setFee(GS, 0.3) && B.trust < tr, 'en höjd avgift kostar förtroende');
+  const d10 = { ...B, fee: 0.1 }, d30 = { ...B, fee: 0.3 };
+  ok(S.devTarget(d10) > S.devTarget(d30) && S.discOf(B) < S.discOf({ ...B, policy: 'closed' }), 'lägre avgift lockar fler förlag, en öppen butik är svårare att hitta i');
+  S.setExclusive(GS, true);
+  const ex = { platform: 'pc', total: 1e6, score: 8 };
+  const plain = { platform: 'pc', total: 1e6, score: 8 };
+  B.ex = false; S.storeRelease(GS, plain); B.ex = true; S.storeRelease(GS, ex);
+  ok(ex.storeEx && ex.total < plain.total, 'ett exklusivt spel säljer mindre men bara i butiken');
+  const t0 = B.trust;
+  GS.t += 26;
+  ok(S.setPolicy(GS, 'closed') === true && B.trust === Math.max(0, t0 - 15), 'att stänga butiken kostar förtroende');
+  GS.t++; S.storeWeek(GS);
+  ok(B.dev === 0, 'en sluten butik har inga andra förlag');
+  ok(GS.rng === rng0, 'butiken rör inte spelets slumpföljd');
+  const GJ = JSON.parse(JSON.stringify(GS));
+  for (let i = 0; i < 30; i++) { GJ.t++; S.storeWeek(GJ); }
+  ok(Number.isFinite(GJ.money) && GJ.store.reach > 0, 'butiken fortsätter efter sparning');
 }
 // förlag: pitchar kommer ur fröet, förskott vid underskrift, två avtal åt gången, spelet släpps med ett betyg i intervallet
 {

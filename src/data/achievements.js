@@ -51,6 +51,7 @@ export const ACHIEVEMENTS = [
   A('timeless', 'a_star', 'Tidlös', 'Timeless', 'Släpp en remaster med betyg 8 eller mer.', 'Release a remaster scoring 8 or more.', (G) => G.games.some((g) => (g.ports || []).some((p) => p.kind === 'remaster' && p.score >= 8))),
   A('boxoffice', 'a_star', 'Kassasuccé', 'Box Office Hit', 'Få en film om en av dina spelserier som får betyg 8 eller mer.', 'Get a film of one of your game series that scores 8 or more.', (G) => (G.stats.bestFilm || 0) >= 8),
   A('empire', 'a_crown', 'Imperiet', 'Empire', 'Köp upp tre konkurrerande studior.', 'Buy three rival studios.', (G) => (G.stats.acquired || 0) >= 3),
+  A('launcher', 'a_crown', 'Plattformen', 'The Platform', 'Få tio miljoner användare i din egen butik.', 'Reach ten million users in your own store.', (G) => (G.stats.storeUsers || 0) >= 1e7),
   A('label5', 'a_star', 'Förläggare', 'Publisher', 'Ge ut fem spel från andra studior.', 'Publish five games from other studios.', (G) => (G.stats.published || 0) >= 5),
   A('legend', 'a_clock', 'Legend', 'Legend', 'Spela till år 2020.', 'Play until the year 2020.', (G) => G.t >= 48 * 40),
 ];
