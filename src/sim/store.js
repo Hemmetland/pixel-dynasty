@@ -377,7 +377,7 @@ export function storeChart(G, n = 5) {
   const rows = [];
   const traffic = saleSeason(G.t) !== undefined && saleOf(S) > 0 ? 1 + SALES[saleOf(S)].traffic : 1 - (S.wait || 0) * WAIT_FULL;
   const now = (x) => isPcPlat(x.platform) && x.weekly.length === G.t - x.t && x.weekly.length;
-  const row = (x, title, studio, kind, v) => v > 0 && rows.push({ id: x.id, title, studio, kind, v, score: x.score, platform: x.platform, genre: x.genre, topic: x.topic });
+  const row = (x, title, studio, kind, v) => v >= 1 && rows.push({ id: x.id, title, studio, kind, v, score: x.score, platform: x.platform, genre: x.genre, topic: x.topic });
   for (const g of G.games) {
     if (now(g)) row(g, g.title, G.studio, 'own', (g.weekly[g.weekly.length - 1] / (1 - OTHER_CUT)) * via(S, g));
     for (const p of g.ports || []) if (now(p)) row({ ...g, ...p, id: g.id }, g.title, G.studio, 'own', (p.weekly[p.weekly.length - 1] / (1 - OTHER_CUT)) * via(S, p));

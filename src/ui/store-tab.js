@@ -41,8 +41,8 @@ function chart(G) {
           const title = L(r.title);
           const [k, c] = KIND_TAG[r.kind];
           return `<div class="chart-row ${r.kind === 'own' ? 'yours' : ''}"><div class="rk disp">${i + 1}</div>${coverImg({ id: r.id, title, topic: r.topic, genre: r.genre, platform: r.platform }, 32)}
-        <div style="flex:1;min-width:0"><b class="ell">${esc(title)}</b><div class="faint ell" style="font-size:12px">${esc(r.studio)} · ${esc(PLATFORM[r.platform].name)}</div></div>
-        <div style="text-align:right"><span class="tag" style="--c:${c}">${t(k)}</span><div class="num" style="font-size:12px;margin-top:4px">${t('dist.perWeek', { v: money(r.v) })}</div></div></div>`;
+        <div style="flex:1;min-width:0"><b class="ell">${esc(title)}</b><div class="row" style="gap:6px;margin-top:3px;min-width:0"><span class="tag" style="--c:${c};flex:none">${t(k)}</span><span class="faint ell" style="font-size:12px;min-width:0">${esc(r.studio)} · ${esc(PLATFORM[r.platform].name)}</span></div></div>
+        <div style="text-align:right;flex:none"><b class="num">${money(r.v)}</b><div class="faint" style="font-size:11px">${t('dist.perWeek')}</div></div></div>`;
         })
         .join('')
     : `<p class="hint">${t('dist.chartNone')}</p>`;

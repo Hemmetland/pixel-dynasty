@@ -756,7 +756,7 @@ export const STRINGS = {
   'dist.r.sale': ['Rea på äldre spel', 'Sale on older games'],
   'dist.chart': ['Mest sålt i butiken den här veckan', 'Best sellers in the store this week'],
   'dist.chartNone': ['Inga spel säljs i butiken just nu. Släpp ett pc-spel eller öppna butiken för andra förlag.', 'No games are selling in the store right now. Release a PC game or open the store to other publishers.'],
-  'dist.perWeek': ['{v} per vecka', '{v} per week'],
+  'dist.perWeek': ['per vecka', 'per week'],
   'dist.k.own': ['Ditt spel', 'Your game'],
   'dist.k.group': ['Koncernen', 'Group'],
   'dist.k.ext': ['Annat förlag', 'Other publisher'],
