@@ -412,3 +412,22 @@ Stående vid en arkadmaskin, 4 rutor: den bortre handen på spaken (röd kula), 
 
 - **Platsen i spelrummet:** arkadmaskinen ritas på slot.x+3 till +16 men platsen (facSpots i behavior.js) är slot.x+14 vänd österut, så maskinen hamnar bakom personen och händerna spelar över sittsäcken. Spegelvänd (dir -1) på slot.x+21 landar händerna på kontrollpanelen och posen läses tydligt (se förhandsvisningen, del B). Den som pratar med spelaren på s.x+15 står då bakom och tittar på.
 - **Begränsningar:** spakens kula är 1 till 2 röda pixlar i spelskala och läses som en spak bara bredvid maskinen. I grundremsan läses glasögonen som ett mörkt streck i ruta 1 och 2 (nedskalningen träffar dem annorlunda när huvudet sjunker 2 px), så den kan se ut att blinka i takt med gungningen, som i jublet. Knäböjen är ungefär 1 pixel i spelskala.
+
+## Skruva vid serverracket: `char.fix` med frisyr 1, 2 och 3
+
+Stående vid ett serverrack, 4 rutor: lätt framåtlutad, blicken ner mot arbetet (det sänkta ögat från `type`), den närmre armen i brösthöjd med en skruvmejsel och den bortre handen platt mot racket. Handen vrider mejseln: knytnäven går genom fyra lägen (tummen uppe, rullar, vriden, tar om greppet), armbågen sjunker 1 till 2 px och ljusfasetten på handtaget flyttar ner en rad per ruta. Grundremsan och de tre frisyrerna levereras samtidigt.
+
+- **Remsor:** `assets/chars/fix.png`, `assets/chars/hair1/fix.png`, `assets/chars/hair2/fix.png`, `assets/chars/hair3/fix.png` (4 rutor var). Enskilda rutor finns i `assets/pixellab/characters/dev/fix-east-hand/` och `dev/hair1/fix/`, `dev/hair2/fix/`, `dev/hair3/fix/`.
+- **Takt:** 5 bilder/s ger en jämn vridning: `STAND_SPRITE.fix = ['char.fix', 5]`.
+- **Mått:** överkroppen (rad 0 till 41) är flyttad 2 px framåt och huvudet (2, 2). Benen och fötterna (rad 64 till 91) är identiska med `east.png`, sulorna på rad 80. Knytnäven ligger på rad 37 till 45, mejselns spets når x 77. Från rackplatsen på rx+10 hamnar spetsen på ungefär rx+23, alltså inne i racket som börjar på rx+18 till 19.
+- **Färger:** handtaget använder fyra nya gulgröna rekvisitafärger (`#e2ea6e`, `#bccb3e`, `#8e9a2a`, `#4c5420`, nyans 63 till 66) som alla ger `material()` = null. Skaftet använder källfärger. Mössan ligger ovanför rad 27,6, så ingen `hatRow` behövs.
+- **Frisyrerna:** händerna, ärmen och mejseln är identiska med grundremsan. Lockarna i `#3` täcker tre huvpixlar vid nacken, (41..43, 32), i varje ruta.
+
+```json
+"char.fix": { "file": "chars/fix.png", "fw": 92, "fh": 92, "ax": 46, "ay": 82, "frames": 4, "scale": 0.42, "note": "Skruvar vid serverrack, handritad (Kör)" },
+"char.fix#1": { "file": "chars/hair1/fix.png", "fw": 92, "fh": 92, "ax": 46, "ay": 82, "frames": 4, "scale": 0.42, "note": "Frisyr 1, kort hår (Kör)" },
+"char.fix#2": { "file": "chars/hair2/fix.png", "fw": 92, "fh": 92, "ax": 46, "ay": 82, "frames": 4, "scale": 0.42, "note": "Frisyr 2, hästsvans (Kör)" },
+"char.fix#3": { "file": "chars/hair3/fix.png", "fw": 92, "fh": 92, "ax": 46, "ay": 82, "frames": 4, "scale": 0.42, "note": "Frisyr 3, lockigt hår (Kör)" }
+```
+
+- **Begränsningar:** vridningen är diskret i spelskala och läses som en arbetsrörelse snarare än en tydligt roterande handled. I full storlek kan den bortre, öppna handen se ut som en stopphand; i spelskala läses den som en hand mot racket.
