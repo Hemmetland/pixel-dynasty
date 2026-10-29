@@ -484,3 +484,22 @@ Stående vid ett serverrack, 4 rutor: en uppfälld laptop vilar på den bortre u
 ```
 
 - **Begränsningar:** i spelskala syns basen bara som en tunn grå linje under handen; locket bär läsningen. Fingertrycket är 1 till 2 px och läses som ett litet fladder i handen. Huvudet är flyttat 2 px framåt utan att kroppen lutar, så nacken ser lite framskjuten ut. Posen används också i labb, QA och serverrummen på slot.x+14; de rummen är inte kontrollerade i förhandsvisningen.
+
+## Gå med laptop under armen: `char.walkLaptop` med frisyr 1, 2 och 3
+
+Gångcykel med en hopfälld laptop under den närmre armen, 6 rutor i samma ordning och takt som `char.walk`. Varje ruta är `walk.png`:s ruta med samma nummer: ben, fötter, huvud, den bortre armen och kroppens gungning är pixelidentiska, bara den närmre armen är utbytt mot en böjd arm vars underarm ligger vågrätt och håller laptopen (en 3 px tjock skiva sedd från kanten, bakre änden 1 px högre). Armen och laptopen följer kroppens gungning i varje ruta. Grundremsan och de tre frisyrerna levereras samtidigt.
+
+- **Remsor:** `assets/chars/walkLaptop.png`, `assets/chars/hair1/walkLaptop.png`, `assets/chars/hair2/walkLaptop.png`, `assets/chars/hair3/walkLaptop.png` (6 rutor var). Enskilda rutor finns i `assets/pixellab/characters/dev/walkLaptop-east-hand/` och `dev/hair1/walkLaptop/`, `dev/hair2/walkLaptop/`, `dev/hair3/walkLaptop/`.
+- **Takt:** 9 bilder/s som `walk`: `STAND_SPRITE.walkLaptop = ['char.walkLaptop', 9]`.
+- **Mått:** underarmen ligger på rad 44 till 49, laptopen på rad 49 till 52 (48 till 51 i ruta 3 till 5), x 38 till 57, knytnäven x 58 till 62. Ändringarna mot `walk.png` ligger på rad 38 till 64: den gamla svingande ärmen och handen är bortmålade, och där handen täckte låret är låret ifyllt med rutans egna byxfärger. Fötterna är orörda (tårna når rad 81 till 82 i ruta 2, 4 och 5 precis som i `walk`).
+- **Färger:** laptopen använder gråtonerna från `char.sitLaptop` (`#2e2e33`, `#64646a`, `#8c8c92`), som ger `material()` = null. Inga nya färger. Mössan är `walk`:s, så ingen `hatRow` behövs.
+- **Frisyrerna:** varje variant är `hairN/walk.png`:s ruta med exakt samma armbyte, så hästsvansen svänger som i `walk#2`. Armen, handen och laptopen är identiska i alla fyra remsor.
+
+```json
+"char.walkLaptop": { "file": "chars/walkLaptop.png", "fw": 92, "fh": 92, "ax": 46, "ay": 82, "frames": 6, "scale": 0.42, "note": "Går med laptop under armen, handritad (Kör)" },
+"char.walkLaptop#1": { "file": "chars/hair1/walkLaptop.png", "fw": 92, "fh": 92, "ax": 46, "ay": 82, "frames": 6, "scale": 0.42, "note": "Frisyr 1, kort hår (Kör)" },
+"char.walkLaptop#2": { "file": "chars/hair2/walkLaptop.png", "fw": 92, "fh": 92, "ax": 46, "ay": 82, "frames": 6, "scale": 0.42, "note": "Frisyr 2, hästsvans (Kör)" },
+"char.walkLaptop#3": { "file": "chars/hair3/walkLaptop.png", "fw": 92, "fh": 92, "ax": 46, "ay": 82, "frames": 6, "scale": 0.42, "note": "Frisyr 3, lockigt hår (Kör)" }
+```
+
+- **Begränsningar:** i spelskala syns laptopen som en 1 till 2 px grå linje under en vågrät underarm med knytnäven framför; tydligt mot det mörka serverrummet, svagare mot de beige skrivborden i utvecklarrummet. Underarmen ligger i midjehöjd och näven sticker ut cirka 10 px framför bröstet, lite som att bära en bricka. Skivan är 20 px lång så att den når bakom kroppen. Ruta 1 och 2 har mest ifyllda pixlar på lårets framkant.
