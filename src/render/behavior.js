@@ -143,7 +143,11 @@ const KINDS = {
     min: 1, max: 2, dur: [10, 17], w: [1.2, 0.8], face: 'fixed',
     slots(S, f) {
       const st = stationsIn(S, f, 'server');
-      return [[st.find((s) => s.pose === 'laptop'), 'laptop'], [st.find((s) => s.pose !== 'laptop'), 'watch']];
+      const lap = [st.find((s) => s.pose === 'laptop'), 'laptop'];
+      // med den ritade skruvposen skruvar den andra i racket, och ibland är det det enda som behövs
+      if (!getSprite('char.fix')) return [lap, [st.find((s) => s.pose !== 'laptop'), 'watch']];
+      const fix = [st.find((s) => s.pose !== 'laptop'), 'fix'];
+      return S.rnd() < 0.4 ? [fix, lap] : [lap, fix];
     },
   },
   board: {
@@ -387,6 +391,7 @@ function scriptPose(S, act, m, a) {
       return setPose(a, speak ? 'talk' : 'drink', false);
     case 'server':
       if (m.role === 'laptop') return setPose(a, speak && act.m.length > 1 ? 'talk' : 'laptop', false);
+      if (m.role === 'fix') return setPose(a, speak && act.m.length > 1 ? 'talk' : 'fix', false);
       return setPose(a, speak ? 'talk' : 'stand', false);
     case 'board':
       if (m.role === 'stand') return setPose(a, speak ? 'talk' : 'stand', false);
