@@ -180,6 +180,17 @@ const KINDS = {
       return st.length ? [[pickOf(S, st), 'laptop']] : [];
     },
   },
+  // handslag när en affär blir klar (startas av Scene.deal, aldrig av slumpen): framför mötesbordet, annars i lobbyn.
+  // Paret står 16 px isär så att de ritade händerna möts mitt emellan.
+  deal: {
+    min: 2, max: 2, dur: [5, 7], w: [0, 0], face: 'fixed',
+    slots(S, f) {
+      if (!getSprite('char.shake')) return [];
+      const at = stationsIn(S, f, 'meeting').find((s) => s.kind === 'stand' && s.pose === 'present') || stationsIn(S, f, 'lobby').find((s) => s.kind === 'stand');
+      if (!at) return [];
+      return [[{ ...at, id: `${at.id}-deal1`, x: at.x - 8, dir: 1, pose: 'shake' }, 'shake'], [{ ...at, id: `${at.id}-deal2`, x: at.x + 8, dir: -1, pose: 'shake' }, 'shake']];
+    },
+  },
   fac: {
     min: 1, max: 2, dur: [6, 12], w: [0.5, 0.9], face: 'partner',
     slots(S, f, scene) {
@@ -233,6 +244,7 @@ function schedule(S, scene, f, busy, crunch, trainingOf) {
     const K = KINDS[kind];
     let slots;
     if (S.only && kind !== S.only) continue;
+    if (!weightOf(S, kind, busy) && S.only !== kind) continue; // handslaget startas bara av Scene.deal
     if (kind === 'meeting') {
       if (!kicked && !S.force && (S.meetT[f] > 0 || away > 0)) continue;
     } else if ((away >= maxAway && !S.force) || (due && !kicked)) continue;
@@ -413,6 +425,8 @@ function scriptPose(S, act, m, a) {
     case 'fac':
       if (m.role === 'talk') return setPose(a, speak ? 'talk' : 'stand', false);
       return setPose(a, m.s.pose === 'cheer' ? (Math.floor(a.t * 0.6) % 2 ? 'cheer' : 'stand') : m.s.pose, false);
+    case 'deal':
+      return setPose(a, 'shake', false);
     case 'pair':
       if (m.host) return setPose(a, speak ? 'talk' : 'type', true);
       return setPose(a, speak ? 'talk' : 'present', false);

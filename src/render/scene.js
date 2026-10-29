@@ -469,6 +469,13 @@ export class Scene {
   forceAct(kind, floor, n = 0) {
     return this.crowd ? forceAct(this, kind, floor, n) : false;
   }
+  // Ett handslag när en affär blir klar (uppköp, förlagsavtal, licensaffär): mötesrummen först, sedan lobbyn
+  deal() {
+    if (!this.crowd) return false;
+    const n = this.crowd.nav.floors.length;
+    for (let i = 1; i <= n; i++) if (forceAct(this, 'deal', i % n, 2)) return true;
+    return false;
+  }
 
   // Pratbubbla över en aktör. Högst tre samtidigt (fyra för händelser), en per person och inte två intill varandra.
   emote(id, kind, life, force = false) {
@@ -759,7 +766,9 @@ export class Scene {
       // spritens rutor förskjuts per person så att alla i samma pose inte byter ruta samtidigt
       // den som bär laptopen till racket har posen 'laptop' även när den går (people.js ritar då gången med laptop)
       const sp = a.carry && a.pose === 'laptop' && a.state !== 'at' ? 'walkLaptop' : a.box && a.pose === 'walk' ? 'walkBox' : a.pose;
-      const spr = drawPoseSprite(A, px, py, look, sp, a.t + ((a.id | 0) % 7) * 0.37, a.dir, opts.seated);
+      // i handslaget pumpar båda på samma ruta (aktivitetens klocka), annars skulle händerna glida isär
+      const st = sp === 'shake' && a.act ? a.act.t : a.t + ((a.id | 0) % 7) * 0.37;
+      const spr = drawPoseSprite(A, px, py, look, sp, st, a.dir, opts.seated);
       if (!spr) drawPerson(A, px, py, look, a.pose, a.frame, a.dir, opts);
       if (a.state === 'at' && a.m) this.drawFront(A, a, cx, gy);
       if (a.pose === 'sleep') {

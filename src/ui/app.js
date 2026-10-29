@@ -152,6 +152,8 @@ export const app = {
       this.resize();
     });
     on('facility', () => sfx.play('build'));
+    // affärer: två i personalen skakar hand i mötesrummet eller lobbyn
+    for (const ev of ['acquired', 'pubSign', 'frDeal']) on(ev, () => sc.deal());
     on('hired', (s) => {
       sfx.play('good');
       toast(t('toast.hired', { name: `<b>${s.name}</b>` }), 'hire');
