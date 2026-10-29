@@ -548,3 +548,30 @@ Gångcykel med en stängd brun flyttlåda framför bröstet, 6 rutor i samma ord
 ```
 
 - **Begränsningar:** i spelskala syns lådans mörka överkant bara i ruta 3 till 5 (nedskalningen av gungningen), så kanten fladdrar lite vid 9 bilder/s, precis som huvudet i `walk`. Med orange, senapsgula eller rostfärgade tröjor blir kontrasten mot lådan lägre; ruta 0 är svagast. Tejpen syns i spelskala bara som ett mörkt hack i överkanten.
+
+## Handslag vid förvärv och avtal: `char.shake` med frisyr 1, 2 och 3
+
+Stående handslag, 4 rutor: den närmre armen sträcks fram i brösthöjd med lätt böjd armbåge, handen vriden för handslag (tummen uppe, fingrarna framåt, sedd från sidan) och pumpar upp och ner. Den bortre armen är dold som i `stand`. Huvudet är `east.png`:s, orört med sitt eget leende. Grundremsan och de tre frisyrerna levereras samtidigt.
+
+| Ruta | Handleden | Handen (rader) |
+| --- | --- | --- |
+| 0 | vila | 40 till 46 |
+| 1 | 2 px upp | 38 till 44 |
+| 2 | vila (som ruta 0) | 40 till 46 |
+| 3 | 2 px ner | 42 till 48 |
+
+- **Remsor:** `assets/chars/shake.png`, `assets/chars/hair1/shake.png`, `assets/chars/hair2/shake.png`, `assets/chars/hair3/shake.png` (4 rutor var). Enskilda rutor finns i `assets/pixellab/characters/dev/shake-east-hand/` och `dev/hair1/shake/`, `dev/hair2/shake/`, `dev/hair3/shake/`.
+- **Takt:** 4 bilder/s: `STAND_SPRITE.shake = ['char.shake', 4]`.
+- **Mått:** handens främsta pixel ligger på x 66 i alla rutor, 20 px framför ankaret. Två personer vända mot varandra med ankarna 40 rut-px isär (16,8 scen-px; 16 eller 17 scen-px fungerar båda) möts med händerna i mitten: i spelskala blir greppet en 4 till 5 × 3 px hudstav mellan underarmarna, och två olika hudtoner läses som två händer. Benen (rad 64 och nedåt) är `east.png`, sulorna på rad 80.
+- **Takten mellan paret:** båda måste pumpa på samma ruta. scene.js lägger `(a.id % 7) * 0.37` till `a.t` per person, och ur fas hamnar händerna 2 spel-px isär i höjd så att greppet bryts. Ge båda samma t (till exempel affärens starttid) under handslaget.
+- **Färger:** inga nya färger och ingen rekvisita. Mössan ligger ovanför rad 27,6, så ingen `hatRow` behövs.
+- **Frisyrerna:** armen och handen är identiska i alla fyra remsor och ligger framför håret. Inga kroppspixlar ändras i varianterna.
+
+```json
+"char.shake": { "file": "chars/shake.png", "fw": 92, "fh": 92, "ax": 46, "ay": 82, "frames": 4, "scale": 0.42, "note": "Handslag, handritad (Kör)" },
+"char.shake#1": { "file": "chars/hair1/shake.png", "fw": 92, "fh": 92, "ax": 46, "ay": 82, "frames": 4, "scale": 0.42, "note": "Frisyr 1, kort hår (Kör)" },
+"char.shake#2": { "file": "chars/hair2/shake.png", "fw": 92, "fh": 92, "ax": 46, "ay": 82, "frames": 4, "scale": 0.42, "note": "Frisyr 2, hästsvans (Kör)" },
+"char.shake#3": { "file": "chars/hair3/shake.png", "fw": 92, "fh": 92, "ax": 46, "ay": 82, "frames": 4, "scale": 0.42, "note": "Frisyr 3, lockigt hår (Kör)" }
+```
+
+- **Begränsningar:** med fronten låst vid x 66 överlappar händerna bara 2 px, så i full storlek ser det mer ut som två knytnävar mot varandra med tummarna uppe; i spelskala läses det som ett grepp. Den spegelvända partnern skakar med vänster hand. I mötesrummet på nivå 3 smälter ljus hud nästan ihop med bordskanten i ruta 3, och i styrelserummet på nivå 5 smälter mörk hud in mot de mörka stolsryggarna.
