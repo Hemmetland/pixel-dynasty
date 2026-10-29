@@ -458,3 +458,29 @@ Stående vid receptionsdisken, 4 rutor: den närmre handen håller en grå tråd
 
 - **Receptionsplatsen:** på nivå 3 (x0+34, dir 1, `F.receptionDesk`) och nivå 4 (x0+40, dir 1, `P.receptionM`) står disken framför personen. På nivå 5 står platsen på x0+25 ovanpå diskens vänstra ände och skärm (`T.reception` på x0+23 till 46); x0+51 med dir -1 fungerar där (diskens östra ände, vänd mot dörren, 37 px från ståplatsen på x0+14). `KINDS.lobby` använder `face: 'partner'`, vilket vänder receptionisten till dir -1 på nivå 3 och 4 så att disken hamnar bakom; telefonposen bör använda platsens egen riktning.
 - **Begränsningar:** i full storlek läses det tydligt som ett telefonsamtal, i spelskala bara måttligt: den närmre armen smälter ihop med bålen, och i svart hår kan lurens mörka underkant se ut som ett pipskägg. Handen och luren står stilla; bara munnen och gesthanden rör sig. I ruta 2 kommer gesthanden nära den närmre armbågen.
+
+## Stå med laptop vid serverracket: `char.laptop` med frisyr 1, 2 och 3
+
+Stående vid ett serverrack, 4 rutor: en uppfälld laptop vilar på den bortre underarmen framför magen (handflatan under, locket reser sig från gångjärnet och lutar lätt bakåt, skärmglöd bara på insidan), och den närmre handen skriver. Huvudet är flyttat (2, 2) med det sänkta ögat från `type` och stängd mun, samma huvudflytt som `char.fix`. Bara den närmre underarmen och handen rör sig mellan rutorna. Grundremsan och de tre frisyrerna levereras samtidigt.
+
+| Ruta | Skrivhanden |
+| --- | --- |
+| 0 | fingrarna på tangenterna |
+| 1 | lyft 2 px, handleden 1 px upp |
+| 2 | som 0, 1 px längre fram |
+| 3 | som 1, 1 px längre fram |
+
+- **Remsor:** `assets/chars/laptop.png`, `assets/chars/hair1/laptop.png`, `assets/chars/hair2/laptop.png`, `assets/chars/hair3/laptop.png` (4 rutor var). Enskilda rutor finns i `assets/pixellab/characters/dev/laptop-east-hand/` och `dev/hair1/laptop/`, `dev/hair2/laptop/`, `dev/hair3/laptop/`.
+- **Takt:** 8 bilder/s, en loop på 0,5 s utan hopp: `STAND_SPRITE.laptop = ['char.laptop', 8]`. Obs: `walk()` i behavior.js sätter pose 'laptop' medan någon bär laptopen (`a.carry`), så den här stående posen bör bara användas när personen står på platsen; gången får `char.walkLaptop`.
+- **Mått:** laptopens bas x 52 till 68, rad 44 till 47; locket reser sig till rad 31; skärmglöd rad 35 till 39. Sulorna på rad 80. Från rackplatsen rx+27 (rooms.js, tier4) och rx+24 (tier5), dir 1, står personen framför mittracket och locket når kanten på nästa rack.
+- **Färger:** fem nya rekvisitafärger, `#22232a`, `#5a5d69`, `#8a8d99`, `#c0c3cc` (gråa, nyans 225 till 232) och skärmglöden `#dce8f4` (nyans 210, mättnad 0,10). Alla ger `material()` = null på sina rader. Kanterna är ljusa så att laptopen inte försvinner mot de mörka racken. Mössan ligger ovanför rad 27,6, så ingen `hatRow` behövs.
+- **Frisyrerna:** armarna, händerna och laptopen ritas efter huvudet och är identiska i alla fyra remsor, så de ligger framför håret. Lockarna i `#3` täcker fyra huvpixlar vid nacken, (39..42, 32).
+
+```json
+"char.laptop": { "file": "chars/laptop.png", "fw": 92, "fh": 92, "ax": 46, "ay": 82, "frames": 4, "scale": 0.42, "note": "Står med laptop, handritad (Kör)" },
+"char.laptop#1": { "file": "chars/hair1/laptop.png", "fw": 92, "fh": 92, "ax": 46, "ay": 82, "frames": 4, "scale": 0.42, "note": "Frisyr 1, kort hår (Kör)" },
+"char.laptop#2": { "file": "chars/hair2/laptop.png", "fw": 92, "fh": 92, "ax": 46, "ay": 82, "frames": 4, "scale": 0.42, "note": "Frisyr 2, hästsvans (Kör)" },
+"char.laptop#3": { "file": "chars/hair3/laptop.png", "fw": 92, "fh": 92, "ax": 46, "ay": 82, "frames": 4, "scale": 0.42, "note": "Frisyr 3, lockigt hår (Kör)" }
+```
+
+- **Begränsningar:** i spelskala syns basen bara som en tunn grå linje under handen; locket bär läsningen. Fingertrycket är 1 till 2 px och läses som ett litet fladder i handen. Huvudet är flyttat 2 px framåt utan att kroppen lutar, så nacken ser lite framskjuten ut. Posen används också i labb, QA och serverrummen på slot.x+14; de rummen är inte kontrollerade i förhandsvisningen.
