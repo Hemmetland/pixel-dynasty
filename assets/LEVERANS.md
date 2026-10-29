@@ -385,3 +385,30 @@ Enskilda rutor finns i `assets/pixellab/characters/dev/hair3/<nyckel>/`. Allt un
 
 - **`sleep#3`** behöver ingen `hatRow`.
 - **Begränsningar:** på ljust hår lämnar den knottriga kronan några ensamma mörka pixlar överst i spelskala (fler än den släta kronan i `#1`, men de syns knappt mot den mörka bakgrunden). I svart och mörkbrunt hår blir strukturen svag eftersom hårets tre nyanser ligger nära varandra, så håret läses mest som en stor rund kalufs. I de vridna huvudena i `read`, `sitLaptop` och `drink` ruta 1 blir lockstrukturen lite brusigare; kronan är handskuren tillbaka till två lockar i `read` och `sitLaptop`.
+
+## Spela arkadspel: `char.play` med frisyr 1, 2 och 3
+
+Stående vid en arkadmaskin, 4 rutor: den bortre handen på spaken (röd kula), den närmre handen på knapparna, en lätt gungning i knäna. Grundremsan och de tre frisyrerna levereras samtidigt.
+
+| Ruta | Knän | Spak | Knapp |
+| --- | --- | --- | --- |
+| 0 | uppe | bakåt | uppe |
+| 1 | 2 px ner | mitten | intryckt |
+| 2 | 2 px ner | framåt | uppe |
+| 3 | uppe | mitten | intryckt |
+
+- **Remsor:** `assets/chars/play.png`, `assets/chars/hair1/play.png`, `assets/chars/hair2/play.png`, `assets/chars/hair3/play.png` (4 rutor var). Enskilda rutor finns i `assets/pixellab/characters/dev/play-east-hand/` och `dev/hair1/play/`, `dev/hair2/play/`, `dev/hair3/play/`.
+- **Takt:** 7 bilder/s ger en ren loop: `STAND_SPRITE.play = ['char.play', 7]`.
+- **Mått:** överkroppen sjunker 2 px i ruta 1 och 2 medan händerna står still på kontrollerna, så armarna böjs. Skorna (rad 75 till 91) är identiska med `east.png` och sulorna ligger på rad 80. Händerna når x 62 till 66, knapphanden rad 45 till 52 (kontrollpanelen ligger på rad 46 till 53).
+- **Färger:** spakens kula använder två nya rekvisitafärger, `#e85846` och `#b4402f`, som båda ger `material()` = null på alla rader. Allt annat använder källfärger. Mössan ligger ovanför rad 27,6, så ingen `hatRow` behövs.
+- **Frisyrerna:** huvudet rör sig exakt som i grundremsan. Inga kropps-, hand- eller spakpixlar ändras i någon variant, och händerna och spaken ligger framför håret.
+
+```json
+"char.play": { "file": "chars/play.png", "fw": 92, "fh": 92, "ax": 46, "ay": 82, "frames": 4, "scale": 0.42, "note": "Spelar på arkadmaskin, handritad (Kör)" },
+"char.play#1": { "file": "chars/hair1/play.png", "fw": 92, "fh": 92, "ax": 46, "ay": 82, "frames": 4, "scale": 0.42, "note": "Frisyr 1, kort hår (Kör)" },
+"char.play#2": { "file": "chars/hair2/play.png", "fw": 92, "fh": 92, "ax": 46, "ay": 82, "frames": 4, "scale": 0.42, "note": "Frisyr 2, hästsvans (Kör)" },
+"char.play#3": { "file": "chars/hair3/play.png", "fw": 92, "fh": 92, "ax": 46, "ay": 82, "frames": 4, "scale": 0.42, "note": "Frisyr 3, lockigt hår (Kör)" }
+```
+
+- **Platsen i spelrummet:** arkadmaskinen ritas på slot.x+3 till +16 men platsen (facSpots i behavior.js) är slot.x+14 vänd österut, så maskinen hamnar bakom personen och händerna spelar över sittsäcken. Spegelvänd (dir -1) på slot.x+21 landar händerna på kontrollpanelen och posen läses tydligt (se förhandsvisningen, del B). Den som pratar med spelaren på s.x+15 står då bakom och tittar på.
+- **Begränsningar:** spakens kula är 1 till 2 röda pixlar i spelskala och läses som en spak bara bredvid maskinen. I grundremsan läses glasögonen som ett mörkt streck i ruta 1 och 2 (nedskalningen träffar dem annorlunda när huvudet sjunker 2 px), så den kan se ut att blinka i takt med gungningen, som i jublet. Knäböjen är ungefär 1 pixel i spelskala.
