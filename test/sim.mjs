@@ -32,9 +32,10 @@ const lic = args.includes('--lic');
 // --acq: köper upp konkurrenter (bäst försäljning per krona) när pengarna räcker fyra gånger om
 const acq = args.includes('--acq');
 // --store: bygger en egen butik och öppnar den för andra förlag (--store=closed håller den sluten och gör bara pc-spel,
-// --store=ex med exklusiva spel, --pc bara pc-spel när butiken finns, --fee=0.1 avgiften)
+// --store=ex med exklusiva spel, --pc bara pc-spel när butiken finns, --fee=0.1 avgiften, --sale=0..3 reans rabattnivå)
 const storeArg = args.find((x) => x === '--store' || x.startsWith('--store='));
 const store = storeArg ? storeArg.split('=')[1] || 'open' : null;
+const saleArg = args.find((x) => x.startsWith('--sale='));
 // --bd: skriv ut årets pengar per kategori (för balansarbete)
 const bd = args.includes('--bd');
 const acc = {};
@@ -187,6 +188,7 @@ function manage(G) {
     const B = G.store;
     if (B.policy === 'closed' && store !== 'closed') S.setPolicy(G, 'open');
     S.setExclusive(G, store === 'ex');
+    if (saleArg) S.setSale(G, +saleArg.split('=')[1]);
     S.setFee(G, +opt('fee', 0.2));
     const ads = S.storeCosts(G).ads / Math.max(1, S.ADS[B.ads]);
     S.setAds(G, store !== 'closed' && G.money > 15000 * ads * 40 ? 2 : 1);
@@ -307,7 +309,7 @@ if (store && G.store) {
   const B = G.store;
   const T = B.tot;
   const m = (v) => '$' + Math.round(v / 1e6) + 'M';
-  console.log(`store ${S.yearOf(B.t0)} ${B.policy} reach ${(B.reach * 100).toFixed(0)}% users ${(S.storeUsers(G) / 1e6).toFixed(1)}M trust ${B.trust.toFixed(0)} dev ${(B.dev * 100).toFixed(0)}%; own ${m(T.own)} feat ${m(T.feat)} group ${m(T.group)} ext ${m(T.ext)}; ops ${m(T.ops)} sup ${m(T.sup)} ads ${m(T.ads)} pay ${m(T.pay)}; net ${m(S.storeNet(G))}; pc games ${G.games.filter((g) => S.isPcPlat(g.platform) && g.t >= B.t0).length}/${G.games.filter((g) => g.t >= B.t0).length}`);
+  console.log(`store ${S.yearOf(B.t0)} ${B.policy} reach ${(B.reach * 100).toFixed(0)}% users ${(S.storeUsers(G) / 1e6).toFixed(1)}M trust ${B.trust.toFixed(0)} dev ${(B.dev * 100).toFixed(0)}%; own ${m(T.own)} feat ${m(T.feat)} group ${m(T.group)} ext ${m(T.ext)} sale ${m(T.sale || 0)} (wait ${Math.round((B.wait || 0) * 100)}%); ops ${m(T.ops)} sup ${m(T.sup)} ads ${m(T.ads)} pay ${m(T.pay)}; net ${m(S.storeNet(G))}; pc games ${G.games.filter((g) => S.isPcPlat(g.platform) && g.t >= B.t0).length}/${G.games.filter((g) => g.t >= B.t0).length}`);
 }
 if (acq) console.log(`owned ${S.ownedComps(G).length}; paid $${Math.round(S.ownedComps(G).reduce((a, c) => a + c.paid, 0)).toLocaleString()}; earned $${Math.round(S.subIncome(G)).toLocaleString()}; ${S.ownedComps(G).map((c) => `${c.name} ${S.yearOf(c.ownedT)} $${Math.round(c.paid / 1e6)}M -> $${Math.round(c.subRev / 1e6)}M`).join(', ')}`);
 if (lic) {

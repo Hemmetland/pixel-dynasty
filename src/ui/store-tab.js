@@ -3,12 +3,12 @@ import { sfx } from '../audio/sfx.js';
 import { fmtNum } from '../core/util.js';
 import { yearOf } from '../sim/const.js';
 import {
-  OTHER_CUT, PAY_FEE, FEES, SUPPORT, ADS, canStore, storeUsers, discOf, reachTarget, storeScale, featOf, switchLeft,
-  setPolicy, setFee, setSupport, setAds, setExclusive, setPaused,
+  OTHER_CUT, PAY_FEE, FEES, SUPPORT, ADS, SALES, canStore, storeUsers, discOf, reachTarget, storeScale, featOf, switchLeft,
+  saleSeason, saleIn, saleOf, setPolicy, setFee, setSupport, setAds, setExclusive, setPaused, setSale,
 } from '../sim/store.js';
 
 // Marknadsfönstrets flik Egen butik: användare, förtroende och upptäckbarhet, strategin (sluten eller öppen), avgiften,
-// support, marknadsföring, exklusiva spel och butikens ekonomi.
+// support, marknadsföring, exklusiva spel, säsongsrean och butikens ekonomi.
 const pct = (v) => Math.round(v * 100);
 const POL_KEY = { closed: ['dist.closed', 'dist.closedD'], open: ['dist.open', 'dist.openD'] };
 const SUP_KEY = ['dist.sup.0', 'dist.sup.1', 'dist.sup.2'];
@@ -29,6 +29,18 @@ function seg(items, cur, actName, tip) {
   return `<div class="seg wrap-seg">${items.map((label, i) => `<button class="${cur === i ? 'on' : ''}" data-act="${actName}" data-i="${i}" ${tip ? `data-tip="${esc(tip(i))}"` : ''}>${label}</button>`).join('')}</div>`;
 }
 
+// Säsongsrean: rabattnivå, när nästa rea börjar och hur många som väntar på den
+function saleCtl(G, S) {
+  const on = saleSeason(G.t) !== undefined;
+  const lvl = saleOf(S);
+  const wait = Math.round((S.wait || 0) * 100);
+  const when = on ? `<span class="tag" style="--c:var(--good)">${t('dist.saleNow')}</span>` : `<span class="faint" style="font-size:12px">${tn('dist.saleIn', saleIn(G.t))}</span>`;
+  const labels = SALES.map((L, i) => (i ? t('dist.salePct', { n: Math.round(L.cut * 100) }) : t('dist.sale.0')));
+  return `<div class="dist-wide"><div class="row wrap" style="gap:8px;margin-bottom:6px"><div class="lbl">${t('dist.sale')}</div><span class="sp"></span>${when}</div>
+    ${seg(labels, lvl, 'dist-sale')}
+    <p class="hint" style="margin-top:6px">${t('dist.saleHelp')}${wait >= 1 ? ` ${t('dist.wait', { pct: wait })}` : ''}</p></div>`;
+}
+
 function econ(G, S) {
   // senaste fyra veckorna (hittills, innan den första månaden är slut: vecka 3 har månaden redan rullats) och allt sedan butiken öppnade
   const early = G.t - S.t0 < 3;
@@ -36,12 +48,13 @@ function econ(G, S) {
     ['dist.r.own', o.own],
     ['dist.r.group', o.group],
     ['dist.r.ext', o.ext],
+    ['dist.r.sale', o.sale || 0],
     ['dist.c.ops', -o.ops],
     ['dist.c.pay', -o.pay],
     ['dist.c.sup', -o.sup],
     ['dist.c.ads', -o.ads],
   ];
-  const net = (o) => o.own + o.group + o.ext - o.ops - o.pay - o.sup - o.ads;
+  const net = (o) => o.own + o.group + o.ext + (o.sale || 0) - o.ops - o.pay - o.sup - o.ads;
   const cell = (v) => `<b class="num ${v >= 0 ? 'up' : 'down'}">${v > 0 ? '+' : ''}${money(v)}</b>`;
   const cur = early ? S.m : S.lm;
   const lm = rows(cur);
@@ -93,6 +106,7 @@ export function storeTab(G) {
       <div><div class="lbl" style="margin-bottom:6px">${t('dist.ex')}</div>
         <div class="seg"><button class="${S.ex ? '' : 'on'}" data-act="dist-ex" data-v="0">${t('dist.exOff')}</button><button class="${S.ex ? 'on' : ''}" data-act="dist-ex" data-v="1">${t('dist.exOn')}</button></div>
         <p class="hint" style="margin-top:6px">${t('dist.exHelp')}</p></div>
+      ${saleCtl(G, S)}
     </div>
     <div class="card" style="margin-top:18px"><div class="row wrap" style="margin-bottom:8px;gap:8px"><div class="lbl">${t('dist.econ')}</div><span class="sp"></span><button class="btn sm ghost" data-act="dist-pause" data-v="1" data-tip="${esc(t('dist.pauseTip'))}">${icon('pause')}${t('dist.pause')}</button></div>${econ(G, S)}</div>`;
 }
@@ -117,6 +131,10 @@ act('dist-ads', (el) => {
 });
 act('dist-pause', (el) => {
   if (setPaused(UI.app.G, el.dataset.v === '1')) sfx.play('click');
+  UI.refresh();
+});
+act('dist-sale', (el) => {
+  if (setSale(UI.app.G, +el.dataset.i)) sfx.play('click');
   UI.refresh();
 });
 act('dist-ex', (el) => {

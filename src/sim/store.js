@@ -1,4 +1,4 @@
-import { clamp } from '../core/util.js';
+import { clamp, fmtMoney, fmtNum } from '../core/util.js';
 import { hashStr, seeded } from '../core/rng.js';
 import { emit } from '../core/bus.js';
 import { t } from '../core/i18n.js';
@@ -41,6 +41,23 @@ const REACH_MAX = 0.85;
 const MILESTONES = [1e6, 5e6, 10e6, 25e6, 50e6];
 const LOYAL = 2; // i en sluten butik är alla där för koncernens spel: utbudet drar mer per spel
 const MARKET = 30; // andra förlags pc-försäljning per vecka, i enheter av årets pris gånger pc:ns storlek
+// Säsongsrea: två veckor i slutet av juni och två före jul. Rabatten väcker de äldre pc-spelen (äldre än ett halvår) till
+// liv och lockar nya användare som stannar (S.sb, höjer räckviddens mål och avtar sakta), men spelare som lär sig vänta på
+// rean köper mindre till fullpris, både dina nya spel och de andra förlagens (S.wait, ungefär hälften kvar efter ett år).
+// rev är försäljningens lyft mot en vanlig vecka (fler exemplar gånger lägre pris), traffic hur mycket mer de andra
+// spelen i butiken säljer under rean.
+export const SALES = [
+  { cut: 0, rev: 0, users: 0, wait: 0, traffic: 0 },
+  { cut: 0.25, rev: 1.6, users: 0.002, wait: 0.004, traffic: 0.1 },
+  { cut: 0.5, rev: 2.2, users: 0.004, wait: 0.01, traffic: 0.2 },
+  { cut: 0.75, rev: 2.3, users: 0.006, wait: 0.022, traffic: 0.25 },
+];
+const WAIT_FULL = 0.5; // så mycket av väntandet märks i de andra förlagens försäljning utanför rean
+const SALE_WEEKS = { 22: 0, 23: 0, 46: 1, 47: 1 }; // vecka i året: sommarrea (0) eller julrea (1)
+const SALE_BASE = 0.006; // en reavecka säljer den andelen av ett äldre spels totala försäljning (före rabattens lyft)
+const SALE_AGE = 26;
+const WAIT_DECAY = 0.985;
+const BOOST_DECAY = 0.99;
 
 export const canStore = (G) => !!G.u.flags.store;
 export const isPcPlat = (id) => PLATFORM[id]?.kind === 'pc';
@@ -51,14 +68,22 @@ const yscale = storeScale;
 
 // Butiken byggs första veckan efter forskningen: sluten, normal support och lite marknadsföring
 function openStore(G) {
-  G.store = { t0: G.t, reach: 0.01, trust: 50, dev: 0, policy: 'closed', fee: 0.2, support: 1, ads: 1, ex: false, polT: -1e9, ms: 0, m: blank(), lm: blank(), tot: blank() };
+  G.store = { t0: G.t, reach: 0.01, trust: 50, dev: 0, policy: 'closed', fee: 0.2, support: 1, ads: 1, ex: false, sale: 1, wait: 0, sb: 0, polT: -1e9, ms: 0, m: blank(), lm: blank(), tot: blank() };
   note(G, 'news.storeOpen', { studio: G.studio }, 'good');
   emit('storeOpen', G.store);
   return G.store;
 }
 function blank() {
-  return { own: 0, group: 0, ext: 0, feat: 0, ops: 0, pay: 0, sup: 0, ads: 0 };
+  return { own: 0, group: 0, ext: 0, sale: 0, feat: 0, ops: 0, pay: 0, sup: 0, ads: 0 };
 }
+
+// Rean: vilken säsong veckan t hör till (undefined utanför rean), veckor kvar till nästa och butikens rabattnivå
+export const saleSeason = (t) => SALE_WEEKS[t % WEEKS_PER_YEAR];
+export function saleIn(t) {
+  for (let k = 0; k < WEEKS_PER_YEAR; k++) if (saleSeason(t + k) !== undefined) return k;
+  return 0;
+}
+export const saleOf = (S) => S.sale ?? 1;
 
 // Antal pc-spelare i världen (för att visa räckvidden som användare)
 export const pcPlayers = (year) => 6e6 * Math.pow(1.085, year - 2003);
@@ -97,7 +122,7 @@ export function reachTarget(G, S = G.store) {
   const discF = 0.75 + 0.5 * discOf(S);
   const adsF = 1 + ADS_REACH * S.ads;
   const cat = catalogPull(G) * (S.policy === 'closed' ? LOYAL : 1);
-  return clamp((0.03 + cat + ext) * trustF * discF * adsF, 0, REACH_MAX);
+  return clamp((0.03 + cat + ext) * trustF * discF * adsF + (S.sb || 0), 0, REACH_MAX);
 }
 
 // Förtroendets jämviktsläge: avgiften, supporten och exklusiva spel det senaste året
@@ -133,6 +158,8 @@ export function storeRelease(G, g) {
     g.total *= 1 - EX_LOSS * (1 - S.reach);
     S.reach = clamp(S.reach + 0.01 * clamp((g.score - 5) / 4, 0, 1.25), 0, REACH_MAX);
   }
+  // spelare som väntar på rean köper mindre till fullpris: mest i butiken, men de vet att spelet blir billigare överallt
+  if (S.wait) g.total *= 1 - S.wait * (0.5 + 0.5 * via(S, g));
   if (g.score >= 8) S.trust = clamp(S.trust + 3, 0, 100);
   else if (g.score < 5) S.trust = clamp(S.trust - 3, 0, 100);
 }
@@ -147,10 +174,26 @@ function rollMonth(G, S) {
 // Andelen av ett spels pc-försäljning som går genom butiken
 const via = (S, x) => (x.storeEx ? 1 : S.reach);
 
+// Reans försäljning av äldre pc-spel och portar en vecka, före rabattnivåns lyft: nyare spel säljer mer
+function saleBase(G, S) {
+  let v = 0;
+  const one = (x) => {
+    const age = G.t - x.t;
+    if (age >= SALE_AGE && x.total > 0 && isPcPlat(x.platform)) v += (x.total * SALE_BASE * via(S, x)) / (1 + age / (3 * WEEKS_PER_YEAR));
+  };
+  for (const g of G.games) {
+    one(g);
+    for (const p of g.ports || []) one(p);
+  }
+  return v;
+}
+
 // Veckovis: räckvidd, förtroende, intäkter och kostnader
 export function storeWeek(G) {
   if (!canStore(G)) return;
   const S = G.store || openStore(G);
+  S.wait = (S.wait || 0) * WAIT_DECAY;
+  S.sb = (S.sb || 0) * BOOST_DECAY;
   if (S.paused) {
     // pausad: inga intäkter eller kostnader, men användarna och förlagen försvinner och förtroendet sjunker
     S.dev = 0;
@@ -170,6 +213,18 @@ export function storeWeek(G) {
     S.trust = clamp(S.trust - 10, 0, 100);
     note(G, 'news.storeDown', { studio: G.studio }, 'bad');
   }
+  // rean: äldre spel säljer igen, nya användare kommer och fler väntar på nästa rea
+  const season = saleSeason(G.t);
+  const L = SALES[season === undefined ? 0 : saleOf(S)] || SALES[0];
+  let sale = 0;
+  if (L.cut > 0) {
+    if (season !== saleSeason(G.t - 1)) S.sr = { rev: 0, reach: S.reach };
+    sale = saleBase(G, S) * L.rev;
+    S.sb += L.users;
+    S.reach = clamp(S.reach + L.users, 0, REACH_MAX);
+    S.wait += L.wait;
+  }
+  const traffic = L.cut > 0 ? 1 + L.traffic : 1 - S.wait * WAIT_FULL;
   // intäkter: dina pc-spel (avgiften du slipper), koncernens spel (butiksavgiften) och andra förlag (din avgift)
   let own = 0;
   let group = 0;
@@ -201,12 +256,12 @@ export function storeWeek(G) {
     const w = G.t - r.t;
     const curve = curveFor(r.score, r.tail || 1);
     if (w < 0 || w >= curve.length) continue;
-    const v = r.total * curve[w] * S.reach;
+    const v = r.total * curve[w] * S.reach * traffic;
     group += v * OTHER_CUT;
     gross += v;
   }
   if (S.policy === 'open' && S.dev > 0) {
-    const v = pcMarket(G) * S.reach * S.dev;
+    const v = pcMarket(G) * S.reach * S.dev * traffic;
     ext += v * S.fee;
     gross += v;
   }
@@ -217,8 +272,9 @@ export function storeWeek(G) {
     gross += v;
   }
   const c = storeCosts(G, S);
+  gross += sale;
   const pay = gross * PAY_FEE;
-  const inc = own + group + ext;
+  const inc = own + group + ext + sale;
   if (inc > 0) {
     earn(G, inc, 'store');
     G.stats.revenue += inc;
@@ -228,6 +284,7 @@ export function storeWeek(G) {
     o.own += own;
     o.group += group;
     o.ext += ext;
+    o.sale = (o.sale || 0) + sale;
     o.feat += feat;
     o.ops += c.ops;
     o.sup += c.sup;
@@ -238,6 +295,15 @@ export function storeWeek(G) {
   add(S.tot);
   rollMonth(G, S);
   G.stats.storeNet = (G.stats.storeNet || 0) + inc - c.ops - c.sup - c.ads - pay;
+  // reans sista vecka: vad den gav
+  if (L.cut > 0 && S.sr) {
+    S.sr.rev += sale;
+    if (saleSeason(G.t + 1) !== season) {
+      const n = Math.max(0, (S.reach - S.sr.reach) * pcPlayers(yearOf(G.t)));
+      note(G, season ? 'news.saleWinter' : 'news.saleSummer', { v: fmtMoney(S.sr.rev), n: fmtNum(Math.round(n / 1000) * 1000) }, 'good');
+      S.sr = null;
+    }
+  }
   // milstolpar i användarbasen
   const users = storeUsers(G, S);
   G.stats.storeUsers = Math.max(G.stats.storeUsers || 0, users);
@@ -288,6 +354,12 @@ export function setPaused(G, on) {
   if (!S || !!S.paused === !!on) return false;
   S.paused = !!on;
   note(G, on ? 'news.storePaused' : 'news.storeResumed', { studio: G.studio }, 'info');
+  return true;
+}
+export function setSale(G, i) {
+  const S = G.store;
+  if (!S || !SALES[i] || saleOf(S) === i) return false;
+  S.sale = i;
   return true;
 }
 export function setExclusive(G, on) {

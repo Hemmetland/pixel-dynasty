@@ -304,12 +304,28 @@ ok(true, 'alla händelser körda');
   for (let i = 0; i < 8; i++) { GS.t++; S.storeWeek(GS); }
   ok(B.tot.ops === ops0 && GS.money === m1 && B.reach < r0, 'en pausad butik kostar inget men tappar användare');
   const exg = { id: 'exg', platform: 'pc', score: 8, total: 1e6, t: GS.t - 6, tail: 1, priceAt: 30, weekly: [], revenue: 0, units: 0, fansGained: 0, storeEx: true };
-  GS.games.push(exg);
+  const games0 = GS.games;
+  GS.games = [exg]; // bara det exklusiva spelet (testets andra spel saknar försäljningsfält)
   S.salesWeek(GS);
   const exPaused = exg.weekly[exg.weekly.length - 1];
   ok(S.setPaused(GS, false) && !B.paused, 'och öppnar igen');
   GS.t++; S.salesWeek(GS);
   ok(exPaused === 0 && !exg.ended && exg.weekly[exg.weekly.length - 1] > 0, 'ett exklusivt spel säljs inte medan butiken är pausad');
+  GS.games = games0;
+  // säsongsrean: äldre pc-spel säljer igen, nya användare kommer och fler väntar på nästa rea
+  ok(S.setSale(GS, 2) && !S.setSale(GS, 2) && S.saleSeason(S.tOf(2010, 5, 2)) === 0 && S.saleSeason(S.tOf(2010, 11, 3)) === 1 && S.saleSeason(S.tOf(2010, 7, 0)) === undefined && S.saleIn(S.tOf(2010, 5, 0)) === 2, 'säsongsrean ligger i juni och december');
+  const oldg = { id: 'oldg', platform: 'pc', score: 8, total: 3e6, t: GS.t - 100, tail: 1, priceAt: 30, weekly: [], revenue: 0, units: 0, fansGained: 0, ended: true };
+  GS.games.push(oldg);
+  GS.t = S.tOf(S.yearOf(GS.t) + 1, 5, 1);
+  S.storeWeek(GS);
+  const r1 = B.reach, w1 = B.wait, sale1 = B.tot.sale;
+  for (let i = 0; i < 2; i++) { GS.t++; S.storeWeek(GS); }
+  ok(B.tot.sale > sale1 && B.wait > w1 && B.reach > r1 && GS.news.some((n) => n.key === 'news.saleSummer' && n.t === GS.t), 'rean säljer äldre spel, lockar användare och ger en nyhet');
+  B.ex = false;
+  const full = { platform: 'pc', total: 1e6, score: 7 }, waited = { platform: 'pc', total: 1e6, score: 7 };
+  const w2 = B.wait;
+  B.wait = 0; S.storeRelease(GS, full); B.wait = w2; S.storeRelease(GS, waited);
+  ok(waited.total < full.total, 'spelare som väntar på rean köper mindre vid släpp');
   GS.games.pop();
   ok(GS.rng === rng0, 'butiken rör inte spelets slumpföljd');
   const GJ = JSON.parse(JSON.stringify(GS));
