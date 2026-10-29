@@ -335,6 +335,7 @@ function endAct(S, scene, act) {
       a.act = null;
       a.m = null;
       a.carry = a.carry && a.state !== 'leave'; // laptopen följer med tillbaka till skrivbordet
+      a.cup = a.state !== 'leave' && (act.kind === 'coffee' || (act.kind === 'window' && m.listen === 'drink')); // och kaffemuggen
       a.cool = rand(S, 10, 26);
       if (!m.host && a.state !== 'leave') a.state = 'walkto';
     }
@@ -358,6 +359,7 @@ export function detach(S, scene, a) {
   a.act = null;
   a.m = null;
   a.carry = false;
+  a.cup = false;
 }
 
 // ── Poser ──
@@ -624,6 +626,7 @@ export function updateCrowd(scene, dt) {
           a.state = 'work';
           a.carry = false;
           a.box = false;
+          a.cup = false;
           a.dir = 1;
           a.deskT = 0;
         }

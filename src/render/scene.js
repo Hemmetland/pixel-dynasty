@@ -765,7 +765,7 @@ export class Scene {
       const py = gy + a.fy + Math.round(a.ly || 0);
       // spritens rutor förskjuts per person så att alla i samma pose inte byter ruta samtidigt
       // den som bär laptopen till racket har posen 'laptop' även när den går (people.js ritar då gången med laptop)
-      const sp = a.carry && a.pose === 'laptop' && a.state !== 'at' ? 'walkLaptop' : a.box && a.pose === 'walk' ? 'walkBox' : a.pose;
+      const sp = a.carry && a.pose === 'laptop' && a.state !== 'at' ? 'walkLaptop' : a.box && a.pose === 'walk' ? 'walkBox' : a.cup && a.pose === 'walk' ? 'walkCup' : a.pose;
       // i handslaget pumpar båda på samma ruta (aktivitetens klocka), annars skulle händerna glida isär
       const st = sp === 'shake' && a.act ? a.act.t : a.t + ((a.id | 0) % 7) * 0.37;
       const spr = drawPoseSprite(A, px, py, look, sp, st, a.dir, opts.seated);
