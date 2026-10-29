@@ -182,10 +182,11 @@ export const drawWalkerSprite = (ctx, x, y, look, t, dir = 1) => drawCharSprite(
 // skrivbordet, armbågen på bordet), sova (huvudet mot bordet), gäspa (crunch) och laptop i knät (soffan; stående med laptop
 // vid racket, i labbet och i QA har char.laptop). Jubel har egna sprites både stående (spelrummet) och på stolen (när studion
 // firar), liksom presentation med pekpinne vid tavlan, spel på arkadmaskinen, att skruva i ett serverrack och att prata i
-// telefon i receptionen. Saknas en sprite i manifestet ritas den procedurella figuren.
+// telefon i receptionen, och att vinka vid skrivbordet när man kommer in. Saknas en sprite i manifestet ritas den
+// procedurella figuren.
 const STAND_SPRITE = {
   walk: ['char.walk', 9], stand: ['char.stand', 0], drink: ['char.drink', 3], talk: ['char.talk', 4.2], cheer: ['char.cheer', 5], present: ['char.present', 3],
-  play: ['char.play', 7], fix: ['char.fix', 5], phone: ['char.phone', 4.2], laptop: ['char.laptop', 8], walkLaptop: ['char.walkLaptop', 9],
+  play: ['char.play', 7], fix: ['char.fix', 5], phone: ['char.phone', 4.2], laptop: ['char.laptop', 8], walkLaptop: ['char.walkLaptop', 9], wave: ['char.wave', 5],
 };
 const SEAT_SPRITE = {
   sit: ['char.sit', 1.5], sitIdle: ['char.sit', 1.5], type: ['char.type', 8],
