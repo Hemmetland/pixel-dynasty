@@ -7,6 +7,7 @@
 // Skiljeväggar mellan rum är automatiska glasdörrar som glider upp när någon närmar sig (se drawDoors).
 
 import { clamp } from '../core/util.js';
+import { getSprite } from './sprites.js';
 
 const WALK = 26; // px/s, som det gamla beteendet
 const GAP = 10; // två personer står aldrig närmare än så vid stationerna
@@ -94,7 +95,9 @@ function facSpots(S, scene, f) {
     const slot = scene.L.slots[fc.slot];
     if (!slot || slot.floor !== f) continue;
     const pose = { coffee: 'drink', gameroom: 'cheer', training: 'stand', lab: 'laptop', qa: 'laptop', marketing: 'present', server: 'laptop' }[id] || 'stand';
-    out.push({ id: `fac-${id}`, kind: 'fac', fid: id, x: slot.x + 14, fy: slot.fy, floor: f, dir: 1, pose, room: `f${f}-facility${fc.slot}` });
+    // spelrummet: med den ritade spelposen står man vänd mot arkadmaskinen (som ritas på slot.x+3 till +16) med händerna på panelen
+    if (id === 'gameroom' && getSprite('char.play')) out.push({ id: `fac-${id}`, kind: 'fac', fid: id, x: slot.x + 21, fy: slot.fy, floor: f, dir: -1, pose: 'play', room: `f${f}-facility${fc.slot}` });
+    else out.push({ id: `fac-${id}`, kind: 'fac', fid: id, x: slot.x + 14, fy: slot.fy, floor: f, dir: 1, pose, room: `f${f}-facility${fc.slot}` });
   }
   return out;
 }
@@ -404,7 +407,7 @@ function scriptPose(S, act, m, a) {
 }
 
 function faceTo(act, m, a) {
-  if (act.m.length < 2) return m.s ? m.s.dir : a.dir;
+  if (act.m.length < 2 || m.s?.pose === 'play') return m.s ? m.s.dir : a.dir;
   if (act.face !== 'partner' && act.kind !== 'pair') return m.s ? m.s.dir : a.dir;
   if (act.kind === 'pair') return 1;
   // vänd mot den som pratar, annars mot närmaste kollega

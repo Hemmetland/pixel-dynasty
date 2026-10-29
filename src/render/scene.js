@@ -5,6 +5,7 @@ import { makeLayout, drawShell, eraOf, PITCH, INT_H } from './building.js';
 import { drawRoomsDynamic } from './rooms.js';
 import { drawPerson } from './people.js';
 import { drawPoseSprite } from './charsprite.js';
+import { getSprite } from './sprites.js';
 import { makeCrowd, updateCrowd, drawDoors, detach, forceAct } from './behavior.js';
 import { drawEmote, EMOTE_LIFE } from './emotes.js';
 import { drawTextOutlined, drawText, textWidth } from './font.js';
@@ -321,7 +322,7 @@ export class Scene {
             a.state = 'at';
             a.timer = 2 + Math.random() * 3;
             a.pose = a.target.pose || 'stand';
-            a.dir = 1;
+            a.dir = a.target.dir || 1;
           } else {
             a.state = 'work';
             a.dir = 1;
@@ -383,12 +384,18 @@ export class Scene {
           a.pose = opts[Math.floor(Math.random() * opts.length)];
           a.timer = 3 + Math.random() * 6;
           if (r < 0.14) {
+            // i spelrummet spelar man på arkadmaskinen (vänd mot den) när den ritade spelposen finns
             const t = ['coffee', 'gameroom', 'training', 'lab']
-              .map((id) => this.facilityPoint(id, a.floor))
+              .map((id) => {
+                const p = this.facilityPoint(id, a.floor);
+                return p && id === 'gameroom' && getSprite('char.play') ? { ...p, x: p.x + 7, dir: -1, play: true } : p;
+              })
               .filter(Boolean);
             if (t.length) {
               a.state = 'go';
-              a.target = { ...t[Math.floor(Math.random() * t.length)], pose: Math.random() < 0.5 ? 'drink' : 'stand' };
+              const p = t[Math.floor(Math.random() * t.length)];
+              a.target = { ...p, pose: Math.random() < 0.5 ? 'drink' : 'stand' };
+              if (p.play) a.target.pose = 'play';
             }
           }
         }
