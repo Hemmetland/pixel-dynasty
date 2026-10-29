@@ -503,3 +503,29 @@ Gångcykel med en hopfälld laptop under den närmre armen, 6 rutor i samma ordn
 ```
 
 - **Begränsningar:** i spelskala syns laptopen som en 1 till 2 px grå linje under en vågrät underarm med knytnäven framför; tydligt mot det mörka serverrummet, svagare mot de beige skrivborden i utvecklarrummet. Underarmen ligger i midjehöjd och näven sticker ut cirka 10 px framför bröstet, lite som att bära en bricka. Skivan är 20 px lång så att den når bakom kroppen. Ruta 1 och 2 har mest ifyllda pixlar på lårets framkant.
+
+## Vinka vid skrivbordet: `char.wave` med frisyr 1, 2 och 3
+
+Stående vid skrivbordet och hälsar på en ny kollega, 4 rutor: den närmre armen lyft framåt med en öppen hand (handflatan mot betraktaren), underarmen vinkar runt armbågen, och ett öppet leende (munnen från `cheer`). Huvudet är `east.png`:s, oflyttat. Kroppen står stilla så att blicken dras till handen. Grundremsan och de tre frisyrerna levereras samtidigt.
+
+| Ruta | Underarmen (framåt från lodrätt) | Handen |
+| --- | --- | --- |
+| 0 | 16° (bakåt) | x 59 till 67, rad 14 till 22 |
+| 1 | 26° (mitten) | x 61 till 69, rad 15 till 23 |
+| 2 | 36° (framåt) | x 64 till 72, rad 16 till 24 |
+| 3 | som ruta 1 | som ruta 1 |
+
+- **Remsor:** `assets/chars/wave.png`, `assets/chars/hair1/wave.png`, `assets/chars/hair2/wave.png`, `assets/chars/hair3/wave.png` (4 rutor var). Enskilda rutor finns i `assets/pixellab/characters/dev/wave-east-hand/` och `dev/hair1/wave/`, `dev/hair2/wave/`, `dev/hair3/wave/`.
+- **Takt:** 5 bilder/s som `floor(t*5)%4` i behavior.js: `STAND_SPRITE.wave = ['char.wave', 5]`. En hälsning på 1,6 s blir två vinkningar.
+- **Mått:** benen och skorna (rad 64 och nedåt) är `east.png`, sulorna på rad 80. Handen håller minst en tom pixel till huvudet och håret i spelskala i alla frisyrer. Platsen vid skrivbordet (dk.x+5, dir 1) fungerar: skrivbordet och skärmarna står framför personen och stolsryggen bakom, och handen går fri från skärmen.
+- **Färger:** inga nya färger och ingen rekvisita; armen och handen är bara tröja och hud. Mössan ligger ovanför rad 27,6, så ingen `hatRow` behövs.
+- **Frisyrerna:** armen och handen ritas efter huvudet och är identiska i alla fyra remsor, så de ligger framför håret. Inga kroppspixlar ändras i varianterna.
+
+```json
+"char.wave": { "file": "chars/wave.png", "fw": 92, "fh": 92, "ax": 46, "ay": 82, "frames": 4, "scale": 0.42, "note": "Vinkar, handritad (Kör)" },
+"char.wave#1": { "file": "chars/hair1/wave.png", "fw": 92, "fh": 92, "ax": 46, "ay": 82, "frames": 4, "scale": 0.42, "note": "Frisyr 1, kort hår (Kör)" },
+"char.wave#2": { "file": "chars/hair2/wave.png", "fw": 92, "fh": 92, "ax": 46, "ay": 82, "frames": 4, "scale": 0.42, "note": "Frisyr 2, hästsvans (Kör)" },
+"char.wave#3": { "file": "chars/hair3/wave.png", "fw": 92, "fh": 92, "ax": 46, "ay": 82, "frames": 4, "scale": 0.42, "note": "Frisyr 3, lockigt hår (Kör)" }
+```
+
+- **Begränsningar:** överarmen är lång och nästan vågrät, så i full storlek ser armen lite stel ut; i spelskala läses den bra. I ruta 2 är handleden böjd bakåt för att handen ska behålla formen av en öppen hand. Ruta 0 är tätast: handen ligger 2 till 3 px från mössan och lockarna. Mot det ljusa fönstret i utvecklarrummet på nivå 3 har handen mindre kontrast, men konturen håller den läsbar.
