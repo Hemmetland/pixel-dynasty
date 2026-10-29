@@ -122,8 +122,11 @@ export function crowding(G, x, T = G.t) {
     const hit = 0.09 * m * clamp((score - 4.5) / 3, 0.2, 1.4) * k;
     rivals.push({ title, studio, color, genre: r.genre, topic: r.topic, t, score, future, hit });
   };
-  for (const r of (G.market && G.market.releases) || []) if (r.t <= T && T - r.t <= CROWD_WEEKS) add(r, r.studio, r.color, r.score, r.t, false, r.title);
+  // dina dotterbolag (uppköpta konkurrenter) lägger sina släpp så att de inte krockar med dina
+  const own = new Set((G.comps || []).filter((c) => c.owned).map((c) => c.id));
+  for (const r of (G.market && G.market.releases) || []) if (r.t <= T && T - r.t <= CROWD_WEEKS && !own.has(r.comp)) add(r, r.studio, r.color, r.score, r.t, false, r.title);
   for (const c of upcomingReleases(G, T - G.t + CROWD_WEEKS)) {
+    if (c.owned) continue;
     const w = releaseWeek(c);
     if (Math.abs(w - T) <= CROWD_WEEKS) add(c.next, c.name, c.color, compMean(c, yearOf(w)), w, true, null);
   }

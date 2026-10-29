@@ -354,6 +354,9 @@ button.pn-c:hover { background: rgba(150, 172, 255, 0.13); border-color: var(--l
 .fr-ic svg { width: 20px; height: 20px; }
 .fr-side { text-align: right; }
 @media (max-width: 560px) { .fr-side { width: 100%; display: flex; align-items: center; justify-content: space-between; gap: 10px; text-align: left; } .fr-side .row { margin-top: 0 !important; } }
+.acq-cell { min-width: 120px; text-align: right; }
+.rv-row.owned { box-shadow: inset 3px 0 0 var(--good); }
+@media (max-width: 560px) { .rv-row { flex-wrap: wrap; } .acq-cell { width: 100%; min-width: 0; } }
 .pub-grid { grid-template-columns: minmax(0, 1.4fr) minmax(0, 1fr); gap: 20px; align-items: start; }
 @media (max-width: 860px) { .pub-grid { grid-template-columns: minmax(0, 1fr); } .pt-row .pt-st { min-width: 0; } }
 .kv span:first-child { color: var(--muted); }

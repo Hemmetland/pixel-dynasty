@@ -231,6 +231,31 @@ ok(true, 'alla händelser körda');
   for (let i = 0; i < 30; i++) { GL.t++; S.frWeek(GL); }
   ok(Number.isFinite(GL.money) && Number.isFinite(GL.fans), 'licensaffärerna fortsätter efter sparning');
 }
+// uppköp: kräver forskning, priset efter försäljningen, dotterbolaget ger en andel av sina nya spel och krockar inte
+{
+  const GA = S.newGame({ studio: 'U', seed: 14 }); S.makeCompetitors(GA); S.initWorld(GA);
+  while (S.yearOf(GA.t) < 2001) { GA.money = 1e9; GA.pending.length = 0; S.stepTick(GA); }
+  GA.money = 1e8;
+  const c = GA.comps.slice().sort((a, b) => S.compYearly(GA, b) - S.compYearly(GA, a))[0];
+  ok(S.canAcquire(GA, c.id) === 'locked', 'uppköp kräver forskning');
+  GA.u.flags.acquire = true;
+  const price = S.acqPrice(GA, c);
+  ok(price > S.compYearly(GA, c) * 3 && S.canAcquire(GA, c.id) === true, 'priset är flera års försäljning (' + Math.round(price) + ')');
+  const m0 = GA.money;
+  ok(S.acquire(GA, c.id) === true && c.owned && GA.money === m0 - price && S.canAcquire(GA, c.id) === 'owned', 'köpet går igenom');
+  for (const x of GA.comps.filter((y) => !y.owned).slice(0, 3)) S.acquire(GA, x.id);
+  const rest = GA.comps.find((y) => !y.owned);
+  ok(S.ownedComps(GA).length === S.ACQ_MAX && S.canAcquire(GA, rest.id) === 'max', 'högst ' + S.ACQ_MAX + ' dotterbolag');
+  const r0 = GA.market.releases.length;
+  while (!GA.market.releases.slice(r0).some((r) => r.comp === c.id)) { GA.pending.length = 0; S.stepTick(GA); }
+  const rel = GA.market.releases.slice(r0).find((r) => r.comp === c.id);
+  for (let i = 0; i < 48 * 8; i++) { GA.pending.length = 0; S.stepTick(GA); }
+  ok(c.subRev > 0 && S.subIncome(GA) > 0, 'dotterbolaget ger intäkter (' + Math.round(c.subRev) + ')');
+  ok(!S.crowding(GA, { genre: rel.genre, topic: rel.topic }, rel.t).rivals.some((x) => x.studio === c.name), 'dotterbolagets släpp krockar inte med dina');
+  const GJ = JSON.parse(JSON.stringify(GA));
+  for (let i = 0; i < 48; i++) { GJ.pending.length = 0; S.stepTick(GJ); }
+  ok(Number.isFinite(GJ.money) && GJ.comps.filter((y) => y.owned).length === S.ACQ_MAX, 'dotterbolagen finns kvar efter sparning');
+}
 // förlag: pitchar kommer ur fröet, förskott vid underskrift, två avtal åt gången, spelet släpps med ett betyg i intervallet
 {
   const GB = S.newGame({ studio: 'F', seed: 12 }); S.makeCompetitors(GB); S.initWorld(GB);

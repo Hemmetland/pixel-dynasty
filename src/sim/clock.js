@@ -11,6 +11,7 @@ import { liveWeek } from './live.js';
 import { portWeek } from './ports.js';
 import { pubWeek } from './publish.js';
 import { frWeek } from './franchise.js';
+import { subWeek } from './acquire.js';
 import { monthlyMarket, updateTrends } from './market.js';
 import { rollDevEvent, rollStudioEvent } from './events.js';
 import { runAwards, expoOffer } from './awards.js';
@@ -45,6 +46,7 @@ function weekly(G) {
   portWeek(G);
   pubWeek(G);
   frWeek(G);
+  subWeek(G);
   liveWeek(G);
   updateMood(G);
   rollDevEvent(G);

@@ -29,6 +29,8 @@ const ports = args.includes('--ports');
 const publish = args.includes('--publish');
 // --lic: gör uppföljare till spel med betyg 7+ och tar licensaffärer (prylar och serietidningar, film med rykte 6.5+)
 const lic = args.includes('--lic');
+// --acq: köper upp konkurrenter (bäst försäljning per krona) när pengarna räcker fyra gånger om
+const acq = args.includes('--acq');
 // --bd: skriv ut årets pengar per kategori (för balansarbete)
 const bd = args.includes('--bd');
 const acc = {};
@@ -124,7 +126,7 @@ function manage(G) {
   // forskning
   if (!casual || G.t % 16 === 0) for (const r of RESEARCH.slice().sort((a, b) => a.rp - b.rp)) {
     if (G.research.active.length >= S.researchSlots(G)) break;
-    if ((r.id === 'b_port' && !ports) || (r.id === 'b_publish' && !publish) || (r.id === 'b_merch' && !lic)) continue;
+    if ((r.id === 'b_port' && !ports) || (r.id === 'b_publish' && !publish) || (r.id === 'b_merch' && !lic) || (r.id === 'b_acq' && !acq)) continue;
     if (S.canResearch(G, r.id) === true && r.rp <= G.rp) S.startResearch(G, r.id);
   }
   // förfiningar när det finns plats över och råd (pengarna med marginal)
@@ -166,6 +168,14 @@ function manage(G) {
   if (publish && S.canPublish(G)) for (const p of S.pubOf(G).pitches.slice()) if ((p.lo + p.hi) / 2 >= 7 && G.money > p.advance * 4 && S.signPitch(G, p.id) === true && verbose) console.log(`  sign ${year}: ${p.studio} ${p.scope} demo ${p.lo}-${p.hi} advance $${p.advance}`);
   // licensaffärer: prylar och serietidningar alltid, film när ryktets mitt är 6.5 eller mer
   if (lic && S.canFranchise(G)) for (const o of S.frOf(G).offers.slice()) if ((o.kind !== 'film' || (o.lo + o.hi) / 2 >= 6.5) && S.acceptOffer(G, o.id) === true && verbose) console.log(`  deal ${year}: ${o.kind} ${o.partner} up $${o.up}${o.roy ? ' roy $' + o.roy : ''}${o.q ? ' film ' + o.lo + '-' + o.hi + ' (' + o.q + ')' : ''}`);
+  // uppköp: den konkurrent som säljer mest per krona
+  if (acq && S.canAcquireAny(G)) {
+    const c = G.comps.filter((x) => S.canAcquire(G, x.id) === true).sort((a, b) => S.compYearly(G, b) / S.acqPrice(G, b) - S.compYearly(G, a) / S.acqPrice(G, a))[0];
+    if (c && G.money > S.acqPrice(G, c) * 4) {
+      const price = S.acqPrice(G, c);
+      if (S.acquire(G, c.id) === true && verbose) console.log(`  acquire ${year}: ${c.name} $${price} yearly $${Math.round(S.compYearly(G, c))}`);
+    }
+  }
   // licenser
   for (const p of PLATFORMS) {
     if (S.canLicense(G, p.id) === true && true) {
@@ -278,6 +288,7 @@ if (publish) {
   const done = ds.filter((d) => d.ended);
   console.log(`published ${G.stats.published || 0}; label profit $${Math.round(S.labelProfit(G)).toLocaleString()} on $${Math.round(G.stats.pubCost || 0).toLocaleString()}; of last ${done.length} finished ${done.filter((d) => d.revenue < d.advance + (d.cost || 0)).length} lost money`);
 }
+if (acq) console.log(`owned ${S.ownedComps(G).length}; paid $${Math.round(S.ownedComps(G).reduce((a, c) => a + c.paid, 0)).toLocaleString()}; earned $${Math.round(S.subIncome(G)).toLocaleString()}; ${S.ownedComps(G).map((c) => `${c.name} ${S.yearOf(c.ownedT)} $${Math.round(c.paid / 1e6)}M -> $${Math.round(c.subRev / 1e6)}M`).join(', ')}`);
 if (lic) {
   const F = S.frOf(G);
   const films = F.deals.filter((d) => d.kind === 'film' && d.done);

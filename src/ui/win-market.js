@@ -5,7 +5,7 @@ import { coverImg } from '../render/covers.js';
 import { PLATFORMS, PLATFORM, potential, platTier, pcGeneration } from '../data/platforms.js';
 import { GENRE } from '../data/genres.js';
 import { TOPIC } from '../data/topics.js';
-import { yearOf, yfOf } from '../sim/const.js';
+import { yearOf, yfOf, dateOf } from '../sim/const.js';
 import { canLicense, buyLicense, licenseCost } from '../sim/actions.js';
 import { topSellers, trendWeeksLeft, upcomingReleases, releaseWeek } from '../sim/market.js';
 import { fmtNum } from '../core/util.js';
@@ -13,6 +13,7 @@ import { TOPICS } from '../data/topics.js';
 import { GENRES } from '../data/genres.js';
 import { CATEGORIES } from '../data/categories.js';
 import { idealFocus } from '../sim/score.js';
+import { ACQ_MAX, SUB_SHARE, canAcquireAny, ownedComps, compYearly, acqPrice, canAcquire, acquire, subIncome } from '../sim/acquire.js';
 
 const M = { tab: 'plat' };
 
@@ -107,21 +108,35 @@ function rumorsHTML(G) {
   const row = (c) => {
     const ge = GENRE[c.next.genre];
     const tp = TOPIC[c.next.topic];
-    const clash = J && (c.next.genre === J.genre || c.next.genre === J.genre2 || c.next.topic === J.topic);
-    return `<div class="card row wrap" style="gap:10px 14px"><div class="dotc" style="background:${c.color}"></div><div style="flex:1 1 160px;min-width:0"><b>${esc(c.name)}</b>${clash ? ` <span class="tag" style="--c:var(--warn)">${t('mkt.clash', { title: esc(J.title) })}</span>` : ''}<div class="row wrap" style="gap:5px;margin-top:4px"><span class="chip c" style="--c:${ge.color}">${glyphImg(ge.glyph, ge.color, 16, false)}${L(ge.name)}</span><span class="chip">${glyphImg(tp.glyph, '#fff', 16, false)}${L(tp.name)}</span></div></div><div class="faint num" style="font-size:12.5px;text-align:right">${t('mkt.rumorIn', { n: releaseWeek(c) - G.t })}</div></div>`;
+    const clash = J && !c.owned && (c.next.genre === J.genre || c.next.genre === J.genre2 || c.next.topic === J.topic);
+    return `<div class="card row wrap" style="gap:10px 14px"><div class="dotc" style="background:${c.color}"></div><div style="flex:1 1 160px;min-width:0"><b>${esc(c.name)}</b>${clash ? ` <span class="tag" style="--c:var(--warn)">${t('mkt.clash', { title: esc(J.title) })}</span>` : ''}${c.owned ? ` <span class="tag" style="--c:var(--good)">${t('acq.owned')}</span>` : ''}<div class="row wrap" style="gap:5px;margin-top:4px"><span class="chip c" style="--c:${ge.color}">${glyphImg(ge.glyph, ge.color, 16, false)}${L(ge.name)}</span><span class="chip">${glyphImg(tp.glyph, '#fff', 16, false)}${L(tp.name)}</span></div></div><div class="faint num" style="font-size:12.5px;text-align:right">${t('mkt.rumorIn', { n: releaseWeek(c) - G.t })}</div></div>`;
   };
   return `<div class="lbl" style="margin-bottom:6px">${t('mkt.rumors')}</div><p class="hint" style="margin-bottom:10px">${t('mkt.rumorHelp')}</p>
     ${up.length ? `<div class="col" style="gap:8px;margin-bottom:20px">${up.map(row).join('')}</div>` : `<div class="hint" style="margin-bottom:20px">${t('mkt.noRumors')}</div>`}`;
 }
 
+// Uppköp: köpknapp per konkurrent (eller etiketten Dotterbolag och vad studion har gett), efter forskningen
+function acqCell(G, c) {
+  if (!canAcquireAny(G)) return '';
+  if (c.owned) return `<div class="acq-cell" data-tip="${esc(t('acq.ownedTip', { year: dateOf(c.ownedT).year, paid: money(c.paid || 0), rev: money(c.subRev || 0) }))}"><span class="tag" style="--c:var(--good)">${t('acq.owned')}</span><div class="num" style="font-size:12px;color:var(--money);margin-top:4px">${t('acq.rev', { v: money(c.subRev || 0) })}</div></div>`;
+  const price = acqPrice(G, c);
+  const ok = canAcquire(G, c.id) === true;
+  const tip = t('acq.tip', { v: money(compYearly(G, c)), pct: Math.round(SUB_SHARE * 100) });
+  return `<div class="acq-cell"><button class="btn sm" data-act="m-acq" data-id="${c.id}" ${ok ? '' : 'disabled'} data-tip="${esc(tip)}">${icon('crown')}${t('acq.buy', { v: money(price) })}</button></div>`;
+}
+
 function rivalsTab(G) {
   const rows = G.comps.slice().sort((a, b) => b.best - a.best);
-  return `${rumorsHTML(G)}<div class="lbl" style="margin-bottom:8px">${t('mkt.tab.rivals')}</div><div class="col" style="gap:8px">${rows
+  const own = ownedComps(G).length;
+  const head = canAcquireAny(G)
+    ? `<p class="hint" style="margin-bottom:10px">${icon('crown')} ${t('acq.head', { n: own, max: ACQ_MAX, v: money(subIncome(G)) })} ${t('acq.help', { pct: Math.round(SUB_SHARE * 100) })}</p>`
+    : yearOf(G.t) >= 1998 ? `<p class="hint" style="margin-bottom:10px">${icon('lock')} ${t('acq.locked')}</p>` : '';
+  return `${rumorsHTML(G)}<div class="lbl" style="margin-bottom:8px">${t('mkt.tab.rivals')}</div>${head}<div class="col" style="gap:8px">${rows
     .map((c, i) => {
       const last = G.market.releases.filter((r) => r.comp === c.id).slice(-1)[0];
-      return `<div class="card row" style="gap:14px"><div class="rk disp">${i + 1}</div><div class="dotc" style="background:${c.color}"></div><div style="flex:1;min-width:0"><b>${esc(c.name)}</b><div class="faint" style="font-size:12px">${last ? t('mkt.lastRel', { title: esc(L(last.title)), v: last.score.toFixed(1) }) : t('mkt.noRel')}</div></div>
+      return `<div class="card row rv-row ${c.owned ? 'owned' : ''}" style="gap:14px"><div class="rk disp">${i + 1}</div><div class="dotc" style="background:${c.color}"></div><div style="flex:1;min-width:0"><b>${esc(c.name)}</b><div class="faint" style="font-size:12px">${last ? t('mkt.lastRel', { title: esc(L(last.title)), v: last.score.toFixed(1) }) : t('mkt.noRel')}</div></div>
       <div class="rv-str" style="width:120px">${bar(((c.strength - 0.4) / 1.3) * 100, c.color, 'thin')}<div class="faint" style="font-size:11px;margin-top:3px">${t('mkt.strength')}</div></div>
-      <div style="text-align:right;min-width:60px"><div class="disp" style="font-size:23px;color:var(--gold)">${c.best ? c.best.toFixed(1) : '–'}</div><div class="faint" style="font-size:11px">${t('mkt.games', { n: c.games })}</div></div></div>`;
+      <div style="text-align:right;min-width:60px"><div class="disp" style="font-size:23px;color:var(--gold)">${c.best ? c.best.toFixed(1) : '–'}</div><div class="faint" style="font-size:11px">${t('mkt.games', { n: c.games })}</div></div>${acqCell(G, c)}</div>`;
     })
     .join('')}</div>`;
 }
@@ -142,6 +157,13 @@ regWin({
 });
 act('m-tab', (el) => {
   M.tab = el.dataset.id;
+  UI.refresh();
+});
+act('m-acq', (el) => {
+  const G = UI.app.G;
+  const r = acquire(G, +el.dataset.id);
+  if (r === true) sfx.play('fanfare');
+  else if (r) errToast(r);
   UI.refresh();
 });
 act('m-buy', (el) => {
