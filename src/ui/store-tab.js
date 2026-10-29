@@ -1,10 +1,12 @@
-import { esc, icon, t, tn, UI, act, bar, money, errToast } from './core.js';
+import { esc, icon, t, tn, L, UI, act, bar, money, errToast } from './core.js';
+import { coverImg } from '../render/covers.js';
+import { PLATFORM } from '../data/platforms.js';
 import { sfx } from '../audio/sfx.js';
 import { fmtNum } from '../core/util.js';
 import { yearOf } from '../sim/const.js';
 import {
   OTHER_CUT, PAY_FEE, FEES, SUPPORT, ADS, SALES, canStore, storeUsers, discOf, reachTarget, storeScale, featOf, switchLeft,
-  saleSeason, saleIn, saleOf, setPolicy, setFee, setSupport, setAds, setExclusive, setPaused, setSale,
+  saleSeason, saleIn, saleOf, storeChart, setPolicy, setFee, setSupport, setAds, setExclusive, setPaused, setSale,
 } from '../sim/store.js';
 
 // Marknadsfönstrets flik Egen butik: användare, förtroende och upptäckbarhet, strategin (sluten eller öppen), avgiften,
@@ -27,6 +29,24 @@ function policyCard(G, S, id) {
 
 function seg(items, cur, actName, tip) {
   return `<div class="seg wrap-seg">${items.map((label, i) => `<button class="${cur === i ? 'on' : ''}" data-act="${actName}" data-i="${i}" ${tip ? `data-tip="${esc(tip(i))}"` : ''}>${label}</button>`).join('')}</div>`;
+}
+
+// Topplistan: det som säljer mest i butiken den här veckan, med vems spel det är
+const KIND_TAG = { own: ['dist.k.own', 'var(--accent)'], group: ['dist.k.group', 'var(--gold)'], ext: ['dist.k.ext', 'var(--design)'] };
+function chart(G) {
+  const rows = storeChart(G, 5);
+  const body = rows.length
+    ? rows
+        .map((r, i) => {
+          const title = L(r.title);
+          const [k, c] = KIND_TAG[r.kind];
+          return `<div class="chart-row ${r.kind === 'own' ? 'yours' : ''}"><div class="rk disp">${i + 1}</div>${coverImg({ id: r.id, title, topic: r.topic, genre: r.genre, platform: r.platform }, 32)}
+        <div style="flex:1;min-width:0"><b class="ell">${esc(title)}</b><div class="faint ell" style="font-size:12px">${esc(r.studio)} · ${esc(PLATFORM[r.platform].name)}</div></div>
+        <div style="text-align:right"><span class="tag" style="--c:${c}">${t(k)}</span><div class="num" style="font-size:12px;margin-top:4px">${t('dist.perWeek', { v: money(r.v) })}</div></div></div>`;
+        })
+        .join('')
+    : `<p class="hint">${t('dist.chartNone')}</p>`;
+  return `<div class="card" style="margin-top:14px"><div class="lbl" style="margin-bottom:8px">${t('dist.chart')}</div><div class="col dist-chart" style="gap:6px">${body}</div></div>`;
 }
 
 // Säsongsrean: rabattnivå, när nästa rea börjar och hur många som väntar på den
@@ -92,6 +112,7 @@ export function storeTab(G) {
       <div class="counter" style="--c:${tone(disc)}" data-tip="${esc(t('dist.discTip'))}"><div class="v num">${Math.round(disc)}</div><div class="k">${t('dist.disc')}</div><div style="margin-top:6px">${bar(disc, tone(disc), 'thin')}</div></div>
       ${open ? `<div class="counter" style="--c:var(--design)" data-tip="${esc(t('dist.devsTip'))}"><div class="v num">${t('dist.pct', { n: pct(S.dev) })}</div><div class="k">${t('dist.devs')}</div><div class="faint" style="font-size:11px;margin-top:4px">${t('dist.devsK')}</div></div>` : ''}
     </div>
+    ${chart(G)}
     <div class="lbl" style="margin:18px 0 8px">${t('dist.policy')}</div>
     <div class="dist-pol">${policyCard(G, S, 'closed')}${policyCard(G, S, 'open')}</div>
     ${wait > 0 ? `<p class="hint" style="margin-top:8px">${icon('clock')} ${tn('dist.switchWait', wait)}</p>` : open ? `<p class="hint" style="margin-top:8px">${t('dist.closeWarn')}</p>` : ''}

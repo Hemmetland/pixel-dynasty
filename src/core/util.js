@@ -6,7 +6,7 @@ export const esc = (s) =>
   String(s).replace(/[&<>"']/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' })[c]);
 
 export function fmtMoney(n, short = true) {
-  const neg = n < 0;
+  const neg = Math.round(n) < 0;
   const a = Math.abs(Math.round(n));
   let s;
   if (short && a >= 1e9) s = (a / 1e9).toFixed(a >= 1e10 ? 1 : 2) + 'B';

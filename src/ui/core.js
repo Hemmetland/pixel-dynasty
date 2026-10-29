@@ -263,7 +263,7 @@ export function errToast(r) {
 
 export const bar = (pct, color, cls = '') => `<div class="bar ${cls}" style="--c:${color}"><i style="width:${Math.max(0, Math.min(100, pct))}%"></i></div>`;
 export const money = (n) => {
-  const neg = n < 0;
+  const neg = Math.round(n) < 0; // under en halv dollar blir $0, inte −$0
   const a = Math.abs(Math.round(n));
   let s;
   if (a >= 1e9) s = (a / 1e9).toFixed(a >= 1e10 ? 1 : 2) + 'B';

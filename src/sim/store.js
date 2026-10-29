@@ -369,6 +369,40 @@ export function setExclusive(G, on) {
   return true;
 }
 
+// Butikens topplista den här veckan: dina spel och portar, koncernens spel och (i en öppen butik) andra förlags pc-spel.
+// De andra förlagens del av butikens försäljning (pcMarket, som i storeWeek) fördelas på deras pc-spel som säljer just nu.
+export function storeChart(G, n = 5) {
+  const S = G.store;
+  if (!S || S.paused) return [];
+  const rows = [];
+  const traffic = saleSeason(G.t) !== undefined && saleOf(S) > 0 ? 1 + SALES[saleOf(S)].traffic : 1 - (S.wait || 0) * WAIT_FULL;
+  const now = (x) => isPcPlat(x.platform) && x.weekly.length === G.t - x.t && x.weekly.length;
+  const row = (x, title, studio, kind, v) => v > 0 && rows.push({ id: x.id, title, studio, kind, v, score: x.score, platform: x.platform, genre: x.genre, topic: x.topic });
+  for (const g of G.games) {
+    if (now(g)) row(g, g.title, G.studio, 'own', (g.weekly[g.weekly.length - 1] / (1 - OTHER_CUT)) * via(S, g));
+    for (const p of g.ports || []) if (now(p)) row({ ...g, ...p, id: g.id }, g.title, G.studio, 'own', (p.weekly[p.weekly.length - 1] / (1 - OTHER_CUT)) * via(S, p));
+  }
+  const owned = new Map((G.comps || []).filter((c) => c.owned).map((c) => [c.id, c]));
+  const ext = [];
+  for (const r of G.market.releases) {
+    if (!isPcPlat(r.platform)) continue;
+    const w = G.t - r.t;
+    const c = curveFor(r.score, r.tail || 1)[w];
+    if (w < 0 || !c) continue;
+    const o = owned.get(r.comp);
+    if (o && r.t >= o.ownedT) row(r, r.title, r.studio, 'group', r.total * c * S.reach * traffic);
+    else if (!o) ext.push([r, r.total * c]);
+  }
+  for (const d of G.pub ? G.pub.deals : []) if (d.out && now(d)) row(d, d.title, d.studio, 'group', (d.weekly[d.weekly.length - 1] / PUB_SHARE) * S.reach);
+  if (S.policy === 'open' && S.dev > 0 && ext.length) {
+    const all = pcMarket(G) * S.reach * S.dev * traffic;
+    const sum = ext.reduce((a, [, w]) => a + w, 0);
+    for (const [r, w] of ext) row(r, r.title, r.studio, 'ext', (all * w) / sum);
+  }
+  rows.sort((a, b) => b.v - a.v);
+  return rows.slice(0, n);
+}
+
 // Månadens fasta kostnader (för finansfönstrets utgiftstakt)
 export function storeCostMonth(G) {
   if (!G.store || G.store.paused) return 0;

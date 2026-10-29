@@ -327,6 +327,14 @@ ok(true, 'alla händelser körda');
   B.wait = 0; S.storeRelease(GS, full); B.wait = w2; S.storeRelease(GS, waited);
   ok(waited.total < full.total, 'spelare som väntar på rean köper mindre vid släpp');
   GS.games.pop();
+  const pol0 = B.policy, dev0 = B.dev;
+  B.policy = 'open'; B.dev = 0.5;
+  GS.market.releases.push({ id: 'rv', t: GS.t - 2, comp: 'nobody', studio: 'Rival', title: 'Rival', score: 7, total: 2e6, platform: 'pc', tail: 1 });
+  GS.games.push({ id: 'mine', t: GS.t - 2, title: 'Mine', score: 8, total: 1e6, platform: 'pc', weekly: [1e4, 2e4] });
+  const top = S.storeChart(GS, 5);
+  GS.market.releases.pop(); GS.games.pop();
+  B.policy = pol0; B.dev = dev0;
+  ok(top.length === 2 && top.length <= 5 && top.every((r, i) => r.v > 0 && (!i || top[i - 1].v >= r.v) && ['own', 'group', 'ext'].includes(r.kind)), 'butikens topplista visar det som säljer mest (' + top.map((r) => r.kind).join(', ') + ')');
   ok(GS.rng === rng0, 'butiken rör inte spelets slumpföljd');
   const GJ = JSON.parse(JSON.stringify(GS));
   for (let i = 0; i < 30; i++) { GJ.t++; S.storeWeek(GJ); }
