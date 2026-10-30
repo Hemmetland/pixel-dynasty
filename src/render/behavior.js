@@ -429,6 +429,11 @@ function scriptPose(S, act, m, a) {
       return setPose(a, 'laptop', true);
     case 'fac':
       if (m.role === 'talk') return setPose(a, speak ? 'talk' : 'stand', false);
+      // i ett rum där man bara står (trädgården, zenrummet) sträcker vartannat besök på sig först
+      if (m.s.pose === 'stand' && act.id % 2 === 0 && act.t < 8 / 3 && stretch()) {
+        if (a.pose !== 'stretch') a.stretchT0 = a.t;
+        return setPose(a, 'stretch', false);
+      }
       return setPose(a, m.s.pose === 'cheer' ? (Math.floor(a.t * 0.6) % 2 ? 'cheer' : 'stand') : m.s.pose, false);
     case 'deal':
       return setPose(a, 'shake', false);
