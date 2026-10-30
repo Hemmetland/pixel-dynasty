@@ -1,0 +1,55 @@
+// Egen hårdvara: produkttyper, designval och tillverkningspartners. Siffrorna kommer ur forskningstrådens balansunderlag
+// (docs/HARDWARE_SPEC.md). Design och prototyp kostar i basårets dollar och skalas med moneyScale; priset till kund är
+// nominellt (ett grafikkort kostar runt 249 $ oavsett år) och enhetskostnaden faller varje år efter lanseringen.
+
+// res = forskningen som öppnar typen, base = basår, weeks = designtid (Mellan), design och proto = kostnad (Mellan),
+// price = förslagspris och marknadens referenspris, unit = enhetskostnad vid lansering som andel av priset, fall =
+// kostnadsfall per år, life = livscykel i år, decay = hur fort prestandan åldras (relPerf / (1 + decay · år)),
+// share = basandel (BASE), max = högsta andel, elast = priselasticitet, market = [år, enheter per år för alla
+// tillverkare], linjärt mellan punkterna, drv = drivrutinsteamets kostnad mot ett grafikkorts.
+const T = (id, res, base, weeks, design, proto, price, unit, fall, life, decay, share, max, elast, market, ic, color, drv, name) => ({
+  id, res, base, weeks, design, proto, price, unit, fall, life, decay, share, max, elast, market, ic, color, drv, name,
+});
+const roman = (n) => ['I', 'II', 'III', 'IV', 'V', 'VI', 'VII', 'VIII', 'IX', 'X'][n - 1] || String(n);
+export const HW_TYPES = {
+  sound: T('sound', 'h_sound', 1990, 16, 120000, 30000, 149, 0.5, 0.08, 3, 0.22, 0.15, 0.35, 1.6,
+    [[1989, 9000], [1990, 15000], [1995, 60000], [2000, 40000], [2004, 10000], [2010, 4000]], 'music', '#f6b84a', 0.25, (n) => `Sonora ${16 * 2 ** (n - 1)}`),
+  gpu: T('gpu', 'h_gpu', 1996, 30, 1000000, 200000, 249, 0.6, 0.1, 2.5, 0.22, 0.11, 0.35, 1.6,
+    [[1995, 15000], [1996, 30000], [2000, 120000], [2005, 240000], [2010, 340000], [2017, 500000], [2025, 560000]], 'gpu', '#6ee76a', 1, (n) => `Spectra ${n * 100}`),
+  pc: T('pc', 'h_pc', 1999, 20, 600000, 100000, 1499, 0.8, 0.06, 2, 0.22, 0.07, 0.2, 1.2,
+    [[1998, 10000], [1999, 16000], [2005, 60000], [2012, 110000], [2020, 180000]], 'pc', '#4aa8ff', 0.5, (n) => `Forge ${roman(n)}`),
+  cpu: T('cpu', 'h_cpu', 2000, 48, 2500000, 500000, 199, 0.4, 0.1, 3, 0.18, 0.06, 0.15, 1.3,
+    [[1999, 270000], [2000, 300000], [2010, 600000], [2020, 750000]], 'cpu', '#ff8fd2', 1, (n) => `Quark ${n}`),
+};
+export const HW_IDS = ['sound', 'gpu', 'pc', 'cpu'];
+// Typer där du väljer arkitektur: köpt kärna (standard) eller egen
+export const ARCH_TYPES = new Set(['cpu']);
+// Komponenter som en speldator kan byggas med
+export const PC_PARTS = ['gpu', 'cpu'];
+
+// Prestandamål: prestanda, designtid, designkostnad, enhetskostnad, prototyprisk och förslagspris mot marknaden
+export const HW_CLASSES = [
+  { id: 'budget', perf: 0.85, weeks: 0.75, design: 0.6, unit: 0.8, risk: 0.05, price: 0.8, suffix: ' LE' },
+  { id: 'mid', perf: 1, weeks: 1, design: 1, unit: 1, risk: 0.12, price: 1, suffix: '' },
+  { id: 'top', perf: 1.15, weeks: 1.3, design: 1.6, unit: 1.25, risk: 0.25, price: 1.3, suffix: ' Pro' },
+];
+// Kvalitet: felfrekvens och enhetskostnad
+export const HW_QUALITY = [
+  { id: 'normal', defect: 0.025, unit: 1 },
+  { id: 'high', defect: 0.01, unit: 1.06 },
+];
+// Arkitektur: standard = köpt kärna (kompatibel, men royalty per såld enhet), egen = snabbare men ny för utvecklarna
+export const HW_ARCH = [
+  { id: 'std', perf: 1, compat: 80, royalty: 0.06 },
+  { id: 'own', perf: 1.15, compat: 45, royalty: 0 },
+];
+
+// Tillverkningspartners (fiktiva). cost = enhetskostnad, defect = extra felfrekvens, lead = ledtid i veckor, min = minsta
+// order, cap = kapacitet per år, short = risk per vecka för komponentbrist, perf = extra prestanda (spetsnod).
+export const HW_PARTNERS = [
+  { id: 'halden', name: 'Halden Elektronik', from: 1988, kind: 'asm', cost: 1.1, defect: 0.01, lead: 6, min: 2000, cap: 60000, short: 0, perf: 0 },
+  { id: 'meridian', name: 'Meridian Foundry', from: 1995, kind: 'fab', cost: 1, defect: 0.005, lead: 12, min: 20000, cap: 600000, short: 0.004, perf: 0 },
+  { id: 'kaori', name: 'Kaori Precision', from: 2000, kind: 'mass', cost: 0.88, defect: 0.015, lead: 16, min: 100000, cap: 4000000, short: 0.006, perf: 0 },
+  { id: 'vela', name: 'Vela Semiconductor', from: 2005, kind: 'node', cost: 1.15, defect: 0.003, lead: 14, min: 50000, cap: 800000, short: 0.004, perf: 0.08 },
+];
+export const HW_PARTNER = Object.fromEntries(HW_PARTNERS.map((p) => [p.id, p]));

@@ -1,6 +1,6 @@
 // Mäter progressionstakten: kör simulatorbotten över flera seeds och sammanfattar
 // när kontoren byggs ut, hur pengarna växer och hur första spelen betygsätts.
-// node test/pacing.mjs [--seeds=6] [--diff=normal] [--casual|--mid] [--ports] [--publish] [--lic] [--acq] [--group] [--store] [--end=2020]
+// node test/pacing.mjs [--seeds=6] [--diff=normal] [--casual|--mid] [--ports] [--publish] [--lic] [--acq] [--group] [--store] [--hw] [--end=2020]
 import { execFile } from 'node:child_process';
 import { promisify } from 'node:util';
 import { fileURLToPath } from 'node:url';
@@ -20,6 +20,7 @@ const lic = args.includes('--lic');
 const acq = args.includes('--acq');
 const group = args.includes('--group');
 const store = args.includes('--store');
+const hw = args.includes('--hw');
 
 async function one(seed) {
   const a = [resolve(here, 'sim.mjs'), `--seed=${seed}`, `--diff=${diff}`, `--end=${end}`, '-v'];
@@ -30,6 +31,7 @@ async function one(seed) {
   if (lic) a.push('--lic');
   if (acq) a.push('--acq');
   if (group) a.push('--group');
+  if (hw) a.push('--hw');
   if (store) a.push('--store');
   const { stdout } = await run('node', a, { maxBuffer: 1 << 26 });
   const years = [];

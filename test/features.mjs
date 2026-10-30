@@ -415,6 +415,75 @@ ok(true, 'alla händelser körda');
   ok(d.out && d.score === d.q && d.revenue > 0 && GB.stats.published >= 2, 'spelet släpps och säljer (' + Math.round(d.revenue) + ' på förskott ' + d.advance + ')');
   ok(Number.isFinite(S.labelProfit(GB)), 'förlagets resultat räknas');
 }
+// egen hårdvara: forskningen öppnar labbet, designen betalas per vecka, prototyp, lansering med första order, leverans i
+// partnerns takt, försäljning, optimering för egna pc-spel, beslut, betyget åldras, nedläggning, chef och sparning
+{
+  const GH = S.newGame({ studio: 'H', seed: 21 }); S.makeCompetitors(GH); S.initWorld(GH);
+  GH.t = 48 * 17; GH.money = 5e7;
+  S.hwWeek(GH);
+  ok(!GH.hw, 'hårdvaran kräver forskning');
+  Object.assign(GH.u.flags, { hw: true, hw_sound: true, hw_gpu: true, hw_pc: true });
+  const rng0 = GH.rng;
+  GH.t++; S.hwWeek(GH);
+  const H = GH.hw;
+  ok(H && H.rep === S.REP0 && S.labSlots(H) === 1 && S.openTypes(GH).join() === 'sound,gpu,pc', 'labbet öppnas med en designplats och de forskade typerna');
+  const spec = { type: 'gpu', cls: 'mid', qual: 'normal' };
+  const cost = S.designCost(GH, spec), wk = S.designWeeks(GH, spec);
+  ok(S.startDesign(GH, spec) === true && S.startDesign(GH, { type: 'sound', cls: 'mid' }) === 'slots', 'en design åt gången med en plats');
+  ok(S.upgradeLab(GH) === true && S.labSlots(H) === 2 && S.startDesign(GH, { type: 'sound', cls: 'budget' }) === true, 'ett utbyggt labb tar två projekt');
+  S.cancelDesign(GH, H.projects[1].id);
+  const m0 = GH.money;
+  GH.t++; S.hwWeek(GH);
+  ok(Math.abs(m0 - GH.money - cost / wk) < 1, 'designen betalas per vecka');
+  const J = H.projects[0];
+  S.pauseDesign(GH, J.id, true); const d0 = J.done; GH.t++; S.hwWeek(GH);
+  ok(J.done === d0 && H.projects.length === 1, 'ett pausat projekt står still, ett avbrutet är borta');
+  S.pauseDesign(GH, J.id, false);
+  for (let i = 0; i < wk + 2 && J.state === 'design'; i++) { GH.t++; S.hwWeek(GH); }
+  if (J.state === 'fail') ok(S.resolveProto(GH, J.id, 'ship') === true && J.bad, 'en misslyckad prototyp kan skeppas ändå');
+  ok(J.state === 'ready' && J.perf > 0.9 && J.perf < 1.12, 'prototypen är klar (prestanda ' + J.perf.toFixed(2) + ')');
+  const m1 = GH.money;
+  ok(S.launch(GH, J.id, { partner: 'halden', price: S.suggestPrice('gpu', 'mid'), units: 6000 }) === true, 'lansering med första order');
+  const P = H.products[0];
+  ok(P.state === 'prod' && H.orders.length === 1 && GH.money < m1 && P.cost === m1 - GH.money, 'ordern betalas direkt och produkten tillverkas');
+  for (let i = 0; i < 10 && P.state === 'prod'; i++) { GH.t++; S.hwWeek(GH); }
+  ok(P.state === 'market' && P.t - P.tReady === 6 && P.stock + P.sold <= 1251, 'ute när första leveransen kommer, i partnerns takt (' + Math.round(P.stock + P.sold) + ')');
+  for (let i = 0; i < 30; i++) { GH.t++; S.hwWeek(GH); }
+  ok(P.sold > 0 && P.rev > 0 && P.share > 0 && H.tot.rev === P.rev, 'produkten säljer (' + Math.round(P.sold) + ' st, andel ' + (P.share * 100).toFixed(1) + ' %)');
+  const lo = S.targetShare(GH, P, P.price * 0.8), hi = S.targetShare(GH, P, P.price * 1.25);
+  ok(lo > S.targetShare(GH, P) && hi < S.targetShare(GH, P), 'ett lägre pris tar större andel');
+  ok(S.scoreOf(GH, P, GH.t + 96) < S.scoreOf(GH, P) - 0.5, 'betyget faller när produkten åldras');
+  // en speldator med eget grafikkort på marknaden blir billigare
+  ok(S.unitCost(GH, { type: 'pc', cls: 'mid', qual: 'normal', t: null }, 'halden') < S.unitCost(GH, { type: 'pc', cls: 'mid', qual: 'normal', t: null, parts: [] }, 'halden'), 'egna komponenter gör speldatorn billigare');
+  GH.engines.push({ id: 999, name: 'E', feats: ['poly'], tech: 10, built: 1997 });
+  P.opt = 999;
+  const game = { id: 77, title: 'X', platform: 'pc', engineId: 999, score: 8.5, total: 1e6 };
+  S.hwRelease(GH, game);
+  ok(game.total > 1e6 && game.total <= 1.1e6 + 1 && P.boost > 0 && game.hwOpt.pct >= 1, 'pc-spel på den optimerade motorn säljer mer och lyfter produkten (+' + game.hwOpt.pct + ' %)');
+  const g2 = { id: 78, title: 'Y', platform: 'hikari8', engineId: 999, score: 8, total: 1e6 };
+  S.hwRelease(GH, g2);
+  ok(g2.total === 1e6, 'konsolspel påverkas inte');
+  P.issue = { kind: 'batch', units: 100, value: 10000, t: GH.t };
+  const m2 = GH.money, r0 = H.rep;
+  ok(S.resolveIssue(GH, P.id, 'recall') === true && GH.money === m2 - 10000 * S.RECALL && !P.issue && H.rep === r0 - 5, 'en återkallelse kostar och sänker ryktet');
+  P.bench = 'offer';
+  const s0 = S.scoreOf(GH, P);
+  ok(S.resolveBench(GH, P.id, true) === true && Math.abs(S.scoreOf(GH, P) - s0 - 0.5) < 0.11, 'fusk i testerna höjer betyget ett tag');
+  ok(S.setPrice(GH, P.id, S.stepPrice(P.price, -1)) === true && P.price < S.suggestPrice('gpu', 'mid'), 'priset går att sänka');
+  ok(S.setPartner(GH, P.id, 'meridian') === true && S.relOf(GH, 'halden') === 50 + 2 - 5, 'ett partnerbyte skadar relationen (efter en levererad order)');
+  ok(GH.rng === rng0, 'hårdvaran rör inte spelets slumpföljd');
+  GH.staff.push(S.makeCandidate(GH, 1));
+  const ch = S.chiefCandidates(GH)[0];
+  const n0 = GH.staff.length;
+  ok(S.setChief(GH, ch.id) === true && GH.staff.length === n0 - 1 && S.chiefPerf(GH) > 0 && S.recallChief(GH) === true && GH.staff.length === n0, 'en chef lämnar teamet och kan kallas hem');
+  P.auto = false;
+  S.orderMore(GH, P.id, 20000);
+  ok(S.discontinue(GH, P.id) === true && P.state === 'ended' && P.stock === 0 && !H.orders.some((o) => o.p === P.id) && S.relOf(GH, 'meridian') === 40, 'nedläggning avbokar order och rear ut lagret');
+  const GJ = JSON.parse(JSON.stringify(GH));
+  ok(S.startDesign(GJ, { type: 'sound', cls: 'mid' }) === true, 'efter sparning går det att designa');
+  for (let i = 0; i < 40; i++) { GJ.t++; S.hwWeek(GJ); }
+  ok(Number.isFinite(GJ.money) && GJ.hw.projects.length + GJ.hw.products.length >= 2, 'hårdvaran fortsätter efter sparning');
+}
 // bailout + konkurs
 const G3 = S.newGame({ studio: 'B', seed: 3 }); S.makeCompetitors(G3); S.initWorld(G3);
 G3.money = -5000;

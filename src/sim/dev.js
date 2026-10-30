@@ -14,6 +14,7 @@ import { phaseCats, normFocus, startFocus, evaluate, compatOf, parPerTick, isNov
 import { startSales, forecast } from './sales.js';
 import { storeRelease } from './store.js';
 import { groupRelease } from './group.js';
+import { hwRelease } from './hardware.js';
 import { crowding } from './market.js';
 import { note } from './news.js';
 import { LIVE_SCOPES, EXP_SCOPES, LIVE_DEV, canGoLive, launchLive, releaseExpansion } from './live.js';
@@ -302,6 +303,7 @@ export function releaseGame(G) {
   game.crowd = cr.mult;
   game.crowdBy = cr.rivals.slice(0, 3).map((r) => ({ studio: r.studio, title: r.title, future: r.future }));
   startSales(G, game);
+  hwRelease(G, game);
   storeRelease(G, game);
   groupRelease(G, game);
   // en uppföljare som slår föregångaren växer serien och lockar nya fans; annars tröttnar serien lite

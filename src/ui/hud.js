@@ -12,6 +12,8 @@ import { canHire, workers, teamFatigue, FATIGUE_MAX, FATIGUE_GRACE } from '../si
 import { canLicense } from '../sim/actions.js';
 import { RESEARCH, RES } from '../data/research.js';
 import { canResearch } from '../sim/research.js';
+import { canHw } from '../sim/hardware.js';
+import { hwDecisions } from './win-hardware.js';
 import { lang } from '../core/i18n.js';
 import { fmtNum, clamp } from '../core/util.js';
 import { music } from '../audio/sfx.js';
@@ -31,6 +33,7 @@ const DOCK = [
   { id: 'finance', ic: 'bank', k: 'dock.finance' },
   { id: 'library', ic: 'gamepad', k: 'dock.games' },
   { id: 'contracts', ic: 'hammer', k: 'dock.work' },
+  { id: 'hardware', ic: 'gpu', k: 'dock.hw', when: (G) => canHw(G) },
 ];
 
 let els = {};
@@ -155,8 +158,13 @@ export function setHUDVisible(on) {
 }
 
 // Dockans ikoner: pixelkonst 'ui.dock.<id>' ur manifestet om den finns, annars linjeikonen.
+// Knappar med when (Hårdvara) visas först när de öppnats; dockan byggs om när uppsättningen ändras (updateDock).
+let dockKey = '';
+const dockItems = () => DOCK.filter((d) => !d.when || (UI.app?.G && d.when(UI.app.G)));
 export function buildDock() {
-  els.dock.innerHTML = DOCK.map((d) => `<button class="dk ${d.create ? 'create' : ''}" data-act="dock" data-id="${d.id}" data-key="${d.id}" data-tip="${t(d.k + '.tip')}">${pixIcon(`ui.dock.${d.id}`, d.ic, 26)}<span class="l">${t(d.k)}</span></button>`).join('');
+  const items = dockItems();
+  dockKey = items.map((d) => d.id).join();
+  els.dock.innerHTML = items.map((d) => `<button class="dk ${d.create ? 'create' : ''}" data-act="dock" data-id="${d.id}" data-key="${d.id}" data-tip="${t(d.k + '.tip')}">${pixIcon(`ui.dock.${d.id}`, d.ic, 26)}<span class="l">${t(d.k)}</span></button>`).join('');
 }
 // Sprites laddas efter att dockan byggts: bygg om den (prickar, märken och vald knapp läggs tillbaka av updateDock).
 onSpritesLoaded(() => els.dock && buildDock());
@@ -448,6 +456,7 @@ export function updateDock(G) {
   const now = performance.now();
   if (now - lastDock < 450) return;
   lastDock = now;
+  if (dockItems().map((d) => d.id).join() !== dockKey) buildDock();
   fitHUD();
   const set = (id, kind, val) => {
     const b = $(`.dk[data-key="${id}"]`, els.dock);
@@ -477,6 +486,7 @@ export function updateDock(G) {
   const lic = Object.keys(PLATFORM).some((id) => canLicense(G, id) === true && PLATFORM[id].license > 0 && G.money > PLATFORM[id].license * 3 && PLATFORM[id].weight > 18);
   set('market', 'dot', lic && G.flags.seenPlat !== G.t);
   set('library', 'badge', G.fr ? G.fr.offers.filter((o) => !o.seen).length : 0);
+  set('hardware', 'badge', hwDecisions(G));
   set('contracts', 'badge', (!G.job ? G.contracts.length : 0) + (G.pub ? G.pub.pitches.filter((p) => !p.seen).length : 0));
   for (const b of $$('.dk', els.dock)) b.classList.toggle('on', UI.cur === b.dataset.key);
 }

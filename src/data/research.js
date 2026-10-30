@@ -14,6 +14,7 @@ export const RESEARCH_CATS = [
   { id: 'tech', color: '#4aa8ff', name: { sv: 'Teknik', en: 'Technology' } },
   { id: 'biz', color: '#6ee76a', name: { sv: 'Affärer', en: 'Business' } },
   { id: 'staff', color: '#ff8fd2', name: { sv: 'Personal', en: 'People' } },
+  { id: 'hw', color: '#d99a5b', name: { sv: 'Hårdvara', en: 'Hardware' } },
 ];
 
 export const RESEARCH = [
@@ -96,6 +97,14 @@ export const RESEARCH = [
   R('s_hr1', 'staff', 'Rekryteringsbyrå', 'Recruiting Agency', 'Fler och bättre kandidater varje månad.', 'More and better candidates every month.', 70, 0, 4, [], 1983, { flags: ['hr1'] }, { hire: 1 }, 's_hr'),
   R('s_hr2', 'staff', 'Headhunters', 'Headhunters', 'Elitprofiler dyker upp.', 'Elite profiles show up.', 300, 0, 5, ['s_hr1'], 1992, { flags: ['hr2'] }, { hire: 1 }, 's_hr'),
   R('s_perks', 'staff', 'Personalförmåner', 'Staff Perks', 'Högre arbetsglädje och mindre personalomsättning.', 'Higher morale and less staff turnover.', 50, 0, 4, [], 1984, {}, { morale: 8 }, 's_perk'),
+
+  // ── Hårdvara (egna produkter, sim/hardware.js) ──────────────
+  R('h_lab', 'hw', 'Hårdvarulabb', 'Hardware Lab', 'Öppna en hårdvaruavdelning som designar egna produkter vid sidan av spelen. Tillverkningen sköts av externa partners.', 'Open a hardware division that designs your own products alongside the games. Outside partners handle manufacturing.', 160, 40000, 5, ['p_sound', 'p_engine'], 1989, { flags: ['hw'] }, {}, null),
+  R('h_sound', 'hw', 'Ljudkort', 'Sound Cards', 'Produkttyp: ljudkort för pc. En liten marknad, men billig att komma in på.', 'Product type: PC sound cards. A small market, but cheap to get into.', 120, 30000, 4, ['h_lab'], 1989, { flags: ['hw_sound'] }, {}, null),
+  R('h_gpu', 'hw', '3D-grafikkretsar', '3D Graphics Chips', 'Produkttyp: grafikkort. Dyrt att designa, men pc-spelarna köper ett nytt vart par år.', 'Product type: graphics cards. Costly to design, but PC players buy a new one every couple of years.', 900, 400000, 7, ['h_lab', 'f_poly'], 1995, { flags: ['hw_gpu'] }, {}, null),
+  R('h_driver', 'hw', 'Drivrutinsteam', 'Driver Team', '+15 kompatibilitet på nya komponenter, och ett drivrutinsteam kan förbättra dem efter lanseringen.', '+15 compatibility on new components, and a driver team can keep improving them after launch.', 400, 150000, 5, ['h_gpu'], 1996, { flags: ['hw_driver'] }, {}, null),
+  R('h_pc', 'hw', 'Speldatorer', 'Gaming PCs', 'Produkttyp: färdigbyggda speldatorer. Med egna grafikkort och processorer blir de billigare och snabbare.', 'Product type: prebuilt gaming PCs. Your own graphics cards and processors make them cheaper and faster.', 700, 300000, 6, ['h_gpu'], 1998, { flags: ['hw_pc'] }, {}, null),
+  R('h_cpu', 'hw', 'Processordesign', 'Processor Design', 'Produkttyp: processorer, med köpt kärna eller egen arkitektur (snabbare och utan royalty, men utvecklarna måste lära sig den).', 'Product type: processors, with a licensed core or your own architecture (faster and royalty-free, but developers have to learn it).', 2400, 2500000, 9, ['h_gpu'], 1999, { flags: ['hw_cpu'] }, {}, null),
 ];
 // Förfiningar: återkommande forskning när trädet tar slut. Varje nivå ger perk igen och kostar mer (sim/research.js
 // researchCost: rp × 2^nivå, pengar × årets penningvärde × 1,5^nivå). max = antal nivåer; nivå n går att forska från
@@ -108,6 +117,8 @@ export const REFINES = [
   F('x_brand', 'biz', 'Varumärkesbygge', 'Brand Building', 'Varje nivå: dina spel säljer 2 % mer.', 'Each level: your games sell 2% more.', 400, 40000, ['b_mktdept'], 8, { sales: 0.02 }, 1989),
   F('x_media', 'biz', 'Mediekontakter', 'Media Relations', 'Varje nivå: marknadsföring kostar 4 % mindre.', 'Each level: marketing costs 4% less.', 300, 20000, ['b_mkt3'], 6, { mktCost: 0.04 }, 1989),
   F('x_craft', 'staff', 'Mästarkurser', 'Master Classes', 'Varje nivå: utbildning når 5 poäng högre.', 'Each level: training reaches 5 points higher.', 350, 25000, ['s_train2'], 6, { skillCap: 5 }, 1991),
+  F('x_yield', 'hw', 'Tillverkningsoptimering', 'Yield Tuning', 'Varje nivå: din hårdvara kostar 2 % mindre att tillverka.', 'Each level: your hardware costs 2% less to manufacture.', 500, 100000, ['h_lab'], 6, { hwCost: 0.02 }, 1992),
+  F('x_arch', 'hw', 'Arkitekturförfining', 'Architecture Tuning', 'Varje nivå: nya hårdvarudesigner får 1,5 % högre prestanda.', 'Each level: new hardware designs get 1.5% more performance.', 800, 300000, ['h_gpu'], 6, { hwPerf: 0.015 }, 1997),
   F('x_culture', 'staff', 'Studiokultur', 'Studio Culture', 'Varje nivå: teamets humör vilar 2 poäng högre.', 'Each level: team mood settles 2 points higher.', 250, 15000, ['s_perks'], 5, { morale: 2 }, 1985),
 ];
 export const RES = Object.fromEntries([...RESEARCH, ...REFINES].map((r) => [r.id, r]));

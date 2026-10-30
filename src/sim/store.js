@@ -8,6 +8,7 @@ import { spend, earn } from './studio.js';
 import { curveFor, unitRev } from './sales.js';
 import { PUB_SHARE } from './publish.js';
 import { note } from './news.js';
+import { hwReach } from './hardware.js';
 
 // Egen butik (distribution): med forskningen Digital butik bygger studion en butik och launcher för pc-spel. Den del av
 // pc-spelarna som använder butiken (räckvidden) köper dina pc-spel där, så du behåller avgiften som andra butiker annars
@@ -122,7 +123,7 @@ export function reachTarget(G, S = G.store) {
   const discF = 0.75 + 0.5 * discOf(S);
   const adsF = 1 + ADS_REACH * S.ads;
   const cat = catalogPull(G) * (S.policy === 'closed' ? LOYAL : 1);
-  return clamp((0.03 + cat + ext) * trustF * discF * adsF + (S.sb || 0), 0, REACH_MAX);
+  return clamp((0.03 + cat + ext) * trustF * discF * adsF + (S.sb || 0) + hwReach(G), 0, REACH_MAX);
 }
 
 // Förtroendets jämviktsläge: avgiften, supporten och exklusiva spel det senaste året

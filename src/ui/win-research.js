@@ -11,7 +11,7 @@ const NW = 206;
 const NH = 78;
 const GX = 56;
 const GY = 14;
-const CAT_ICON = { prod: 'cog', genre: 'gamepad', topic: 'book', tech: 'cpu', biz: 'chart', staff: 'team' };
+const CAT_ICON = { prod: 'cog', genre: 'gamepad', topic: 'book', tech: 'cpu', biz: 'chart', staff: 'team', hw: 'gpu' };
 const R = { cat: 'all', only: false, sel: null };
 // Pekskärm: första trycket väljer och visar vad forskningen gör, start kräver knappen (eller ett tryck till)
 const touch = () => typeof matchMedia !== 'undefined' && matchMedia('(hover: none)').matches;
