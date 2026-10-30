@@ -34,6 +34,8 @@ function lineChart(pts, color, w = 560, h = 190) {
   return plot({ w, h, svg, labels, dot: { x: X(pts.length - 1), y: Y(last.v), c: color } });
 }
 
+// Uppdelningen visar förra månaden eller förra året
+const FS = { per: 'month' };
 const CAT_KEYS = ['sales', 'subs', 'shop', 'servers', 'contracts', 'awards', 'events', 'loan', 'other', 'salaries', 'rent', 'facilities', 'marketing', 'research', 'licenses', 'interest', 'engines', 'office', 'patches', 'ports', 'publishing', 'licensing', 'subsidiaries', 'acquisitions', 'groupInvest', 'integration', 'store', 'storeOps', 'hardware', 'hwLic', 'hwDev', 'hwMake'];
 
 regWin({
@@ -46,8 +48,15 @@ regWin({
   render(G) {
     const pts = G.hist.cash.slice(-36);
     const lm = G.lastMonth;
-    const net = lm.income - lm.expense;
-    const bd = { ...lm.breakdown };
+    const ly = G.lastYear;
+    const year = FS.per === 'year' && ly;
+    const bd = { ...(year ? ly.bd : lm.breakdown) };
+    // lån räknas inte som resultat
+    const net = year ? Object.entries(bd).reduce((a, [k, v]) => a + (k === 'loan' ? 0 : v), 0) : lm.income - lm.expense;
+    const mnet = lm.income - lm.expense;
+    const per = ly
+      ? `<div class="seg"><button class="${year ? '' : 'on'}" data-act="f-per" data-v="month">${t('fin.perMonth')}</button><button class="${year ? 'on' : ''}" data-act="f-per" data-v="year">${ly.year}</button></div>`
+      : '';
     const rows = Object.entries(bd)
       .filter(([, v]) => Math.abs(v) >= 1)
       .sort((a, b) => b[1] - a[1])
@@ -60,7 +69,7 @@ regWin({
     return `
       <div class="grid" style="grid-template-columns:1.5fr 1fr;gap:20px;align-items:start">
         <div class="col">
-          <div class="card"><div class="row" style="margin-bottom:8px"><div class="lbl">${t('fin.cashChart')}</div><span class="sp"></span><span class="chip c" style="--c:${net >= 0 ? 'var(--good)' : 'var(--bug)'}">${net >= 0 ? '▲' : '▼'} ${money(Math.abs(net))}${t('ui.perMonth')}</span></div>${lineChart(pts, '#7cf29a')}</div>
+          <div class="card"><div class="row" style="margin-bottom:8px"><div class="lbl">${t('fin.cashChart')}</div><span class="sp"></span><span class="chip c" style="--c:${mnet >= 0 ? 'var(--good)' : 'var(--bug)'}">${mnet >= 0 ? '▲' : '▼'} ${money(Math.abs(mnet))}${t('ui.perMonth')}</span></div>${lineChart(pts, '#7cf29a')}</div>
           <div class="grid" style="grid-template-columns:repeat(auto-fit,minmax(150px,1fr))">
             <div class="counter" style="--c:${burn <= 0 ? 'var(--good)' : runway < 3 ? 'var(--bug)' : 'var(--warn)'}"><div class="v num">${money(burn)}</div><div class="k">${t('fin.burn')}</div></div>
             <div class="counter" style="--c:${runway < 3 ? 'var(--bug)' : 'var(--accent)'}"><div class="v num">${runway > 60 ? '∞' : runway.toFixed(1)}</div><div class="k">${t('fin.runway')}</div></div>
@@ -68,7 +77,7 @@ regWin({
           </div>
         </div>
         <div class="col">
-          <div class="card"><div class="lbl" style="margin-bottom:6px">${t('fin.lastMonth')}</div>${rows || `<div class="muted">${t('fin.noData')}</div>`}
+          <div class="card"><div class="row" style="margin-bottom:6px;gap:8px"><div class="lbl">${year ? t('fin.lastYear', { y: ly.year }) : t('fin.lastMonth')}</div><span class="sp"></span>${per}</div>${year && ly.part ? `<p class="hint" style="margin:0 0 6px">${t('fin.partYear')}</p>` : ''}${rows || `<div class="muted">${t('fin.noData')}</div>`}
             <div class="divider"></div><div class="kv"><span><b>${t('fin.net')}</b></span><b class="${net >= 0 ? 'up' : 'down'}">${net >= 0 ? '+' : ''}${money(net)}</b></div></div>
           <div class="card"><div class="row"><div class="lbl">${t('fin.loans')}</div><span class="sp"></span><span class="muted num" style="font-size:12px">${money(loanTotal(G))} / ${money(loanLimit(G))}</span></div>
             ${bar((loanTotal(G) / Math.max(1, loanLimit(G))) * 100, 'var(--warn)', 'thin')}
@@ -88,6 +97,10 @@ act('f-loan', (el) => {
     sfx.play('coin');
     toast(t('toast.loan', { v: `<b>${money(r)}</b>` }), 'money');
   }
+  UI.refresh();
+});
+act('f-per', (el) => {
+  FS.per = el.dataset.v;
   UI.refresh();
 });
 act('f-repay', () => {

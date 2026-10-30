@@ -1,4 +1,4 @@
-import { $, $$, esc, icon, t, L, UI, act, money, toast, errToast } from './core.js';
+import { $, $$, esc, icon, t, L, UI, act, money, toast, errToast, bar } from './core.js';
 import { sfx } from '../audio/sfx.js';
 import { glyphImg } from '../render/glyphs.js';
 import { coverImg } from '../render/covers.js';
@@ -404,12 +404,20 @@ function yearPrompt(app, G, p, finish) {
   const hi = lo + 48;
   const yGames = G.games.filter((g) => g.t >= lo && g.t < hi);
   const hist = G.hist.cash.filter((h) => h.t > lo && h.t <= hi + 1);
-  const rev = G.hist.revenue.filter((h) => h.t > lo && h.t <= hi + 1).reduce((s, x) => s + x.v, 0);
+  // förra årets intäkter per kategori (spelen, uppdrag, hårdvara och resten); en äldre sparning har bara spelförsäljningen
+  const ly = G.lastYear && G.lastYear.year === p.year && !G.lastYear.part ? G.lastYear.bd : null;
+  const inc = ly ? Object.entries(ly).filter(([k, v]) => k !== 'loan' && v >= 1).sort((a, b) => b[1] - a[1]) : [];
+  const rev = ly ? inc.reduce((s, [, v]) => s + v, 0) : G.hist.revenue.filter((h) => h.t > lo && h.t <= hi + 1).reduce((s, x) => s + x.v, 0);
   const cash0 = G.hist.cash.find((h) => h.t > lo - 4 && h.t <= lo + 1)?.v ?? G.money0 ?? 0;
   const cash1 = hist.length ? hist[hist.length - 1].v : G.money;
   const fansNow = G.hist.fans.find((h) => h.t > hi - 1)?.v ?? G.fans;
   const fans0 = G.hist.fans.find((h) => h.t > lo - 4 && h.t <= lo + 1)?.v ?? 0; // samma fönster som cash0 (historiken skrivs var 4:e vecka)
   const best = yGames.slice().sort((a, b) => b.score - a.score)[0];
+  // var pengarna kom ifrån: årets största intäktskategorier (när det finns mer än en)
+  const top = inc.length ? inc[0][1] : 1;
+  const sources = inc.length >= 2
+    ? `<div class="card" style="margin-top:16px"><div class="lbl" style="margin-bottom:8px">${t('year.sources')}</div><div class="col" style="gap:7px">${inc.slice(0, 5).map(([k, v]) => `<div><div class="kv" style="margin-bottom:3px"><span>${t('fin.c.' + k)}</span><b class="up num">+${money(v)}</b></div>${bar((v / top) * 100, 'var(--money)', 'thin')}</div>`).join('')}</div></div>`
+    : '';
   UI.modal(`
     <div class="win-head"><div class="wi" style="--wc:var(--gold)">${icon('calendar')}</div><h2>${t('year.title', { y: p.year })}<div class="sub">${esc(G.studio)}</div></h2></div>
     <div class="win-body">
@@ -420,6 +428,7 @@ function yearPrompt(app, G, p, finish) {
         <div class="counter" style="--c:var(--accent)"><div class="v num">${yGames.length}</div><div class="k">${t('year.games')}</div></div>
       </div>
       ${best ? `<div class="card row" style="margin-top:16px;gap:16px">${coverImg({ id: best.id, title: best.title, topic: best.topic, genre: best.genre, platform: best.platform }, 64)}<div style="flex:1"><div class="lbl">${t('year.best')}</div><div class="h3">${esc(best.title)}</div><div class="muted">${L(TOPIC[best.topic].name)} · ${L(GENRE[best.genre].name)}</div></div><div class="disp" style="font-size:44px;color:${scoreColor(best.score)}">${best.score.toFixed(1)}</div></div>` : `<p class="muted" style="margin-top:16px">${t('year.none')}</p>`}
+      ${sources}
     </div>
     <div class="win-foot"><span class="sp"></span><button class="btn primary lg" data-act="yr-ok">${t('year.next', { y: p.year + 1 })}${icon('arrow')}</button></div>`,
     () => act('yr-ok', () => finish()),

@@ -85,6 +85,13 @@ function monthly(G, d) {
   G.hist.fans.push({ t: G.t, v: Math.round(G.fans) });
   for (const k of ['cash', 'revenue', 'fans']) if (G.hist[k].length > 240) G.hist[k].shift();
   G.lastMonth = G.month;
+  // årets summa per kategori (för finansfönstret och årsrapporten)
+  // (en äldre sparning börjar räkna nu, och då gäller summan bara en del av året)
+  if (!G.yr) {
+    G.yr = {};
+    G.yrT = G.t;
+  }
+  for (const [k, v] of Object.entries(G.month.breakdown)) G.yr[k] = (G.yr[k] || 0) + v;
   G.month = { income: 0, expense: 0, breakdown: {} };
   // Skuld
   if (G.money < 0) {
@@ -111,6 +118,9 @@ function monthly(G, d) {
   monthlyMarket(G);
   if (d.month === 0 || d.month === 6) updateTrends(G);
   if (d.month === 0 && G.t > 0) {
+    G.lastYear = { year: yearOf(G.t) - 1, bd: G.yr || {}, part: G.yrT != null };
+    G.yr = {};
+    G.yrT = null;
     G.pending.push({ type: 'year', id: G.uid++, year: yearOf(G.t) - 1 });
   }
   if (G.t === 48 * 41 && !G.flags.ending) {

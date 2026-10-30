@@ -580,6 +580,18 @@ ok(true, 'alla händelser körda');
   S.newGame({ seed: 1 });
   ok(!PLATFORM[id] && !PLATFORMS.some((p) => p.own), 'ett nytt spel har inga egna plattformar');
 }
+// årets summa per kategori: förra året till finansfönstret och årsrapporten, en äldre sparning räknar en del av året
+{
+  const GY = S.newGame({ studio: 'Y', seed: 5 }); S.makeCompetitors(GY); S.initWorld(GY);
+  GY.t = 47;
+  S.earn(GY, 1000, 'contracts');
+  for (let i = 0; i < 200 && GY.t < 48; i++) { GY.pending.length = 0; S.stepTick(GY); }
+  ok(GY.t === 48 && GY.lastYear && GY.lastYear.year === 1980 && GY.lastYear.bd.contracts === 1000 && !GY.lastYear.part && Object.keys(GY.yr).length === 0, 'förra årets intäkter per kategori sparas vid årsskiftet');
+  delete GY.yr;
+  GY.t = 95;
+  for (let i = 0; i < 200 && GY.t < 96; i++) { GY.pending.length = 0; S.stepTick(GY); }
+  ok(GY.lastYear.year === 1981 && GY.lastYear.part, 'en äldre sparning markerar året som en del');
+}
 // bailout + konkurs
 const G3 = S.newGame({ studio: 'B', seed: 3 }); S.makeCompetitors(G3); S.initWorld(G3);
 G3.money = -5000;

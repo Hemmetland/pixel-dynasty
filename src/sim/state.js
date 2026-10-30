@@ -69,6 +69,7 @@ export function newGame(opts = {}) {
     hist: { cash: [], revenue: [], fans: [] },
     month: { income: 0, expense: 0, breakdown: {} },
     lastMonth: { income: 0, expense: 0, breakdown: {} },
+    yr: {},
     awards: [],
     ach: [],
     stats: { gamesMade: 0, revenue: 0, bestScore: 0, hits: 0, contracts: 0, hires: 0, researched: 0, events: 0 },
