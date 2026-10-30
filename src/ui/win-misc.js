@@ -187,7 +187,7 @@ regWin({
   title: () => t('help.title'),
   render() {
     const sec = (ic, k) => `<div class="card"><div class="row" style="gap:10px;margin-bottom:6px"><span class="wi" style="width:32px;height:32px;border-radius:10px;display:grid;place-items:center;background:rgba(77,225,208,.14);color:var(--accent)">${icon(ic)}</span><b class="h3">${t('help.' + k + '.t')}</b></div><div class="hint" style="font-size:13px">${t('help.' + k + '.b')}</div></div>`;
-    return `<div class="grid" style="grid-template-columns:repeat(auto-fit,minmax(300px,1fr))">${sec('gamepad', 'loop')}${sec('target', 'score')}${sec('sliders', 'focus')}${sec('flask', 'research')}${sec('team', 'team')}${sec('chart', 'market')}${sec('bank', 'money')}${sec('trophy', 'goal')}</div>
+    return `<div class="grid" style="grid-template-columns:repeat(auto-fit,minmax(300px,1fr))">${sec('gamepad', 'loop')}${sec('target', 'score')}${sec('sliders', 'focus')}${sec('flask', 'research')}${sec('team', 'team')}${sec('chart', 'market')}${sec('bank', 'money')}${sec('trophy', 'goal')}${sec('book', 'fr')}${sec('globe', 'live')}${sec('building', 'biz')}${sec('gpu', 'hw')}</div>
       <div class="lbl" style="margin:18px 0 8px">${t('help.keys')}</div>
       <div class="row wrap" style="gap:14px"><span><span class="kbd">Space</span> ${t('help.k1')}</span><span><span class="kbd">1</span><span class="kbd">2</span><span class="kbd">3</span> ${t('help.k2')}</span><span><span class="kbd">N</span> ${t('help.k3')}</span><span><span class="kbd">M</span> ${t('help.k4')}</span><span><span class="kbd">Esc</span> ${t('help.k5')}</span></div>`;
   },
