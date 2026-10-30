@@ -1,4 +1,4 @@
-import { clamp } from '../core/util.js';
+import { clamp, shade } from '../core/util.js';
 import { World, STREET } from './world.js';
 import { vehicleSize } from './vehicles.js';
 import { makeLayout, drawShell, eraOf, PITCH, INT_H } from './building.js';
@@ -25,6 +25,18 @@ function hwBrands(G) {
     if (o.at > G.t || o.left <= 0) continue;
     const P = G.hw.products.find((p) => p.id === o.p);
     if (P) out.push({ color: HW_TYPES[P.type].color, type: P.type });
+  }
+  return out.length ? out : null;
+}
+// Studions hårdvara som kom ut de senaste åtta veckorna: köpare bär hem lådor i produkternas färger
+const BUY_WEEKS = 8;
+function hwBuyers(G) {
+  if (!G.hw) return null;
+  const out = [];
+  for (const P of G.hw.products) {
+    if (P.state !== 'market' || P.t == null || G.t - P.t >= BUY_WEEKS) continue;
+    const color = HW_TYPES[P.type].color;
+    out.push({ color, dark: shade(color, -0.35), light: shade(color, 0.35) });
   }
   return out.length ? out : null;
 }
@@ -582,7 +594,7 @@ export class Scene {
     if (!G || !this.L) return;
     this.time += dt;
     const d = dateOf(G.t);
-    this.world.update(dt, { speed: this.speed, paused: this.paused, month: d.month, reduced: this.reduced, todLock: this.todLock, weatherLock: this.weatherLock, brands: hwBrands(G), fab: G.hw?.fab?.lvl || 0 });
+    this.world.update(dt, { speed: this.speed, paused: this.paused, month: d.month, reduced: this.reduced, todLock: this.todLock, weatherLock: this.weatherLock, brands: hwBrands(G), buyers: hwBuyers(G), fab: G.hw?.fab?.lvl || 0 });
     this.updateActors(dt);
     this.updateCat(dt);
     this.updateFx(dt);

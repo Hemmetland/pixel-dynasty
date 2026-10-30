@@ -176,6 +176,21 @@ export function drawCharSprite(ctx, key, x, y, look, frame = 0, dir = 1) {
 
 // Gående fotgängare; t = gångtid (fotgängarnas p.t, 6 per sekund). 6 rutor per steg-cykel i samma takt som den procedurella gången.
 export const drawWalkerSprite = (ctx, x, y, look, t, dir = 1) => drawCharSprite(ctx, 'char.walk', x, y, look, Math.floor(t * 1.5), dir);
+// En köpare som bär hem studions nya produkt: gången med lådan, och lådan målad i produktens färg med en vit logga
+export function drawBuyerSprite(ctx, x, y, look, t, dir, color, dark, light) {
+  if (!drawCharSprite(ctx, 'char.walkBox', x, y, look, Math.floor(t * 1.5), dir)) return false;
+  const X = Math.round(x) + (dir < 0 ? -7 : -1);
+  const Y = Math.round(y) - 18;
+  ctx.fillStyle = dark;
+  ctx.fillRect(X, Y, 8, 6);
+  ctx.fillStyle = color;
+  ctx.fillRect(X, Y, 8, 5);
+  ctx.fillStyle = light;
+  ctx.fillRect(X, Y, 8, 1);
+  ctx.fillStyle = '#ffffff';
+  ctx.fillRect(X + (dir < 0 ? 2 : 4), Y + 2, 2, 2);
+  return true;
+}
 
 // Poser som har en sprite, med bildrutor per sekund: stående och sittande för sig. Prata och dricka kaffe på en stol har
 // egna sittande sprites (char.sitTalk, char.sitDrink, där klunken 0,1,2,2,2,1 är inbakad), liksom läsa och tänka (vid

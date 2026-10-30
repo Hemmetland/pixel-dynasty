@@ -3,7 +3,7 @@ import { drawPerson } from './people.js';
 import { randomLook } from '../sim/people.js';
 import { drawVehicle, vehicleSize } from './vehicles.js';
 import { drawBackdropCover } from './sprites.js';
-import { drawWalkerSprite } from './charsprite.js';
+import { drawWalkerSprite, drawBuyerSprite } from './charsprite.js';
 
 const BAYER = [0, 8, 2, 10, 12, 4, 14, 6, 3, 11, 1, 9, 15, 7, 13, 5].map((v) => (v + 0.5) / 16);
 
@@ -290,7 +290,9 @@ export class World {
     if (this.nextPed <= 0) {
       this.nextPed = 4 + Math.random() * 8;
       const dir = Math.random() < 0.5 ? 1 : -1;
-      this.peds.push({ x: dir > 0 ? -12 : this.W + 12, dir, v: 10 + Math.random() * 8, t: 0, look: randomLook(Math.random) });
+      // de första veckorna efter att studions hårdvara kommit ut bär en del fotgängare hem en låda i produktens färg
+      const box = o.buyers && Math.random() < 0.45 ? o.buyers[Math.floor(Math.random() * o.buyers.length)] : null;
+      this.peds.push({ x: dir > 0 ? -12 : this.W + 12, dir, v: 10 + Math.random() * 8, t: 0, look: randomLook(Math.random), box });
     }
     for (const p of this.peds) {
       p.x += p.dir * p.v * dt;
@@ -641,6 +643,7 @@ export class World {
     for (const c of cars) drawVehicle(ctx, c, gy + this.laneY(c));
     // fotgängare på förgrundstrottoaren, framför allt annat
     for (const p of this.peds) {
+      if (p.box && drawBuyerSprite(ctx, p.x, gy + STREET.pedY, p.look, p.t, p.dir, p.box.color, p.box.dark, p.box.light)) continue;
       if (!drawWalkerSprite(ctx, p.x, gy + STREET.pedY, p.look, p.t, p.dir)) drawPerson(ctx, p.x, gy + STREET.pedY, p.look, 'walk', Math.floor(p.t) % 4, p.dir, {});
     }
   }
