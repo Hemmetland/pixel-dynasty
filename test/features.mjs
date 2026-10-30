@@ -623,6 +623,40 @@ ok(true, 'alla händelser körda');
   for (let i = 0; i < 48; i++) { GV.t++; S.hwWeek(GV); }
   ok(P.sold > 0 && P.base > 0 && pl.weight > 0, 'headsetet säljer (' + Math.round(P.sold) + ' enheter, vikt ' + pl.weight.toFixed(1) + ')');
 }
+// egen fabrik: forskningen, bygget betalas direkt och tar sina veckor, sedan en tillverkare bland de andra (20 % billigare
+// än Meridian, kort ledtid, inga förseningar), driften dras varje månad och utbyggnaden höjer kapaciteten
+{
+  const GF = S.newGame({ studio: 'F', seed: 41 }); S.makeCompetitors(GF); S.initWorld(GF);
+  GF.t = 48 * 30; GF.money = 5e8; GF.fans = 100000;
+  Object.assign(GF.u.flags, { hw: true, hw_gpu: true });
+  GF.t++; S.hwWeek(GF);
+  const H = GF.hw;
+  ok(S.canBuildFab(GF) === 'locked' && !S.partnerOpen(GF, S.FAB) && S.fabLvl(GF) === 0, 'fabriken kräver forskningen');
+  GF.u.flags.hw_fab = true;
+  const m0 = GF.money;
+  const c = S.fabCost(GF);
+  ok(c > 0 && S.buildFab(GF) === true && GF.money === m0 - c && S.canBuildFab(GF) === 'busy' && !S.partnerOpen(GF, S.FAB), 'bygget betalas direkt (' + (c / 1e6).toFixed(1) + ' M$)');
+  for (let i = 0; i < S.FAB_WEEKS[1]; i++) { GF.t++; S.hwWeek(GF); }
+  ok(S.fabLvl(GF) === 1 && S.partnerOpen(GF, S.FAB) && Math.abs(S.partnerCap(GF, S.FAB) * 48 - S.FAB_CAP[1]) < 1, 'fabriken blir klar efter byggtiden');
+  const D = { type: 'gpu', cls: 'mid', qual: 'normal', t: null };
+  ok(Math.abs(S.unitCost(GF, D, S.FAB) / S.unitCost(GF, D, 'meridian') - 0.8) < 1e-9, 'fabriken tillverkar 20 % billigare än Meridian');
+  ok(S.startDesign(GF, { type: 'gpu', cls: 'mid' }) === true, 'ett grafikkort designas');
+  const J = H.projects[0];
+  J.done = J.weeks - 1;
+  for (let i = 0; i < 40 && J.state !== 'ready'; i++) { GF.t++; S.hwWeek(GF); if (J.state === 'fail') S.resolveProto(GF, J.id, 'ship'); }
+  ok(S.suggestPartner(GF, J) === S.FAB, 'förslaget blir den egna fabriken när kapaciteten räcker');
+  ok(S.launch(GF, J.id, { partner: S.FAB, units: 20000 }) === true && H.orders[0].at === GF.t + 4 && H.orders[0].partner === S.FAB, 'lansering i egen fabrik med fyra veckors ledtid');
+  const P = H.products[0];
+  for (let i = 0; i < 12; i++) { GF.t++; S.hwWeek(GF); }
+  ok(P.state === 'market' && P.sold > 0 && S.fabLoad(GF) > 0, 'produkten kommer ut och fabriken har last');
+  ok(H.tot.fab - c > S.fabUpkeep(GF) * 2 && S.hwCostMonth(GF) >= S.fabUpkeep(GF) && S.hwNet(GF) < -c, 'driften dras varje månad (' + Math.round((H.tot.fab - c) / 1000) + ' k$)');
+  ok(S.buildFab(GF) === true, 'fabriken byggs ut');
+  for (let i = 0; i < S.FAB_WEEKS[2]; i++) { GF.t++; S.hwWeek(GF); }
+  ok(S.fabLvl(GF) === 2 && Math.abs(S.partnerCap(GF, S.FAB) * 48 - S.FAB_CAP[2]) < 1, 'utbyggnaden höjer kapaciteten');
+  const GL = JSON.parse(JSON.stringify(GF));
+  for (let i = 0; i < 12; i++) { GL.t++; S.hwWeek(GL); }
+  ok(S.fabLvl(GL) === 2 && Number.isFinite(GL.money), 'fabriken följer med sparningen');
+}
 // årets summa per kategori: förra året till finansfönstret och årsrapporten, en äldre sparning räknar en del av året
 {
   const GY = S.newGame({ studio: 'Y', seed: 5 }); S.makeCompetitors(GY); S.initWorld(GY);

@@ -63,5 +63,7 @@ export const HW_PARTNERS = [
   { id: 'meridian', name: 'Meridian Foundry', from: 1995, kind: 'fab', cost: 1, defect: 0.005, lead: 12, min: 20000, cap: 600000, short: 0.004, perf: 0 },
   { id: 'kaori', name: 'Kaori Precision', from: 2000, kind: 'mass', cost: 0.88, defect: 0.015, lead: 16, min: 100000, cap: 4000000, short: 0.006, perf: 0 },
   { id: 'vela', name: 'Vela Semiconductor', from: 2005, kind: 'node', cost: 1.15, defect: 0.003, lead: 14, min: 50000, cap: 800000, short: 0.004, perf: 0.08 },
+  // studions egen fabrik (forskningen Egen fabrik, sedan bygget): kapaciteten följer fabrikens nivå (sim/hardware.js)
+  { id: 'fab', name: 'Egen fabrik', from: 2008, kind: 'own', cost: 0.8, defect: 0.008, lead: 4, min: 5000, cap: 0, short: 0, perf: 0 },
 ];
 export const HW_PARTNER = Object.fromEntries(HW_PARTNERS.map((p) => [p.id, p]));

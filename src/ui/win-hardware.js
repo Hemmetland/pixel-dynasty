@@ -14,6 +14,7 @@ import {
   stepPrice, weeklyDemand, suggestPartner, orderOptions, orderCost, orderMore, marketSize, launch, setPrice, setAuto, setPartner, setDriver, driverCost, discontinue, resolveIssue,
   resolveBench, pipelineOf, productProfit, hwNet, brandOf, RECALL, CLEAR, isPlat, archOpen, partnerFits, minOrder, platOf, supportOf, platRoyalty, setPlatFee,
   ownGames, PER_WEIGHT, drvMax, exclOffers, boughtFor, exclPrice, exclWeeks, canBuyExcl, buyExclusive, BUY_MIN, BUY_GAP, partnerAllowed, exclPartner, exclOf, resolveOffer, resolvePatent, ISSUE_WEEKS, digitalOf, platDigital, PLAT_CUT,
+  FAB, FAB_MAX, FAB_WEEKS, FAB_CAP, fabLvl, fabCost, fabUpkeep, canBuildFab, buildFab, fabLoad,
 } from '../sim/hardware.js';
 
 // Fönstret Hårdvara: Utveckling (labbet, chefen, designprojekt och nya designer), Produkter (det som tillverkas och
@@ -28,8 +29,10 @@ const G_ = () => UI.app.G;
 const tyIcon = (type) => icon(HW_TYPES[type].ic);
 // produktens ikon i kortens huvud: pixelkonst 'ui.hw.<typ>' om den finns, annars linjeikonen
 const tyPix = (type) => pixIcon(`ui.hw.${type}`, HW_TYPES[type].ic, 32);
+// tillverkarens namn (den egna fabriken heter olika på olika språk)
+const pName = (id) => (id === FAB ? t('hw.fabName') : HW_PARTNER[id].name);
 // tillverkarna som kan ta produkttypen; de som är låsta av en annan partners ensamrätt visas avstängda
-const fitPartners = (G, type) => HW_PARTNERS.filter((p) => partnerOpen(G, p.id) && partnerFits(type, p.id)).map((p) => ({ v: p.id, label: esc(p.name), off: !partnerAllowed(G, type, p.id) }));
+const fitPartners = (G, type) => HW_PARTNERS.filter((p) => partnerOpen(G, p.id) && partnerFits(type, p.id)).map((p) => ({ v: p.id, label: esc(pName(p.id)), off: !partnerAllowed(G, type, p.id) }));
 const offP = (it) => it.off;
 function lockTip(G, type, id) {
   const ex = exclPartner(G, type);
@@ -297,8 +300,9 @@ function econ(G, H) {
     ['hw.e.lab', -o.lab],
     ['hw.e.issue', -o.issue],
     ['hw.e.excl', -(o.excl || 0)],
+    ['hw.e.fab', -(o.fab || 0)],
   ];
-  const net = (o) => o.rev + (o.lic || 0) - o.design - o.proto - o.make - o.war - o.roy - o.drv - o.lab - o.issue - (o.excl || 0);
+  const net = (o) => o.rev + (o.lic || 0) - o.design - o.proto - o.make - o.war - o.roy - o.drv - o.lab - o.issue - (o.excl || 0) - (o.fab || 0);
   const cell = (v) => `<b class="num ${v >= 0 ? 'up' : 'down'}">${v > 0 ? '+' : ''}${money(v)}</b>`;
   const cur = early ? H.m : H.lm;
   const a = rows(cur);
@@ -340,7 +344,7 @@ function partnersTab(G, H) {
   const glob = [];
   if (chipsOn(G.t)) glob.push(`<p class="hint">${icon('fire')} ${t('hw.chipsNow')}</p>`);
   if (cryptoOn(G.t)) glob.push(`<p class="hint">${icon('trend')} ${t('hw.cryptoNow')}</p>`);
-  const cards = HW_PARTNERS.map((p) => {
+  const cards = HW_PARTNERS.filter((p) => p.id !== FAB).map((p) => {
     const open = partnerOpen(G, p.id);
     const S = H.partners[p.id];
     const rel = relOf(G, p.id);
@@ -357,7 +361,38 @@ function partnersTab(G, H) {
       <div class="hw-stats">${stat('hw.p.cost', t('dist.pct', { n: pct(p.cost) }))}${stat('hw.p.defect', '+' + t('dist.pct', { n: dec(p.defect * 100) }))}${stat('hw.p.lead', tn('hw.weeksN', p.lead))}${stat('hw.p.min', fmtNum(p.min))}${stat('hw.p.cap', `${fmtNum(Math.round(partnerCap(G, p.id)))}${t('ui.perWeek')}`, t('hw.p.capTip'))}${p.perf ? stat('hw.p.perf', '+' + t('dist.pct', { n: pct(p.perf) })) : ''}</div>
       ${open ? `<div class="row" style="gap:10px;margin-top:10px"><span class="faint" style="font-size:12px;min-width:90px">${t('hw.rel')}</span><div style="flex:1">${bar(rel, tone(rel), 'thin')}</div><span class="num faint" style="font-size:12px">${Math.round(rel)}</span></div>${rel > 70 ? `<p class="hint" style="margin-top:4px">${t('hw.relGood')}</p>` : ''}` : ''}</div>`;
   }).join('');
-  return `${offerCard(G, H)}<p class="hint" style="margin-bottom:12px">${icon('truck')} ${t('hw.partnersHelp')} ${t('hw.relHelp')}</p>${glob.join('')}<div class="col" style="gap:10px">${cards}</div>`;
+  return `${offerCard(G, H)}<p class="hint" style="margin-bottom:12px">${icon('truck')} ${t('hw.partnersHelp')} ${t('hw.relHelp')}</p>${glob.join('')}<div class="col" style="gap:10px">${fabCard(G, H)}${cards}</div>`;
+}
+// Den egna fabriken (efter forskningen): bygget, utbyggnaderna, driften och hur mycket av kapaciteten som används
+function fabCard(G, H) {
+  if (!G.u.flags.hw_fab) return '';
+  const p = HW_PARTNER[FAB];
+  const n = fabLvl(G);
+  const B = H.fab?.build;
+  const c = fabCost(G);
+  const ok = canBuildFab(G);
+  const next = n + 1;
+  const status = [];
+  if (B) status.push(tag(t('hw.fabBuilding', { n: B.ready - G.t }), 'var(--accent)'));
+  const orders = H.orders.filter((o) => o.partner === FAB);
+  if (orders.length) status.push(tag(tn('hw.orders', orders.length), 'var(--accent)'));
+  const tip = next <= FAB_MAX ? t(n ? 'hw.fabUpTip' : 'hw.fabBuildTip', { w: FAB_WEEKS[next], cap: fmtNum(FAB_CAP[next]), up: money(fabUpkeep(G, next)) }) : '';
+  const btn = B ? '' : next > FAB_MAX
+    ? `<span class="faint" style="font-size:12px">${t('hw.fabMax')}</span>`
+    : `<button class="btn sm ${n ? '' : 'primary'}" data-act="hw-fab" ${ok === true ? '' : 'disabled'} data-tip="${esc(tip)}">${icon('factory')}${t(n ? 'hw.labUp' : 'hw.fabBuild', { v: money(c) })}</button>`;
+  const cap = partnerCap(G, FAB);
+  const load = cap > 0 ? fabLoad(G) / cap : 0;
+  const done = B ? Math.round(((G.t - B.t) / (B.ready - B.t)) * 100) : 0;
+  const build = B ? `<div class="row" style="gap:10px;margin-top:10px"><span class="faint" style="font-size:12px;min-width:90px">${t('hw.fabProgress')}</span><div style="flex:1">${bar(done, 'var(--accent)', 'thin')}</div><span class="num faint" style="font-size:12px">${t('dist.pct', { n: done })}</span></div>` : '';
+  const stats = n
+    ? `<div class="hw-stats">${stat('hw.p.cost', t('dist.pct', { n: pct(p.cost) }))}${stat('hw.p.defect', '+' + t('dist.pct', { n: dec(p.defect * 100) }))}${stat('hw.p.lead', tn('hw.weeksN', p.lead))}${stat('hw.p.min', fmtNum(p.min))}${stat('hw.p.cap', `${fmtNum(Math.round(cap))}${t('ui.perWeek')}`, t('hw.p.capTip'))}${stat('hw.p.upkeep', `${money(fabUpkeep(G))}${t('ui.perMonth')}`)}</div>
+      <div class="row" style="gap:10px;margin-top:10px" data-tip="${esc(t('hw.fabLoadTip'))}"><span class="faint" style="font-size:12px;min-width:90px">${t('hw.fabLoad')}</span><div style="flex:1">${bar(Math.min(100, load * 100), load > 1 ? 'var(--bug)' : load > 0.8 ? 'var(--warn)' : 'var(--good)', 'thin')}</div><span class="num faint" style="font-size:12px">${t('dist.pct', { n: Math.round(load * 100) })}</span></div>${load > 1 ? `<p class="hint" style="margin-top:4px">${t('hw.fabOver')}</p>` : ''}`
+    : `<p class="hint">${t('hw.fabNone', { w: FAB_WEEKS[1], cap: fmtNum(FAB_CAP[1]), up: money(fabUpkeep(G, 1)) })}</p>`;
+  return `<div class="card hw-partner hw-fab">
+    <div class="row wrap" style="gap:8px">${icon('factory')}<b class="h3">${t('hw.fabName')}</b><span class="faint" style="font-size:12px">${t('hw.pk.own')}</span>${n ? `<span class="pips">${[1, 2, 3].map((i) => `<i class="${i <= n ? 'on' : ''}"></i>`).join('')}</span>` : ''}<span class="sp"></span>${status.join('')}</div>
+    <p class="hint" style="margin:6px 0 8px">${t('hw.pd.fab')}</p>
+    ${stats}${build}
+    ${btn ? `<div class="row wrap" style="gap:8px;margin-top:10px;justify-content:flex-end">${btn}</div>` : ''}</div>`;
 }
 
 // Beslut som väntar på spelaren (för dockan): misslyckade och färdiga projekt, felbatcher, benchmarkfrestelser,
@@ -402,6 +437,7 @@ act('hw-tab', (el) => {
   UI.refresh();
 });
 act('hw-lab', () => refresh(upgradeLab(G_()), 'fanfare'));
+act('hw-fab', () => refresh(buildFab(G_()), 'fanfare'));
 act('hw-pick', () => {
   HS.pick = true;
   UI.refresh();

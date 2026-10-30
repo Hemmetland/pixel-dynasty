@@ -314,3 +314,18 @@ Kalibrera i den här ordningen: MARKNAD-tabellen (storleken), sedan THIRD (royal
   den bästa konsolens (inte en lägre), och plattformen gynnar action, simulering och skjutspel som Lumen VR.
 - Botar `--hw --vr --end=2026` (24 seeds): kassa 2026 933 M$ mot 893 M$ med bara `--hw` (+4,5 %). Första Mirage
   (2017) säljer 300 000–520 000 enheter, når vikt 10–17 och tjänar 28–59 M$ plus 7–22 M$ i licenser.
+
+## Så blev det i spelet (steg 5, egen fabrik)
+
+- `h_fab` (2008, kräver `h_soc`, 4 000 FP och 6 M$) låter studion bygga en fabrik under Hårdvara › Tillverkare. Bygget
+  betalas direkt och tar 40 veckor (20 M$ i 2008 års pengar); utbyggnad till nivå 2 och 3 kostar 18 och 30 M$ och tar
+  24 veckor var. Kapaciteten är 300 000, 800 000 och 1,6 miljoner enheter om året, och driften 60 000, 140 000 och
+  260 000 $ i månaden (i 2008 års löner) även när fabriken står still.
+- Fabriken är en tillverkare bland de andra (`HW_PARTNER.fab`): enhetskostnad ×0,80, +0,8 pe fel, fyra veckors ledtid,
+  minsta order 5 000, ingen komponentbrist, inga valutasvängningar, inga förseningar och ingen relationsrabatt. Den
+  globala chipbristen drabbar den också. Förslaget vid lansering väljer fabriken när den lediga kapaciteten räcker, och
+  kortet visar beläggningen (veckans efterfrågan på dess produkter mot kapaciteten).
+- Fabriken syns bakom studion till höger: en tegelhall med sågtandstak och en rykande skorsten per nivå.
+- Botar `--hw --fab` (24 seeds, botten bygger när kassan räcker två gånger om och bygger ut vid 95 % beläggning):
+  kassa 2020 370 M$ som utan fabrik, 2026 904 mot 893 M$. Fabriken binder pengar tidigt (2010: 54 mot 79 M$) och lönar
+  sig långsamt, ett strategiskt val.

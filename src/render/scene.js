@@ -582,7 +582,7 @@ export class Scene {
     if (!G || !this.L) return;
     this.time += dt;
     const d = dateOf(G.t);
-    this.world.update(dt, { speed: this.speed, paused: this.paused, month: d.month, reduced: this.reduced, todLock: this.todLock, weatherLock: this.weatherLock, brands: hwBrands(G) });
+    this.world.update(dt, { speed: this.speed, paused: this.paused, month: d.month, reduced: this.reduced, todLock: this.todLock, weatherLock: this.weatherLock, brands: hwBrands(G), fab: G.hw?.fab?.lvl || 0 });
     this.updateActors(dt);
     this.updateCat(dt);
     this.updateFx(dt);

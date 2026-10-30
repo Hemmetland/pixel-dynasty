@@ -15,8 +15,8 @@ import { note } from './news.js';
 // nu, den åldras), priset, tillgången (lager när efterfrågan finns) och kompatibiliteten hur stor andel du tar.
 // Egna spel byggda med en motor som produkten är optimerad för säljer mer på pc, och dina hits på motorn säljer
 // hårdvara. En bärbar enhet eller konsol blir en egen plattform (G.hw.plats) som växer med de sålda enheterna: dina spel
-// kan släppas där utan licens, andra förlag betalar en licensavgift per vecka och egna hits säljer plattformen. Egen
-// fabrik och leveranskedja finns inte. Allt ligger i G.hw och all slump kommer ur fröet (inte G.rng).
+// kan släppas där utan licens, andra förlag betalar en licensavgift per vecka och egna hits säljer plattformen. En egen
+// fabrik (G.hw.fab) blir en tillverkare bland de andra. Allt ligger i G.hw och all slump kommer ur fröet (inte G.rng).
 export const LAB_MAX = 3;
 const LAB_COST = [0, 0, 400000, 2000000]; // utbyggnad till nivå 2 och 3, i 1990 års pengar
 const LAB_RENT = 900; // per nivå och månad, i 1989 års löner
@@ -96,6 +96,14 @@ export const BUY_GAP = 24; // veckor mellan två köp till samma plattform
 const BUY_MIN_W = 10; // förlagen vill ha en plattform med minst den vikten
 const BUY_WEEKS = [4, 36]; // spel som kommer om så många veckor går att köpa
 const BUY_BACK = 0.5; // läggs plattformen ned före släppet får du tillbaka så mycket
+// Egen fabrik: forskningen låter studion bygga en fabrik som tillverkar som en partner (HW_PARTNER.fab), utan brist,
+// valutasvängningar eller förseningar, men med en fast drift varje månad
+export const FAB = 'fab';
+export const FAB_MAX = 3;
+const FAB_COST = [0, 20000000, 18000000, 30000000]; // bygget och utbyggnaderna till nivå 2 och 3, i 2008 års pengar
+export const FAB_WEEKS = [0, 40, 24, 24];
+export const FAB_CAP = [0, 300000, 800000, 1600000]; // enheter per år
+const FAB_UPKEEP = [0, 60000, 140000, 260000]; // per månad, i 2008 års löner
 export const canHw = (G) => !!G.u.flags.hw;
 const rngFor = (G, key) => seeded(hashStr(`${G.seed || 0}:hw:${key}`));
 const gaussFor = (G, key, m, s) => gauss({ rng: hashStr(`${G.seed || 0}:hw:${key}`) | 0 }, m, s);
@@ -103,7 +111,7 @@ const gaussFor = (G, key, m, s) => gauss({ rng: hashStr(`${G.seed || 0}:hw:${key
 const msRatio = (G, base) => moneyScale(yearOf(G.t)) / moneyScale(base);
 
 function blank() {
-  return { rev: 0, lic: 0, design: 0, proto: 0, make: 0, war: 0, roy: 0, drv: 0, lab: 0, issue: 0 };
+  return { rev: 0, lic: 0, design: 0, proto: 0, make: 0, war: 0, roy: 0, drv: 0, lab: 0, issue: 0, fab: 0 };
 }
 // Avdelningen öppnas första veckan efter forskningen (eller i en gammal sparfil som har flaggan)
 export function hwOf(G) {
@@ -127,7 +135,7 @@ function pay(G, H, k, v, cat = 'hwMake') {
 // ── Typer, partners, labbet och chefen ──────────────────────────
 export const typeOpen = (G, id) => canHw(G) && !!G.u.flags['hw_' + id];
 export const openTypes = (G) => HW_IDS.filter((id) => typeOpen(G, id));
-export const partnerOpen = (G, id) => yearOf(G.t) >= HW_PARTNER[id].from;
+export const partnerOpen = (G, id) => (id === FAB ? fabLvl(G) > 0 : yearOf(G.t) >= HW_PARTNER[id].from);
 export const openPartners = (G) => HW_PARTNERS.filter((p) => partnerOpen(G, p.id));
 function partnerState(H, id) {
   return (H.partners[id] ||= { rel: REL0, short: 0, shortK: 1, fx: 1, fxUntil: 0 });
@@ -152,7 +160,46 @@ export function partnerCap(G, id) {
   // förtur vid brist: en god relation halverar förlusten, ett exklusivitetsavtal halverar den igen
   if (S && S.short > G.t) k *= 1 - (1 - S.shortK) / ((S.rel > 70 ? 2 : 1) * (S.excl && S.excl.until > G.t ? 2 : 1));
   if (chipsOn(G.t)) k *= 0.6;
-  return (P.cap / WEEKS_PER_YEAR) * k;
+  return ((id === FAB ? FAB_CAP[fabLvl(G)] : P.cap) / WEEKS_PER_YEAR) * k;
+}
+
+// ── Egen fabrik ─────────────────────────────────────────────────
+export const fabLvl = (G) => G.hw?.fab?.lvl || 0;
+// bygget eller nästa utbyggnad (0 när fabriken är fullt utbyggd)
+export function fabCost(G) {
+  const n = fabLvl(G) + 1;
+  return n > FAB_MAX ? 0 : Math.round((FAB_COST[n] * msRatio(G, 2008)) / 1000) * 1000;
+}
+export const fabUpkeep = (G, lvl = fabLvl(G)) => Math.round(FAB_UPKEEP[lvl] * (wageIndex(yearOf(G.t)) / wageIndex(2008)));
+export function canBuildFab(G) {
+  const H = G.hw;
+  if (!H || !G.u.flags.hw_fab) return 'locked';
+  if (H.fab?.build) return 'busy';
+  if (fabLvl(G) >= FAB_MAX) return 'max';
+  if (G.money < fabCost(G)) return 'money';
+  return true;
+}
+export function buildFab(G) {
+  const ok = canBuildFab(G);
+  if (ok !== true) return ok;
+  const H = G.hw;
+  const n = fabLvl(G) + 1;
+  pay(G, H, 'fab', fabCost(G), 'hwFab');
+  H.fab ||= { lvl: 0, build: null, t0: null };
+  H.fab.build = { lvl: n, t: G.t, ready: G.t + FAB_WEEKS[n] };
+  emit('hwFab', H);
+  return true;
+}
+// fabrikens last: veckans efterfrågan på produkterna som den tillverkar
+export const fabLoad = (G) => (G.hw?.products || []).filter((p) => p.partner === FAB && p.state !== 'ended').reduce((a, p) => a + (p.dem || 0), 0);
+function fabWeek(G, H) {
+  const F = H.fab;
+  if (!F?.build || G.t < F.build.ready) return;
+  F.lvl = F.build.lvl;
+  F.build = null;
+  if (F.t0 == null) F.t0 = G.t;
+  note(G, F.lvl > 1 ? 'news.hwFabUp' : 'news.hwFab', { n: F.lvl, cap: fmtNum(FAB_CAP[F.lvl]) }, 'good');
+  emit('hwFab', H);
 }
 
 export const labSlots = (H) => H.lab;
@@ -327,7 +374,7 @@ export function unitCost(G, P, partner, t = G.t) {
   const fx = S.fxUntil > t ? S.fx : 1;
   const plat = (P.type === 'handheld' && G.u.flags.hw_lowpow ? LOWPOW : 1) * (P.bc ? BC_COST : 1);
   return ty.price * ty.unit * CLS[P.cls].unit * QUAL[P.qual || 'normal'].unit * HW_PARTNER[partner].cost * Math.max(0.5, 1 - (G.perk.hwCost || 0)) * parts * plat
-    * Math.pow(1 - ty.fall, age) * (S.rel > 70 ? 0.97 : 1) * (exclOn(S, P.type, t) ? EXCL_COST : 1) * fx * (chipsOn(t) ? 1.15 : 1);
+    * Math.pow(1 - ty.fall, age) * (S.rel > 70 && partner !== FAB ? 0.97 : 1) * (exclOn(S, P.type, t) ? EXCL_COST : 1) * fx * (chipsOn(t) ? 1.15 : 1);
 }
 // priser slutar på 9 (tiotal, eller femtiotal över 600 $)
 const roundPrice = (p) => {
@@ -444,7 +491,8 @@ export function suggestPartner(G, J, price = suggestPrice(J.type, J.cls)) {
   const open = openPartners(G).filter((p) => partnerAllowed(G, J.type, p.id));
   for (const p of open.slice().sort((a, b) => a.cost - b.cost)) {
     const d = weeklyDemand(G, draftOf(G, J, p.id, price), price);
-    if (p.min <= d * 26 && d <= partnerCap(G, p.id) * 1.1) return p.id;
+    const cap = partnerCap(G, p.id) - (p.id === FAB ? fabLoad(G) : 0);
+    if (p.min <= d * 26 && d <= cap * 1.1) return p.id;
   }
   return open[0].id;
 }
@@ -468,7 +516,7 @@ function placeOrder(G, H, P, units) {
   const pp = HW_PARTNER[P.partner];
   const unit = unitCost(G, P, P.partner);
   const cost = Math.round(units * unit);
-  const late = rngFor(G, `late:${P.id}:${G.t}`)() < DELAY_P;
+  const late = P.partner !== FAB && rngFor(G, `late:${P.id}:${G.t}`)() < DELAY_P;
   const o = { id: G.uid++, p: P.id, partner: P.partner, units, left: units, at: G.t + Math.round(pp.lead * (late ? 1.5 : 1)), cost, unit };
   H.orders.push(o);
   pay(G, H, 'make', cost);
@@ -643,6 +691,7 @@ function yearlyEvents(G, H) {
   }
   if (w === EXCL_WEEK && !H.offer) {
     for (const pp of HW_PARTNERS) {
+      if (pp.id === FAB) continue;
       const S = partnerState(H, pp.id);
       if (S.rel <= EXCL_REL || (S.excl && S.excl.until > G.t)) continue;
       const P = H.products.filter((p) => p.partner === pp.id && p.state === 'market').pop();
@@ -667,6 +716,7 @@ export function hwWeek(G) {
   if (G.t === CHIPS[0]) note(G, 'news.hwChips', {}, 'bad', !H.products.length);
   // partners: komponentbrist och valutasvängningar hos dem du har order hos
   for (const pp of HW_PARTNERS) {
+    if (pp.id === FAB) continue;
     const S = partnerState(H, pp.id);
     if (!H.orders.some((o) => o.partner === pp.id)) continue;
     const r = rngFor(G, `p:${pp.id}:${G.t}`);
@@ -680,6 +730,7 @@ export function hwWeek(G) {
       S.fxUntil = G.t + 26;
     }
   }
+  fabWeek(G, H);
   // design
   for (const J of H.projects.slice()) {
     if (J.state !== 'design' || J.paused) continue;
@@ -727,6 +778,7 @@ export function hwWeek(G) {
   // lab och chef en gång i månaden
   if (G.t % WEEKS_PER_MONTH === 0) {
     pay(G, H, 'lab', labRent(G, H) + (H.chief ? H.chief.salary || 0 : 0), 'hwDev');
+    if (fabLvl(G)) pay(G, H, 'fab', fabUpkeep(G), 'hwFab');
     H.lm = H.m;
     H.m = blank();
   }
@@ -879,7 +931,7 @@ export function hwReach(G) {
 // Samlat för fönstret, botten och testerna
 export const hwNet = (G) => {
   const T = G.hw?.tot;
-  return T ? T.rev + (T.lic || 0) - T.design - T.proto - T.make - T.war - T.roy - T.drv - T.lab - T.issue - (T.excl || 0) : 0;
+  return T ? T.rev + (T.lic || 0) - T.design - T.proto - T.make - T.war - T.roy - T.drv - T.lab - T.issue - (T.excl || 0) - (T.fab || 0) : 0;
 };
 export const productProfit = (P) => P.rev + (P.lic || 0) - P.dev - P.cost - P.war - P.roy - (P.exPaid || 0);
 // pengar som går åt per månad just nu (designprojekt, drivrutinsteam, labb och chef) för ekonomiöversikten
@@ -889,7 +941,7 @@ export function hwCostMonth(G) {
   let w = 0;
   for (const J of H.projects) if (J.state === 'design' && !J.paused) w += J.budget / J.weeks;
   for (const P of H.products) if (P.state === 'market' && P.drv) w += driverCost(G, P);
-  return Math.round(w * WEEKS_PER_MONTH + labRent(G, H) + (H.chief ? H.chief.salary || 0 : 0));
+  return Math.round(w * WEEKS_PER_MONTH + labRent(G, H) + (H.chief ? H.chief.salary || 0 : 0) + (fabLvl(G) ? fabUpkeep(G) : 0));
 }
 
 // ── Egna plattformar ────────────────────────────────────────────

@@ -36,7 +36,7 @@ function lineChart(pts, color, w = 560, h = 190) {
 
 // Uppdelningen visar förra månaden eller förra året
 const FS = { per: 'month' };
-const CAT_KEYS = ['sales', 'subs', 'shop', 'servers', 'contracts', 'awards', 'events', 'loan', 'other', 'salaries', 'rent', 'facilities', 'marketing', 'research', 'licenses', 'interest', 'engines', 'office', 'patches', 'ports', 'publishing', 'licensing', 'subsidiaries', 'acquisitions', 'groupInvest', 'integration', 'store', 'storeOps', 'hardware', 'hwLic', 'hwDev', 'hwMake', 'hwExcl'];
+const CAT_KEYS = ['sales', 'subs', 'shop', 'servers', 'contracts', 'awards', 'events', 'loan', 'other', 'salaries', 'rent', 'facilities', 'marketing', 'research', 'licenses', 'interest', 'engines', 'office', 'patches', 'ports', 'publishing', 'licensing', 'subsidiaries', 'acquisitions', 'groupInvest', 'integration', 'store', 'storeOps', 'hardware', 'hwLic', 'hwDev', 'hwMake', 'hwExcl', 'hwFab'];
 
 regWin({
   id: 'finance',

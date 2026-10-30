@@ -25,7 +25,7 @@ for (const t of tiers.split(',')) {
     a.setSpeed(0);
     const S = window.__sim;
     a.G.office.tier = +t;
-    a.G.t = (+year - 1980) * 192 + 20;
+    a.G.t = (+year - 1980) * S.WEEKS_PER_YEAR + 5;
     const n = [2, 5, 10, 15, 24, 36][+t];
     while (a.G.staff.length < n) { const c = S.makeCandidate(a.G, 0); delete c.fee; a.G.staff.push(c); }
     if (!a.G.job) S.startProject(a.G, { title: 'Demo', topic: a.G.u.topics[0], genre: 'action', platform: 'pc', scope: 'small', audience: 'everyone' });

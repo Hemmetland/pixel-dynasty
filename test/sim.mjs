@@ -51,6 +51,9 @@ const platK = +opt('platk', 2);
 const platex = args.includes('--platex');
 // --vr: botten forskar fram VR-headsetet (2015) och bygger det (mät med --end=2026)
 const vr = args.includes('--vr');
+// --fab: botten forskar fram en egen fabrik efter konsolen och bygger den när kassan räcker två gånger om, bygger ut den när den är nästan
+// full och flyttar produkter dit när kapaciteten räcker
+const fab = args.includes('--fab');
 const PLAT_RES = new Set(['h_lowpow', 'h_soc', 'h_handheld', 'h_devkit', 'h_console', 'h_backcompat', 'h_vr']);
 // --bd: skriv ut årets pengar per kategori (för balansarbete)
 const bd = args.includes('--bd');
@@ -155,6 +158,13 @@ function hwBot(G) {
   const qual = opt('hwq', 'normal');
   const year = S.yearOf(G.t);
   if (S.labCost(G) && G.money > S.labCost(G) * 10) S.upgradeLab(G);
+  if (fab && S.canBuildFab(G) === true && G.money > S.fabCost(G) * 2 && (!S.fabLvl(G) || S.fabLoad(G) > S.partnerCap(G, S.FAB) * 0.95)) S.buildFab(G);
+  if (fab && S.fabLvl(G)) {
+    for (const P of H.products) {
+      if (P.state !== 'market' || P.partner === S.FAB || !S.partnerAllowed(G, P.type, S.FAB)) continue;
+      if (S.fabLoad(G) + P.dem * 1.2 <= S.partnerCap(G, S.FAB)) S.setPartner(G, P.id, S.FAB);
+    }
+  }
   if (!H.chief && G.staff.length >= S.capacity(G) && G.staff.length >= 12) {
     const c = S.chiefCandidates(G)[0];
     if (c) S.setChief(G, c.id);
@@ -218,7 +228,7 @@ function manage(G) {
   // forskning
   if (!casual || G.t % 16 === 0) for (const r of RESEARCH.slice().sort((a, b) => a.rp - b.rp)) {
     if (G.research.active.length >= S.researchSlots(G)) break;
-    if ((r.id === 'b_port' && !ports) || (r.id === 'b_publish' && !publish) || (r.id === 'b_merch' && !lic) || (r.id === 'b_acq' && !acq) || (r.id === 'b_group' && !group) || (r.id === 'b_store' && !store) || (r.cat === 'hw' && !hw) || (r.id === 'h_vr' && !vr)) continue;
+    if ((r.id === 'b_port' && !ports) || (r.id === 'b_publish' && !publish) || (r.id === 'b_merch' && !lic) || (r.id === 'b_acq' && !acq) || (r.id === 'b_group' && !group) || (r.id === 'b_store' && !store) || (r.cat === 'hw' && !hw) || (r.id === 'h_vr' && !vr) || (r.id === 'h_fab' && (!fab || !G.u.flags.hw_console))) continue;
     if (noplat && PLAT_RES.has(r.id)) continue;
     if (S.canResearch(G, r.id) === true && r.rp <= G.rp) S.startResearch(G, r.id);
   }
@@ -423,7 +433,7 @@ if (hw && G.hw) {
   const H = G.hw;
   const T = H.tot;
   const m = (v) => '$' + (v / 1e6).toFixed(1) + 'M';
-  console.log(`hw ${S.yearOf(H.t0)} rep ${Math.round(H.rep)} lab ${H.lab}${H.chief ? ' chief' : ''}; rev ${m(T.rev)} design ${m(T.design)} proto ${m(T.proto)} make ${m(T.make)} war ${m(T.war)} roy ${m(T.roy)} drv ${m(T.drv)} lab ${m(T.lab)} issue ${m(T.issue)}; net ${m(S.hwNet(G))}`);
+  console.log(`hw ${S.yearOf(H.t0)} rep ${Math.round(H.rep)} lab ${H.lab}${H.chief ? ' chief' : ''}; rev ${m(T.rev)} design ${m(T.design)} proto ${m(T.proto)} make ${m(T.make)} war ${m(T.war)} roy ${m(T.roy)} drv ${m(T.drv)} lab ${m(T.lab)} issue ${m(T.issue)} fab ${m(T.fab || 0)}${H.fab ? ` lvl ${H.fab.lvl} t0 ${S.yearOf(H.fab.t0 ?? G.t)}` : ""}; net ${m(S.hwNet(G))}`);
   for (const P of H.products) console.log(`  ${P.name} ${P.type} ${S.yearOf(P.tReady)}${P.t != null ? '/' + S.yearOf(P.t) : ''}${P.endT ? '-' + S.yearOf(P.endT) : ''} ${P.partner} score ${P.score0 ?? '-'} $${P.price} sold ${Math.round(P.sold).toLocaleString()} peak ${Math.round(P.peak)}/w rev ${m(P.rev)} dev ${m(P.dev)} make ${m(P.cost)} profit ${m(S.productProfit(P))}${P.plat ? ` lic ${m(P.lic || 0)} base ${Math.round(P.base || 0).toLocaleString()} weight ${S.platOf(G, P).weight.toFixed(1)} tier ${S.platOf(G, P).tier} games ${G.games.filter((g) => g.platform === P.plat).length} gameRev ${m(G.games.filter((g) => g.platform === P.plat).reduce((a, g) => a + g.revenue, 0))} fp ${P.fp || 0} bx ${P.bx || 0} exPaid ${m(P.exPaid || 0)}` : ''}`);
 }
 if (group) console.log(`group: stab ${S.stability(G)}; ops ${S.opsCount(G)}; load ${S.groupLoad(G)}/${S.groupCap(G)}; costSave ${Math.round(S.costSave(G) * 100)}%; promo ${(S.promoOwn(G) * 100).toFixed(1)}%; invested $${Math.round(G.stats.groupInv || 0).toLocaleString()}; ${S.ownedComps(G).map((c) => `${c.name} ${c.sub.mode}${c.sub.mode === 'int' ? ' ' + Math.round(c.sub.integ * 100) + '% b' + c.sub.budget : ''} staff ${Math.round(c.sub.staff)} share ${Math.round(S.shareOf(G, c) * 100)}%${c.sub.ceo ? ' ceo' : ''}`).join(', ')}`);

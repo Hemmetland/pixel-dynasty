@@ -95,6 +95,7 @@ export class World {
     this.lampX = 230; // avstånd från mitten till närmaste gatlykta (breda hus flyttar ut dem, se Scene.rebuildLayout)
     this.birds = [];
     this.nextBird = 6;
+    this.fab = 0; // den egna fabrikens nivå (0 = ingen), syns bakom huset till höger
   }
 
   resize(W, H, groundY) {
@@ -196,6 +197,7 @@ export class World {
     this.tod = (this.tod + (dt / 170) * (o.paused ? 0.15 : 0.5 + 0.5 * Math.min(speed, 3))) % 1;
     if (o.todLock != null) this.tod = o.todLock;
     this.month = o.month ?? 0;
+    this.fab = o.fab || 0;
     for (const c of this.clouds) {
       c.x += c.v * dt * 0.6;
       if (c.x > this.W + 80) {
@@ -420,10 +422,30 @@ export class World {
       ctx.fillRect(0, 0, this.W, this.groundY);
     }
   }
+  // röken från fabrikens skorstenar (i gatulagret, som ritas varje bildruta och ligger framför stadssilhuetten)
+  drawSmoke(ctx) {
+    if (!this.fab) return;
+    const { tops } = this.fabLayout();
+    for (let i = 0; i < tops.length; i++) {
+      const { x, y } = tops[i];
+      for (let k = 0; k < 6; k++) {
+        const p = (this.time * 0.18 + k / 6 + i * 0.37) % 1;
+        const sx = Math.round(x + p * 10 + Math.sin(p * 6 + i) * 1.5);
+        const sy = Math.round(y - 2 - p * 26);
+        const r = 1 + Math.round(p * 3);
+        ctx.fillStyle = `rgba(226,230,240,${(1 - p) * 0.55})`;
+        ctx.fillRect(sx - r, sy - r + 1, r * 2, r * 2 - 2);
+        ctx.fillRect(sx - r + 1, sy - r, r * 2 - 2, r * 2);
+      }
+    }
+  }
 
   // Stadssilhuett + träd + mark bakom byggnaden (ritas på objektlagret)
   drawBackdrop(ctx) {
-    if (this.backdrop) return;
+    if (this.backdrop) {
+      this.drawFactory(ctx, false);
+      return;
+    }
     const gy = this.groundY;
     const lyr = this.layers;
     for (let i = 0; i < lyr.length; i++) {
@@ -436,13 +458,83 @@ export class World {
     hz.addColorStop(1, 'rgba(210,225,255,0.22)');
     ctx.fillStyle = hz;
     ctx.fillRect(0, gy - 60, this.W, 60);
+    this.drawFactory(ctx, false);
   }
   drawLitWindows(ctx, night) {
-    if (night < 0.05 || this.backdrop) return;
+    if (night < 0.05) return;
     const gy = this.groundY;
     ctx.globalAlpha = clamp(night * 1.2, 0, 1);
-    for (let i = 0; i < this.layers.length; i++) ctx.drawImage(this.layers[i].lit, 0, gy - this.layers[i].H - 6 + i * 4);
+    if (!this.backdrop) for (let i = 0; i < this.layers.length; i++) ctx.drawImage(this.layers[i].lit, 0, gy - this.layers[i].H - 6 + i * 4);
+    this.drawFactory(ctx, true);
     ctx.globalAlpha = 1;
+  }
+
+  // Den egna fabriken: en hall med sågtandstak per nivå och en skorsten per hall, strax utanför den första gatlyktan
+  // till höger om huset
+  fabLayout() {
+    const n = this.fab;
+    const x0 = Math.round(this.W / 2 + this.lampX + 14);
+    const halls = [];
+    const tops = [];
+    for (let i = 0; i < n; i++) {
+      const x = x0 + i * 30;
+      halls.push(x);
+      tops.push({ x: x + 24, y: this.groundY - 40 - (i === 0 ? 4 : 0) });
+    }
+    return { x0, halls, tops };
+  }
+  drawFactory(ctx, lit) {
+    if (!this.fab) return;
+    const gy = this.groundY;
+    const { halls, tops } = this.fabLayout();
+    const R = (x, y, w, h, c) => {
+      ctx.fillStyle = c;
+      ctx.fillRect(x, y, w, h);
+    };
+    for (let i = 0; i < halls.length; i++) {
+      const x = halls[i];
+      const wallTop = gy - 20;
+      if (!lit) {
+        // skorsten bakom taket, med röda och vita band
+        const t = tops[i];
+        R(t.x - 2, t.y, 5, gy - t.y, '#6c6f82');
+        R(t.x - 2, t.y, 1, gy - t.y, '#8a8ea4');
+        R(t.x - 2, t.y + 2, 5, 2, '#c8584a');
+        R(t.x - 2, t.y + 6, 5, 2, '#e8e8f0');
+        R(t.x - 3, t.y, 7, 1, '#4a4d5e');
+        // väggen och sågtandstaket med glas mot norr
+        R(x, wallTop, 30, 20, '#9a6656');
+        R(x, wallTop, 30, 1, '#b8806c');
+        R(x + 29, wallTop, 1, 20, '#74483e');
+        for (let k = 3; k < 20; k += 4) R(x + 1, wallTop + k, 28, 1, '#8c5a4c');
+        R(x, wallTop + 10, 30, 1, '#c8c4bc');
+        for (let k = 0; k < 3; k++) {
+          const tx = x + k * 10;
+          for (let j = 0; j < 6; j++) R(tx + j + 1, wallTop - j - 1, 10 - j - 1, 1, '#4f5469');
+          R(tx + 1, wallTop - 6, 1, 6, '#9fc4e8');
+        }
+        // fönsterrad och port
+        for (let k = 0; k < 4; k++) R(x + 3 + k * 7, wallTop + 4, 4, 4, '#2e3348');
+        R(x + 11, gy - 9, 8, 9, '#4a4f63');
+        for (let k = 1; k < 9; k += 2) R(x + 11, gy - 9 + k, 8, 1, '#5a6075');
+      } else {
+        for (let k = 0; k < 4; k++) R(x + 3 + k * 7, wallTop + 4, 4, 4, k % 3 === 1 ? '#bfe8ff' : '#ffd27a');
+        R(x + 1, wallTop - 6, 1, 5, '#ffe6a8');
+        R(x + 11, wallTop - 6, 1, 5, '#ffe6a8');
+        R(x + 21, wallTop - 6, 1, 5, '#ffe6a8');
+      }
+    }
+    if (!lit) {
+      // skylt i studions accentfärg på den första hallen
+      const x = halls[0];
+      R(x + 4, gy - 31, 22, 6, '#f4f6fb');
+      R(x + 4, gy - 26, 22, 1, '#c8ccd8');
+      R(x + 6, gy - 30, 4, 4, '#2fb8a8');
+      R(x + 12, gy - 29, 12, 1, '#4a5068');
+      R(x + 12, gy - 27, 8, 1, '#7a8098');
+      R(x + 9, gy - 25, 1, 5, '#4a4d5e');
+      R(x + 21, gy - 25, 1, 5, '#4a4d5e');
+    }
   }
 
   drawGround(ctx, sky) {
@@ -535,6 +627,7 @@ export class World {
 
   drawStreetFront(ctx, night) {
     const gy = this.groundY;
+    this.drawSmoke(ctx);
     // lyktstolpar
     for (const x of this.lamps) {
       ctx.fillStyle = '#2a2f3c';
