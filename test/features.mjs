@@ -569,6 +569,30 @@ ok(true, 'alla händelser körda');
     c.owned = false;
     c.sub = null;
   }
+  // köpta exklusiva spel: ett annat förlags nästa spel släpps bara på plattformen, mot en avgift
+  {
+    const c = GP.comps[1];
+    c.next ||= { topic: GP.u.topics[0], genre: GP.u.genres[0] };
+    c.nextT = GP.t + 10;
+    GP.market.releases.push({ id: 9901, t: GP.t - 20, comp: c.id, studio: c.name, title: 'X', score: 7, total: 5e6, platform: 'pc', genre: c.next.genre, topic: c.next.topic, tail: 1 });
+    const w0 = pl.weight;
+    pl.weight = 5;
+    ok(S.exclOffers(GP, P).includes(c) && S.canBuyExcl(GP, P, c) === 'small', 'en liten plattform kan inte köpa exklusiva spel');
+    pl.weight = 40;
+    const m0 = GP.money;
+    const price = S.exclPrice(GP, c);
+    ok(price > 0 && S.buyExclusive(GP, P.id, c.id) === true && Math.abs(GP.money - (m0 - price)) < 1 && c.buyEx && S.boughtFor(GP, P).includes(c) && !S.exclOffers(GP, P).includes(c), 'ett förlags nästa spel köps som exklusivt (' + price + ')');
+    S.releaseComp(GP, c);
+    const rel = GP.market.releases[GP.market.releases.length - 1];
+    ok(rel.comp === c.id && rel.platform === id && rel.ex && P.bx === 1 && !c.buyEx && S.exSales(GP, id) > 0, 'spelet kommer ut på plattformen och ger licensavgift');
+    const c2 = GP.comps[2];
+    c2.buyEx = { plat: id, t: GP.t, price: 1000 };
+    P.state = 'ended';
+    const m1 = GP.money;
+    ok(S.boughtPlatform(GP, c2) === null && GP.money === m1 + 500 && !c2.buyEx, 'en nedlagd plattform ger tillbaka hälften');
+    P.state = 'market';
+    pl.weight = w0;
+  }
   const b0 = P.boost || 0;
   S.hwRelease(GP, { id: 501, title: 'Z', platform: id, score: 8.5, total: 1e6, t: GP.t });
   ok(P.boost > b0 && P.games === 1, 'ett eget hit på plattformen säljer fler enheter');

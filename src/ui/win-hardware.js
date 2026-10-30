@@ -1,4 +1,6 @@
-import { esc, icon, t, tn, UI, act, regWin, bar, money, errToast } from './core.js';
+import { esc, icon, t, tn, L, UI, act, regWin, bar, money, errToast } from './core.js';
+import { GENRE } from '../data/genres.js';
+import { TOPIC } from '../data/topics.js';
 import { pixIcon } from './icons.js';
 import { sfx } from '../audio/sfx.js';
 import { fmtNum } from '../core/util.js';
@@ -11,7 +13,7 @@ import {
   defectOf, canDesign, startDesign, pauseDesign, cancelDesign, resolveProto, hwName, draftOf, scoreOf, unitCost, suggestPrice, priceSteps,
   stepPrice, weeklyDemand, suggestPartner, orderOptions, orderCost, orderMore, marketSize, launch, setPrice, setAuto, setPartner, setDriver, driverCost, discontinue, resolveIssue,
   resolveBench, pipelineOf, productProfit, hwNet, brandOf, RECALL, CLEAR, isPlat, archOpen, partnerFits, minOrder, platOf, supportOf, platRoyalty, setPlatFee,
-  ownGames, PER_WEIGHT, drvMax, partnerAllowed, exclPartner, exclOf, resolveOffer, resolvePatent, ISSUE_WEEKS, digitalOf, platDigital, PLAT_CUT,
+  ownGames, PER_WEIGHT, drvMax, exclOffers, boughtFor, exclPrice, exclWeeks, canBuyExcl, buyExclusive, BUY_MIN, BUY_GAP, partnerAllowed, exclPartner, exclOf, resolveOffer, resolvePatent, ISSUE_WEEKS, digitalOf, platDigital, PLAT_CUT,
 } from '../sim/hardware.js';
 
 // Fönstret Hårdvara: Utveckling (labbet, chefen, designprojekt och nya designer), Produkter (det som tillverkas och
@@ -223,7 +225,20 @@ function platBlock(G, P) {
       ${digitalOf(G) ? stat('hw.s.digital', t('dist.pct', { n: pct(digitalOf(G)) }), t('hw.s.digitalTip', { pct: pct(PLAT_CUT) })) + stat('hw.s.storeW', `${money(platDigital(G, P))}${t('ui.perWeek')}`, t('hw.s.storeWTip')) : ''}
     </div>
     ${!digitalOf(G) && !G.u.flags.store ? `<p class="hint" style="margin-top:8px">${icon('cart')} ${t('hw.storeHint')}</p>` : ''}
-    <div class="hw-ctl" style="margin-top:12px"><div class="hw-wide"><div class="lbl" style="margin-bottom:6px">${t('hw.fee')}</div>${seg(fees, P.fee, 'hw-fee', `data-id="${P.id}"`, (it) => t('hw.feeTip', { s: pct(supportOf(G, P, it.v)), v: money(platRoyalty(G, P, it.v)) }))}<p class="hint" style="margin-top:6px">${t('hw.feeHelp')}</p></div></div>`;
+    <div class="hw-ctl" style="margin-top:12px"><div class="hw-wide"><div class="lbl" style="margin-bottom:6px">${t('hw.fee')}</div>${seg(fees, P.fee, 'hw-fee', `data-id="${P.id}"`, (it) => t('hw.feeTip', { s: pct(supportOf(G, P, it.v)), v: money(platRoyalty(G, P, it.v)) }))}<p class="hint" style="margin-top:6px">${t('hw.feeHelp')}</p></div></div>
+    ${P.state === 'market' ? exBlock(G, P, pl) : ''}`;
+}
+// Köp andra förlags nästa spel som exklusiva till plattformen (ryktena), och de som redan är köpta
+function exBlock(G, P, pl) {
+  const row = (c, right) => `<div class="hw-exrow"><span class="dotc" style="background:${c.color}"></span><div style="min-width:0"><b class="ell">${esc(c.name)}</b><div class="faint ell" style="font-size:12px">${L(GENRE[c.next.genre].name)} · ${L(TOPIC[c.next.topic].name)} · ${t('hw.exIn', { n: Math.max(0, exclWeeks(G, c)) })}</div></div>${right}</div>`;
+  const bought = boughtFor(G, P).map((c) => row(c, tag(t('hw.exBought'), 'var(--good)')));
+  const offers = exclOffers(G, P).map((c) => {
+    const ok = canBuyExcl(G, P, c);
+    const tip = ok === 'small' ? t('hw.exSmall', { n: BUY_MIN }) : ok === 'wait' ? t('hw.exWait', { n: BUY_GAP - (G.t - P.exT) }) : t('hw.exTip', { name: esc(pl ? pl.name : P.name) });
+    return row(c, `<button class="btn sm" data-act="hw-ex" data-id="${P.id}" data-v="${esc(String(c.id))}" ${ok === true ? '' : 'disabled'} data-tip="${esc(tip)}">${t('hw.exBuy', { v: money(exclPrice(G, c)) })}</button>`);
+  });
+  if (!bought.length && !offers.length) return '';
+  return `<div class="lbl" style="margin:14px 0 6px">${t('hw.exT')}</div><p class="hint" style="margin-bottom:8px">${t('hw.exHelp')}</p><div class="col" style="gap:6px">${bought.join('')}${offers.join('')}</div>`;
 }
 
 function productCard(G, P) {
@@ -281,8 +296,9 @@ function econ(G, H) {
     ['hw.e.drv', -o.drv],
     ['hw.e.lab', -o.lab],
     ['hw.e.issue', -o.issue],
+    ['hw.e.excl', -(o.excl || 0)],
   ];
-  const net = (o) => o.rev + (o.lic || 0) - o.design - o.proto - o.make - o.war - o.roy - o.drv - o.lab - o.issue;
+  const net = (o) => o.rev + (o.lic || 0) - o.design - o.proto - o.make - o.war - o.roy - o.drv - o.lab - o.issue - (o.excl || 0);
   const cell = (v) => `<b class="num ${v >= 0 ? 'up' : 'down'}">${v > 0 ? '+' : ''}${money(v)}</b>`;
   const cur = early ? H.m : H.lm;
   const a = rows(cur);
@@ -477,6 +493,7 @@ act('hw-end', (el) => {
 });
 act('hw-issue', (el) => refresh(resolveIssue(G_(), +el.dataset.id, el.dataset.v)));
 act('hw-bench', (el) => refresh(resolveBench(G_(), +el.dataset.id, el.dataset.v === '1')));
+act('hw-ex', (el) => refresh(buyExclusive(G_(), +el.dataset.id, el.dataset.v), 'coin'));
 act('hw-offer', (el) => refresh(resolveOffer(G_(), el.dataset.v === '1')));
 act('hw-patent', (el) => refresh(resolvePatent(G_(), el.dataset.v)));
 act('hw-old', () => {

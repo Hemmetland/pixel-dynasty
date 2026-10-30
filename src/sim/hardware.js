@@ -4,7 +4,7 @@ import { emit } from '../core/bus.js';
 import { PLATFORM, PLATFORMS, setOwnPlatforms, potential, launchTime } from '../data/platforms.js';
 import { HW_TYPES, HW_IDS, HW_CLASSES, HW_QUALITY, HW_ARCH, HW_PARTNERS, HW_PARTNER, ARCH_TYPES, PC_PARTS, PLAT_TYPES, PLAT_FEES } from '../data/hardware.js';
 import { yearOf, yfOf, moneyScale, wageIndex, tOf, WEEKS_PER_YEAR, WEEKS_PER_MONTH } from './const.js';
-import { unitRev } from './sales.js';
+import { unitRev, curveFor } from './sales.js';
 import { spend, earn, capacity } from './studio.js';
 import { note } from './news.js';
 
@@ -90,6 +90,12 @@ const DIGITAL = [[2003, 0.05], [2008, 0.2], [2015, 0.4], [2020, 0.6]];
 export const PLAT_CUT = 0.3; // butikens del av andra förlags digitala försäljning på plattformen (i stället för licensen)
 const PLAT_REACH = 0.04; // butikens räckviddsmål av plattformens spelare, högst
 const PLAT_REACH_BASE = 1e6; // installerad bas för det fulla tillskottet
+// Köpta exklusiva spel: ett annat förlags nästa spel (känt genom ryktet) släpps bara på din plattform
+const BUY_EX = 0.3; // priset: så stor del av förlagets senaste spels snittförsäljning
+export const BUY_GAP = 24; // veckor mellan två köp till samma plattform
+const BUY_MIN_W = 10; // förlagen vill ha en plattform med minst den vikten
+const BUY_WEEKS = [4, 36]; // spel som kommer om så många veckor går att köpa
+const BUY_BACK = 0.5; // läggs plattformen ned före släppet får du tillbaka så mycket
 export const canHw = (G) => !!G.u.flags.hw;
 const rngFor = (G, key) => seeded(hashStr(`${G.seed || 0}:hw:${key}`));
 const gaussFor = (G, key, m, s) => gauss({ rng: hashStr(`${G.seed || 0}:hw:${key}`) | 0 }, m, s);
@@ -109,8 +115,8 @@ export function hwOf(G) {
   return G.hw;
 }
 const book = (H, k, v) => {
-  H.m[k] += v;
-  H.tot[k] += v;
+  H.m[k] = (H.m[k] || 0) + v;
+  H.tot[k] = (H.tot[k] || 0) + v;
 };
 function pay(G, H, k, v, cat = 'hwMake') {
   if (v <= 0) return;
@@ -873,9 +879,9 @@ export function hwReach(G) {
 // Samlat för fönstret, botten och testerna
 export const hwNet = (G) => {
   const T = G.hw?.tot;
-  return T ? T.rev + (T.lic || 0) - T.design - T.proto - T.make - T.war - T.roy - T.drv - T.lab - T.issue : 0;
+  return T ? T.rev + (T.lic || 0) - T.design - T.proto - T.make - T.war - T.roy - T.drv - T.lab - T.issue - (T.excl || 0) : 0;
 };
-export const productProfit = (P) => P.rev + (P.lic || 0) - P.dev - P.cost - P.war - P.roy;
+export const productProfit = (P) => P.rev + (P.lic || 0) - P.dev - P.cost - P.war - P.roy - (P.exPaid || 0);
 // pengar som går åt per månad just nu (designprojekt, drivrutinsteam, labb och chef) för ekonomiöversikten
 export function hwCostMonth(G) {
   const H = G.hw;
@@ -969,9 +975,71 @@ export function platStore(G) {
   let v = 0;
   for (const pl of G.hw.plats || []) {
     const P = productOfPlat(G, pl.id);
-    if (P) v += platDigital(G, P);
+    if (P) v += platDigital(G, P) + PLAT_CUT * exSales(G, pl.id) * digitalOf(G);
   }
   return v;
+}
+// köpta exklusiva spel på plattformen: deras försäljning den här veckan (licensavgiften tas på den)
+export function exSales(G, id) {
+  let v = 0;
+  for (const r of G.market.releases) {
+    if (!r.ex || r.platform !== id) continue;
+    const c = curveFor(r.score, r.tail || 1)[G.t - r.t];
+    if (c) v += r.total * c;
+  }
+  return v;
+}
+const relWeek = (c) => Math.ceil(c.nextT / WEEKS_PER_MONTH) * WEEKS_PER_MONTH;
+function compAvg(G, c) {
+  const rs = G.market.releases.filter((r) => r.comp === c.id).slice(-3);
+  return rs.length ? rs.reduce((a, r) => a + r.total, 0) / rs.length : 0;
+}
+export const exclPrice = (G, c) => Math.round((BUY_EX * compAvg(G, c)) / 1000) * 1000;
+export const exclWeeks = (G, c) => relWeek(c) - G.t;
+// Andra förlags kommande spel (med känt rykte) som går att köpa som exklusiva, närmast först
+export function exclOffers(G, P) {
+  if (!platOf(G, P) || P.state !== 'market') return [];
+  return (G.comps || [])
+    .filter((c) => !c.owned && c.next && !c.buyEx && exclWeeks(G, c) >= BUY_WEEKS[0] && exclWeeks(G, c) <= BUY_WEEKS[1] && compAvg(G, c) > 0)
+    .sort((a, b) => a.nextT - b.nextT)
+    .slice(0, 3);
+}
+export const boughtFor = (G, P) => (G.comps || []).filter((c) => c.buyEx && c.buyEx.plat === P.plat);
+export const BUY_MIN = BUY_MIN_W;
+export function canBuyExcl(G, P, c) {
+  const pl = platOf(G, P);
+  if (!pl || !P || P.state !== 'market' || !c || c.owned || c.buyEx) return 'locked';
+  if (pl.weight < BUY_MIN_W) return 'small';
+  if (G.t - (P.exT ?? -1e9) < BUY_GAP) return 'wait';
+  if (G.money < exclPrice(G, c)) return 'money';
+  return true;
+}
+export function buyExclusive(G, id, compId) {
+  const P = productOf(G, id);
+  const c = (G.comps || []).find((x) => String(x.id) === String(compId));
+  const ok = canBuyExcl(G, P, c);
+  if (ok !== true) return ok;
+  const v = exclPrice(G, c);
+  pay(G, G.hw, 'excl', v, 'hwExcl');
+  P.exPaid = (P.exPaid || 0) + v;
+  P.exT = G.t;
+  c.buyEx = { plat: P.plat, t: G.t, price: v };
+  return true;
+}
+// Vid släppet (från market.js, efter slumpdragningarna): ett köpt spel kommer ut på din plattform om den fortfarande
+// säljs; annars där förlaget valt, och du får tillbaka hälften
+export function boughtPlatform(G, c) {
+  const b = c.buyEx;
+  if (!b) return null;
+  c.buyEx = null;
+  const P = productOfPlat(G, b.plat);
+  if (P && P.state === 'market' && PLATFORM[b.plat]) return PLATFORM[b.plat];
+  if (G.hw && b.price) {
+    earn(G, b.price * BUY_BACK, 'hwExcl');
+    book(G.hw, 'excl', -b.price * BUY_BACK);
+    if (P) P.exPaid = (P.exPaid || 0) - b.price * BUY_BACK;
+  }
+  return null;
 }
 export function setPlatFee(G, id, fee) {
   const P = productOf(G, id);
@@ -984,7 +1052,7 @@ function platWeek(G, H) {
     const P = productOfPlat(G, pl.id);
     if (!P) continue;
     pl.weight = Math.min(WEIGHT_MAX, (P.base || 0) / PER_WEIGHT);
-    const v = platRoyalty(G, P);
+    const v = platRoyalty(G, P) + (P.fee ?? 0.2) * exSales(G, pl.id) * (1 - digitalOf(G));
     if (v <= 0) continue;
     earn(G, v, 'hwLic');
     book(H, 'lic', v);
@@ -1000,11 +1068,13 @@ export function ownPlatFor(G, kind) {
   }
   return null;
 }
-// Ett koncernspel på den egna plattformen (förstapart): ett hit säljer fler enheter, som dina egna
+// Ett koncernspel (förstapart) eller ett köpt exklusivt spel på den egna plattformen: ett hit säljer fler enheter, som
+// dina egna
 export function groupPlatRelease(G, rel) {
   const P = productOfPlat(G, rel.platform);
   if (!P) return;
-  P.fp = (P.fp || 0) + 1;
+  if (rel.ex) P.bx = (P.bx || 0) + 1;
+  else P.fp = (P.fp || 0) + 1;
   note(G, 'news.hwFirstParty', { studio: rel.studio, title: rel.title, name: P.name }, 'platform', rel.score < 8);
   if (rel.score >= 8 && P.state === 'market') P.boost = Math.min(HIT_MAX, (P.boost || 0) + EXCL_BOOST);
 }

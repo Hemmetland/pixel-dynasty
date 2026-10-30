@@ -291,6 +291,11 @@ Kalibrera i den här ordningen: MARKNAD-tabellen (storleken), sedan THIRD (royal
   Spelet säljer efter din plattforms storlek (gånger 1,1, ingen licensavgift), räknas som ett av dina spel på
   plattformen och ett hit (8+) säljer fler enheter. Botar `--hw --acq --group` (16 seeds): 0–6 förstapartsspel per
   plattform, kassan oförändrad (541 mot 539 M$), alltså ett strategiskt val snarare än en ren vinst.
+- Köpta exklusiva: på plattformskortet kan du betala ett annat förlag för att släppa sitt nästa spel bara på din
+  plattform (vikt minst 10, ett köp per 24 veckor). Priset är 30 % av förlagets snittförsäljning för de tre senaste
+  spelen (`exclPrice`), och spelet måste släppas om 4–36 veckor. Spelet säljer efter din plattforms storlek, ger licensavgiften och räknas bland
+  plattformens spel; läggs plattformen ned före släppet får du tillbaka hälften. Botar `--hw --platex` (24 seeds):
+  372 mot 370 M$, alltså nästan neutralt.
 - Botar (24 seeds med fast slump): kassa 2020 är 267 M$ utan hårdvara, 341 M$ med bara komponenter (+28 %) och
   357 M$ med plattformar (+34 %; 370 M$ efter händelserna nedan), större spridning, ingen konkurs, samma nivåår. En konsol från 2011 tjänar cirka
   100 M$ inklusive licenser, konsoler från 2014–2015 går runt noll till 40 M$ och en svag konsol går med förlust.

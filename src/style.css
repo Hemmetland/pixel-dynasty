@@ -379,7 +379,7 @@ button.pn-c:hover { background: rgba(150, 172, 255, 0.13); border-color: var(--l
 .grp-sub .ell { display: block; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
 @media (max-width: 700px) { .grp-ctl { grid-template-columns: 1fr; } }
 .hw-card { border-left: 3px solid var(--c); }
-.hw-card .ell, .hw-orow .ell { display: block; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.hw-card .ell, .hw-orow .ell, .hw-exrow .ell { display: block; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
 .hw-alert { background: rgba(255, 92, 120, 0.06); }
 .hw-ready { background: rgba(110, 231, 106, 0.05); }
 .hw-ic { flex: none; width: 38px; height: 38px; border-radius: 11px; display: grid; place-items: center; color: var(--c); background: color-mix(in srgb, var(--c) 16%, transparent); }
@@ -395,6 +395,7 @@ button.pn-c:hover { background: rgba(150, 172, 255, 0.13); border-color: var(--l
 .hw-ctl .seg button .ic { width: 15px; height: 15px; margin-right: 5px; vertical-align: -3px; }
 .hw-issue { margin-top: 10px; padding: 10px 12px; border-radius: 10px; background: rgba(255, 184, 74, 0.1); border: 1px solid rgba(255, 184, 74, 0.3); }
 .hw-spark { width: 120px; height: 28px; flex: none; }
+.hw-exrow { display: grid; grid-template-columns: 12px minmax(0, 1fr) auto; gap: 10px; align-items: center; font-size: 13px; }
 .hw-orow { display: grid; grid-template-columns: 26px minmax(0, 1fr) auto 80px 80px; gap: 10px; align-items: center; font-size: 13px; }
 .hw-orow > :nth-child(n + 4) { text-align: right; }
 .hw-partner.off { opacity: 0.55; }

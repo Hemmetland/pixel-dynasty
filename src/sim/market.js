@@ -11,7 +11,7 @@ import { SALES_TAIL } from './tempo.js';
 import { RESEARCH } from '../data/research.js';
 import { note } from './news.js';
 import { subRelease, subCadence, subPlatform, fpTotal } from './group.js';
-import { groupPlatRelease } from './hardware.js';
+import { groupPlatRelease, boughtPlatform } from './hardware.js';
 
 export function makeCompetitors(G) {
   const picks = shuffle(G, COMPETITORS).slice(0, 10);
@@ -82,6 +82,12 @@ export function releaseComp(G, c) {
     total = fpTotal(total, fp, plat, yf);
     plat = fp;
   }
+  // ett spel du köpt som exklusivt till din plattform
+  const bought = !c.owned && c.buyEx ? boughtPlatform(G, c) : null;
+  if (bought) {
+    total = (total * Math.max(0.4, potential(bought, yf))) / Math.max(0.4, potential(plat, yf));
+    plat = bought;
+  }
   if (c.owned) [score, total] = subRelease(G, c, plat.id, score, total);
   const enOf = (x) => (typeof x === 'string' ? x : x?.en || '');
   const taken = new Set(G.market.releases.map((x) => enOf(x.title)));
@@ -93,7 +99,8 @@ export function releaseComp(G, c) {
   };
   G.market.releases.push(rel);
   if (G.market.releases.length > 260) G.market.releases.shift();
-  if (fp) groupPlatRelease(G, rel);
+  if (bought) rel.ex = true;
+  if (fp || bought) groupPlatRelease(G, rel);
   c.games++;
   c.best = Math.max(c.best, score);
   c.nextT = G.t + Math.round(rint(G, 36, 90) / (0.6 + strength * 0.6) / Math.min(1.8, 1 + (year - 1980) / 60));

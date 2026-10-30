@@ -47,6 +47,8 @@ const hw = args.includes('--hw');
 // plattform påbörjas (utöver första ordern); plattformsboten gör sina spel på den egna plattformen när den är störst
 const noplat = args.includes('--noplat');
 const platK = +opt('platk', 2);
+// --platex: köper ett annat förlags nästa spel som exklusivt till plattformen när kassan räcker åtta gånger om (ett i taget)
+const platex = args.includes('--platex');
 const PLAT_RES = new Set(['h_lowpow', 'h_soc', 'h_handheld', 'h_devkit', 'h_console', 'h_backcompat']);
 // --bd: skriv ut årets pengar per kategori (för balansarbete)
 const bd = args.includes('--bd');
@@ -190,6 +192,10 @@ function hwBot(G) {
     if (P.state === 'ended') continue;
     if (P.issue) S.resolveIssue(G, P.id, 'recall');
     if (P.bench === 'offer') S.resolveBench(G, P.id, false);
+    if (S.isPlat(P.type) && platex && P.state === 'market' && !S.boughtFor(G, P).length) {
+      const c = S.exclOffers(G, P).find((x) => S.canBuyExcl(G, P, x) === true && G.money > S.exclPrice(G, x) * 8);
+      if (c) S.buyExclusive(G, P.id, c.id);
+    }
     if (S.isPlat(P.type)) {
       // devkitteamet: när licensintäkten är minst fem gånger teamets kostnad och kompatibiliteten kan höjas
       if (G.u.flags.hw_devkit && P.state === 'market' && P.drv !== (P.compat < 95 && S.platRoyalty(G, P) > S.driverCost(G, P) * 5)) S.setDriver(G, P.id, !P.drv);
@@ -416,7 +422,7 @@ if (hw && G.hw) {
   const T = H.tot;
   const m = (v) => '$' + (v / 1e6).toFixed(1) + 'M';
   console.log(`hw ${S.yearOf(H.t0)} rep ${Math.round(H.rep)} lab ${H.lab}${H.chief ? ' chief' : ''}; rev ${m(T.rev)} design ${m(T.design)} proto ${m(T.proto)} make ${m(T.make)} war ${m(T.war)} roy ${m(T.roy)} drv ${m(T.drv)} lab ${m(T.lab)} issue ${m(T.issue)}; net ${m(S.hwNet(G))}`);
-  for (const P of H.products) console.log(`  ${P.name} ${P.type} ${S.yearOf(P.tReady)}${P.t != null ? '/' + S.yearOf(P.t) : ''}${P.endT ? '-' + S.yearOf(P.endT) : ''} ${P.partner} score ${P.score0 ?? '-'} $${P.price} sold ${Math.round(P.sold).toLocaleString()} peak ${Math.round(P.peak)}/w rev ${m(P.rev)} dev ${m(P.dev)} make ${m(P.cost)} profit ${m(S.productProfit(P))}${P.plat ? ` lic ${m(P.lic || 0)} base ${Math.round(P.base || 0).toLocaleString()} weight ${S.platOf(G, P).weight.toFixed(1)} tier ${S.platOf(G, P).tier} games ${G.games.filter((g) => g.platform === P.plat).length} gameRev ${m(G.games.filter((g) => g.platform === P.plat).reduce((a, g) => a + g.revenue, 0))} fp ${P.fp || 0}` : ''}`);
+  for (const P of H.products) console.log(`  ${P.name} ${P.type} ${S.yearOf(P.tReady)}${P.t != null ? '/' + S.yearOf(P.t) : ''}${P.endT ? '-' + S.yearOf(P.endT) : ''} ${P.partner} score ${P.score0 ?? '-'} $${P.price} sold ${Math.round(P.sold).toLocaleString()} peak ${Math.round(P.peak)}/w rev ${m(P.rev)} dev ${m(P.dev)} make ${m(P.cost)} profit ${m(S.productProfit(P))}${P.plat ? ` lic ${m(P.lic || 0)} base ${Math.round(P.base || 0).toLocaleString()} weight ${S.platOf(G, P).weight.toFixed(1)} tier ${S.platOf(G, P).tier} games ${G.games.filter((g) => g.platform === P.plat).length} gameRev ${m(G.games.filter((g) => g.platform === P.plat).reduce((a, g) => a + g.revenue, 0))} fp ${P.fp || 0} bx ${P.bx || 0} exPaid ${m(P.exPaid || 0)}` : ''}`);
 }
 if (group) console.log(`group: stab ${S.stability(G)}; ops ${S.opsCount(G)}; load ${S.groupLoad(G)}/${S.groupCap(G)}; costSave ${Math.round(S.costSave(G) * 100)}%; promo ${(S.promoOwn(G) * 100).toFixed(1)}%; invested $${Math.round(G.stats.groupInv || 0).toLocaleString()}; ${S.ownedComps(G).map((c) => `${c.name} ${c.sub.mode}${c.sub.mode === 'int' ? ' ' + Math.round(c.sub.integ * 100) + '% b' + c.sub.budget : ''} staff ${Math.round(c.sub.staff)} share ${Math.round(S.shareOf(G, c) * 100)}%${c.sub.ceo ? ' ceo' : ''}`).join(', ')}`);
 if (acq) console.log(`owned ${S.ownedComps(G).length}; paid $${Math.round(S.ownedComps(G).reduce((a, c) => a + c.paid, 0)).toLocaleString()}; earned $${Math.round(S.subIncome(G)).toLocaleString()}; ${S.ownedComps(G).map((c) => `${c.name} ${S.yearOf(c.ownedT)} $${Math.round(c.paid / 1e6)}M -> $${Math.round(c.subRev / 1e6)}M`).join(', ')}`);
