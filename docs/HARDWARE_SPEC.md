@@ -302,3 +302,15 @@ Kalibrera i den här ordningen: MARKNAD-tabellen (storleken), sedan THIRD (royal
 - Drivrutinsteamet stannar när kompatibiliteten når taket, och knappen är avstängd där. Tidiga grafikkort, datorer
   och processorer har något större marknader (processorns grundandel är 7 % i stället för 6 %) så att första generationen
   inte blir en ren förlustaffär, och de sena marknaderna är trimmade.
+
+## Så blev det i spelet (steg 4, VR-headset)
+
+- `h_vr` (2015, kräver `h_handheld` och `f_vr`, 5 000 FP och 12 M$) öppnar typen VR-headset (`vr` i `HW_TYPES`):
+  basår 2016, 56 veckor, design 6 M$, prototyp 1 M$, förslagspris 399 $, enhetskostnad 75 %, kostnadsfall 12 %/år,
+  livscykel 5 år, BASE 0,25 och MAX 0,5 (Lumen VR är enda rivalen), marknad 60 000 (2015), 160 000 (2016),
+  360 000 (2020) och 520 000 (2025) enheter per år. Första ordern 25 000.
+- Headsetet följer reglerna för en bärbar enhet: egen plattform av slaget `vr` (namn Mirage), egen arkitektur med
+  Systemkretsar, licens, devkit, bakåtkompatibilitet, butiken, koncernsynergin och köpta exklusiva. Generationen är
+  den bästa konsolens (inte en lägre), och plattformen gynnar action, simulering och skjutspel som Lumen VR.
+- Botar `--hw --vr --end=2026` (24 seeds): kassa 2026 933 M$ mot 893 M$ med bara `--hw` (+4,5 %). Första Mirage
+  (2017) säljer 300 000–520 000 enheter, når vikt 10–17 och tjänar 28–59 M$ plus 7–22 M$ i licenser.

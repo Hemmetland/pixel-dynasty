@@ -604,6 +604,25 @@ ok(true, 'alla händelser körda');
   S.newGame({ seed: 1 });
   ok(!PLATFORM[id] && !PLATFORMS.some((p) => p.own), 'ett nytt spel har inga egna plattformar');
 }
+// VR-headset: VR-forskningen öppnar typen och headsetet blir en egen VR-plattform med VR-spelens styrkor
+{
+  const GV = S.newGame({ studio: 'V', seed: 31 }); S.makeCompetitors(GV); S.initWorld(GV);
+  GV.t = 48 * 37; GV.money = 5e8; GV.fans = 200000;
+  Object.assign(GV.u.flags, { hw: true, hw_lowpow: true, hw_handheld: true, hw_vr: true });
+  GV.t++; S.hwWeek(GV);
+  ok(S.openTypes(GV).join() === 'handheld,vr', 'forskningen öppnar VR-headsetet');
+  ok(S.startDesign(GV, { type: 'vr', cls: 'mid', arch: 'std' }) === true, 'ett VR-headset kan designas');
+  const J = GV.hw.projects[0];
+  J.done = J.weeks - 1;
+  for (let i = 0; i < 60 && J.state !== 'ready'; i++) { GV.t++; S.hwWeek(GV); if (J.state === 'fail') S.resolveProto(GV, J.id, 'ship'); }
+  ok(J.state === 'ready' && S.launch(GV, J.id, { partner: 'meridian', units: 1000 }) === true && GV.hw.orders[0].units === S.PLAT_MIN.vr, 'headsetet lanseras med en första order för en plattform');
+  const P = GV.hw.products[0];
+  for (let i = 0; i < 20 && P.state === 'prod'; i++) { GV.t++; S.hwWeek(GV); }
+  const pl = S.platOf(GV, P);
+  ok(P.state === 'market' && pl.kind === 'vr' && pl.bias.simulation > 1 && pl.bias.strategy < 1 && S.ownPlatFor(GV, 'vr') === pl && pl.tier >= PLATFORM.lumen.tier - 1, 'headsetet blir en egen VR-plattform (generation ' + pl.tier + ')');
+  for (let i = 0; i < 48; i++) { GV.t++; S.hwWeek(GV); }
+  ok(P.sold > 0 && P.base > 0 && pl.weight > 0, 'headsetet säljer (' + Math.round(P.sold) + ' enheter, vikt ' + pl.weight.toFixed(1) + ')');
+}
 // årets summa per kategori: förra året till finansfönstret och årsrapporten, en äldre sparning räknar en del av året
 {
   const GY = S.newGame({ studio: 'Y', seed: 5 }); S.makeCompetitors(GY); S.initWorld(GY);

@@ -55,7 +55,7 @@ const CHIPS = [tOf(2020, 2, 2), tOf(2022, 5)];
 export const PER_WEIGHT = 30000; // installerad bas per viktpoäng (Nova Prism 5 har vikt 80)
 const WEIGHT_MAX = 90;
 const THIRD = 30; // andra förlags spel på plattformen, i spelintäkt per viktpoäng och vecka (gånger licensavgiften och stödet)
-export const PLAT_MIN = { handheld: 40000, console: 60000 }; // första ordern
+export const PLAT_MIN = { handheld: 40000, console: 60000, vr: 25000 }; // första ordern
 const DEVKIT_MAX = 95;
 const DEVKIT_BONUS = 15;
 const BACKCOMPAT = 0.4; // en efterföljare med bakåtkompatibilitet börjar med så stor del av föregångarens bas
@@ -912,6 +912,12 @@ const PLAT_BIAS = {
   budget: { casual: 1.3, simulation: 1.1, shooter: 0.75 },
   top: { shooter: 1.15, action: 1.1, racing: 1.1 },
   handheld: { casual: 1.2, rpg: 1.1, adventure: 1.05, racing: 0.85, shooter: 0.8 },
+  vr: { action: 1.2, simulation: 1.2, shooter: 1.15, casual: 1.1, strategy: 0.6 },
+};
+const PLAT_DESC = {
+  handheld: { sv: 'Studions egen bärbara spelenhet. Dina spel kräver ingen licens här.', en: 'Your studio\'s own handheld. Your games need no license here.' },
+  console: { sv: 'Studions egen konsol. Dina spel kräver ingen licens här.', en: 'Your studio\'s own console. Your games need no license here.' },
+  vr: { sv: 'Studions eget VR-headset. Dina spel kräver ingen licens här.', en: 'Your studio\'s own VR headset. Your games need no license here.' },
 };
 // Produkten kommer ut: plattformen läggs till i spelet (vikt efter installerad bas), med föregångarens spelare om den är
 // bakåtkompatibel. En konkurrent kan sänka priset, och en het konsol kan överhettas första året.
@@ -920,14 +926,12 @@ function openPlat(G, H, P) {
   const prev = H.plats.filter((p) => p.kind === P.type).pop();
   const prevP = prev ? productOfPlat(G, prev.id) : null;
   P.base = P.bc && prevP ? Math.round(BACKCOMPAT * (prevP.base || 0)) : 0;
-  const bias = P.cls === 'budget' ? PLAT_BIAS.budget : P.cls === 'top' ? PLAT_BIAS.top : P.type === 'handheld' ? PLAT_BIAS.handheld : {};
+  const bias = P.type === 'vr' ? PLAT_BIAS.vr : P.cls === 'budget' ? PLAT_BIAS.budget : P.cls === 'top' ? PLAT_BIAS.top : P.type === 'handheld' ? PLAT_BIAS.handheld : {};
   const y0 = Math.floor(yf);
   const pl = {
     id: `own${P.id}`, name: P.name, maker: G.studio, kind: P.type, glyph: null, color: HW_TYPES[P.type].color, y0, m0: (yf - y0) * 12, y1: 2200,
     weight: Math.min(WEIGHT_MAX, P.base / PER_WEIGHT), tier: platTierAt(G, P.type, P.cls), license: 0, bias,
-    desc: P.type === 'handheld'
-      ? { sv: 'Studions egen bärbara spelenhet. Dina spel kräver ingen licens här.', en: 'Your studio\'s own handheld. Your games need no license here.' }
-      : { sv: 'Studions egen konsol. Dina spel kräver ingen licens här.', en: 'Your studio\'s own console. Your games need no license here.' },
+    desc: PLAT_DESC[P.type],
     own: true, hw: P.id,
   };
   P.plat = pl.id;

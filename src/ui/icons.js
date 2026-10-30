@@ -52,6 +52,7 @@ const ICONS = {
   box: P('<path d="M3.5 7.5L12 3l8.5 4.5v9L12 21l-8.5-4.5z"/><path d="M3.5 7.5L12 12l8.5-4.5M12 12v9"/>'),
   handheld: P('<rect x="6" y="2.5" width="12" height="19" rx="2"/><rect x="8.5" y="5" width="7" height="6" rx=".6"/><path d="M9 15v3M7.5 16.5h3"/><circle cx="15" cy="15.5" r=".9"/><circle cx="15.5" cy="18" r=".9"/>'),
   console: P('<rect x="2.5" y="9" width="19" height="9" rx="1.8"/><path d="M5.5 9V6.5h13V9M5.5 13.5h6"/><circle cx="17" cy="13.5" r="1.4"/>'),
+  vr: P('<path d="M4.5 8h15a2 2 0 0 1 2 2v4.5a2 2 0 0 1-2 2h-4l-1.8-2.2a2 2 0 0 0-3.4 0L8.5 16.5h-4a2 2 0 0 1-2-2V10a2 2 0 0 1 2-2zM7 8V6M17 8V6"/>'),
   truck: P('<path d="M2.5 6.5h11v9h-11zM13.5 9.5h4l3 3v3h-7"/><circle cx="6.5" cy="17.5" r="1.8"/><circle cx="17" cy="17.5" r="1.8"/>'),
   wrench: P('<path d="M14.5 6.5a4 4 0 0 0 4.8 4.8l-9.3 9.2a2.2 2.2 0 0 1-3.1-3.1l9.3-9.3a4 4 0 0 0 .3-1.6z"/>'),
   bank: P('<path d="M3 9l9-5 9 5M5 10v8M9.5 10v8M14.5 10v8M19 10v8M3 20h18"/>'),

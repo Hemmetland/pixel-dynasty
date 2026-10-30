@@ -25,12 +25,15 @@ export const HW_TYPES = {
     [[2003, 600000], [2004, 800000], [2010, 1200000], [2017, 1000000], [2025, 800000]], 'handheld', '#7be0c8', 6.25, (n) => (n > 1 ? `Nomad ${n}` : 'Nomad')),
   console: T('console', 'h_console', 2006, 96, 35000000, 5000000, 399, 1, 0.12, 7, 0.1, 0.1, 0.3, 1.4,
     [[2005, 1200000], [2006, 1500000], [2012, 2000000], [2020, 2500000]], 'console', '#b98cff', 6.25, (n) => (n > 1 ? `Paragon ${n}` : 'Paragon')),
+  // VR-headset: en liten ny nisch där Lumen VR är enda rivalen, med samma regler som en bärbar enhet
+  vr: T('vr', 'h_vr', 2016, 56, 6000000, 1000000, 399, 0.75, 0.12, 5, 0.12, 0.25, 0.5, 1.4,
+    [[2015, 60000], [2016, 160000], [2020, 360000], [2025, 520000]], 'vr', '#ff8a5c', 6.25, (n) => (n > 1 ? `Mirage ${n}` : 'Mirage')),
 };
-export const HW_IDS = ['sound', 'gpu', 'pc', 'cpu', 'handheld', 'console'];
+export const HW_IDS = ['sound', 'gpu', 'pc', 'cpu', 'handheld', 'console', 'vr'];
 // Typer som blir en egen plattform när de säljs
-export const PLAT_TYPES = new Set(['handheld', 'console']);
+export const PLAT_TYPES = new Set(['handheld', 'console', 'vr']);
 // Typer där du väljer arkitektur: köpt kärna (standard) eller egen (för plattformarna med Systemkretsar)
-export const ARCH_TYPES = new Set(['cpu', 'handheld', 'console']);
+export const ARCH_TYPES = new Set(['cpu', 'handheld', 'console', 'vr']);
 // Licensavgiften som andra förlag betalar för att släppa spel på din plattform
 export const PLAT_FEES = [0.1, 0.15, 0.2, 0.25, 0.3];
 // Komponenter som en speldator kan byggas med

@@ -49,7 +49,9 @@ const noplat = args.includes('--noplat');
 const platK = +opt('platk', 2);
 // --platex: köper ett annat förlags nästa spel som exklusivt till plattformen när kassan räcker åtta gånger om (ett i taget)
 const platex = args.includes('--platex');
-const PLAT_RES = new Set(['h_lowpow', 'h_soc', 'h_handheld', 'h_devkit', 'h_console', 'h_backcompat']);
+// --vr: botten forskar fram VR-headsetet (2015) och bygger det (mät med --end=2026)
+const vr = args.includes('--vr');
+const PLAT_RES = new Set(['h_lowpow', 'h_soc', 'h_handheld', 'h_devkit', 'h_console', 'h_backcompat', 'h_vr']);
 // --bd: skriv ut årets pengar per kategori (för balansarbete)
 const bd = args.includes('--bd');
 const acc = {};
@@ -216,7 +218,7 @@ function manage(G) {
   // forskning
   if (!casual || G.t % 16 === 0) for (const r of RESEARCH.slice().sort((a, b) => a.rp - b.rp)) {
     if (G.research.active.length >= S.researchSlots(G)) break;
-    if ((r.id === 'b_port' && !ports) || (r.id === 'b_publish' && !publish) || (r.id === 'b_merch' && !lic) || (r.id === 'b_acq' && !acq) || (r.id === 'b_group' && !group) || (r.id === 'b_store' && !store) || (r.cat === 'hw' && !hw)) continue;
+    if ((r.id === 'b_port' && !ports) || (r.id === 'b_publish' && !publish) || (r.id === 'b_merch' && !lic) || (r.id === 'b_acq' && !acq) || (r.id === 'b_group' && !group) || (r.id === 'b_store' && !store) || (r.cat === 'hw' && !hw) || (r.id === 'h_vr' && !vr)) continue;
     if (noplat && PLAT_RES.has(r.id)) continue;
     if (S.canResearch(G, r.id) === true && r.rp <= G.rp) S.startResearch(G, r.id);
   }
