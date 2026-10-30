@@ -243,6 +243,11 @@ Meridian/Kaori, sätter förslagspris). Mål över 6 frön:
 
 - En komponentlinje (ljudkort/grafikkort) betalar tillbaka forskning + design inom 2–3 år och ger 15–30 % av
   studions årsvinst när den går bra. Den får aldrig vara bättre än att göra spel.
+- Återbetalningstid för en bra produkt (betyg 7+, Mellan): komponent 12–24 månader efter lansering, speldator 12–18,
+  bärbar enhet 3 år, konsol 3–4 år (inklusive royalty). En dålig produkt (betyg under 5,5) betalar sig aldrig.
+- Hårdvarans andel av studions intäkter år 2010 för en spelare som satsat (komponenter + speldator): 15–35 %. Med
+  egen konsol får hårdvaruintäkten nå 40–55 % av intäkterna, men dess andel av vinsten ska vara under 20 % (royalty
+  och egna spel bär vinsten).
 - Botten med `--hw` ska inte gå i konkurs oftare än utan, och kontorsnivåerna ska nås samma år ±1.
 - En Mellan-konsol lanserad 2010–2014 går med förlust de första 1–2 åren (hårdvara + utveckling) och når break-even
   inklusive royalty och egna spel efter 3–4 år. En Topp-konsol med dåliga spel ska kunna sänka studion.
