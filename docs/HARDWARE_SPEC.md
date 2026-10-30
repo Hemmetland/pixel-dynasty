@@ -276,9 +276,19 @@ Kalibrera i den här ordningen: MARKNAD-tabellen (storleken), sedan THIRD (royal
 - Med: Strömsnål design, Systemkretsar (egen arkitektur i plattformar), Utvecklarprogram (+15 kompatibilitet,
   devkitteam), Bakåtkompatibilitet, konkurrentens prissänkning, överhettning, julhandeln, rivalgenerationer som åldrar
   plattformen, exklusiva hits som säljer enheter och motoroptimering (tak 1,65, buggar −15 %) för egna spel.
-- Inte med ännu: läcka, patentstämning, exklusivitetserbjudande, koncernsynergin och konsolens digitala butik.
+- Läcka (5 % under designens sista 12 veckor: lyft +0,15 som avtar, andel −10 % de första 12 veckorna),
+  patentstämning (2 % per år med egen arkitektur på marknaden, förlikning 1 % av årets hårdvaruintäkt, rättegång 50 %
+  inget eller 4 %, obesvarad förliks) och exklusivitetserbjudande (vecka 32, 20 % per partner med relation över 60
+  som tillverkar en produkt åt dig: −5 % pris och dubbel förtur vid brist i tre år, typen låst till partnern för nya
+  produkter och byten, obesvarat går ut efter 8 veckor) är med.
+- Konsolens digitala butik: med en egen butik (inte pausad) säljs 5 % (2003), 20 % (2008), 40 % (2015) och 60 %
+  (2020) av spelen på en egen plattform digitalt där. Dina spel behåller butiksavgiften (30 %) på den delen, och andra
+  förlags digitala del ger butiken 30 % i stället för licensavgiften (raden "Egna plattformar" i butikens ekonomi).
+  Plattformens spelare höjer butikens räckviddsmål med upp till 0,04 vid en miljon sålda enheter. Botar `--hw --store`
+  (24 seeds): kassa 2020 420 M$ mot 370 M$ med bara `--hw`.
+- Inte med ännu: koncernsynergin (dotterbolagens spel som förstapart på egna plattformar).
 - Botar (24 seeds med fast slump): kassa 2020 är 267 M$ utan hårdvara, 341 M$ med bara komponenter (+28 %) och
-  357 M$ med plattformar (+34 %), större spridning, ingen konkurs, samma nivåår. En konsol från 2011 tjänar cirka
+  357 M$ med plattformar (+34 %; 370 M$ efter händelserna nedan), större spridning, ingen konkurs, samma nivåår. En konsol från 2011 tjänar cirka
   100 M$ inklusive licenser, konsoler från 2014–2015 går runt noll till 40 M$ och en svag konsol går med förlust.
 - Drivrutinsteamet stannar när kompatibiliteten når taket, och knappen är avstängd där. Tidiga grafikkort, datorer
   och processorer har något större marknader (processorns grundandel är 7 % i stället för 6 %) så att första generationen

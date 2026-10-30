@@ -69,12 +69,13 @@ function econ(G, S) {
     ['dist.r.group', o.group],
     ['dist.r.ext', o.ext],
     ['dist.r.sale', o.sale || 0],
+    ['dist.r.plat', o.plat || 0],
     ['dist.c.ops', -o.ops],
     ['dist.c.pay', -o.pay],
     ['dist.c.sup', -o.sup],
     ['dist.c.ads', -o.ads],
   ];
-  const net = (o) => o.own + o.group + o.ext + (o.sale || 0) - o.ops - o.pay - o.sup - o.ads;
+  const net = (o) => o.own + o.group + o.ext + (o.sale || 0) + (o.plat || 0) - o.ops - o.pay - o.sup - o.ads;
   const cell = (v) => `<b class="num ${v >= 0 ? 'up' : 'down'}">${v > 0 ? '+' : ''}${money(v)}</b>`;
   const cur = early ? S.m : S.lm;
   const lm = rows(cur);

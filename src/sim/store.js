@@ -8,7 +8,7 @@ import { spend, earn } from './studio.js';
 import { curveFor, unitRev } from './sales.js';
 import { PUB_SHARE } from './publish.js';
 import { note } from './news.js';
-import { hwReach } from './hardware.js';
+import { hwReach, digitalOf, platStore, PLAT_CUT } from './hardware.js';
 
 // Egen butik (distribution): med forskningen Digital butik bygger studion en butik och launcher för pc-spel. Den del av
 // pc-spelarna som använder butiken (räckvidden) köper dina pc-spel där, så du behåller avgiften som andra butiker annars
@@ -17,7 +17,9 @@ import { hwReach } from './hardware.js';
 // en öppen butik tar in andra förlag mot en avgift du sätter (intäkter av deras försäljning och fler kunder, men dina spel
 // syns mindre). Användarbasen växer med utbudet, förtroendet, upptäckbarheten och marknadsföringen, och exklusiva spel
 // drar nya användare men kostar förtroende och försäljning. Drift, betalningar, support och marknadsföring kostar varje
-// vecka. Allt ligger i G.store och all slump kommer ur fröet (inte G.rng).
+// vecka. På en egen konsol eller bärbar enhet säljs den digitala delen av spelen genom butiken: du behåller avgiften på
+// dina spel och tar butikens del av andra förlags (hardware.js räknar ut den). Allt ligger i G.store och all slump kommer
+// ur fröet (inte G.rng).
 export const OTHER_CUT = 0.3; // det andra butiker tar av försäljningen
 export const PAY_FEE = 0.03; // betalningar: andel av allt som säljs i butiken
 export const FEES = [0.1, 0.15, 0.2, 0.25, 0.3]; // avgifter du kan ta av andra förlag
@@ -62,6 +64,7 @@ const BOOST_DECAY = 0.99;
 
 export const canStore = (G) => !!G.u.flags.store;
 export const isPcPlat = (id) => PLATFORM[id]?.kind === 'pc';
+const isOwnPlat = (id) => !!PLATFORM[id]?.own;
 const rngFor = (G, key) => seeded(hashStr(`${G.seed || 0}:store:${key}`));
 // kostnaderna följer prisnivån (räknat från butikens första år)
 export const storeScale = (G) => unitRev(yearOf(G.t)) / unitRev(2003);
@@ -232,7 +235,19 @@ export function storeWeek(G) {
   let ext = 0;
   let gross = 0;
   let feat = 0; // dina spels extra försäljning av att synas i butiken (redan med i försäljningen)
+  // egna plattformar: den digitala delen av dina spel, och butikens del av andra förlags digitala försäljning
+  const dig = digitalOf(G);
+  const plat = platStore(G);
+  const onPlat = (x) => {
+    if (!dig || !isOwnPlat(x.platform) || x.weekly.length !== G.t - x.t || !x.weekly.length) return;
+    const v = (x.weekly[x.weekly.length - 1] / (1 - OTHER_CUT)) * dig;
+    own += v * OTHER_CUT;
+    gross += v;
+  };
+  gross += plat / PLAT_CUT;
   for (const g of G.games) {
+    onPlat(g);
+    for (const p of g.ports || []) onPlat(p);
     if (isPcPlat(g.platform) && g.weekly.length === G.t - g.t && g.weekly.length) {
       const w = g.weekly[g.weekly.length - 1];
       const v = (w / (1 - OTHER_CUT)) * via(S, g);
@@ -275,7 +290,7 @@ export function storeWeek(G) {
   const c = storeCosts(G, S);
   gross += sale;
   const pay = gross * PAY_FEE;
-  const inc = own + group + ext + sale;
+  const inc = own + group + ext + sale + plat;
   if (inc > 0) {
     earn(G, inc, 'store');
     G.stats.revenue += inc;
@@ -286,6 +301,7 @@ export function storeWeek(G) {
     o.group += group;
     o.ext += ext;
     o.sale = (o.sale || 0) + sale;
+    o.plat = (o.plat || 0) + plat;
     o.feat += feat;
     o.ops += c.ops;
     o.sup += c.sup;

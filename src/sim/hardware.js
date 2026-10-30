@@ -1,4 +1,4 @@
-import { clamp, fmtNum } from '../core/util.js';
+import { clamp, fmtNum, fmtMoney } from '../core/util.js';
 import { gauss, hashStr, seeded } from '../core/rng.js';
 import { emit } from '../core/bus.js';
 import { PLATFORM, PLATFORMS, setOwnPlatforms, potential, launchTime } from '../data/platforms.js';
@@ -41,7 +41,7 @@ const PART_SAVE = 0.05; // en speldator med egen komponent: lägre enhetskostnad
 export const CLEAR = 0.3; // osålt lager vid nedläggning säljs ut för den andelen av priset
 export const AUTO_COVER = 6; // autobeställning: veckor av efterfrågan utöver ledtiden som ska finnas i lager och på väg
 const AUTO_ORDER = 16; // autobeställning: veckor av efterfrågan per order
-const ISSUE_WEEKS = 8; // ett beslut som inte tas inom så många veckor väljer det försiktiga alternativet
+export const ISSUE_WEEKS = 8; // ett beslut som inte tas inom så många veckor väljer det försiktiga alternativet
 const BENCH_P = 0.2;
 const BENCH_CAUGHT = 0.2;
 const BENCH_SCORE = 0.5;
@@ -70,6 +70,26 @@ const HEAT_FIX = 0.05; // utbytesprogrammet: så stor del av basen gånger enhet
 const EXCL_BOOST = 0.08; // ett eget spel på 8+ på plattformen säljer fler enheter (som ett hit på en optimerad motor)
 const OPT_CAP = 1.65; // taket för motorns effekt när ett eget spel byggs med en ny egen motor för den egna plattformen
 const OPT_AGE = 3;
+// Händelser: läckan under designens sista veckor, patentstämningen för egen arkitektur och partnerns exklusivitetsavtal
+const LEAK_P = 0.05;
+const LEAK_WEEKS = 12;
+const LEAK_HYPE = 0.15; // förhandsintresset (som ett lyft som avtar)
+const LEAK_CUT = 0.9; // konkurrenterna svarar: andelen −10 % de första veckorna efter lanseringen
+const PATENT_P = 0.02; // per år när en produkt med egen arkitektur säljer
+const PATENT_SETTLE = 0.01; // förlikningen: av årets hårdvaruintäkt
+const PATENT_LOSS = 0.04; // en förlorad rättegång
+const PATENT_MIN = 200000; // i 2000 års pengar
+const PATENT_WEEK = 20;
+const EXCL_P = 0.2; // per år från en partner med god relation som tillverkar en produkt åt dig
+const EXCL_REL = 60;
+const EXCL_YEARS = 3;
+const EXCL_COST = 0.95;
+const EXCL_WEEK = 32;
+// Den digitala delen av spelen på en egen plattform går genom din butik, om du har en
+const DIGITAL = [[2003, 0.05], [2008, 0.2], [2015, 0.4], [2020, 0.6]];
+export const PLAT_CUT = 0.3; // butikens del av andra förlags digitala försäljning på plattformen (i stället för licensen)
+const PLAT_REACH = 0.04; // butikens räckviddsmål av plattformens spelare, högst
+const PLAT_REACH_BASE = 1e6; // installerad bas för det fulla tillskottet
 export const canHw = (G) => !!G.u.flags.hw;
 const rngFor = (G, key) => seeded(hashStr(`${G.seed || 0}:hw:${key}`));
 const gaussFor = (G, key, m, s) => gauss({ rng: hashStr(`${G.seed || 0}:hw:${key}`) | 0 }, m, s);
@@ -107,6 +127,15 @@ function partnerState(H, id) {
   return (H.partners[id] ||= { rel: REL0, short: 0, shortK: 1, fx: 1, fxUntil: 0 });
 }
 export const relOf = (G, id) => (G.hw ? partnerState(G.hw, id).rel : REL0);
+// ett exklusivitetsavtal: partnern som har ensamrätt på produkttypen just nu (null om ingen)
+const exclOn = (S, type, t) => !!(S && S.excl && S.excl.type === type && S.excl.until > t);
+export function exclPartner(G, type, t = G.t) {
+  const H = G.hw;
+  if (!H) return null;
+  for (const id of Object.keys(H.partners)) if (exclOn(H.partners[id], type, t)) return id;
+  return null;
+}
+export const exclOf = (G, id) => (G.hw && G.hw.partners[id] && G.hw.partners[id].excl && G.hw.partners[id].excl.until > G.t ? G.hw.partners[id].excl : null);
 export const cryptoOn = (t) => t >= CRYPTO[0] && t < CRYPTO[1];
 export const chipsOn = (t) => t >= CHIPS[0] && t < CHIPS[1];
 // partnerns kapacitet per vecka just nu: komponentbrist halverar den (en god relation halverar förlusten), chipbristen tar 40 %
@@ -114,7 +143,8 @@ export function partnerCap(G, id) {
   const P = HW_PARTNER[id];
   const S = G.hw ? partnerState(G.hw, id) : null;
   let k = 1;
-  if (S && S.short > G.t) k *= S.rel > 70 ? 1 - (1 - S.shortK) / 2 : S.shortK;
+  // förtur vid brist: en god relation halverar förlusten, ett exklusivitetsavtal halverar den igen
+  if (S && S.short > G.t) k *= 1 - (1 - S.shortK) / ((S.rel > 70 ? 2 : 1) * (S.excl && S.excl.until > G.t ? 2 : 1));
   if (chipsOn(G.t)) k *= 0.6;
   return (P.cap / WEEKS_PER_YEAR) * k;
 }
@@ -291,7 +321,7 @@ export function unitCost(G, P, partner, t = G.t) {
   const fx = S.fxUntil > t ? S.fx : 1;
   const plat = (P.type === 'handheld' && G.u.flags.hw_lowpow ? LOWPOW : 1) * (P.bc ? BC_COST : 1);
   return ty.price * ty.unit * CLS[P.cls].unit * QUAL[P.qual || 'normal'].unit * HW_PARTNER[partner].cost * Math.max(0.5, 1 - (G.perk.hwCost || 0)) * parts * plat
-    * Math.pow(1 - ty.fall, age) * (S.rel > 70 ? 0.97 : 1) * fx * (chipsOn(t) ? 1.15 : 1);
+    * Math.pow(1 - ty.fall, age) * (S.rel > 70 ? 0.97 : 1) * (exclOn(S, P.type, t) ? EXCL_COST : 1) * fx * (chipsOn(t) ? 1.15 : 1);
 }
 // priser slutar på 9 (tiotal, eller femtiotal över 600 $)
 const roundPrice = (p) => {
@@ -348,7 +378,8 @@ export function targetShare(G, P, price = P.price, t = G.t) {
   const ty = HW_TYPES[P.type];
   const s = scoreOf(G, P, t);
   const pr = clamp(Math.pow(refPrice(P.type, t, P) / price, ty.elast), 0.05, 4);
-  return ty.share * Math.exp(0.55 * (s - 6.5)) * pr * brandOf(G.hw) * (1 + (P.boost || 0)) * platPull(G, P);
+  const leak = P.leakT > t ? LEAK_CUT : 1;
+  return ty.share * Math.exp(0.55 * (s - 6.5)) * pr * brandOf(G.hw) * (1 + (P.boost || 0)) * platPull(G, P) * leak;
 }
 // En plattform säljer på sina spel: fansen, andra förlags stöd och dina egna spel på den de senaste två åren
 export function platPull(G, P) {
@@ -374,7 +405,7 @@ export function draftOf(G, J, partner = 'halden', price) {
   return {
     id: J.id, type: J.type, cls: J.cls, qual: J.qual, arch: J.arch, opt: J.opt, name: J.name, gen: J.gen, t: null, perf0: perf,
     compat: baseCompat(G, J), defect: defectOf(J, partner, J.bad), bad: J.bad, price: price ?? suggestPrice(J.type, J.cls), partner, boost: 0,
-    parts: J.type === 'pc' ? ownParts(G) : undefined, bc: J.bc, fee: isPlat(J.type) ? 0.2 : undefined,
+    parts: J.type === 'pc' ? ownParts(G) : undefined, bc: J.bc, fee: isPlat(J.type) ? 0.2 : undefined, leak: !!J.leak,
   };
 }
 
@@ -399,7 +430,7 @@ export function orderOptions(G, P, partner = P.partner, d = weeklyDemand(G, P, P
 // förslag till tillverkare för ett färdigt projekt: den billigaste vars minsta order räcker högst ett halvår och vars
 // kapacitet räcker till efterfrågan, annars den första
 export function suggestPartner(G, J, price = suggestPrice(J.type, J.cls)) {
-  const open = openPartners(G).filter((p) => partnerFits(J.type, p.id));
+  const open = openPartners(G).filter((p) => partnerAllowed(G, J.type, p.id));
   for (const p of open.slice().sort((a, b) => a.cost - b.cost)) {
     const d = weeklyDemand(G, draftOf(G, J, p.id, price), price);
     if (p.min <= d * 26 && d <= partnerCap(G, p.id) * 1.1) return p.id;
@@ -408,6 +439,8 @@ export function suggestPartner(G, J, price = suggestPrice(J.type, J.cls)) {
 }
 // en bärbar enhet eller konsol kräver en chipfabrik (inte monteringsfirman)
 export const partnerFits = (type, id) => !isPlat(type) || HW_PARTNER[id].kind !== 'asm';
+// och ingen annan partner har ensamrätt på produkttypen
+export const partnerAllowed = (G, type, id) => partnerFits(type, id) && [null, id].includes(exclPartner(G, type));
 // minsta order: partnerns, och för en plattform en första order som räcker till en riktig lansering
 export const minOrder = (P, partner, first = false) => Math.max(HW_PARTNER[partner].min, first && isPlat(P.type) ? PLAT_MIN[P.type] : 0);
 export function orderCost(G, P, units, partner = P.partner) {
@@ -445,7 +478,7 @@ export function launch(G, id, opts = {}) {
   const J = projectOf(G, id);
   if (!J || J.state !== 'ready') return false;
   const partner = opts.partner || suggestPartner(G, J);
-  if (!partnerOpen(G, partner) || !partnerFits(J.type, partner)) return 'locked';
+  if (!partnerOpen(G, partner) || !partnerAllowed(G, J.type, partner)) return 'locked';
   const P = { ...draftOf(G, J, partner, opts.price), state: 'prod', auto: opts.auto !== false, stock: 0, back: 0, share: 0, dem: 0, sold: 0, rev: 0, cost: 0, dev: J.paid + J.proto, war: 0, roy: 0, lic: 0, peak: 0, drv: false, hist: [], tReady: G.t };
   const units = Math.max(minOrder(P, partner, true), Math.round(opts.units || 0));
   const ok = canOrder(G, P, units, partner);
@@ -471,7 +504,7 @@ export function setAuto(G, id, on) {
 // Byt partner mitt i livscykeln: framtida order går dit, relationen med den gamla tar skada
 export function setPartner(G, id, partner) {
   const P = productOf(G, id);
-  if (!P || P.state === 'ended' || P.partner === partner || !partnerOpen(G, partner) || !partnerFits(P.type, partner)) return false;
+  if (!P || P.state === 'ended' || P.partner === partner || !partnerOpen(G, partner) || !partnerAllowed(G, P.type, partner)) return false;
   partnerState(G.hw, P.partner).rel = clamp(partnerState(G.hw, P.partner).rel - 5, 0, 100);
   P.partner = partner;
   P.defect = defectOf(P, partner, P.bad);
@@ -558,6 +591,60 @@ export function resolveBench(G, id, cheat) {
   if (cheat) P.cheat = G.t + BENCH_WEEKS;
   return true;
 }
+// Exklusivitetsavtalet: −5 % i pris och dubbel förtur vid brist hos partnern, men produkttypen får inte tillverkas hos
+// någon annan på tre år (det gäller nya produkter och byten, inte order på produkter som redan tillverkas där)
+export function resolveOffer(G, yes) {
+  const H = G.hw;
+  if (!H || !H.offer) return false;
+  if (yes) {
+    const S = partnerState(H, H.offer.partner);
+    S.excl = { type: H.offer.type, until: G.t + EXCL_YEARS * WEEKS_PER_YEAR };
+  }
+  H.offer = null;
+  return true;
+}
+// Patentstämningen: förlik (1 % av årets hårdvaruintäkt) eller gå till rättegång (hälften av gångerna inget, annars 4 %)
+export function resolvePatent(G, choice) {
+  const H = G.hw;
+  if (!H || !H.suit) return false;
+  const v = H.suit;
+  H.suit = null;
+  if (choice === 'settle') {
+    pay(G, H, 'issue', v.settle);
+    return true;
+  }
+  if (rngFor(G, `trial:${v.t}`)() < 0.5) note(G, 'news.hwPatentWon', {}, 'good');
+  else {
+    pay(G, H, 'issue', v.loss);
+    note(G, 'news.hwPatentLost', { v: fmtMoney(v.loss) }, 'bad');
+  }
+  return true;
+}
+// hårdvaruintäkten det senaste året (för patentstämningen)
+const yearRev = (H) => H.products.reduce((a, p) => a + (p.state === 'market' ? p.hist.reduce((b, n) => b + n, 0) * p.price : 0), 0);
+function yearlyEvents(G, H) {
+  const w = G.t % WEEKS_PER_YEAR;
+  if (w === PATENT_WEEK && !H.suit && H.products.some((p) => p.state === 'market' && p.arch === 'own') && rngFor(G, `patent:${G.t}`)() < PATENT_P) {
+    const min = Math.round((PATENT_MIN * msRatio(G, 2000)) / 1000) * 1000;
+    const rev = yearRev(H);
+    H.suit = { t: G.t, settle: Math.max(min, Math.round(PATENT_SETTLE * rev)), loss: Math.max(min * 2, Math.round(PATENT_LOSS * rev)) };
+    note(G, 'news.hwPatent', {}, 'bad');
+  }
+  if (w === EXCL_WEEK && !H.offer) {
+    for (const pp of HW_PARTNERS) {
+      const S = partnerState(H, pp.id);
+      if (S.rel <= EXCL_REL || (S.excl && S.excl.until > G.t)) continue;
+      const P = H.products.filter((p) => p.partner === pp.id && p.state === 'market').pop();
+      if (!P || exclPartner(G, P.type) || rngFor(G, `excl:${pp.id}:${G.t}`)() >= EXCL_P) continue;
+      H.offer = { partner: pp.id, type: P.type, t: G.t };
+      note(G, 'news.hwOffer', { partner: pp.name }, 'info');
+      break;
+    }
+  }
+  // beslut som ligger för länge: förlikningen, och erbjudandet går ut
+  if (H.suit && G.t - H.suit.t >= ISSUE_WEEKS) resolvePatent(G, 'settle');
+  if (H.offer && G.t - H.offer.t >= ISSUE_WEEKS) resolveOffer(G, false);
+}
 
 // ── Veckan ──────────────────────────────────────────────────────
 export function hwWeek(G) {
@@ -590,6 +677,14 @@ export function hwWeek(G) {
     pay(G, H, 'design', step, 'hwDev');
     J.paid += step;
     J.done++;
+    // läckan: en gång under de sista veckorna
+    if (!J.leakRoll && J.weeks - J.done <= LEAK_WEEKS) {
+      J.leakRoll = true;
+      if (rngFor(G, `leak:${J.id}`)() < LEAK_P) {
+        J.leak = true;
+        note(G, 'news.hwLeak', { name: J.name }, 'info');
+      }
+    }
     if (J.done >= J.weeks) finishDesign(G, H, J);
   }
   // leveranser: varje partner levererar äldsta ordern först, i takt med kapaciteten
@@ -617,6 +712,7 @@ export function hwWeek(G) {
   H.orders = H.orders.filter((o) => o.left > 0);
   sell(G, H);
   platWeek(G, H);
+  yearlyEvents(G, H);
   // lab och chef en gång i månaden
   if (G.t % WEEKS_PER_MONTH === 0) {
     pay(G, H, 'lab', labRent(G, H) + (H.chief ? H.chief.salary || 0 : 0), 'hwDev');
@@ -633,6 +729,10 @@ function release(G, H, P) {
   H.rep = clamp(H.rep + (s * 10 - H.rep) * 0.25, 0, 100);
   note(G, 'news.hwLaunch', { name: P.name, v: s.toFixed(1) }, s >= 7 ? 'good' : s < 5.5 ? 'bad' : 'info');
   if (P.type === 'gpu' && rngFor(G, `bench:${P.id}`)() < BENCH_P) P.bench = 'offer';
+  if (P.leak) {
+    P.boost = Math.min(HIT_MAX, (P.boost || 0) + LEAK_HYPE);
+    P.leakT = G.t + LEAK_WEEKS;
+  }
   if (isPlat(P.type)) openPlat(G, H, P);
   G.stats.hwLaunched = (G.stats.hwLaunched || 0) + 1;
   emit('hwRelease', P);
@@ -758,7 +858,12 @@ export function hwRelease(G, game) {
 }
 
 // Speldatorer med egna komponenter kommer med din butik förinstallerad: 0,02 i butikens räckviddsmål per 10 000 sålda, högst 0,1
-export const hwReach = (G) => (G.hw ? Math.min(0.1, (0.02 * (G.hw.pcParts || 0)) / 10000) : 0);
+// och plattformarnas spelare skaffar konton där: upp till 0,04 vid en miljon sålda
+export function hwReach(G) {
+  if (!G.hw) return 0;
+  const base = (G.hw.plats || []).reduce((a, pl) => a + (productOfPlat(G, pl.id)?.base || 0), 0);
+  return Math.min(0.1, (0.02 * (G.hw.pcParts || 0)) / 10000) + PLAT_REACH * Math.min(1, base / PLAT_REACH_BASE);
+}
 
 // Samlat för fönstret, botten och testerna
 export const hwNet = (G) => {
@@ -832,11 +937,36 @@ export function supportOf(G, P, fee = P.fee ?? 0.2) {
   const w = pl ? pl.weight : 0;
   return clamp(0.6 * (P.compat / 70) * Math.pow(0.2 / fee, 0.8) * Math.min(1, w / 30) * (G.u.flags.hw_devkit ? 1.2 : 1), 0, 1);
 }
-// licensintäkten per vecka från andra förlags spel på plattformen (den tonar ut med plattformen)
-export function platRoyalty(G, P, fee = P.fee ?? 0.2) {
+// andra förlags spelförsäljning per vecka på plattformen (den tonar ut med plattformen)
+function thirdSales(G, P, fee) {
   const pl = platOf(G, P);
-  if (!pl) return 0;
-  return fee * THIRD * potential(pl, yfOf(G.t)) * unitRev(yearOf(G.t)) * supportOf(G, P, fee);
+  return pl ? THIRD * potential(pl, yfOf(G.t)) * unitRev(yearOf(G.t)) * supportOf(G, P, fee) : 0;
+}
+// Andelen av spelen på en egen plattform som säljs digitalt genom din butik (0 utan en öppen butik)
+export function digitalOf(G, t = G.t) {
+  if (!G.u.flags.store || !G.store || G.store.paused) return 0;
+  const yf = yfOf(t);
+  if (yf <= DIGITAL[0][0]) return DIGITAL[0][1];
+  for (let i = 1; i < DIGITAL.length; i++) {
+    const [y0, a] = DIGITAL[i - 1];
+    const [y1, b] = DIGITAL[i];
+    if (yf < y1) return a + ((b - a) * (yf - y0)) / (y1 - y0);
+  }
+  return DIGITAL[DIGITAL.length - 1][1];
+}
+// licensintäkten per vecka: avgiften på det som säljs i butikerna (den digitala delen ger butiken sin del i stället)
+export const platRoyalty = (G, P, fee = P.fee ?? 0.2) => fee * thirdSales(G, P, fee) * (1 - digitalOf(G));
+// butikens del per vecka av andra förlags digitala försäljning på plattformen
+export const platDigital = (G, P, fee = P.fee ?? 0.2) => PLAT_CUT * thirdSales(G, P, fee) * digitalOf(G);
+// samma för alla dina plattformar (butiken bokför det)
+export function platStore(G) {
+  if (!G.hw || !digitalOf(G)) return 0;
+  let v = 0;
+  for (const pl of G.hw.plats || []) {
+    const P = productOfPlat(G, pl.id);
+    if (P) v += platDigital(G, P);
+  }
+  return v;
 }
 export function setPlatFee(G, id, fee) {
   const P = productOf(G, id);

@@ -503,16 +503,52 @@ ok(true, 'alla händelser körda');
   for (let i = 0; i < 40 && J.state === 'design'; i++) { GP.t++; S.hwWeek(GP); }
   ok(J.state === 'ready', 'prototypen är klar');
   ok(S.launch(GP, J.id, { partner: 'halden', units: 50000 }) === 'locked', 'monteringsfirman kan inte bygga en plattform');
+  J.leak = true;
   ok(S.launch(GP, J.id, { partner: 'meridian', units: 20000 }) === true && H.orders[0].units === S.PLAT_MIN.handheld, 'lansering hos chipfabriken, med en första order över golvet för en plattform');
   const P = H.products[0];
   for (let i = 0; i < 20 && P.state === 'prod'; i++) { GP.t++; S.hwWeek(GP); }
   const id = P.plat;
   const pl = S.platOf(GP, P);
   ok(P.state === 'market' && pl && PLATFORM[id] === pl && PLATFORMS.includes(pl) && GP.licenses.includes(id) && S.platformOpen(GP, id), 'produkten blir en egen plattform med licens');
+  {
+    const a = S.targetShare(GP, P);
+    const L = P.leakT;
+    P.leakT = 0;
+    const b = S.targetShare(GP, P);
+    P.leakT = L;
+    ok(L === P.t + 12 && P.boost > 0 && Math.abs(a / b - 0.9) < 1e-9, 'en läckt design får förhandsintresse men tappar andel de första veckorna');
+  }
   for (let i = 0; i < 60; i++) { GP.t++; S.hwWeek(GP); }
   ok(P.base > 0 && pl.weight > 0 && pl.weight === Math.min(90, P.base / S.PER_WEIGHT), 'vikten följer den installerade basen (' + pl.weight.toFixed(1) + ')');
   ok(S.platRoyalty(GP, P) > 0 && P.lic > 0 && H.tot.lic === P.lic, 'andra förlag betalar licens');
   ok(S.platRoyalty(GP, P, 0.3) / 0.3 < S.platRoyalty(GP, P, 0.1) / 0.1 && S.supportOf(GP, P, 0.3) < S.supportOf(GP, P, 0.1), 'en högre avgift ger färre förlag');
+  // exklusivitetsavtalet: ett obesvarat erbjudande går ut, ett påskrivet sänker priset och låser typen till partnern
+  H.offer = { partner: 'meridian', type: 'handheld', t: GP.t };
+  for (let i = 0; i < S.ISSUE_WEEKS; i++) { GP.t++; S.hwWeek(GP); }
+  ok(!H.offer && !S.exclPartner(GP, 'handheld'), 'ett obesvarat erbjudande går ut');
+  const u0 = S.unitCost(GP, P, 'meridian');
+  H.offer = { partner: 'meridian', type: 'handheld', t: GP.t };
+  ok(S.resolveOffer(GP, true) === true && S.exclPartner(GP, 'handheld') === 'meridian' && Math.abs(S.unitCost(GP, P, 'meridian') / u0 - 0.95) < 1e-9, 'avtalet ger 5 % lägre pris');
+  ok(!S.partnerAllowed(GP, 'handheld', 'kaori') && S.setPartner(GP, P.id, 'kaori') === false && S.partnerAllowed(GP, 'console', 'kaori'), 'under avtalet går typen inte att flytta');
+  ok(S.exclPartner(GP, 'handheld', GP.t + 3 * 48) === null, 'avtalet gäller i tre år');
+  // patentstämningen: förlikningen kostar sitt belopp, en obesvarad stämning förliks
+  const m0 = GP.money;
+  H.suit = { t: GP.t, settle: 1000, loss: 4000 };
+  ok(S.resolvePatent(GP, 'settle') === true && GP.money === m0 - 1000 && !H.suit, 'en förlikning kostar sitt belopp');
+  const m1 = GP.money;
+  H.suit = { t: GP.t, settle: 1000, loss: 4000 };
+  S.resolvePatent(GP, 'trial');
+  ok([m1, m1 - 4000].includes(GP.money), 'en rättegång kostar inget eller domen');
+  // konsolens digitala butik: med en egen butik går en del av andra förlags försäljning dit i stället för licensen
+  const r0 = S.platRoyalty(GP, P);
+  ok(S.digitalOf(GP) === 0 && S.platStore(GP) === 0, 'utan butik går allt genom licensen');
+  GP.u.flags.store = true;
+  S.storeWeek(GP);
+  const d = S.digitalOf(GP);
+  ok(d > 0.1 && d < 0.3 && Math.abs(S.platRoyalty(GP, P) - r0 * (1 - d)) < 1e-6 && S.platDigital(GP, P) > 0 && S.platRoyalty(GP, P) + S.platDigital(GP, P) > r0, 'med butiken ger den digitala delen butikens del (' + Math.round(d * 100) + ' %)');
+  S.storeWeek(GP);
+  ok(GP.store.tot.plat > 0 && Math.abs(GP.store.tot.plat - 2 * S.platStore(GP)) < 1e-6, 'butiken bokför plattformens digitala del');
+  ok(S.hwReach(GP) > 0, 'plattformens spelare ökar butikens räckvidd');
   GP.engines.push({ id: 991, name: 'E', feats: ['poly'], tech: 50, built: S.yearOf(GP.t) });
   ok(S.ownPlatOpt(GP, { platform: id, engineId: 991 }) && !S.ownPlatOpt(GP, { platform: 'pc', engineId: 991 }) && S.engineCap(GP, { platform: id, engineId: 991 }) > 1.4, 'egna spel med ny motor optimeras för plattformen');
   const b0 = P.boost || 0;

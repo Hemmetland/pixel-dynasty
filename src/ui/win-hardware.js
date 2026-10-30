@@ -11,7 +11,7 @@ import {
   defectOf, canDesign, startDesign, pauseDesign, cancelDesign, resolveProto, hwName, draftOf, scoreOf, unitCost, suggestPrice, priceSteps,
   stepPrice, weeklyDemand, suggestPartner, orderOptions, orderCost, orderMore, marketSize, launch, setPrice, setAuto, setPartner, setDriver, driverCost, discontinue, resolveIssue,
   resolveBench, pipelineOf, productProfit, hwNet, brandOf, RECALL, CLEAR, isPlat, archOpen, partnerFits, minOrder, platOf, supportOf, platRoyalty, setPlatFee,
-  ownGames, PER_WEIGHT, drvMax,
+  ownGames, PER_WEIGHT, drvMax, partnerAllowed, exclPartner, exclOf, resolveOffer, resolvePatent, ISSUE_WEEKS, digitalOf, platDigital, PLAT_CUT,
 } from '../sim/hardware.js';
 
 // Fönstret Hårdvara: Utveckling (labbet, chefen, designprojekt och nya designer), Produkter (det som tillverkas och
@@ -26,7 +26,13 @@ const G_ = () => UI.app.G;
 const tyIcon = (type) => icon(HW_TYPES[type].ic);
 // produktens ikon i kortens huvud: pixelkonst 'ui.hw.<typ>' om den finns, annars linjeikonen
 const tyPix = (type) => pixIcon(`ui.hw.${type}`, HW_TYPES[type].ic, 32);
-const fitPartners = (G, type) => HW_PARTNERS.filter((p) => partnerOpen(G, p.id) && partnerFits(type, p.id)).map((p) => ({ v: p.id, label: esc(p.name) }));
+// tillverkarna som kan ta produkttypen; de som är låsta av en annan partners ensamrätt visas avstängda
+const fitPartners = (G, type) => HW_PARTNERS.filter((p) => partnerOpen(G, p.id) && partnerFits(type, p.id)).map((p) => ({ v: p.id, label: esc(p.name), off: !partnerAllowed(G, type, p.id) }));
+const offP = (it) => it.off;
+function lockTip(G, type, id) {
+  const ex = exclPartner(G, type);
+  return ex && ex !== id ? t('hw.exclLock', { partner: esc(HW_PARTNER[ex].name), y: yearOf(exclOf(G, ex).until) }) : partnerTip(G, id);
+}
 
 function seg(items, cur, actName, extra = '', tip, dis) {
   return `<div class="seg wrap-seg">${items
@@ -79,6 +85,7 @@ function projCard(G, J) {
     const right = `<div style="text-align:right;flex:none"><b class="num">${tn('hw.weeksLeft', left)}</b><div class="faint" style="font-size:11.5px">${money(J.budget / J.weeks)}${t('ui.perWeek')}</div></div>`;
     return `<div class="card hw-card" style="--c:${HW_TYPES[J.type].color}">${head(J, right)}
       <div style="margin:10px 0 6px">${bar((J.done / J.weeks) * 100, J.paused ? 'var(--muted)' : COL)}</div>
+      ${J.leak ? `<p class="hint" style="margin:4px 0 6px">${icon('megaphone')} ${t('hw.leaked')}</p>` : ''}
       <div class="row wrap" style="gap:8px"><span class="faint" style="font-size:12px;flex:1 1 200px">${J.paused ? t('hw.paused') : t('hw.paid', { v: money(J.paid), m: money(J.budget) })} · ${t('hw.protoNext', { v: money(J.proto), pct: Math.round(protoRisk(G, J) * (J.redo ? 50 : 100)) })}</span>
         <span class="row" style="gap:8px;margin-left:auto"><button class="btn sm ghost" data-act="hw-pause" data-id="${J.id}" data-v="${J.paused ? 0 : 1}">${icon(J.paused ? 'play' : 'pause')}${t(J.paused ? 'hw.resume' : 'hw.pause')}</button>
         <button class="btn sm ghost" data-act="hw-cancel" data-id="${J.id}">${icon('x')}${t('hw.cancel')}</button></span></div>
@@ -97,7 +104,7 @@ function projCard(G, J) {
 // Ett färdigt projekt: välj partner, pris och första order, sedan lansering
 function launchCard(G, J) {
   const L = (HS.launch[J.id] ||= { partner: suggestPartner(G, J), price: suggestPrice(J.type, J.cls), units: 0, auto: true });
-  if (!partnerOpen(G, L.partner) || !partnerFits(J.type, L.partner)) L.partner = suggestPartner(G, J);
+  if (!partnerOpen(G, L.partner) || !partnerAllowed(G, J.type, L.partner)) L.partner = suggestPartner(G, J);
   const D = draftOf(G, J, L.partner, L.price);
   const d = weeklyDemand(G, D, L.price);
   const opts = orderOptions(G, D, L.partner, d, true);
@@ -112,9 +119,9 @@ function launchCard(G, J) {
   const weeks = d > 0 ? Math.round(L.units / d) : 0;
   const right = `<div style="text-align:right;flex:none"><div class="disp" style="font-size:26px;color:${scoreTone(s)}">${dec(s)}</div><div class="faint" style="font-size:11px">${t('hw.expScore')}</div></div>`;
   return `<div class="card hw-card hw-ready" style="--c:var(--good)">${head(J, right)}
-    <p class="hint" style="margin:8px 0 10px">${icon('check')} ${t(J.bad ? 'hw.readyBad' : 'hw.ready')}${isPlat(J.type) ? ' ' + t('hw.platReady') : ''}</p>
+    <p class="hint" style="margin:8px 0 10px">${icon('check')} ${t(J.bad ? 'hw.readyBad' : 'hw.ready')}${isPlat(J.type) ? ' ' + t('hw.platReady') : ''}${J.leak ? ' ' + t('hw.leakReady') : ''}</p>
     <div class="hw-ctl">
-      <div class="hw-wide"><div class="lbl" style="margin-bottom:6px">${t('hw.partner')}</div>${seg(partners, L.partner, 'hw-lp', `data-id="${J.id}"`, (it) => partnerTip(G, it.v))}</div>
+      <div class="hw-wide"><div class="lbl" style="margin-bottom:6px">${t('hw.partner')}</div>${seg(partners, L.partner, 'hw-lp', `data-id="${J.id}"`, (it) => lockTip(G, J.type, it.v), offP)}</div>
       <div class="hw-wide"><div class="lbl" style="margin-bottom:6px">${t('hw.price')}</div>${seg(prices, L.price, 'hw-lpr', `data-id="${J.id}"`)}<p class="hint" style="margin-top:6px">${t('hw.priceHelp', { v: '$' + suggestPrice(J.type, J.cls) })}</p></div>
       <div><div class="lbl" style="margin-bottom:6px">${t('hw.firstOrder')}</div>${seg(units, L.units, 'hw-lu', `data-id="${J.id}"`)}<p class="hint" style="margin-top:6px">${t('hw.orderHelp', { n: fmtNum(minOrder(D, L.partner, true)), w: pp.lead })}</p></div>
       <div><div class="lbl" style="margin-bottom:6px">${t('hw.auto')}</div><div class="seg"><button class="${L.auto ? 'on' : ''}" data-act="hw-la" data-id="${J.id}" data-v="1">${t('hw.autoOn')}</button><button class="${L.auto ? '' : 'on'}" data-act="hw-la" data-id="${J.id}" data-v="0">${t('hw.autoOff')}</button></div><p class="hint" style="margin-top:6px">${t('hw.autoHelp')}</p></div>
@@ -213,7 +220,9 @@ function platBlock(G, P) {
       ${stat('hw.s.lic', `${money(roy)}${t('ui.perWeek')}`, t('hw.s.licTip'))}
       ${stat('hw.s.ownGames', String(ownGames(G, P)), t('hw.s.ownGamesTip'))}
       ${stat('hw.s.licTot', money(P.lic || 0))}
+      ${digitalOf(G) ? stat('hw.s.digital', t('dist.pct', { n: pct(digitalOf(G)) }), t('hw.s.digitalTip', { pct: pct(PLAT_CUT) })) + stat('hw.s.storeW', `${money(platDigital(G, P))}${t('ui.perWeek')}`, t('hw.s.storeWTip')) : ''}
     </div>
+    ${!digitalOf(G) && !G.u.flags.store ? `<p class="hint" style="margin-top:8px">${icon('cart')} ${t('hw.storeHint')}</p>` : ''}
     <div class="hw-ctl" style="margin-top:12px"><div class="hw-wide"><div class="lbl" style="margin-bottom:6px">${t('hw.fee')}</div>${seg(fees, P.fee, 'hw-fee', `data-id="${P.id}"`, (it) => t('hw.feeTip', { s: pct(supportOf(G, P, it.v)), v: money(platRoyalty(G, P, it.v)) }))}<p class="hint" style="margin-top:6px">${t('hw.feeHelp')}</p></div></div>`;
 }
 
@@ -235,7 +244,7 @@ function productCard(G, P) {
   const partners = fitPartners(G, P.type);
   const so = market && P.stock < 1 && P.dem > 1;
   return `<div class="card hw-card" style="--c:${HW_TYPES[P.type].color}">${head(P, right)}
-    <div class="row wrap" style="gap:6px;margin-top:8px">${state}${so ? tag(t('hw.soldOut'), 'var(--bug)') : ''}${P.cheat > G.t ? tag(t('hw.cheating'), 'var(--warn)') : ''}<span class="sp"></span>${market ? spark(P.hist, HW_TYPES[P.type].color) : ''}</div>
+    <div class="row wrap" style="gap:6px;margin-top:8px">${state}${so ? tag(t('hw.soldOut'), 'var(--bug)') : ''}${P.cheat > G.t ? tag(t('hw.cheating'), 'var(--warn)') : ''}${P.leakT > G.t ? tag(t('hw.leakTag'), 'var(--warn)') : ''}<span class="sp"></span>${market ? spark(P.hist, HW_TYPES[P.type].color) : ''}</div>
     ${issueRow(G, P)}
     <div class="hw-stats" style="margin-top:10px">
       ${stat('hw.s.share', t('dist.pct', { n: dec(P.share * 100, P.share < 0.1 ? 1 : 0) }), t('hw.s.shareTip'))}
@@ -251,7 +260,7 @@ function productCard(G, P) {
       <div><div class="lbl" style="margin-bottom:6px">${t('hw.price')}</div><div class="row" style="gap:8px"><button class="btn sm ghost" data-act="hw-price" data-id="${P.id}" data-v="-1" aria-label="${t('hw.cheaper')}">${icon('minus')}</button><b class="num" style="min-width:64px;text-align:center">$${P.price}</b><button class="btn sm ghost" data-act="hw-price" data-id="${P.id}" data-v="1" aria-label="${t('hw.dearer')}">${icon('plus')}</button><span class="faint" style="font-size:12px">${t('hw.margin', { v: money(P.price - unit) })}</span></div></div>
       <div><div class="lbl" style="margin-bottom:6px">${t('hw.auto')}</div><div class="seg"><button class="${P.auto ? 'on' : ''}" data-act="hw-auto" data-id="${P.id}" data-v="1">${t('hw.autoOn')}</button><button class="${P.auto ? '' : 'on'}" data-act="hw-auto" data-id="${P.id}" data-v="0">${t('hw.autoOff')}</button></div></div>
       <div class="hw-wide"><div class="lbl" style="margin-bottom:6px">${t('hw.order')}</div><div class="row wrap" style="gap:6px">${opts.map((n) => `<button class="btn sm" data-act="hw-order" data-id="${P.id}" data-v="${n}" ${G.money < orderCost(G, P, n) ? 'disabled' : ''} data-tip="${esc(t('hw.orderTip', { v: money(orderCost(G, P, n)), w: HW_PARTNER[P.partner].lead }))}">${icon('truck')}${fmtNum(n)}</button>`).join('')}</div></div>
-      <div class="hw-wide"><div class="lbl" style="margin-bottom:6px">${t('hw.partner')}</div>${seg(partners, P.partner, 'hw-pp', `data-id="${P.id}"`, (it) => partnerTip(G, it.v))}<p class="hint" style="margin-top:6px">${t('hw.switchWarn')}</p></div>
+      <div class="hw-wide"><div class="lbl" style="margin-bottom:6px">${t('hw.partner')}</div>${seg(partners, P.partner, 'hw-pp', `data-id="${P.id}"`, (it) => lockTip(G, P.type, it.v), (it) => it.off && it.v !== P.partner)}<p class="hint" style="margin-top:6px">${t('hw.switchWarn')}</p></div>
       ${G.u.flags[plat ? 'hw_devkit' : 'hw_driver'] ? `<div class="hw-wide"><div class="lbl" style="margin-bottom:6px">${t(plat ? 'hw.devkit' : 'hw.driver')}</div><div class="row wrap" style="gap:8px"><div class="seg"><button class="${P.drv ? '' : 'on'}" data-act="hw-drv" data-id="${P.id}" data-v="0">${t('hw.drvOff')}</button><button class="${P.drv ? 'on' : ''}" data-act="hw-drv" data-id="${P.id}" data-v="1" ${!P.drv && P.compat >= drvMax(P) ? 'disabled' : ''}>${t('hw.drvOn', { v: money(driverCost(G, P)) })}</button></div></div><p class="hint" style="margin-top:6px">${t(P.compat >= drvMax(P) ? 'hw.drvDone' : plat ? 'hw.dkHelp' : 'hw.drvHelp')}</p></div>` : ''}
     </div>
     ${plat ? platBlock(G, P) : ''}
@@ -291,7 +300,23 @@ function prodTab(G, H) {
     ? `<div class="card" style="margin-top:14px"><div class="row" style="gap:8px"><div class="lbl">${tn('hw.ended', ended.length)}</div><span class="sp"></span><button class="btn sm ghost" data-act="hw-old">${t(HS.old ? 'hw.hide' : 'hw.show')}</button></div>
       ${HS.old ? `<div class="col" style="gap:6px;margin-top:8px">${ended.slice().reverse().map((P) => `<div class="hw-orow"><span class="hw-ic sm" style="--c:${HW_TYPES[P.type].color}">${tyIcon(P.type)}</span><b class="ell">${esc(P.name)}</b><span class="faint num">${yearOf(P.t ?? P.tReady)}–${yearOf(P.endT)}</span><span class="num">${fmtNum(Math.round(P.sold))}</span><b class="num ${productProfit(P) >= 0 ? 'up' : 'down'}">${money(productProfit(P))}</b></div>`).join('')}</div>` : ''}</div>`
     : '';
-  return list + old + econ(G, H);
+  return suitCard(G, H) + list + old + econ(G, H);
+}
+// Studionivåns beslut: patentstämningen (Produkter) och partnerns exklusivitetserbjudande (Partners)
+function suitCard(G, H) {
+  const v = H.suit;
+  if (!v) return '';
+  return `<div class="card hw-card hw-alert" style="--c:var(--bug);margin-bottom:12px"><div class="row" style="gap:10px">${icon('shield')}<b class="h3">${t('hw.patentT')}</b></div>
+    <p class="hint" style="margin:8px 0">${t('hw.patentText', { w: ISSUE_WEEKS })}</p>
+    <div class="row wrap" style="gap:8px"><button class="btn sm" data-act="hw-patent" data-v="settle" ${G.money < v.settle ? 'disabled' : ''}>${t('hw.patentSettle', { v: money(v.settle) })}</button><button class="btn sm ghost" data-act="hw-patent" data-v="trial" data-tip="${esc(t('hw.patentTrialTip', { v: money(v.loss) }))}">${t('hw.patentTrial')}</button></div></div>`;
+}
+function offerCard(G, H) {
+  const o = H.offer;
+  if (!o) return '';
+  const name = esc(HW_PARTNER[o.partner].name);
+  return `<div class="card hw-card hw-ready" style="--c:var(--gold);margin-bottom:12px"><div class="row wrap" style="gap:10px">${icon('mail')}<b class="h3">${t('hw.offerT', { partner: name })}</b>${tag(t('hw.type.' + o.type), HW_TYPES[o.type].color)}</div>
+    <p class="hint" style="margin:8px 0">${t('hw.offerText', { partner: name, n: 3, w: ISSUE_WEEKS })}</p>
+    <div class="row wrap" style="gap:8px"><button class="btn sm" data-act="hw-offer" data-v="1">${t('hw.offerYes')}</button><button class="btn sm ghost" data-act="hw-offer" data-v="0">${t('hw.offerNo')}</button></div></div>`;
 }
 
 // ── Partners ────────────────────────────────────────────────────
@@ -308,20 +333,23 @@ function partnersTab(G, H) {
     if (S && S.short > G.t) status.push(tag(tn('hw.shortage', S.short - G.t), 'var(--bug)'));
     if (S && S.fxUntil > G.t) status.push(tag(t(S.fx > 1 ? 'hw.fxUp' : 'hw.fxDown'), S.fx > 1 ? 'var(--warn)' : 'var(--good)'));
     if (orders.length) status.push(tag(tn('hw.orders', orders.length), 'var(--accent)'));
+    const ex = exclOf(G, p.id);
+    if (ex) status.push(tag(t('hw.exclTag', { type: t('hw.type.' + ex.type), y: yearOf(ex.until) }), 'var(--gold)'));
     return `<div class="card hw-partner ${open ? '' : 'off'}">
       <div class="row wrap" style="gap:8px"><b class="h3">${esc(p.name)}</b><span class="faint" style="font-size:12px">${t('hw.pk.' + p.kind)}</span><span class="sp"></span>${open ? status.join('') : tag(t('hw.from', { y: p.from }), 'var(--muted)')}</div>
       <p class="hint" style="margin:6px 0 8px">${t('hw.pd.' + p.id)}</p>
       <div class="hw-stats">${stat('hw.p.cost', t('dist.pct', { n: pct(p.cost) }))}${stat('hw.p.defect', '+' + t('dist.pct', { n: dec(p.defect * 100) }))}${stat('hw.p.lead', tn('hw.weeksN', p.lead))}${stat('hw.p.min', fmtNum(p.min))}${stat('hw.p.cap', `${fmtNum(Math.round(partnerCap(G, p.id)))}${t('ui.perWeek')}`, t('hw.p.capTip'))}${p.perf ? stat('hw.p.perf', '+' + t('dist.pct', { n: pct(p.perf) })) : ''}</div>
       ${open ? `<div class="row" style="gap:10px;margin-top:10px"><span class="faint" style="font-size:12px;min-width:90px">${t('hw.rel')}</span><div style="flex:1">${bar(rel, tone(rel), 'thin')}</div><span class="num faint" style="font-size:12px">${Math.round(rel)}</span></div>${rel > 70 ? `<p class="hint" style="margin-top:4px">${t('hw.relGood')}</p>` : ''}` : ''}</div>`;
   }).join('');
-  return `<p class="hint" style="margin-bottom:12px">${icon('truck')} ${t('hw.partnersHelp')} ${t('hw.relHelp')}</p>${glob.join('')}<div class="col" style="gap:10px">${cards}</div>`;
+  return `${offerCard(G, H)}<p class="hint" style="margin-bottom:12px">${icon('truck')} ${t('hw.partnersHelp')} ${t('hw.relHelp')}</p>${glob.join('')}<div class="col" style="gap:10px">${cards}</div>`;
 }
 
-// Beslut som väntar på spelaren (för dockan): misslyckade och färdiga projekt, felbatcher och benchmarkfrestelser
+// Beslut som väntar på spelaren (för dockan): misslyckade och färdiga projekt, felbatcher, benchmarkfrestelser,
+// exklusivitetserbjudanden och patentstämningar
 export function hwDecisions(G) {
   const H = G.hw;
   if (!H) return 0;
-  return H.projects.filter((p) => p.state !== 'design').length + H.products.filter((p) => p.issue || p.bench === 'offer').length;
+  return H.projects.filter((p) => p.state !== 'design').length + H.products.filter((p) => p.issue || p.bench === 'offer').length + (H.offer ? 1 : 0) + (H.suit ? 1 : 0);
 }
 
 const TABS = ['dev', 'prod', 'partners'];
@@ -340,7 +368,8 @@ regWin({
   },
   onOpen(G) {
     // ett beslut väntar: öppna fliken där det finns
-    if (G.hw && G.hw.products.some((p) => p.issue || p.bench === 'offer')) HS.tab = 'prod';
+    if (G.hw && (G.hw.suit || G.hw.products.some((p) => p.issue || p.bench === 'offer'))) HS.tab = 'prod';
+    else if (G.hw && G.hw.offer) HS.tab = 'partners';
     else if (G.hw && G.hw.projects.some((p) => p.state !== 'design')) HS.tab = 'dev';
   },
 });
@@ -448,6 +477,8 @@ act('hw-end', (el) => {
 });
 act('hw-issue', (el) => refresh(resolveIssue(G_(), +el.dataset.id, el.dataset.v)));
 act('hw-bench', (el) => refresh(resolveBench(G_(), +el.dataset.id, el.dataset.v === '1')));
+act('hw-offer', (el) => refresh(resolveOffer(G_(), el.dataset.v === '1')));
+act('hw-patent', (el) => refresh(resolvePatent(G_(), el.dataset.v)));
 act('hw-old', () => {
   HS.old = !HS.old;
   UI.refresh();

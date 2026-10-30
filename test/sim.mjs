@@ -143,7 +143,8 @@ function handlePending(G) {
 // Egen hårdvara: en produkt av varje öppen typ (den nyaste typen först) när kassan räcker till designen sex gånger om och
 // linjen saknar en produkt yngre än halva livscykeln, optimerad för den nyaste motorn. Lanseras hos den billigaste
 // partnern vars minsta order räcker högst ett halvår och vars kapacitet räcker, med förslagspriset och autobeställning.
-// Priset sänks 15 % när betyget fallit en och två poäng. Felbatcher återkallas, inget fusk, drivrutinsteam när det finns.
+// Priset sänks 15 % när betyget fallit en och två poäng. Felbatcher återkallas, inget fusk, drivrutinsteam när det finns,
+// exklusivitetsavtal skrivs på och patentstämningar förliks.
 function hwBot(G) {
   const H = G.hw;
   const cls = opt('hwcls', 'mid');
@@ -182,6 +183,9 @@ function hwBot(G) {
     const r = S.launch(G, J.id, { partner: pick.p.id, price, units, auto: true });
     if (verbose) console.log(`  hw launch ${year}: ${J.name} ${pick.p.id} $${price} ${units}u (~${Math.round(pick.d)}/w) ${r}`);
   }
+  // exklusivitetsavtal skrivs på (lägre pris), patentstämningar förliks
+  if (H.offer) S.resolveOffer(G, true);
+  if (H.suit) S.resolvePatent(G, 'settle');
   for (const P of H.products) {
     if (P.state === 'ended') continue;
     if (P.issue) S.resolveIssue(G, P.id, 'recall');
