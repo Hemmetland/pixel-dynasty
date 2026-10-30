@@ -620,3 +620,29 @@ Stående med anteckningsblock och penna, 4 rutor: den bortre handen håller ett 
 ```
 
 - **Begränsningar:** pennan blir 1 till 2 mörka pixlar i spelskala, så skrivandet syns mest som att handen rör sig på papperet. Den bortre tummen och ärmen mellan bröstet och blocket syns bara i full storlek. Mot den vita väggpanelen vid konferensrummets tavla på nivå 4 får papperet sämre kontrast.
+
+## Sträckpaus: `char.stretch` med frisyr 1, 2 och 3
+
+Stående sträckpaus, 4 rutor. Fötterna står still (rad 64 och nedåt är `east.png`, sulorna på rad 80). Den närmre armen ritas framför huvudet och håret, den bortre bakom, som i `cheer`. Grundremsan och de tre frisyrerna levereras samtidigt.
+
+| Ruta | Armarna | Överkroppen | Ögonen |
+| --- | --- | --- | --- |
+| 0 | på väg upp: armbågarna böjda bakåt, nävarna på huvudet | upprätt | öppna |
+| 1 | rakt upp, handflatorna ihop ovanför hjässan | 1 px bakåt | öppna |
+| 2 | rakt upp, 1 till 2 px längre bakåt | 2 px bakåt | stängda |
+| 3 | på väg ner (som ruta 0, armbågen 2 px lägre) | upprätt | öppna |
+
+- **Remsor:** `assets/chars/stretch.png`, `assets/chars/hair1/stretch.png`, `assets/chars/hair2/stretch.png`, `assets/chars/hair3/stretch.png` (4 rutor var). Enskilda rutor finns i `assets/pixellab/characters/dev/stretch-east-hand/` och `dev/hair1/stretch/`, `dev/hair2/stretch/`, `dev/hair3/stretch/`.
+- **Takt:** 3 bilder/s: `STAND_SPRITE.stretch = ['char.stretch', 3]`.
+- **Mått:** huvudet är `stand`-huvudet flyttat (0, 0), (-1, 0), (-2, 0), (0, 0); överkroppen (rad 33 till 55) lutar med, höfterna står still. De sammanslagna händerna ligger på rad 1 till 8 i ruta 1 och 2, så figuren är cirka 34 spel-px hög där mot 30 annars. Händerna håller 2 px avstånd till lockarna i `#3` och 5 px till håret i `#1` och `#2`. Vid skrivbordet går armarna upp bakom huvudet, långt från skärmen.
+- **Färger:** inga nya färger och ingen rekvisita. Mössan ligger på rad 10 till 24 i alla rutor, så ingen `hatRow` behövs.
+- **Frisyrerna:** den närmre ärmen och händerna är identiska i alla fyra remsor och ligger framför håret. I `#1` och `#2` syns den bortre ärmen ovanför huvudet där mössan förut låg; i `#3` döljer lockarna några av de pixlarna. Hästsvansen i `#2` kommer fram bakom den närmre armen.
+
+```json
+"char.stretch": { "file": "chars/stretch.png", "fw": 92, "fh": 92, "ax": 46, "ay": 82, "frames": 4, "scale": 0.42, "note": "Sträckpaus, handritad (Kör)" },
+"char.stretch#1": { "file": "chars/hair1/stretch.png", "fw": 92, "fh": 92, "ax": 46, "ay": 82, "frames": 4, "scale": 0.42, "note": "Frisyr 1, kort hår (Kör)" },
+"char.stretch#2": { "file": "chars/hair2/stretch.png", "fw": 92, "fh": 92, "ax": 46, "ay": 82, "frames": 4, "scale": 0.42, "note": "Frisyr 2, hästsvans (Kör)" },
+"char.stretch#3": { "file": "chars/hair3/stretch.png", "fw": 92, "fh": 92, "ax": 46, "ay": 82, "frames": 4, "scale": 0.42, "note": "Frisyr 3, lockigt hår (Kör)" }
+```
+
+- **Begränsningar:** i sidovy är den bortre armen mest dold, så i ruta 1 och 2 syns i spelskala en tröjfärgad pelare med händerna överst och bara en smal remsa av den andra armen; vid en snabb blick kan det läsas som en uppräckt hand. Lutningen bakåt är under en spel-pixel. Ruta 0 och 3 skiljer sig bara 1 till 2 px och läses som att man håller ställningen; nävarna på huvudet kan också läsas som "händerna på huvudet". Skjuvningen ger små 1 px trappsteg i rygg- och framkonturen. I `#2` kan hästsvansen som kommer fram bakom armen se ut som en separat mörk fläck i spelskala, som i `cheer#2`.
