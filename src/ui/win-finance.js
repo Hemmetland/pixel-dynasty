@@ -73,7 +73,7 @@ regWin({
           <div class="grid" style="grid-template-columns:repeat(auto-fit,minmax(150px,1fr))">
             <div class="counter" style="--c:${burn <= 0 ? 'var(--good)' : runway < 3 ? 'var(--bug)' : 'var(--warn)'}"><div class="v num">${money(burn)}</div><div class="k">${t('fin.burn')}</div></div>
             <div class="counter" style="--c:${runway < 3 ? 'var(--bug)' : 'var(--accent)'}"><div class="v num">${runway > 60 ? '∞' : runway.toFixed(1)}</div><div class="k">${t('fin.runway')}</div></div>
-            <div class="counter" style="--c:var(--money)"><div class="v num">${money(G.stats.revenue)}</div><div class="k">${t('fin.lifetime')}</div></div>
+            <div class="counter" style="--c:var(--money)"><div class="v num">${money(Math.max(G.stats.income || 0, G.stats.revenue))}</div><div class="k">${t('fin.lifetime')}</div></div>
           </div>
         </div>
         <div class="col">

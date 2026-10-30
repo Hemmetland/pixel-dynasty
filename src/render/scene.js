@@ -15,6 +15,19 @@ import { FRONT } from './tier5-rooms.js';
 import { yearOf, dateOf } from '../sim/const.js';
 import { lang } from '../core/i18n.js';
 import { glMethods } from './gl/scene-gl.js';
+import { HW_TYPES } from '../data/hardware.js';
+
+// Hårdvaruorder som levereras just nu: lastbilar i produkternas färger kör förbi
+function hwBrands(G) {
+  if (!G.hw || !G.hw.orders.length) return null;
+  const out = [];
+  for (const o of G.hw.orders) {
+    if (o.at > G.t || o.left <= 0) continue;
+    const P = G.hw.products.find((p) => p.id === o.p);
+    if (P) out.push({ color: HW_TYPES[P.type].color, type: P.type });
+  }
+  return out.length ? out : null;
+}
 
 const SCALES = [0.6, 0.75, 0.9, 1, 1.5, 2, 2.5, 3, 4, 5, 6];
 const STREET_SLACK = 26;
@@ -569,7 +582,7 @@ export class Scene {
     if (!G || !this.L) return;
     this.time += dt;
     const d = dateOf(G.t);
-    this.world.update(dt, { speed: this.speed, paused: this.paused, month: d.month, reduced: this.reduced, todLock: this.todLock, weatherLock: this.weatherLock });
+    this.world.update(dt, { speed: this.speed, paused: this.paused, month: d.month, reduced: this.reduced, todLock: this.todLock, weatherLock: this.weatherLock, brands: hwBrands(G) });
     this.updateActors(dt);
     this.updateCat(dt);
     this.updateFx(dt);

@@ -175,6 +175,25 @@ function drawVan(R, c, spin) {
   R(0, -8, 2, 4, '#8d93a6');
 }
 
+// Studions egen lastbil (en hårdvaruorder levereras): produkten i loggan, 7x5 pixlar i produktens färg
+const GLYPH = {
+  console: [[0, 1, 7, 3, 'd'], [1, 2, 3, 1, 'l'], [5, 2, 1, 1, '#7ff0ff']],
+  handheld: [[1, 0, 5, 5, 'd'], [2, 1, 3, 2, 'l'], [4, 4, 1, 1, '#ff6fae']],
+  gpu: [[0, 0, 1, 5, '#8d93a6'], [1, 1, 6, 3, 'd'], [2, 2, 2, 1, 'l'], [5, 2, 1, 1, 'l']],
+  cpu: [[1, 0, 5, 1, '#d8b25a'], [1, 1, 5, 3, 'd'], [2, 2, 3, 1, 'l'], [1, 4, 5, 1, '#d8b25a']],
+  pc: [[2, 0, 3, 5, 'd'], [3, 1, 1, 2, 'l'], [3, 4, 1, 1, '#7ff0ff']],
+  sound: [[0, 3, 7, 2, 'd'], [4, 0, 1, 3, 'l'], [2, 2, 3, 1, 'l']],
+};
+function brandLogo(R, type, col) {
+  R(6, -25, 22, 7, '#ffffff');
+  R(6, -19, 22, 1, '#d4d9e6');
+  const d = shade(col, -0.35);
+  const l = shade(col, 0.35);
+  for (const [x, y, w, h, k] of GLYPH[type] || GLYPH.console) R(8 + x, -24 + y, w, h, k === 'd' ? d : k === 'l' ? l : k);
+  R(17, -23, 9, 1, d);
+  R(17, -21, 6, 1, shade(col, -0.1));
+}
+
 function drawTruck(R, c, spin) {
   const L = 86;
   const body = '#e9ecf4';
@@ -192,10 +211,13 @@ function drawTruck(R, c, spin) {
   // randning och logga
   R(0, -17, 58, 3, col);
   R(0, -17, 58, 1, shade(col, 0.25));
-  R(7, -24, 18, 5, '#ffffff');
-  R(9, -23, 5, 3, col);
-  R(16, -23, 7, 1, '#9aa2b8');
-  R(16, -21, 5, 1, '#9aa2b8');
+  if (c.brand) brandLogo(R, c.brand.type, col);
+  else {
+    R(7, -24, 18, 5, '#ffffff');
+    R(9, -23, 5, 3, col);
+    R(16, -23, 7, 1, '#9aa2b8');
+    R(16, -21, 5, 1, '#9aa2b8');
+  }
   // hytt
   const cab = [[62, 74], [60, 76], [60, 78], [60, 79], [60, 80], [60, 81], [60, 82]];
   cab.forEach(([a, b], i) => R(a, -22 + i, b - a, 1, col));

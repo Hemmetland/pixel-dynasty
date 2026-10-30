@@ -262,8 +262,10 @@ export class World {
       const dir = Math.random() < 0.5 ? 1 : -1;
       const era = this.year < 1991 ? 0 : this.year < 2004 ? 1 : 2;
       const roll = Math.random();
-      const type = roll < 0.1 ? 'bus' : roll < 0.22 ? 'van' : roll < 0.32 ? 'truck' : 'car';
-      const c = { x: 0, dir, v: (34 + Math.random() * 24) * (type === 'bus' ? 0.8 : type === 'truck' ? 0.9 : 1), color: CAR_COLORS[Math.floor(Math.random() * CAR_COLORS.length)], type, era };
+      // när studions hårdvara levereras kör en del lastbilar i produktens färger
+      const brand = o.brands && roll < 0.3 ? o.brands[Math.floor(Math.random() * o.brands.length)] : null;
+      const type = brand ? 'truck' : roll < 0.1 ? 'bus' : roll < 0.22 ? 'van' : roll < 0.32 ? 'truck' : 'car';
+      const c = { x: 0, dir, v: (34 + Math.random() * 24) * (type === 'bus' ? 0.8 : type === 'truck' ? 0.9 : 1), color: brand ? brand.color : CAR_COLORS[Math.floor(Math.random() * CAR_COLORS.length)], type, era, brand };
       const len = vehicleSize(c).w;
       c.x = dir > 0 ? -len - 2 : this.W + len + 2;
       // håll avstånd till bilen framför i samma körfält

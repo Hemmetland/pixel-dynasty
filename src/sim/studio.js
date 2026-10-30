@@ -149,6 +149,8 @@ export const serverMult = (G) => 1 + 0.04 * facLevel(G, 'server');
 // ── Pengar ───────────────────────────────────────────────────────
 export function earn(G, amount, cat = 'sales') {
   G.money += amount;
+  // alla intäkter sedan starten (stats.revenue räknar bara spelen och det som hör till dem)
+  G.stats.income = (G.stats.income || 0) + amount;
   G.month.income += amount;
   G.month.breakdown[cat] = (G.month.breakdown[cat] || 0) + amount;
 }
