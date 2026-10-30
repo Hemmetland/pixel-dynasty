@@ -646,3 +646,33 @@ Stående sträckpaus, 4 rutor. Fötterna står still (rad 64 och nedåt är `eas
 ```
 
 - **Begränsningar:** i sidovy är den bortre armen mest dold, så i ruta 1 och 2 syns i spelskala en tröjfärgad pelare med händerna överst och bara en smal remsa av den andra armen; vid en snabb blick kan det läsas som en uppräckt hand. Lutningen bakåt är under en spel-pixel. Ruta 0 och 3 skiljer sig bara 1 till 2 px och läses som att man håller ställningen; nävarna på huvudet kan också läsas som "händerna på huvudet". Skjuvningen ger små 1 px trappsteg i rygg- och framkonturen. I `#2` kan hästsvansen som kommer fram bakom armen se ut som en separat mörk fläck i spelskala, som i `cheer#2`.
+
+## Hårdvaruikoner: dockknappen Hårdvara och sex produktikoner (handritat)
+
+Sju ikoner i samma stil som dockikonerna: 32x32, hård alfa (0 eller 255), mörk kontur `#1c1c31` och ljus kant `#82b2d0` uppe till vänster, ljus uppifrån vänster. Ritade pixel för pixel med samma palett och konturrutin som de åtta dockikonerna.
+
+| Fil | Nyckel | Föreställer | Accent |
+| --- | --- | --- | --- |
+| `assets/ui/dock-hardware.png` | `ui.dock.hardware` | Dockknappen Hårdvara: kopparfärgat instickskort med mörkt chip, guldbanor och kontaktkam med skåra | `#d99a5b` |
+| `assets/ui/hw-sound.png` | `ui.hw.sound` | Ljudkort: bärnstensfärgat kort med ljudchip, tre uttag i en stålbricka till höger och en ljus dubbelnot | `#f6b84a` |
+| `assets/ui/hw-gpu.png` | `ui.hw.gpu` | Grafikkort: grönt kort med två mörka fläktar, stålbricka till vänster och guldkam | `#6ee76a` |
+| `assets/ui/hw-pc.png` | `ui.hw.pc` | Dator: hög grafitgrå låda med blått sidofönster (fläkt och grafikkort syns), ljuslist, strömknapp och fötter | `#4aa8ff` |
+| `assets/ui/hw-cpu.png` | `ui.hw.cpu` | Processor: fyrkantigt chip med stift på alla sidor, rosa värmespridare med inristad logga och guldhörn för stift 1 | `#ff8fd2` |
+| `assets/ui/hw-handheld.png` | `ui.hw.handheld` | Bärbar konsol: stående turkos handhållen med tänd skärm (sol och kullar), styrkors, två magenta knappar och högtalarspringor | `#4de1d0` (förslag, UI:ts `--accent`) |
+| `assets/ui/hw-console.png` | `ui.hw.console` | Konsol: bred, platt violett låda med skivlucka, cyan strömlampa och en liten grå handkontroll framför | `#c49bff` (förslag, UI:ts `--rp`) |
+
+- **Storlek:** motiven är 21 till 28 px breda och 19 till 28 px höga (dockikonerna 23 till 28). Datorn och den bärbara konsolen är smalare eftersom de står upp. Visas i heltalsskala som dockikonerna; i 22 till 26 px-rutorna går alla sju fortfarande att känna igen.
+- **Accenter:** för `ui.hw.handheld` och `ui.hw.console` fanns ingen accent angiven, så de två ovan är förslag tagna från UI:ts befintliga färger. Byt gärna; ikonerna läses lika bra på andra mörka plattor.
+- **Färger:** grafikkortet lägger till tre gröna nyanser (`#b9f5a2`, `#6ee76a`, `#2ea35a`), eftersom paletten saknade grönt. Datorns blå glöd (`#03b6f0`, `#0283c5`) och konsolens violett (`#8f18da`, `#5b058a`) fanns redan i paletten men användes bara av `logo-mark`. Allt annat är dockans 27 färger. Docka plus hårdvara har därmed 34 färger i stället för taket 32.
+
+```json
+"ui.dock.hardware": { "file": "ui/dock-hardware.png", "fw": 32, "fh": 32, "note": "handritad pixel för pixel" },
+"ui.hw.sound": { "file": "ui/hw-sound.png", "fw": 32, "fh": 32, "note": "handritad pixel för pixel" },
+"ui.hw.gpu": { "file": "ui/hw-gpu.png", "fw": 32, "fh": 32, "note": "handritad pixel för pixel" },
+"ui.hw.pc": { "file": "ui/hw-pc.png", "fw": 32, "fh": 32, "note": "handritad pixel för pixel" },
+"ui.hw.cpu": { "file": "ui/hw-cpu.png", "fw": 32, "fh": 32, "note": "handritad pixel för pixel" },
+"ui.hw.handheld": { "file": "ui/hw-handheld.png", "fw": 32, "fh": 32, "note": "handritad pixel för pixel" },
+"ui.hw.console": { "file": "ui/hw-console.png", "fw": 32, "fh": 32, "note": "handritad pixel för pixel" }
+```
+
+- **Begränsningar:** dockknappen är den mest detaljrika av dockikonerna och ser lite plottrigare ut än grannarna i 1x. Grafikkortets fläktblad blir något grumliga i 1x men läses som fläktar. Datorns fläkt flyter ihop till ett blått sken vid 22 px; lådan och fönstret syns ändå. Processorns rosa är palettens rosa-magenta och drar lite mer åt lila än `#ff8fd2`; konsolens violett är mörkare och mättare än `#c49bff`. På den 16-procentiga plattan syns skillnaden knappt. Konsolens handkontroll har samma grå som `ui.dock.library`, men den är liten och ligger framför lådan.

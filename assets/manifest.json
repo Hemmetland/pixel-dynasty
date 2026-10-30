@@ -119,6 +119,13 @@
     "ui.dock.market": { "file": "ui/dock-market.png", "fw": 32, "fh": 32, "note": "handritad utifrån PixelLabs nav-stats (Kör)" },
     "ui.dock.finance": { "file": "ui/dock-finance.png", "fw": 32, "fh": 32, "note": "handritad pixel för pixel (Kör)" },
     "ui.dock.library": { "file": "ui/dock-library.png", "fw": 32, "fh": 32, "note": "handritad pixel för pixel (Kör)" },
-    "ui.dock.contracts": { "file": "ui/dock-contracts.png", "fw": 32, "fh": 32, "note": "handritad pixel för pixel (Kör)" }
+    "ui.dock.contracts": { "file": "ui/dock-contracts.png", "fw": 32, "fh": 32, "note": "handritad pixel för pixel (Kör)" },
+    "ui.dock.hardware": { "file": "ui/dock-hardware.png", "fw": 32, "fh": 32, "note": "handritad pixel för pixel (Kör)" },
+    "ui.hw.sound": { "file": "ui/hw-sound.png", "fw": 32, "fh": 32, "note": "handritad pixel för pixel (Kör)" },
+    "ui.hw.gpu": { "file": "ui/hw-gpu.png", "fw": 32, "fh": 32, "note": "handritad pixel för pixel (Kör)" },
+    "ui.hw.pc": { "file": "ui/hw-pc.png", "fw": 32, "fh": 32, "note": "handritad pixel för pixel (Kör)" },
+    "ui.hw.cpu": { "file": "ui/hw-cpu.png", "fw": 32, "fh": 32, "note": "handritad pixel för pixel (Kör)" },
+    "ui.hw.handheld": { "file": "ui/hw-handheld.png", "fw": 32, "fh": 32, "note": "handritad pixel för pixel (Kör)" },
+    "ui.hw.console": { "file": "ui/hw-console.png", "fw": 32, "fh": 32, "note": "handritad pixel för pixel (Kör)" }
   }
 }
