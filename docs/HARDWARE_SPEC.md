@@ -286,7 +286,11 @@ Kalibrera i den här ordningen: MARKNAD-tabellen (storleken), sedan THIRD (royal
   förlags digitala del ger butiken 30 % i stället för licensavgiften (raden "Egna plattformar" i butikens ekonomi).
   Plattformens spelare höjer butikens räckviddsmål med upp till 0,04 vid en miljon sålda enheter. Botar `--hw --store`
   (24 seeds): kassa 2020 420 M$ mot 370 M$ med bara `--hw`.
-- Inte med ännu: koncernsynergin (dotterbolagens spel som förstapart på egna plattformar).
+- Koncernsynergin: ett integrerat dotterbolag som valt en konsol eller bärbar enhet släpper i stället exklusivt på din
+  nyaste egna plattform av samma slag med sannolikheten 0,6 · integrationen, om din plattform är minst halvt så stor.
+  Spelet säljer efter din plattforms storlek (gånger 1,1, ingen licensavgift), räknas som ett av dina spel på
+  plattformen och ett hit (8+) säljer fler enheter. Botar `--hw --acq --group` (16 seeds): 0–6 förstapartsspel per
+  plattform, kassan oförändrad (541 mot 539 M$), alltså ett strategiskt val snarare än en ren vinst.
 - Botar (24 seeds med fast slump): kassa 2020 är 267 M$ utan hårdvara, 341 M$ med bara komponenter (+28 %) och
   357 M$ med plattformar (+34 %; 370 M$ efter händelserna nedan), större spridning, ingen konkurs, samma nivåår. En konsol från 2011 tjänar cirka
   100 M$ inklusive licenser, konsoler från 2014–2015 går runt noll till 40 M$ och en svag konsol går med förlust.

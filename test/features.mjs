@@ -551,6 +551,24 @@ ok(true, 'alla händelser körda');
   ok(S.hwReach(GP) > 0, 'plattformens spelare ökar butikens räckvidd');
   GP.engines.push({ id: 991, name: 'E', feats: ['poly'], tech: 50, built: S.yearOf(GP.t) });
   ok(S.ownPlatOpt(GP, { platform: id, engineId: 991 }) && !S.ownPlatOpt(GP, { platform: 'pc', engineId: 991 }) && S.engineCap(GP, { platform: id, engineId: 991 }) > 1.4, 'egna spel med ny motor optimeras för plattformen');
+  // koncernen: ett integrerat dotterbolag släpper ibland exklusivt på den egna plattformen när den är stor nog
+  {
+    const c = GP.comps[0];
+    Object.assign(c, { owned: true, ownedT: GP.t, sub: { mode: 'int', budget: 1, integ: 1, staff: 40, ceo: null, inv: 0, done: true } });
+    const w0 = pl.weight;
+    pl.weight = 90;
+    const n0 = GP.market.releases.length;
+    for (let i = 0; i < 40; i++) { GP.t++; S.releaseComp(GP, c); }
+    const fp = GP.market.releases.slice(n0).filter((r) => r.platform === id);
+    ok(fp.length > 0 && S.ownGames(GP, P) >= fp.length, 'ett integrerat dotterbolag släpper förstapartsspel på plattformen (' + fp.length + ' av 40)');
+    pl.weight = 0.5;
+    const n1 = GP.market.releases.length;
+    for (let i = 0; i < 40; i++) { GP.t++; S.releaseComp(GP, c); }
+    ok(!GP.market.releases.slice(n1).some((r) => r.platform === id), 'en liten plattform får inga förstapartsspel');
+    pl.weight = w0;
+    c.owned = false;
+    c.sub = null;
+  }
   const b0 = P.boost || 0;
   S.hwRelease(GP, { id: 501, title: 'Z', platform: id, score: 8.5, total: 1e6, t: GP.t });
   ok(P.boost > b0 && P.games === 1, 'ett eget hit på plattformen säljer fler enheter');

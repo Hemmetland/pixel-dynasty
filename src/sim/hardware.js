@@ -387,7 +387,12 @@ export function platPull(G, P) {
   const fans = 1 + 0.1 * Math.log10(1 + G.fans / 10000);
   return fans * (0.6 + 0.5 * supportOf(G, P) + Math.min(0.2, 0.04 * ownGames(G, P)));
 }
-export const ownGames = (G, P) => (P.plat ? G.games.filter((g) => g.platform === P.plat && G.t - g.t < 2 * WEEKS_PER_YEAR).length : 0);
+// egna spel och koncernens förstapartsspel på plattformen de senaste två åren
+export const ownGames = (G, P) => {
+  if (!P.plat) return 0;
+  const recent = (x) => x.platform === P.plat && G.t - x.t < 2 * WEEKS_PER_YEAR;
+  return G.games.filter(recent).length + G.market.releases.filter(recent).length;
+};
 // julhandeln säljer dubbelt, januari och februari lite mindre
 const season = (type, t) => {
   if (!isPlat(type)) return 1;
@@ -985,6 +990,23 @@ function platWeek(G, H) {
     book(H, 'lic', v);
     P.lic = (P.lic || 0) + v;
   }
+}
+// Den nyaste egna plattformen av ett slag (konsol eller bärbar) som säljs just nu
+export function ownPlatFor(G, kind) {
+  if (!G.hw || !G.hw.plats) return null;
+  for (let i = G.hw.plats.length - 1; i >= 0; i--) {
+    const pl = G.hw.plats[i];
+    if (pl.kind === kind && productOfPlat(G, pl.id)?.state === 'market') return pl;
+  }
+  return null;
+}
+// Ett koncernspel på den egna plattformen (förstapart): ett hit säljer fler enheter, som dina egna
+export function groupPlatRelease(G, rel) {
+  const P = productOfPlat(G, rel.platform);
+  if (!P) return;
+  P.fp = (P.fp || 0) + 1;
+  note(G, 'news.hwFirstParty', { studio: rel.studio, title: rel.title, name: P.name }, 'platform', rel.score < 8);
+  if (rel.score >= 8 && P.state === 'market') P.boost = Math.min(HIT_MAX, (P.boost || 0) + EXCL_BOOST);
 }
 // Ett eget spel på den egna plattformen: ett hit säljer fler enheter
 function platRelease(G, game, pl) {

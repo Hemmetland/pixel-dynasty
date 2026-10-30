@@ -1,11 +1,12 @@
 import { clamp } from '../core/util.js';
 import { hashStr, seeded } from '../core/rng.js';
 import { emit } from '../core/bus.js';
-import { PLATFORM } from '../data/platforms.js';
+import { PLATFORM, potential } from '../data/platforms.js';
 import { yearOf, wageIndex, WEEKS_PER_YEAR } from './const.js';
 import { spend, capacity, facLevel, rentOf, facUpkeep, loanInterest } from './studio.js';
 import { payroll } from './people.js';
 import { note } from './news.js';
+import { ownPlatFor } from './hardware.js';
 
 // Koncernledning: dotterbolagen (uppköpta konkurrenter, se acquire.js) har en personalstyrka som avgör hur ofta och hur
 // stort de släpper. Ett självständigt dotterbolag sköter sig självt: du får BASE_SHARE av försäljningen och det tar lite
@@ -37,6 +38,9 @@ export const PROMO_OWN = 0.015; // ... och dina, per integrerat bolag (högst PR
 export const PROMO_OWN_MAX = 0.06;
 export const COST = 0.06; // delade tjänster: lägre hyra och drift per integrerat bolag (högst COST_MAX)
 export const COST_MAX = 0.25;
+export const FIRST_PARTY = 0.6; // ett integrerat bolag släpper så ofta (gånger integrationen) på din egen plattform
+const FP_MIN = 0.5; // ... om den är minst så stor som plattformen det annars hade valt
+const FP_NOFEE = 1.1; // ... och slipper licensavgiften
 
 const owned = (G) => (G.comps || []).filter((c) => c.owned);
 const rngFor = (G, key) => seeded(hashStr(`${G.seed || 0}:group:${key}`));
@@ -123,6 +127,18 @@ export const groupCostMonth = (G) => owned(G).reduce((a, c) => a + (c.sub && c.s
 export const costSave = (G) => Math.min(COST_MAX, COST * integSum(G));
 // Korspromotion: så mycket mer dina nya spel säljer
 export const promoOwn = (G) => (facLevel(G, 'marketing') > 0 ? Math.min(PROMO_OWN_MAX, PROMO_OWN * integSum(G)) : 0);
+
+// Förstapart (från market.js, efter slumpdragningarna): ett integrerat bolag släpper ibland exklusivt på din egen konsol
+// eller bärbara enhet i stället för plattformen det valt, om din är minst halvt så stor. Ger din plattform eller null.
+export function subPlatform(G, c, plat, yf) {
+  const s = c.sub;
+  if (!s || s.mode !== 'int' || !(s.integ > 0)) return null;
+  const own = ownPlatFor(G, plat.kind);
+  if (!own || potential(own, yf) < FP_MIN * potential(plat, yf)) return null;
+  return rngFor(G, `fp:${c.id}:${G.t}`)() < FIRST_PARTY * s.integ ? own : null;
+}
+// ... och spelet säljer efter din plattforms storlek, utan licensavgift
+export const fpTotal = (total, own, plat, yf) => (total * FP_NOFEE * Math.max(0.4, potential(own, yf))) / Math.max(0.4, potential(plat, yf));
 
 // Dotterbolagets släpp (från market.js, efter slumpdragningarna): personalen, VD:n och synergierna. Ger [betyg, total].
 export function subRelease(G, c, plat, score, total) {
