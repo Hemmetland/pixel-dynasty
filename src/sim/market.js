@@ -64,7 +64,7 @@ function compScope(G, year, strength) {
 export function releaseComp(G, c) {
   const year = yearOf(G.t);
   const yf = yfOf(G.t);
-  const plats = PLATFORMS.filter((p) => potential(p, yf) > 1);
+  const plats = PLATFORMS.filter((p) => !p.own && potential(p, yf) > 1);
   const plat = weighted(G, plats, (p) => potential(p, yf));
   // tema och genre bestämdes när släppet planerades (ryktet); gamla sparfiler och första släppet drar dem nu
   const nx = c.next && TOPIC[c.next.topic] && GENRE[c.next.genre] ? c.next : rollNext(G, year);

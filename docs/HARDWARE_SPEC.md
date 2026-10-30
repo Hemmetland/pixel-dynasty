@@ -263,4 +263,19 @@ Kalibrera i den här ordningen: MARKNAD-tabellen (storleken), sedan THIRD (royal
 - Kalibrerat med `N=24`, `node test/sim.mjs --hw`: kassa 2020 cirka 15 % över en spelare utan hårdvara, hårdvaran är
   cirka en tredjedel av intäkterna 2010 och ingen bot går i konkurs. Nivåtrappan i `npm run pacing` är oförändrad.
 - Grafikkort fick namnet Spectra (Vortex är redan en konkurrerande plattformstillverkare).
-- Steg 3 (bärbar enhet, egen konsol som plattform, licens och exklusiva titlar) återstår.
+
+## Så blev det i spelet (steg 3, plattformar)
+
+- Bärbar enhet (Nomad) och konsol (Paragon) är produkttyper i samma fönster. När första leveransen kommer ut läggs en
+  plattform till i `G.hw.plats` och i registret i `data/platforms.js` (`setOwnPlatforms`, nollas av `newGame`, läggs
+  tillbaka när en sparning laddas). Plattformen får licens direkt, vikt = installerad bas / 30 000 (högst 90) och tonar
+  ut under 3,5 år när produkten läggs ned.
+- Licensintäkt per vecka = avgift · 40 · potential · `unitRev` · stöd. Stöd och efterfrågan (`platPull`) följer
+  specen, men biblioteket väger 0,6 + 0,5 · stöd + 0,04 per eget spel (högst fem), och BASE/MAX är sänkta (bärbart 0,13/0,35,
+  konsol 0,10/0,30). Konsolens enhetskostnad är 100 % av priset vid lansering. Första ordern: bärbart 40 000, konsol 60 000.
+- Med: Strömsnål design, Systemkretsar (egen arkitektur i plattformar), Utvecklarprogram (+15 kompatibilitet,
+  devkitteam), Bakåtkompatibilitet, konkurrentens prissänkning, överhettning, julhandeln, rivalgenerationer som åldrar
+  plattformen, exklusiva hits som säljer enheter och motoroptimering (tak 1,65, buggar −15 %) för egna spel.
+- Inte med ännu: läcka, patentstämning, exklusivitetserbjudande, koncernsynergin och konsolens digitala butik.
+- Botar (`--hw`, 24 seeds): kassa 2020 cirka 24 % över `--hw --noplat`, större spridning, ingen konkurs, samma nivåår.
+  Konsoler som kommer ut 2011–2013 tjänar 80–130 M$ inklusive licenser, sena konsoler går med förlust.

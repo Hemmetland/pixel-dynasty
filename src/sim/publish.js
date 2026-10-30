@@ -45,7 +45,7 @@ function makePitch(G) {
   const ri = (n) => Math.floor(r() * n);
   const year = yearOf(G.t);
   const yf = yfOf(G.t);
-  const plats = PLATFORMS.filter((p) => potential(p, yf) > 6);
+  const plats = PLATFORMS.filter((p) => !p.own && potential(p, yf) > 6);
   let w = r() * plats.reduce((a, p) => a + potential(p, yf), 0);
   const plat = plats.find((p) => (w -= potential(p, yf)) <= 0) || plats[0];
   const topics = TOPICS.filter((x) => x.start || RESEARCH.some((q) => (q.unlock.topics || []).includes(x.id) && q.year <= year));

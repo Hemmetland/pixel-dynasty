@@ -64,8 +64,9 @@ export function engineEff(engine, yf) {
   const age = Math.max(0, yf - engine.built);
   return engine.tech * clamp(1 - age * 0.06, 0.35, 1);
 }
-export function engineMult(engine, yf) {
+// cap: taket för hur mycket bättre än behovet motorn räknas (högre för ett eget spel på den egna plattformen)
+export function engineMult(engine, yf, cap = 1.4) {
   if (!engine) return 1;
-  const ratio = clamp(engineEff(engine, yf) / engineNeed(Math.floor(yf)), 0, 1.4);
+  const ratio = clamp(engineEff(engine, yf) / engineNeed(Math.floor(yf)), 0, cap);
   return 1 + ratio * 0.3;
 }

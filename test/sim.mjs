@@ -43,6 +43,11 @@ const saleArg = args.find((x) => x.startsWith('--sale='));
 // --hw: forskar egen hårdvara, designar Mellan-produkter när kassan räcker och lanserar dem med förslagspriset hos den
 // partner vars minsta order passar efterfrågan (--hwq=high hög kvalitet, --hwcls=top/budget ett annat prestandamål)
 const hw = args.includes('--hw');
+// --noplat: utan bärbar enhet och konsol; --platk=n hur många gånger design och prototyp kassan ska räcka till innan en
+// plattform påbörjas (utöver första ordern); plattformsboten gör sina spel på den egna plattformen när den är störst
+const noplat = args.includes('--noplat');
+const platK = +opt('platk', 2);
+const PLAT_RES = new Set(['h_lowpow', 'h_soc', 'h_handheld', 'h_devkit', 'h_console', 'h_backcompat']);
 // --bd: skriv ut årets pengar per kategori (för balansarbete)
 const bd = args.includes('--bd');
 const acc = {};
@@ -63,7 +68,7 @@ function pickPlatform(G) {
   for (const id of G.licenses) {
     if (!S.platformOpen(G, id)) continue;
     const p = PLATFORMS.find((x) => x.id === id);
-    const v = (potential(p, yf) / Math.pow(techMult(p, S.yearOf(G.t)), 0.55)) * (store && G.store && S.isPcPlat(p.id) ? 1 + G.store.reach * (store === 'closed' ? 2.5 : 1) : 1);
+    const v = (potential(p, yf) / Math.pow(techMult(p, S.yearOf(G.t)), 0.55)) * (store && G.store && S.isPcPlat(p.id) ? 1 + G.store.reach * (store === 'closed' ? 2.5 : 1) : 1) * (p.own ? 1.8 : 1);
     if (v > bv) { bv = v; best = p; }
   }
   return best;
@@ -157,9 +162,14 @@ function hwBot(G) {
     // en linje vars senaste avslutade produkt gick med förlust läggs ned
     const last = H.products.filter((p) => p.type === type && p.state === 'ended').pop();
     if (last && S.productProfit(last) < 0) continue;
-    if (H.products.some((p) => p.type === type && (p.state === 'prod' || (p.state === 'market' && (G.t - p.t) / 48 < life * 0.5)))) continue;
+    // en ny generation när den förra har gått halva livet (en plattform: 70 %, och bara om den hinner betala sig)
+    if (H.products.some((p) => p.type === type && (p.state === 'prod' || (p.state === 'market' && (G.t - p.t) / 48 < life * (S.isPlat(type) ? 0.7 : 0.5))))) continue;
+    if (S.isPlat(type) && year > endYear - (type === 'console' ? 6 : 5)) continue;
     const spec = { type, cls, qual, arch: 'std', opt: eng };
-    if (G.money < (S.designCost(G, spec) + S.protoCost(G, spec)) * 6) continue;
+    const plat = S.isPlat(type);
+    // en plattform: design och prototyp platK gånger om, plus en första order till lanseringspriset
+    const first = plat ? S.PLAT_MIN[type] * HW_TYPES[type].price * HW_TYPES[type].unit : 0;
+    if (G.money < (S.designCost(G, spec) + S.protoCost(G, spec)) * (plat ? platK : 6) + first) continue;
     if (S.startDesign(G, spec) === true && verbose) console.log(`  hw design ${year}: ${H.projects[H.projects.length - 1].name} $${S.designCost(G, spec)} ${S.designWeeks(G, spec)}w`);
   }
   for (const J of H.projects.slice()) {
@@ -168,7 +178,7 @@ function hwBot(G) {
     const price = S.suggestPrice(J.type, J.cls);
     const pid = S.suggestPartner(G, J, price);
     const pick = { p: HW_PARTNER[pid], d: S.weeklyDemand(G, S.draftOf(G, J, pid, price), price) };
-    const units = Math.max(pick.p.min, Math.round(pick.d * (pick.p.lead + 6)));
+    const units = Math.max(S.minOrder(J, pid, true), Math.round(pick.d * (pick.p.lead + 6)));
     const r = S.launch(G, J.id, { partner: pick.p.id, price, units, auto: true });
     if (verbose) console.log(`  hw launch ${year}: ${J.name} ${pick.p.id} $${price} ${units}u (~${Math.round(pick.d)}/w) ${r}`);
   }
@@ -176,7 +186,10 @@ function hwBot(G) {
     if (P.state === 'ended') continue;
     if (P.issue) S.resolveIssue(G, P.id, 'recall');
     if (P.bench === 'offer') S.resolveBench(G, P.id, false);
-    if (G.u.flags.hw_driver && P.state === 'market' && P.drv !== (P.compat < 90 && P.share >= 0.04 && P.dem * P.price * 48 > S.driverCost(G, P) * 48 * 8)) S.setDriver(G, P.id, !P.drv);
+    if (S.isPlat(P.type)) {
+      // devkitteamet: när licensintäkten är minst fem gånger teamets kostnad och kompatibiliteten kan höjas
+      if (G.u.flags.hw_devkit && P.state === 'market' && P.drv !== (P.compat < 95 && S.platRoyalty(G, P) > S.driverCost(G, P) * 5)) S.setDriver(G, P.id, !P.drv);
+    } else if (G.u.flags.hw_driver && P.state === 'market' && P.drv !== (P.compat < 90 && P.share >= 0.04 && P.dem * P.price * 48 > S.driverCost(G, P) * 48 * 8)) S.setDriver(G, P.id, !P.drv);
     if (P.state === 'market') {
       const drop = P.score0 - S.scoreOf(G, P);
       const cuts = drop >= 2 ? 2 : drop >= 1 ? 1 : 0;
@@ -194,6 +207,7 @@ function manage(G) {
   if (!casual || G.t % 16 === 0) for (const r of RESEARCH.slice().sort((a, b) => a.rp - b.rp)) {
     if (G.research.active.length >= S.researchSlots(G)) break;
     if ((r.id === 'b_port' && !ports) || (r.id === 'b_publish' && !publish) || (r.id === 'b_merch' && !lic) || (r.id === 'b_acq' && !acq) || (r.id === 'b_group' && !group) || (r.id === 'b_store' && !store) || (r.cat === 'hw' && !hw)) continue;
+    if (noplat && PLAT_RES.has(r.id)) continue;
     if (S.canResearch(G, r.id) === true && r.rp <= G.rp) S.startResearch(G, r.id);
   }
   // förfiningar när det finns plats över och råd (pengarna med marginal)
@@ -398,7 +412,7 @@ if (hw && G.hw) {
   const T = H.tot;
   const m = (v) => '$' + (v / 1e6).toFixed(1) + 'M';
   console.log(`hw ${S.yearOf(H.t0)} rep ${Math.round(H.rep)} lab ${H.lab}${H.chief ? ' chief' : ''}; rev ${m(T.rev)} design ${m(T.design)} proto ${m(T.proto)} make ${m(T.make)} war ${m(T.war)} roy ${m(T.roy)} drv ${m(T.drv)} lab ${m(T.lab)} issue ${m(T.issue)}; net ${m(S.hwNet(G))}`);
-  for (const P of H.products) console.log(`  ${P.name} ${P.type} ${S.yearOf(P.tReady)}${P.t != null ? '/' + S.yearOf(P.t) : ''}${P.endT ? '-' + S.yearOf(P.endT) : ''} ${P.partner} score ${P.score0 ?? '-'} $${P.price} sold ${Math.round(P.sold).toLocaleString()} peak ${Math.round(P.peak)}/w rev ${m(P.rev)} dev ${m(P.dev)} make ${m(P.cost)} profit ${m(S.productProfit(P))}`);
+  for (const P of H.products) console.log(`  ${P.name} ${P.type} ${S.yearOf(P.tReady)}${P.t != null ? '/' + S.yearOf(P.t) : ''}${P.endT ? '-' + S.yearOf(P.endT) : ''} ${P.partner} score ${P.score0 ?? '-'} $${P.price} sold ${Math.round(P.sold).toLocaleString()} peak ${Math.round(P.peak)}/w rev ${m(P.rev)} dev ${m(P.dev)} make ${m(P.cost)} profit ${m(S.productProfit(P))}${P.plat ? ` lic ${m(P.lic || 0)} base ${Math.round(P.base || 0).toLocaleString()} weight ${S.platOf(G, P).weight.toFixed(1)} tier ${S.platOf(G, P).tier} games ${G.games.filter((g) => g.platform === P.plat).length} gameRev ${m(G.games.filter((g) => g.platform === P.plat).reduce((a, g) => a + g.revenue, 0))}` : ''}`);
 }
 if (group) console.log(`group: stab ${S.stability(G)}; ops ${S.opsCount(G)}; load ${S.groupLoad(G)}/${S.groupCap(G)}; costSave ${Math.round(S.costSave(G) * 100)}%; promo ${(S.promoOwn(G) * 100).toFixed(1)}%; invested $${Math.round(G.stats.groupInv || 0).toLocaleString()}; ${S.ownedComps(G).map((c) => `${c.name} ${c.sub.mode}${c.sub.mode === 'int' ? ' ' + Math.round(c.sub.integ * 100) + '% b' + c.sub.budget : ''} staff ${Math.round(c.sub.staff)} share ${Math.round(S.shareOf(G, c) * 100)}%${c.sub.ceo ? ' ceo' : ''}`).join(', ')}`);
 if (acq) console.log(`owned ${S.ownedComps(G).length}; paid $${Math.round(S.ownedComps(G).reduce((a, c) => a + c.paid, 0)).toLocaleString()}; earned $${Math.round(S.subIncome(G)).toLocaleString()}; ${S.ownedComps(G).map((c) => `${c.name} ${S.yearOf(c.ownedT)} $${Math.round(c.paid / 1e6)}M -> $${Math.round(c.subRev / 1e6)}M`).join(', ')}`);

@@ -1,5 +1,6 @@
 import { SAVE_VERSION, DIFFICULTY, newGame } from '../sim/state.js';
 import { migrateLooks } from '../sim/people.js';
+import { setOwnPlatforms } from '../data/platforms.js';
 
 const KEY = 'pixel-dynasty-save-v1';
 const SKEY = 'pixel-dynasty-settings-v1';
@@ -97,5 +98,7 @@ function migrate(G) {
   }
   G.v = SAVE_VERSION;
   migrateLooks(G);
+  if (G.hw) G.hw.plats ||= [];
+  setOwnPlatforms(G.hw ? G.hw.plats : []);
   return G;
 }

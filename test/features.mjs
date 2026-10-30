@@ -3,6 +3,7 @@ import * as S from '../src/sim/index.js';
 import { RESEARCH } from '../src/data/research.js';
 import { EVENTS } from '../src/data/events.js';
 import { exportCode, importCode } from '../src/core/store.js';
+import { PLATFORM, PLATFORMS } from '../src/data/platforms.js';
 let fails = 0;
 const ok = (c, m) => { if (!c) { fails++; console.log('FAIL', m); } else console.log('ok  ', m); };
 const G = S.newGame({ studio: 'T', seed: 7, difficulty: 'normal' });
@@ -483,6 +484,47 @@ ok(true, 'alla händelser körda');
   ok(S.startDesign(GJ, { type: 'sound', cls: 'mid' }) === true, 'efter sparning går det att designa');
   for (let i = 0; i < 40; i++) { GJ.t++; S.hwWeek(GJ); }
   ok(Number.isFinite(GJ.money) && GJ.hw.projects.length + GJ.hw.products.length >= 2, 'hårdvaran fortsätter efter sparning');
+}
+// egna plattformar: en bärbar enhet blir en plattform med licens, vikt efter sålda enheter, licensintäkt, egna spel
+// optimeras, plattformen följer med sparningen och försvinner med ett nytt spel
+{
+  const GP = S.newGame({ studio: 'P', seed: 23 }); S.makeCompetitors(GP); S.initWorld(GP);
+  GP.t = 48 * 27; GP.money = 5e8; GP.fans = 200000;
+  Object.assign(GP.u.flags, { hw: true, hw_lowpow: true, hw_handheld: true, hw_console: true, hw_devkit: true });
+  GP.t++; S.hwWeek(GP);
+  const H = GP.hw;
+  ok(S.openTypes(GP).join() === 'handheld,console', 'forskningen öppnar bärbar enhet och konsol');
+  ok(S.canDesign(GP, { type: 'handheld', cls: 'mid', arch: 'own' }) === 'locked', 'egen arkitektur i en plattform kräver systemkretsar');
+  ok(S.startDesign(GP, { type: 'handheld', cls: 'mid', arch: 'std' }) === true, 'en bärbar enhet kan designas');
+  const J = H.projects[0];
+  J.done = J.weeks - 1;
+  for (let i = 0; i < 3 && J.state === 'design'; i++) { GP.t++; S.hwWeek(GP); }
+  if (J.state === 'fail') S.resolveProto(GP, J.id, 'redo');
+  for (let i = 0; i < 40 && J.state === 'design'; i++) { GP.t++; S.hwWeek(GP); }
+  ok(J.state === 'ready', 'prototypen är klar');
+  ok(S.launch(GP, J.id, { partner: 'halden', units: 50000 }) === 'locked', 'monteringsfirman kan inte bygga en plattform');
+  ok(S.launch(GP, J.id, { partner: 'meridian', units: 20000 }) === true && H.orders[0].units === S.PLAT_MIN.handheld, 'lansering hos chipfabriken, med en första order över golvet för en plattform');
+  const P = H.products[0];
+  for (let i = 0; i < 20 && P.state === 'prod'; i++) { GP.t++; S.hwWeek(GP); }
+  const id = P.plat;
+  const pl = S.platOf(GP, P);
+  ok(P.state === 'market' && pl && PLATFORM[id] === pl && PLATFORMS.includes(pl) && GP.licenses.includes(id) && S.platformOpen(GP, id), 'produkten blir en egen plattform med licens');
+  for (let i = 0; i < 60; i++) { GP.t++; S.hwWeek(GP); }
+  ok(P.base > 0 && pl.weight > 0 && pl.weight === Math.min(90, P.base / S.PER_WEIGHT), 'vikten följer den installerade basen (' + pl.weight.toFixed(1) + ')');
+  ok(S.platRoyalty(GP, P) > 0 && P.lic > 0 && H.tot.lic === P.lic, 'andra förlag betalar licens');
+  ok(S.platRoyalty(GP, P, 0.3) / 0.3 < S.platRoyalty(GP, P, 0.1) / 0.1 && S.supportOf(GP, P, 0.3) < S.supportOf(GP, P, 0.1), 'en högre avgift ger färre förlag');
+  GP.engines.push({ id: 991, name: 'E', feats: ['poly'], tech: 50, built: S.yearOf(GP.t) });
+  ok(S.ownPlatOpt(GP, { platform: id, engineId: 991 }) && !S.ownPlatOpt(GP, { platform: 'pc', engineId: 991 }) && S.engineCap(GP, { platform: id, engineId: 991 }) > 1.4, 'egna spel med ny motor optimeras för plattformen');
+  const b0 = P.boost || 0;
+  S.hwRelease(GP, { id: 501, title: 'Z', platform: id, score: 8.5, total: 1e6, t: GP.t });
+  ok(P.boost > b0 && P.games === 1, 'ett eget hit på plattformen säljer fler enheter');
+  const GQ = importCode(exportCode(GP));
+  ok(GQ && PLATFORM[id] === GQ.hw.plats[0] && PLATFORMS.filter((p) => p.own).length === 1, 'plattformen följer med sparningen');
+  for (let i = 0; i < 8; i++) { GQ.t++; S.hwWeek(GQ); }
+  ok(GQ.hw.plats[0].weight >= pl.weight && PLATFORM[id] === GQ.hw.plats[0], 'efter laddning växer den laddade plattformen');
+  ok(S.discontinue(GQ, GQ.hw.products[0].id) === true && GQ.hw.plats[0].y1 < 2100 && S.platformOpen(GQ, id), 'en nedlagd plattform tonar ut men går att släppa spel på ett tag');
+  S.newGame({ seed: 1 });
+  ok(!PLATFORM[id] && !PLATFORMS.some((p) => p.own), 'ett nytt spel har inga egna plattformar');
 }
 // bailout + konkurs
 const G3 = S.newGame({ studio: 'B', seed: 3 }); S.makeCompetitors(G3); S.initWorld(G3);

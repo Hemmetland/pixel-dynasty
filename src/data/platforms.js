@@ -59,6 +59,19 @@ export const PLATFORMS = [
     { sv: 'Spelar ett bibliotek på tusen titlar direkt.', en: 'Plays a library of a thousand titles straight away.' }),
 ];
 export const PLATFORM = Object.fromEntries(PLATFORMS.map((p) => [p.id, p]));
+// Studions egna plattformar (sim/hardware.js, G.hw.plats, own: true) läggs sist i listan för det spel som är igång.
+// Objekten är desamma som i G.hw.plats, så vikten som växer med sålda enheter syns överallt.
+export function setOwnPlatforms(list = []) {
+  for (let i = PLATFORMS.length - 1; i >= 0; i--) {
+    if (!PLATFORMS[i].own) continue;
+    delete PLATFORM[PLATFORMS[i].id];
+    PLATFORMS.splice(i, 1);
+  }
+  for (const p of list) {
+    PLATFORMS.push(p);
+    PLATFORM[p.id] = p;
+  }
+}
 
 // PC:ns generation följer året.
 export function pcTier(year) {
@@ -95,11 +108,12 @@ export function lifecycle(p, yf) {
   if (yf < t0) return 0;
   if (p.y1 < 2100 && yf > t1 + 1.5) return 0;
   const age = yf - t0;
-  const ramp = p.id === 'pc' ? 1 : Math.pow(clamp(age / 1.6, 0, 1), 1.3);
+  // en egen plattforms vikt följer redan de sålda enheterna, så den växer inte upp en gång till
+  const ramp = p.id === 'pc' || p.own ? 1 : Math.pow(clamp(age / 1.6, 0, 1), 1.3);
   let fade = 1;
   if (p.y1 < 2100 && yf > t1 - 2) fade = clamp((t1 + 1.5 - yf) / 3.5, 0, 1);
   // Mobil/PC och långlivade plattformar mognar långsamt vidare (mobilen planar ut tidigare, alla har redan en).
-  const grow = p.y1 >= 2100 ? 1 + Math.min(p.kind === 'mobile' ? 0.25 : 0.6, age * 0.03) : 1;
+  const grow = p.y1 >= 2100 && !p.own ? 1 + Math.min(p.kind === 'mobile' ? 0.25 : 0.6, age * 0.03) : 1;
   return ramp * fade * grow;
 }
 export const potential = (p, yf) => p.weight * lifecycle(p, yf);

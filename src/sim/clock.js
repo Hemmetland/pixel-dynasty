@@ -59,7 +59,7 @@ function weekly(G) {
   const d = dateOf(G.t);
   // plattformsnyheter, en gång: veckan då plattformen kommer ut (lanseringen ligger alltid på en hel vecka)
   for (const p of PLATFORMS) {
-    if (p.id !== 'pc' && G.t === Math.round((launchTime(p) - START_YEAR) * WEEKS_PER_YEAR)) note(G, 'news.platform', { name: p.name, maker: p.maker }, 'platform');
+    if (p.id !== 'pc' && !p.own && G.t === Math.round((launchTime(p) - START_YEAR) * WEEKS_PER_YEAR)) note(G, 'news.platform', { name: p.name, maker: p.maker }, 'platform');
   }
   if (d.month === 5 && d.week === 1) expoOffer(G);
   if (d.month === 11 && d.week === 3) runAwards(G);

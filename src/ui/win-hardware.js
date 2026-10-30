@@ -1,15 +1,17 @@
 import { esc, icon, t, tn, UI, act, regWin, bar, money, errToast } from './core.js';
+import { pixIcon } from './icons.js';
 import { sfx } from '../audio/sfx.js';
 import { fmtNum } from '../core/util.js';
 import { lang } from '../core/i18n.js';
 import { yearOf, yfOf, WEEKS_PER_YEAR } from '../sim/const.js';
-import { HW_TYPES, HW_CLASSES, HW_QUALITY, HW_ARCH, HW_PARTNERS, HW_PARTNER } from '../data/hardware.js';
+import { HW_TYPES, HW_CLASSES, HW_QUALITY, HW_ARCH, HW_PARTNERS, HW_PARTNER, PLAT_FEES } from '../data/hardware.js';
 import {
   canHw, LAB_MAX, labSlots, labCost, labRent, upgradeLab, chiefPerf, chiefRisk, chiefRating, chiefCandidates, setChief, recallChief,
   openTypes, partnerOpen, relOf, partnerCap, cryptoOn, chipsOn, hasArch, designCost, protoCost, designWeeks, protoRisk, designPerf, baseCompat,
   defectOf, canDesign, startDesign, pauseDesign, cancelDesign, resolveProto, hwName, draftOf, scoreOf, unitCost, suggestPrice, priceSteps,
   stepPrice, weeklyDemand, suggestPartner, orderOptions, orderCost, orderMore, marketSize, launch, setPrice, setAuto, setPartner, setDriver, driverCost, discontinue, resolveIssue,
-  resolveBench, pipelineOf, productProfit, hwNet, brandOf, RECALL, CLEAR,
+  resolveBench, pipelineOf, productProfit, hwNet, brandOf, RECALL, CLEAR, isPlat, archOpen, partnerFits, minOrder, platOf, supportOf, platRoyalty, setPlatFee,
+  ownGames, PER_WEIGHT,
 } from '../sim/hardware.js';
 
 // Fönstret Hårdvara: Utveckling (labbet, chefen, designprojekt och nya designer), Produkter (det som tillverkas och
@@ -22,6 +24,9 @@ const tone = (v) => (v >= 60 ? 'var(--good)' : v >= 35 ? 'var(--warn)' : 'var(--
 const scoreTone = (s) => (s >= 7.5 ? 'var(--good)' : s >= 6 ? 'var(--gold)' : 'var(--bug)');
 const G_ = () => UI.app.G;
 const tyIcon = (type) => icon(HW_TYPES[type].ic);
+// produktens ikon i kortens huvud: pixelkonst 'ui.hw.<typ>' om den finns, annars linjeikonen
+const tyPix = (type) => pixIcon(`ui.hw.${type}`, HW_TYPES[type].ic, 32);
+const fitPartners = (G, type) => HW_PARTNERS.filter((p) => partnerOpen(G, p.id) && partnerFits(type, p.id)).map((p) => ({ v: p.id, label: esc(p.name) }));
 
 function seg(items, cur, actName, extra = '', tip, dis) {
   return `<div class="seg wrap-seg">${items
@@ -44,7 +49,7 @@ function specTags(P) {
   return tags.join('');
 }
 const head = (P, right = '') =>
-  `<div class="row" style="gap:10px;min-width:0"><span class="hw-ic" style="--c:${HW_TYPES[P.type].color}">${tyIcon(P.type)}</span><div style="flex:1;min-width:0"><b class="h3 ell">${esc(P.name)}</b><div class="row wrap" style="gap:5px;margin-top:3px"><span class="faint" style="font-size:12px">${t('hw.type.' + P.type)}</span>${specTags(P)}</div></div>${right}</div>`;
+  `<div class="row" style="gap:10px;min-width:0"><span class="hw-ic" style="--c:${HW_TYPES[P.type].color}">${tyPix(P.type)}</span><div style="flex:1;min-width:0"><b class="h3 ell">${esc(P.name)}</b><div class="row wrap" style="gap:5px;margin-top:3px"><span class="faint" style="font-size:12px">${t('hw.type.' + P.type)}</span>${specTags(P)}</div></div>${right}</div>`;
 
 // ── Utveckling ──────────────────────────────────────────────────
 function labCtl(G, H) {
@@ -92,26 +97,26 @@ function projCard(G, J) {
 // Ett färdigt projekt: välj partner, pris och första order, sedan lansering
 function launchCard(G, J) {
   const L = (HS.launch[J.id] ||= { partner: suggestPartner(G, J), price: suggestPrice(J.type, J.cls), units: 0, auto: true });
-  if (!partnerOpen(G, L.partner)) L.partner = 'halden';
+  if (!partnerOpen(G, L.partner) || !partnerFits(J.type, L.partner)) L.partner = suggestPartner(G, J);
   const D = draftOf(G, J, L.partner, L.price);
   const d = weeklyDemand(G, D, L.price);
-  const opts = orderOptions(G, D, L.partner, d);
+  const opts = orderOptions(G, D, L.partner, d, true);
   if (!opts.includes(L.units)) L.units = opts[Math.min(1, opts.length - 1)];
   const unit = unitCost(G, D, L.partner);
   const cost = orderCost(G, D, L.units, L.partner);
   const pp = HW_PARTNER[L.partner];
   const s = scoreOf(G, D);
-  const partners = HW_PARTNERS.filter((p) => partnerOpen(G, p.id)).map((p) => ({ v: p.id, label: esc(p.name) }));
+  const partners = fitPartners(G, J.type);
   const prices = priceSteps(J.type, J.cls).map((v) => ({ v, label: '$' + v }));
   const units = opts.map((v) => ({ v, label: fmtNum(v) }));
   const weeks = d > 0 ? Math.round(L.units / d) : 0;
   const right = `<div style="text-align:right;flex:none"><div class="disp" style="font-size:26px;color:${scoreTone(s)}">${dec(s)}</div><div class="faint" style="font-size:11px">${t('hw.expScore')}</div></div>`;
   return `<div class="card hw-card hw-ready" style="--c:var(--good)">${head(J, right)}
-    <p class="hint" style="margin:8px 0 10px">${icon('check')} ${t(J.bad ? 'hw.readyBad' : 'hw.ready')}</p>
+    <p class="hint" style="margin:8px 0 10px">${icon('check')} ${t(J.bad ? 'hw.readyBad' : 'hw.ready')}${isPlat(J.type) ? ' ' + t('hw.platReady') : ''}</p>
     <div class="hw-ctl">
       <div class="hw-wide"><div class="lbl" style="margin-bottom:6px">${t('hw.partner')}</div>${seg(partners, L.partner, 'hw-lp', `data-id="${J.id}"`, (it) => partnerTip(G, it.v))}</div>
       <div class="hw-wide"><div class="lbl" style="margin-bottom:6px">${t('hw.price')}</div>${seg(prices, L.price, 'hw-lpr', `data-id="${J.id}"`)}<p class="hint" style="margin-top:6px">${t('hw.priceHelp', { v: '$' + suggestPrice(J.type, J.cls) })}</p></div>
-      <div><div class="lbl" style="margin-bottom:6px">${t('hw.firstOrder')}</div>${seg(units, L.units, 'hw-lu', `data-id="${J.id}"`)}<p class="hint" style="margin-top:6px">${t('hw.orderHelp', { n: fmtNum(pp.min), w: pp.lead })}</p></div>
+      <div><div class="lbl" style="margin-bottom:6px">${t('hw.firstOrder')}</div>${seg(units, L.units, 'hw-lu', `data-id="${J.id}"`)}<p class="hint" style="margin-top:6px">${t('hw.orderHelp', { n: fmtNum(minOrder(D, L.partner, true)), w: pp.lead })}</p></div>
       <div><div class="lbl" style="margin-bottom:6px">${t('hw.auto')}</div><div class="seg"><button class="${L.auto ? 'on' : ''}" data-act="hw-la" data-id="${J.id}" data-v="1">${t('hw.autoOn')}</button><button class="${L.auto ? '' : 'on'}" data-act="hw-la" data-id="${J.id}" data-v="0">${t('hw.autoOff')}</button></div><p class="hint" style="margin-top:6px">${t('hw.autoHelp')}</p></div>
     </div>
     <div class="hw-stats" style="margin-top:12px">${stat('hw.s.demand', `~${fmtNum(Math.round(d))}${t('ui.perWeek')}`, t('hw.s.demandTip'))}${stat('hw.s.unit', money(unit))}${stat('hw.s.margin', money(L.price - unit))}${stat('hw.s.compat', Math.round(D.compat), t('hw.s.compatTip'))}${stat('hw.s.defect', t('dist.pct', { n: dec(D.defect * 100) }))}${stat('hw.s.cover', tn('hw.weeksN', weeks))}</div>
@@ -128,11 +133,12 @@ function designForm(G, H) {
   if (!types.includes(HS.type)) HS.type = types[types.length - 1];
   const engines = G.engines.slice(-3);
   if (HS.opt === undefined || (HS.opt != null && !engines.some((e) => e.id === HS.opt))) HS.opt = engines.length ? engines[engines.length - 1].id : null;
+  if (!archOpen(G, HS.type, HS.arch)) HS.arch = 'std';
   const spec = { type: HS.type, cls: HS.cls, qual: HS.qual, arch: hasArch(HS.type) ? HS.arch : null, opt: HS.opt };
   const cost = designCost(G, spec);
   const weeks = designWeeks(G, spec);
   const ok = canDesign(G, spec);
-  const best = HW_PARTNERS.filter((p) => partnerOpen(G, p.id)).pop().id;
+  const best = fitPartners(G, spec.type).pop()?.v || 'halden';
   const D = { type: spec.type, cls: spec.cls, qual: spec.qual, perf0: designPerf(G, spec), compat: baseCompat(G, spec), defect: defectOf(spec, best), t: null };
   const s = scoreOf(G, D);
   const tyItems = types.map((id) => ({ v: id, label: `${tyIcon(id)}${t('hw.type.' + id)}` }));
@@ -146,7 +152,7 @@ function designForm(G, H) {
       <div class="hw-wide"><div class="lbl" style="margin-bottom:6px">${t('hw.type')}</div>${seg(tyItems, HS.type, 'hw-ft')}<p class="hint" style="margin-top:6px">${t('hw.typeD.' + HS.type)} ${t('hw.market', { n: fmtNum(Math.round(marketSize(HS.type, yfOf(G.t), G.t) / WEEKS_PER_YEAR)) })}</p></div>
       <div><div class="lbl" style="margin-bottom:6px">${t('hw.cls')}</div>${seg(clsItems, HS.cls, 'hw-fc', '', (it) => t('hw.clsTip.' + it.v))}</div>
       <div><div class="lbl" style="margin-bottom:6px">${t('hw.q')}</div>${seg(qItems, HS.qual, 'hw-fq', '', (it) => t('hw.qTip.' + it.v))}</div>
-      ${hasArch(HS.type) ? `<div><div class="lbl" style="margin-bottom:6px">${t('hw.arch')}</div>${seg(aItems, HS.arch, 'hw-fa', '', (it) => t('hw.archTip.' + it.v))}</div>` : ''}
+      ${hasArch(HS.type) ? `<div><div class="lbl" style="margin-bottom:6px">${t('hw.arch')}</div>${seg(aItems, HS.arch, 'hw-fa', '', (it) => t(archOpen(G, HS.type, it.v) ? 'hw.archTip.' + it.v : 'hw.archSoc'), (it) => !archOpen(G, HS.type, it.v))}</div>` : ''}
       <div><div class="lbl" style="margin-bottom:6px">${t('hw.opt')}</div>${engines.length ? seg(oItems, HS.opt == null ? 'none' : HS.opt, 'hw-fo') : `<p class="hint">${t('hw.optNoEngine')}</p>`}<p class="hint" style="margin-top:6px">${t('hw.optHelp')}</p></div>
     </div>
     <div class="hw-stats" style="margin-top:12px">${stat('hw.s.design', money(cost))}${stat('hw.s.weeks', tn('hw.weeksN', weeks))}${stat('hw.s.proto', money(protoCost(G, spec)))}${stat('hw.s.risk', t('dist.pct', { n: Math.round(protoRisk(G, spec) * 100) }), t('hw.s.riskTip'))}${stat('hw.s.score', '~' + dec(s), t('hw.s.scoreTip'))}${stat('hw.s.price', '$' + suggestPrice(HS.type, HS.cls))}</div>
@@ -156,7 +162,7 @@ function designForm(G, H) {
 function devTab(G, H) {
   const live = H.products.filter((p) => p.state !== 'ended');
   const lm = G.t - H.t0 < 4 ? H.m : H.lm;
-  const net = lm.rev - lm.design - lm.proto - lm.make - lm.war - lm.roy - lm.drv - lm.lab - lm.issue;
+  const net = lm.rev + (lm.lic || 0) - lm.design - lm.proto - lm.make - lm.war - lm.roy - lm.drv - lm.lab - lm.issue;
   const projects = H.projects.length ? `<div class="col" style="gap:10px">${H.projects.map((J) => projCard(G, J)).join('')}</div>` : `<p class="hint">${t('hw.noProjects')}</p>`;
   const full = H.projects.length >= labSlots(H);
   return `<p class="hint" style="margin-bottom:12px">${icon('gpu')} ${t('hw.help')}</p>
@@ -173,6 +179,9 @@ function devTab(G, H) {
 
 // ── Produkter ───────────────────────────────────────────────────
 function issueRow(G, P) {
+  if (P.issue && P.issue.kind === 'heat') {
+    return `<div class="hw-issue"><p class="hint">${icon('fire')} ${t('hw.heat')}</p><div class="row wrap" style="gap:8px;margin-top:6px"><button class="btn sm" data-act="hw-issue" data-id="${P.id}" data-v="recall" ${G.money < P.issue.value ? 'disabled' : ''}>${t('hw.heatFix', { v: money(P.issue.value) })}</button><button class="btn sm ghost" data-act="hw-issue" data-id="${P.id}" data-v="ignore" data-tip="${esc(t('hw.heatIgnoreTip'))}">${t('hw.heatIgnore')}</button></div></div>`;
+  }
   if (P.issue) {
     return `<div class="hw-issue"><p class="hint">${icon('bug')} ${t('hw.batch', { n: fmtNum(P.issue.units) })}</p><div class="row wrap" style="gap:8px;margin-top:6px"><button class="btn sm" data-act="hw-issue" data-id="${P.id}" data-v="recall">${t('hw.recall', { v: money(P.issue.value * RECALL) })}</button><button class="btn sm ghost" data-act="hw-issue" data-id="${P.id}" data-v="ignore" data-tip="${esc(t('hw.ignoreTip'))}">${t('hw.ignore')}</button></div></div>`;
   }
@@ -190,7 +199,26 @@ function spark(hist, c) {
   return `<svg class="hw-spark" viewBox="0 0 ${w} 30" preserveAspectRatio="none"><polyline points="${pts}" fill="none" stroke="${c}" stroke-width="1.6" vector-effect="non-scaling-stroke"/></svg>`;
 }
 
+// En egen plattform: installerad bas, vikt, andra förlags stöd, licensintäkt och avgiften
+function platBlock(G, P) {
+  const pl = platOf(G, P);
+  const base = pl ? P.base || 0 : 0;
+  const fees = PLAT_FEES.map((f) => ({ v: f, label: t('dist.pct', { n: pct(f) }) }));
+  const roy = platRoyalty(G, P);
+  return `<div class="divider" style="margin:12px 0"></div><div class="row wrap" style="gap:8px;margin-bottom:8px"><div class="lbl">${t('hw.platT')}</div>${pl ? tag(esc(pl.name), HW_TYPES[P.type].color) : ''}<span class="sp"></span><span class="faint" style="font-size:12px">${t('hw.platGen', { n: pl ? pl.tier : '–' })}</span></div>
+    <div class="hw-stats">
+      ${stat('hw.s.base', fmtNum(Math.round(base)), t('hw.s.baseTip', { n: fmtNum(PER_WEIGHT) }))}
+      ${stat('hw.s.weight', pl ? dec(pl.weight) : '–', t('hw.s.weightTip'))}
+      ${stat('hw.s.support', t('dist.pct', { n: pct(supportOf(G, P)) }), t('hw.s.supportTip'))}
+      ${stat('hw.s.lic', `${money(roy)}${t('ui.perWeek')}`, t('hw.s.licTip'))}
+      ${stat('hw.s.ownGames', String(ownGames(G, P)), t('hw.s.ownGamesTip'))}
+      ${stat('hw.s.licTot', money(P.lic || 0))}
+    </div>
+    <div class="hw-ctl" style="margin-top:12px"><div class="hw-wide"><div class="lbl" style="margin-bottom:6px">${t('hw.fee')}</div>${seg(fees, P.fee, 'hw-fee', `data-id="${P.id}"`, (it) => t('hw.feeTip', { s: pct(supportOf(G, P, it.v)), v: money(platRoyalty(G, P, it.v)) }))}<p class="hint" style="margin-top:6px">${t('hw.feeHelp')}</p></div></div>`;
+}
+
 function productCard(G, P) {
+  const plat = isPlat(P.type);
   const market = P.state === 'market';
   const s = market ? scoreOf(G, P) : scoreOf(G, P, G.t);
   const unit = unitCost(G, P, P.partner);
@@ -204,7 +232,7 @@ function productCard(G, P) {
   const right = `<div style="text-align:right;flex:none"><div class="disp" style="font-size:26px;color:${scoreTone(s)}" data-tip="${esc(t('hw.scoreTip'))}">${dec(s)}</div><div class="faint" style="font-size:11px">${market ? t('hw.score') : t('hw.expScore')}</div></div>`;
   const opts = orderOptions(G, P);
   const stop = HS.confirm === `end:${P.id}`;
-  const partners = HW_PARTNERS.filter((p) => partnerOpen(G, p.id)).map((p) => ({ v: p.id, label: esc(p.name) }));
+  const partners = fitPartners(G, P.type);
   const so = market && P.stock < 1 && P.dem > 1;
   return `<div class="card hw-card" style="--c:${HW_TYPES[P.type].color}">${head(P, right)}
     <div class="row wrap" style="gap:6px;margin-top:8px">${state}${so ? tag(t('hw.soldOut'), 'var(--bug)') : ''}${P.cheat > G.t ? tag(t('hw.cheating'), 'var(--warn)') : ''}<span class="sp"></span>${market ? spark(P.hist, HW_TYPES[P.type].color) : ''}</div>
@@ -224,8 +252,9 @@ function productCard(G, P) {
       <div><div class="lbl" style="margin-bottom:6px">${t('hw.auto')}</div><div class="seg"><button class="${P.auto ? 'on' : ''}" data-act="hw-auto" data-id="${P.id}" data-v="1">${t('hw.autoOn')}</button><button class="${P.auto ? '' : 'on'}" data-act="hw-auto" data-id="${P.id}" data-v="0">${t('hw.autoOff')}</button></div></div>
       <div class="hw-wide"><div class="lbl" style="margin-bottom:6px">${t('hw.order')}</div><div class="row wrap" style="gap:6px">${opts.map((n) => `<button class="btn sm" data-act="hw-order" data-id="${P.id}" data-v="${n}" ${G.money < orderCost(G, P, n) ? 'disabled' : ''} data-tip="${esc(t('hw.orderTip', { v: money(orderCost(G, P, n)), w: HW_PARTNER[P.partner].lead }))}">${icon('truck')}${fmtNum(n)}</button>`).join('')}</div></div>
       <div class="hw-wide"><div class="lbl" style="margin-bottom:6px">${t('hw.partner')}</div>${seg(partners, P.partner, 'hw-pp', `data-id="${P.id}"`, (it) => partnerTip(G, it.v))}<p class="hint" style="margin-top:6px">${t('hw.switchWarn')}</p></div>
-      ${G.u.flags.hw_driver ? `<div class="hw-wide"><div class="lbl" style="margin-bottom:6px">${t('hw.driver')}</div><div class="row wrap" style="gap:8px"><div class="seg"><button class="${P.drv ? '' : 'on'}" data-act="hw-drv" data-id="${P.id}" data-v="0">${t('hw.drvOff')}</button><button class="${P.drv ? 'on' : ''}" data-act="hw-drv" data-id="${P.id}" data-v="1">${t('hw.drvOn', { v: money(driverCost(G, P)) })}</button></div></div><p class="hint" style="margin-top:6px">${t('hw.drvHelp')}</p></div>` : ''}
+      ${G.u.flags[plat ? 'hw_devkit' : 'hw_driver'] ? `<div class="hw-wide"><div class="lbl" style="margin-bottom:6px">${t(plat ? 'hw.devkit' : 'hw.driver')}</div><div class="row wrap" style="gap:8px"><div class="seg"><button class="${P.drv ? '' : 'on'}" data-act="hw-drv" data-id="${P.id}" data-v="0">${t('hw.drvOff')}</button><button class="${P.drv ? 'on' : ''}" data-act="hw-drv" data-id="${P.id}" data-v="1">${t('hw.drvOn', { v: money(driverCost(G, P)) })}</button></div></div><p class="hint" style="margin-top:6px">${t(plat ? 'hw.dkHelp' : 'hw.drvHelp')}</p></div>` : ''}
     </div>
+    ${plat ? platBlock(G, P) : ''}
     <div class="row wrap" style="gap:8px;margin-top:10px"><span class="sp"></span><button class="btn sm ghost" data-act="hw-end" data-id="${P.id}">${t('hw.end')}</button></div>
     ${stop ? confirmRow('end', P.id, t('hw.endYes'), t('hw.endWarn', { pct: pct(CLEAR) })) : ''}</div>`;
 }
@@ -234,6 +263,7 @@ function econ(G, H) {
   const early = G.t - H.t0 < 4;
   const rows = (o) => [
     ['hw.e.rev', o.rev],
+    ['hw.e.lic', o.lic || 0],
     ['hw.e.design', -o.design],
     ['hw.e.proto', -o.proto],
     ['hw.e.make', -o.make],
@@ -243,7 +273,7 @@ function econ(G, H) {
     ['hw.e.lab', -o.lab],
     ['hw.e.issue', -o.issue],
   ];
-  const net = (o) => o.rev - o.design - o.proto - o.make - o.war - o.roy - o.drv - o.lab - o.issue;
+  const net = (o) => o.rev + (o.lic || 0) - o.design - o.proto - o.make - o.war - o.roy - o.drv - o.lab - o.issue;
   const cell = (v) => `<b class="num ${v >= 0 ? 'up' : 'down'}">${v > 0 ? '+' : ''}${money(v)}</b>`;
   const cur = early ? H.m : H.lm;
   const a = rows(cur);
@@ -320,6 +350,7 @@ const refresh = (r, ok = 'click') => {
   else if (r && r !== false) errToast(r === 'slots' ? 'hw.full' : r === 'min' ? 'hw.minErr' : r);
   UI.refresh();
 };
+act('hw-fee', (el) => refresh(setPlatFee(G_(), +el.dataset.id, +el.dataset.v)));
 act('hw-tab', (el) => {
   HS.tab = el.dataset.id;
   HS.confirm = null;

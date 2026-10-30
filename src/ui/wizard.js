@@ -17,6 +17,7 @@ import { focusHTML, bindFocus } from './focus.js';
 import { lang } from '../core/i18n.js';
 import { clamp, fmtNum } from '../core/util.js';
 import { workers } from '../sim/people.js';
+import { engineCap, ownPlatOpt } from '../sim/hardware.js';
 import { liveUnlocked, canGoLive, liveGames, LIVE_SCOPES, EXP_SCOPES, LIVE_DEV } from '../sim/live.js';
 import { TITLE_PARTS } from '../data/names.js';
 
@@ -88,7 +89,7 @@ export function teamReadiness(G, cfg) {
   const sc = SCOPES[cfg.scope];
   const out = teamOutput(G, { scope: cfg.scope, crunch: false }, 0.5);
   const eng = cfg.engineId ? G.engines.find((e) => e.id === cfg.engineId) : null;
-  const em = engineMult(eng, yfOf(G.t));
+  const em = engineMult(eng, yfOf(G.t), engineCap(G, cfg));
   const par = sc.par * techMult(PLATFORM[cfg.platform], year);
   const rd = out.d / par;
   const rt = (out.t * em) / par;
@@ -247,7 +248,7 @@ function stepMarket(G) {
     </button>`;
   }).join('');
   const engines = G.u.flags.engines && G.engines.length
-    ? `<div class="wz-sec"><div class="lbl">${t('wiz.engine')}</div><div class="seg wrap-seg"><button class="${!W.engineId ? 'on' : ''}" data-act="w-eng" data-id="">${t('wiz.noEngine')}</button>${G.engines.map((e) => `<button class="${W.engineId === e.id ? 'on' : ''}" data-act="w-eng" data-id="${e.id}">${esc(e.name)} <span class="faint">+${Math.round((engineMult(e, yfOf(G.t)) - 1) * 100)}%</span></button>`).join('')}</div></div>`
+    ? `<div class="wz-sec"><div class="lbl">${t('wiz.engine')}</div><div class="seg wrap-seg"><button class="${!W.engineId ? 'on' : ''}" data-act="w-eng" data-id="">${t('wiz.noEngine')}</button>${G.engines.map((e) => `<button class="${W.engineId === e.id ? 'on' : ''}" data-act="w-eng" data-id="${e.id}">${esc(e.name)} <span class="faint">+${Math.round((engineMult(e, yfOf(G.t), engineCap(G, { ...W, engineId: e.id })) - 1) * 100)}%</span></button>`).join('')}</div>${PLATFORM[W.platform]?.own ? `<p class="hint" style="margin-top:6px">${icon('cpu')} ${t(ownPlatOpt(G, W) ? 'wiz.ownOpt' : 'wiz.ownOptHint')}</p>` : ''}</div>`
     : '';
   return `
     <div class="wz-sec"><div class="lbl">${t('wiz.platform')}</div><div class="plats">${cards}</div></div>

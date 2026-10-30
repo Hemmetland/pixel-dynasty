@@ -4,6 +4,7 @@ import { TOPICS } from '../data/topics.js';
 import { GENRES } from '../data/genres.js';
 import { FEATURES } from '../data/research.js';
 import { hashStr } from '../core/rng.js';
+import { setOwnPlatforms } from '../data/platforms.js';
 
 export const SAVE_VERSION = 3;
 
@@ -20,6 +21,7 @@ export const ARCHETYPES = {
 };
 
 export function newGame(opts = {}) {
+  setOwnPlatforms([]);
   const diff = opts.difficulty || 'normal';
   const seed = opts.seed ?? hashStr(String(Date.now()) + (opts.studio || ''));
   const arch = ARCHETYPES[opts.archetype] || ARCHETYPES.designer;

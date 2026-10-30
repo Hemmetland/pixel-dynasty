@@ -14,7 +14,7 @@ import { phaseCats, normFocus, startFocus, evaluate, compatOf, parPerTick, isNov
 import { startSales, forecast } from './sales.js';
 import { storeRelease } from './store.js';
 import { groupRelease } from './group.js';
-import { hwRelease } from './hardware.js';
+import { hwRelease, ownPlatOpt, engineCap } from './hardware.js';
 import { crowding } from './market.js';
 import { note } from './news.js';
 import { LIVE_SCOPES, EXP_SCOPES, LIVE_DEV, canGoLive, launchLive, releaseExpansion } from './live.js';
@@ -166,7 +166,8 @@ export function devTick(G) {
   const diff = DIFFICULTY[G.difficulty];
   const yf = yfOf(G.t);
   const eng = engineOf(G, J);
-  const em = engineMult(eng, yf) * serverMult(G);
+  const opt = ownPlatOpt(G, J);
+  const em = engineMult(eng, yf, engineCap(G, J)) * serverMult(G);
   if (J.phase < 3) {
     const cats = phaseCats(G, J.phase);
     const foc = J.focus[J.phase];
@@ -181,7 +182,7 @@ export function devTick(G) {
     const bugBase = (SCOPES[J.scope].bugs / J.devTicks) * 1.05 * diff.bugs * bugMult(G) * Math.pow(Math.max(1, out.n) / SCOPES[J.scope].team, 0.35);
     const perfect = out.ws.filter((w) => w.trait === 'perfectionist').length / Math.max(1, out.n);
     const crunchB = J.crunch ? 1.35 : 1;
-    const rate = bugBase * (1.15 - 0.5 * engShare) * (1 - 0.3 * perfect) * crunchB * (0.8 + 0.4 * (1 - mixD)) * (eng ? 1 - 0.08 * Math.min(1.3, engineMult(eng, yf) - 1) : 1);
+    const rate = bugBase * (1.15 - 0.5 * engShare) * (1 - 0.3 * perfect) * crunchB * (0.8 + 0.4 * (1 - mixD)) * (eng ? 1 - 0.08 * Math.min(1.3, engineMult(eng, yf) - 1) : 1) * (opt ? 0.85 : 1);
     let nb = 0;
     const whole = Math.floor(rate);
     nb += whole;

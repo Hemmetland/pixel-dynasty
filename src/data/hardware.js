@@ -20,10 +20,19 @@ export const HW_TYPES = {
     [[1998, 10000], [1999, 16000], [2005, 60000], [2012, 110000], [2020, 180000]], 'pc', '#4aa8ff', 0.5, (n) => `Forge ${roman(n)}`),
   cpu: T('cpu', 'h_cpu', 2000, 48, 2500000, 500000, 199, 0.4, 0.1, 3, 0.18, 0.06, 0.15, 1.3,
     [[1999, 270000], [2000, 300000], [2010, 600000], [2020, 750000]], 'cpu', '#ff8fd2', 1, (n) => `Quark ${n}`),
+  // Plattformar: varje såld enhet växer en egen plattform i spelet (sim/hardware.js, G.hw.plats)
+  handheld: T('handheld', 'h_handheld', 2004, 72, 14000000, 2000000, 149, 0.95, 0.12, 6, 0.1, 0.13, 0.35, 1.4,
+    [[2003, 600000], [2004, 800000], [2010, 1200000], [2017, 1000000], [2025, 800000]], 'handheld', '#7be0c8', 6.25, (n) => (n > 1 ? `Nomad ${n}` : 'Nomad')),
+  console: T('console', 'h_console', 2006, 96, 35000000, 5000000, 399, 1, 0.12, 7, 0.1, 0.1, 0.3, 1.4,
+    [[2005, 1200000], [2006, 1500000], [2012, 2000000], [2020, 2500000]], 'console', '#b98cff', 6.25, (n) => (n > 1 ? `Paragon ${n}` : 'Paragon')),
 };
-export const HW_IDS = ['sound', 'gpu', 'pc', 'cpu'];
-// Typer där du väljer arkitektur: köpt kärna (standard) eller egen
-export const ARCH_TYPES = new Set(['cpu']);
+export const HW_IDS = ['sound', 'gpu', 'pc', 'cpu', 'handheld', 'console'];
+// Typer som blir en egen plattform när de säljs
+export const PLAT_TYPES = new Set(['handheld', 'console']);
+// Typer där du väljer arkitektur: köpt kärna (standard) eller egen (för plattformarna med Systemkretsar)
+export const ARCH_TYPES = new Set(['cpu', 'handheld', 'console']);
+// Licensavgiften som andra förlag betalar för att släppa spel på din plattform
+export const PLAT_FEES = [0.1, 0.15, 0.2, 0.25, 0.3];
 // Komponenter som en speldator kan byggas med
 export const PC_PARTS = ['gpu', 'cpu'];
 
