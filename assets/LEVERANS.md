@@ -676,3 +676,20 @@ Sju ikoner i samma stil som dockikonerna: 32x32, hård alfa (0 eller 255), mörk
 ```
 
 - **Begränsningar:** dockknappen är den mest detaljrika av dockikonerna och ser lite plottrigare ut än grannarna i 1x. Grafikkortets fläktblad blir något grumliga i 1x men läses som fläktar. Datorns fläkt flyter ihop till ett blått sken vid 22 px; lådan och fönstret syns ändå. Processorns rosa är palettens rosa-magenta och drar lite mer åt lila än `#ff8fd2`; konsolens violett är mörkare och mättare än `#c49bff`. På den 16-procentiga plattan syns skillnaden knappt. Konsolens handkontroll har samma grå som `ui.dock.library`, men den är liten och ligger framför lådan.
+
+## VR-headset: `ui.hw.vr` (handritat)
+
+Åttonde produktikonen i hårdvarusetet, för headsetet Mirage (accent `#ff8a5c`). 32x32, hård alfa, samma palett, kontur, ljuskant och ljus uppifrån vänster som `ui.hw.*` ovan.
+
+| Fil | Nyckel | Föreställer | Accent |
+| --- | --- | --- | --- |
+| `assets/ui/hw-vr.png` | `ui.hw.vr` | Korallfärgat VR-headset snett framifrån: ljus ovansida, skuggad högersida, mörk glasfront med rundade hörn, glans och två kameraögon, näsurtag nertill och en grafitgrå huvudrem som går i en båge bakom | `#ff8a5c` |
+
+- **Storlek:** motivet är 28x22 px med ljuskanten, brett och lågt som `ui.dock.library` och `ui.hw.console`.
+- **Färger:** inga nya färger. Korallen är dockans orangea (`#fafec2`, `#fb9f44`, `#ed6a3e`, `#c6472f`) från `dock-staff` och `dock-market`; remmen och glaset är dockans grafit och isblå.
+
+```json
+"ui.hw.vr": { "file": "ui/hw-vr.png", "fw": 32, "fh": 32, "note": "handritad pixel för pixel" }
+```
+
+- **Begränsningar:** fronten är lite rödare än `#ff8a5c` eftersom paletten saknar exakt den korallen; på plattan syns det knappt. Det är den enda ikonen i setet som inte är rakt framifrån, men ljuset kommer från samma håll. I 1x kan remmens båge läsas som ett handtag; näsurtaget och den mörka fronten håller kvar läsningen som VR-glasögon. Dockknappen Hårdvara, ljudkortet och VR-headsetet är alla orangetoner men har tydligt olika former.
