@@ -594,3 +594,29 @@ Gångcykel tillbaka från kaffemaskinen, 6 rutor i samma ordning och takt som `c
 ```
 
 - **Begränsningar:** muggen är 10 × 8 px med handtaget, lite större än 6 × 6, eftersom det vita annars krympte till en pixel bakom handen i spelskala. Mitten av överkanten visar mörkt kaffe i stället för en helt ljus kant; med ljus kant flöt mugg och ånga ihop till en vit pelare som såg ut som en tumme upp. I spelskala blir muggen 2 × 2 vita pixlar med mörk ovansida och mörkt handtag, och ångan en ljus pixel. Framför det vita kylskåpet syns muggen bara genom kanten, kaffet och handtaget.
+
+## Anteckna på block vid möten och kurser: `char.notes` med frisyr 1, 2 och 3
+
+Stående med anteckningsblock och penna, 4 rutor: den bortre handen håller ett lutat block (brun skiva, vitt papper med tre grå textrader och en silverklämma) i brösthöjd framför kroppen, den närmre handen skriver med en kort mörk penna. I ruta 0, 1 och 3 tittar personen ner på blocket (huvudet flyttat (2, 2) med det sänkta ögat från `type`, som `char.laptop`); i ruta 2 tittar personen upp mot den som talar (huvudet 2 px högre, öppet öga). Grundremsan och de tre frisyrerna levereras samtidigt.
+
+| Ruta | Blick | Skrivhanden |
+| --- | --- | --- |
+| 0 | ner | på papperet |
+| 1 | ner | 2 px framåt |
+| 2 | upp | pennan lyft 2 px |
+| 3 | ner | 1 px framåt |
+
+- **Remsor:** `assets/chars/notes.png`, `assets/chars/hair1/notes.png`, `assets/chars/hair2/notes.png`, `assets/chars/hair3/notes.png` (4 rutor var). Enskilda rutor finns i `assets/pixellab/characters/dev/notes-east-hand/` och `dev/hair1/notes/`, `dev/hair2/notes/`, `dev/hair3/notes/`.
+- **Takt:** 4 bilder/s: `STAND_SPRITE.notes = ['char.notes', 4]`.
+- **Mått:** blocket är 11 × 13 px (x 57 till 71, rad 32 till 46), papperet rad 35 till 43, klämman rad 32 till 34. Underkanten ligger ungefär i höjd med mötesbordets skiva. Benen är `east.png`, sulorna på rad 80. Glipan i nacken när huvudet lyfts i ruta 2 är ifylld med huvkrage, lika i alla fyra remsor.
+- **Färger:** tre bruna färger från `char.walkBox` (`#e0b06a`, `#ab7c45`, `#7e5833`); papper, textrader, klämma och penna använder källfärger. Allt ger `material()` = null. Mössan ligger ovanför rad 27,6 i alla rutor, så ingen `hatRow` behövs.
+- **Frisyrerna:** armarna, blocket och pennan ritas efter huvudet och är identiska i alla fyra remsor, så de ligger framför håret. Lockarna i `#3` täcker några huvpixlar vid nacken i de nedböjda rutorna.
+
+```json
+"char.notes": { "file": "chars/notes.png", "fw": 92, "fh": 92, "ax": 46, "ay": 82, "frames": 4, "scale": 0.42, "note": "Antecknar på block, handritad (Kör)" },
+"char.notes#1": { "file": "chars/hair1/notes.png", "fw": 92, "fh": 92, "ax": 46, "ay": 82, "frames": 4, "scale": 0.42, "note": "Frisyr 1, kort hår (Kör)" },
+"char.notes#2": { "file": "chars/hair2/notes.png", "fw": 92, "fh": 92, "ax": 46, "ay": 82, "frames": 4, "scale": 0.42, "note": "Frisyr 2, hästsvans (Kör)" },
+"char.notes#3": { "file": "chars/hair3/notes.png", "fw": 92, "fh": 92, "ax": 46, "ay": 82, "frames": 4, "scale": 0.42, "note": "Frisyr 3, lockigt hår (Kör)" }
+```
+
+- **Begränsningar:** pennan blir 1 till 2 mörka pixlar i spelskala, så skrivandet syns mest som att handen rör sig på papperet. Den bortre tummen och ärmen mellan bröstet och blocket syns bara i full storlek. Mot den vita väggpanelen vid konferensrummets tavla på nivå 4 får papperet sämre kontrast.
