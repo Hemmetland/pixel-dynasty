@@ -54,7 +54,7 @@ const CHIPS = [tOf(2020, 2, 2), tOf(2022, 5)];
 // Plattformar
 export const PER_WEIGHT = 30000; // installerad bas per viktpoäng (Nova Prism 5 har vikt 80)
 const WEIGHT_MAX = 90;
-const THIRD = 40; // andra förlags spel på plattformen, i spelintäkt per viktpoäng och vecka (gånger licensavgiften och stödet)
+const THIRD = 30; // andra förlags spel på plattformen, i spelintäkt per viktpoäng och vecka (gånger licensavgiften och stödet)
 export const PLAT_MIN = { handheld: 40000, console: 60000 }; // första ordern
 const DEVKIT_MAX = 95;
 const DEVKIT_BONUS = 15;
@@ -479,10 +479,12 @@ export function setPartner(G, id, partner) {
 }
 export function setDriver(G, id, on) {
   const P = productOf(G, id);
-  if (!P || P.state === 'ended' || (on && !G.u.flags[isPlat(P.type) ? 'hw_devkit' : 'hw_driver'])) return false;
+  if (!P || P.state === 'ended' || (on && (!G.u.flags[isPlat(P.type) ? 'hw_devkit' : 'hw_driver'] || P.compat >= drvMax(P)))) return false;
   P.drv = !!on;
   return true;
 }
+// taket för vad drivrutins- eller devkitteamet kan höja kompatibiliteten till
+export const drvMax = (P) => (isPlat(P.type) ? DEVKIT_MAX : DRIVER_MAX);
 export const driverCost = (G, P) => Math.round((DRIVER_COST * HW_TYPES[P.type].drv * moneyScale(yearOf(G.t))) / moneyScale(1996) / 10) * 10;
 // Lägg ned: ej tillverkade order avbokas (halva pengarna tillbaka, relationen tar skada), lagret reas ut
 export function discontinue(G, id, auto = false) {
@@ -688,7 +690,9 @@ function sell(G, H) {
     P.roy += roy;
     if (P.drv) {
       pay(G, H, 'drv', driverCost(G, P), 'hwDev');
-      P.compat = Math.min(isPlat(P.type) ? DEVKIT_MAX : DRIVER_MAX, P.compat + DRIVER_STEP);
+      P.compat = Math.min(drvMax(P), P.compat + DRIVER_STEP);
+      // teamet är klart när kompatibiliteten nått taket
+      if (P.compat >= drvMax(P)) P.drv = false;
     }
     P.boost = (P.boost || 0) * 0.96;
     // beslut som ligger för länge: det försiktiga alternativet

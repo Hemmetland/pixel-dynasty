@@ -1251,6 +1251,7 @@ export const STRINGS = {
   'hw.drvOff': ['Inget', 'None'],
   'hw.drvOn': ['Igång ({v}/v)', 'Running ({v}/wk)'],
   'hw.drvHelp': ['Höjer kompatibiliteten en poäng var fjärde vecka, upp till 90.', 'Raises compatibility one point every four weeks, up to 90.'],
+  'hw.drvDone': ['Kompatibiliteten är redan så hög som ett team kan få den.', 'Compatibility is already as high as a team can get it.'],
   'hw.end': ['Lägg ned', 'Discontinue'],
   'hw.endYes': ['Lägg ned produkten', 'Discontinue the product'],
   'hw.endWarn': ['Order som inte tillverkats avbokas (halva pengarna tillbaka) och lagret reas ut för {pct} % av priset.', 'Orders not yet made are cancelled (half the money back) and the stock is cleared at {pct}% of the price.'],

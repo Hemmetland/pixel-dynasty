@@ -11,7 +11,7 @@ import {
   defectOf, canDesign, startDesign, pauseDesign, cancelDesign, resolveProto, hwName, draftOf, scoreOf, unitCost, suggestPrice, priceSteps,
   stepPrice, weeklyDemand, suggestPartner, orderOptions, orderCost, orderMore, marketSize, launch, setPrice, setAuto, setPartner, setDriver, driverCost, discontinue, resolveIssue,
   resolveBench, pipelineOf, productProfit, hwNet, brandOf, RECALL, CLEAR, isPlat, archOpen, partnerFits, minOrder, platOf, supportOf, platRoyalty, setPlatFee,
-  ownGames, PER_WEIGHT,
+  ownGames, PER_WEIGHT, drvMax,
 } from '../sim/hardware.js';
 
 // Fönstret Hårdvara: Utveckling (labbet, chefen, designprojekt och nya designer), Produkter (det som tillverkas och
@@ -252,7 +252,7 @@ function productCard(G, P) {
       <div><div class="lbl" style="margin-bottom:6px">${t('hw.auto')}</div><div class="seg"><button class="${P.auto ? 'on' : ''}" data-act="hw-auto" data-id="${P.id}" data-v="1">${t('hw.autoOn')}</button><button class="${P.auto ? '' : 'on'}" data-act="hw-auto" data-id="${P.id}" data-v="0">${t('hw.autoOff')}</button></div></div>
       <div class="hw-wide"><div class="lbl" style="margin-bottom:6px">${t('hw.order')}</div><div class="row wrap" style="gap:6px">${opts.map((n) => `<button class="btn sm" data-act="hw-order" data-id="${P.id}" data-v="${n}" ${G.money < orderCost(G, P, n) ? 'disabled' : ''} data-tip="${esc(t('hw.orderTip', { v: money(orderCost(G, P, n)), w: HW_PARTNER[P.partner].lead }))}">${icon('truck')}${fmtNum(n)}</button>`).join('')}</div></div>
       <div class="hw-wide"><div class="lbl" style="margin-bottom:6px">${t('hw.partner')}</div>${seg(partners, P.partner, 'hw-pp', `data-id="${P.id}"`, (it) => partnerTip(G, it.v))}<p class="hint" style="margin-top:6px">${t('hw.switchWarn')}</p></div>
-      ${G.u.flags[plat ? 'hw_devkit' : 'hw_driver'] ? `<div class="hw-wide"><div class="lbl" style="margin-bottom:6px">${t(plat ? 'hw.devkit' : 'hw.driver')}</div><div class="row wrap" style="gap:8px"><div class="seg"><button class="${P.drv ? '' : 'on'}" data-act="hw-drv" data-id="${P.id}" data-v="0">${t('hw.drvOff')}</button><button class="${P.drv ? 'on' : ''}" data-act="hw-drv" data-id="${P.id}" data-v="1">${t('hw.drvOn', { v: money(driverCost(G, P)) })}</button></div></div><p class="hint" style="margin-top:6px">${t(plat ? 'hw.dkHelp' : 'hw.drvHelp')}</p></div>` : ''}
+      ${G.u.flags[plat ? 'hw_devkit' : 'hw_driver'] ? `<div class="hw-wide"><div class="lbl" style="margin-bottom:6px">${t(plat ? 'hw.devkit' : 'hw.driver')}</div><div class="row wrap" style="gap:8px"><div class="seg"><button class="${P.drv ? '' : 'on'}" data-act="hw-drv" data-id="${P.id}" data-v="0">${t('hw.drvOff')}</button><button class="${P.drv ? 'on' : ''}" data-act="hw-drv" data-id="${P.id}" data-v="1" ${!P.drv && P.compat >= drvMax(P) ? 'disabled' : ''}>${t('hw.drvOn', { v: money(driverCost(G, P)) })}</button></div></div><p class="hint" style="margin-top:6px">${t(P.compat >= drvMax(P) ? 'hw.drvDone' : plat ? 'hw.dkHelp' : 'hw.drvHelp')}</p></div>` : ''}
     </div>
     ${plat ? platBlock(G, P) : ''}
     <div class="row wrap" style="gap:8px;margin-top:10px"><span class="sp"></span><button class="btn sm ghost" data-act="hw-end" data-id="${P.id}">${t('hw.end')}</button></div>

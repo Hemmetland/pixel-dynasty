@@ -22,4 +22,4 @@ Standalone repository (it started as the `game/` folder of Hemmetland/budgetverk
 - Graphics are procedural by default. Sprites from PixelLab may live in `assets/` (see `docs/PIXELLAB.md`) and always need a procedural fallback; no other image or audio files and no runtime dependencies. All visible text goes through `t()` in both languages.
 - Never put API tokens in files or chat. PixelLab uses `PIXELLAB_API_TOKEN` from the environment (`node tools/pixellab.mjs balance`).
 - Keep `src/sim` free of DOM and keep results deterministic per seed; old saves (localStorage `pixel-dynasty-save-v1`) must keep loading.
-- Before finishing a change: `npm run lint`, `npm test`, `node test/keys.mjs --missing` (18 known dynamic prefixes), rebuild.
+- Before finishing a change: `npm run lint`, `npm test`, `node test/keys.mjs --missing` (should report 0; new dynamic prefixes go in its DYN list), rebuild.

@@ -270,12 +270,16 @@ Kalibrera i den här ordningen: MARKNAD-tabellen (storleken), sedan THIRD (royal
   plattform till i `G.hw.plats` och i registret i `data/platforms.js` (`setOwnPlatforms`, nollas av `newGame`, läggs
   tillbaka när en sparning laddas). Plattformen får licens direkt, vikt = installerad bas / 30 000 (högst 90) och tonar
   ut under 3,5 år när produkten läggs ned.
-- Licensintäkt per vecka = avgift · 40 · potential · `unitRev` · stöd. Stöd och efterfrågan (`platPull`) följer
+- Licensintäkt per vecka = avgift · 30 · potential · `unitRev` · stöd. Stöd och efterfrågan (`platPull`) följer
   specen, men biblioteket väger 0,6 + 0,5 · stöd + 0,04 per eget spel (högst fem), och BASE/MAX är sänkta (bärbart 0,13/0,35,
   konsol 0,10/0,30). Konsolens enhetskostnad är 100 % av priset vid lansering. Första ordern: bärbart 40 000, konsol 60 000.
 - Med: Strömsnål design, Systemkretsar (egen arkitektur i plattformar), Utvecklarprogram (+15 kompatibilitet,
   devkitteam), Bakåtkompatibilitet, konkurrentens prissänkning, överhettning, julhandeln, rivalgenerationer som åldrar
   plattformen, exklusiva hits som säljer enheter och motoroptimering (tak 1,65, buggar −15 %) för egna spel.
 - Inte med ännu: läcka, patentstämning, exklusivitetserbjudande, koncernsynergin och konsolens digitala butik.
-- Botar (`--hw`, 24 seeds): kassa 2020 cirka 24 % över `--hw --noplat`, större spridning, ingen konkurs, samma nivåår.
-  Konsoler som kommer ut 2011–2013 tjänar 80–130 M$ inklusive licenser, sena konsoler går med förlust.
+- Botar (24 seeds med fast slump): kassa 2020 är 267 M$ utan hårdvara, 341 M$ med bara komponenter (+28 %) och
+  357 M$ med plattformar (+34 %), större spridning, ingen konkurs, samma nivåår. En konsol från 2011 tjänar cirka
+  100 M$ inklusive licenser, konsoler från 2014–2015 går runt noll till 40 M$ och en svag konsol går med förlust.
+- Drivrutinsteamet stannar när kompatibiliteten når taket, och knappen är avstängd där. Tidiga grafikkort, datorer
+  och processorer har något större marknader (processorns grundandel är 7 % i stället för 6 %) så att första generationen
+  inte blir en ren förlustaffär, och de sena marknaderna är trimmade.

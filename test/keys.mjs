@@ -17,9 +17,19 @@ function walk(d) {
 }
 walk('src');
 const keys = [...out].sort();
+// Prefix som koden bygger på med ett id (t('hw.type.' + id) och liknande). De räknas inte som saknade så länge det finns
+// minst en nyckel med prefixet; varje id kontrolleras av testerna eller i strings.js.
+const DYN = [
+  'arch.', 'compat.', 'diff.', 'expo.d', 'expo.o', 'fin.c.', 'help.', 'hw.arch.', 'hw.cls.', 'hw.clsTip.', 'hw.pd.', 'hw.pk.', 'hw.q.', 'hw.qTip.',
+  'hw.tab.', 'hw.type.', 'hw.typeD.', 'ins.', 'ins.audience.', 'ins.bugs.', 'ins.compat.', 'ins.focus.', 'ins.platform.', 'mkt.tab.', 'skill.',
+  'staff.train.', 'tut.',
+];
 if (process.argv.includes('--missing')) {
   const { STRINGS } = await import('../src/data/strings.js');
-  const miss = keys.filter((k) => !STRINGS[k]);
-  console.log(miss.join('\n'));
-  console.log('\nMissing:', miss.length, 'of', keys.length);
+  const all = Object.keys(STRINGS);
+  const dyn = keys.filter((k) => DYN.includes(k));
+  const miss = keys.filter((k) => !STRINGS[k] && !DYN.includes(k));
+  const empty = dyn.filter((p) => !all.some((k) => k.startsWith(p) && k !== p));
+  console.log([...miss, ...empty.map((p) => p + ' (prefix utan nycklar)')].join('\n'));
+  console.log('\nMissing:', miss.length + empty.length, 'of', keys.length, `(${dyn.length} known dynamic prefixes)`);
 } else console.log(keys.join('\n'));
