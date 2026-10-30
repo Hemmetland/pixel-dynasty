@@ -623,6 +623,12 @@ ok(true, 'alla händelser körda');
   for (let i = 0; i < 48; i++) { GV.t++; S.hwWeek(GV); }
   ok(P.sold > 0 && P.base > 0 && pl.weight > 0, 'headsetet säljer (' + Math.round(P.sold) + ' enheter, vikt ' + pl.weight.toFixed(1) + ')');
 }
+// VR-spel: en VR-plattform vill ha motordelen VR-rendering (annars sjunker betyget), andra plattformar bryr sig inte
+{
+  const GR = S.newGame({ studio: 'R', seed: 5 });
+  GR.engines.push({ id: 1, name: 'A', feats: ['poly'], tech: 60, built: 2015 }, { id: 2, name: 'B', feats: ['poly', 'vr'], tech: 60, built: 2015 });
+  ok(S.vrFit(GR, 'lumen', 1) === -1 && S.vrFit(GR, 'lumen', null) === -1 && S.vrFit(GR, 'lumen', 2) === 1 && S.vrFit(GR, 'pc', 1) === 0 && S.VR_MISSING < 1 && S.VR_HAS > 1, 'VR-plattformen vill ha VR-rendering i motorn');
+}
 // egen fabrik: forskningen, bygget betalas direkt och tar sina veckor, sedan en tillverkare bland de andra (20 % billigare
 // än Meridian, kort ledtid, inga förseningar), driften dras varje månad och utbyggnaden höjer kapaciteten
 {

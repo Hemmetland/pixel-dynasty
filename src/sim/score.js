@@ -115,6 +115,14 @@ export function platFit(platform, genre, genre2) {
   const v = (b[genre] ?? 1) * (genre2 ? 0.65 : 1) + (genre2 ? (b[genre2] ?? 1) * 0.35 : 0);
   return v;
 }
+// Ett spel på en VR-plattform behöver en motor med VR-rendering, annars blir det en platt skärm i headsetet
+export const VR_HAS = 1.03;
+export const VR_MISSING = 0.85;
+export function vrFit(G, platform, engineId) {
+  if (PLATFORM[platform]?.kind !== 'vr') return 0;
+  const eng = engineId ? G.engines.find((e) => e.id === engineId) : null;
+  return eng?.feats?.includes('vr') ? 1 : -1;
+}
 export function techWeight(genre, genre2) {
   return genre2 ? GENRE[genre].techW * 0.62 + GENRE[genre2].techW * 0.38 : GENRE[genre].techW;
 }
@@ -166,6 +174,8 @@ export function evaluate(G, job) {
   const mAud = audFit(job.topic, job.genre, job.audience, job.genre2);
   const pf = platFit(job.platform, job.genre, job.genre2);
   const mPlat = clamp(1 + (pf - 1) * 0.2, 0.9, 1.03);
+  const vr = vrFit(G, job.platform, job.engineId);
+  const mVr = vr > 0 ? VR_HAS : vr < 0 ? VR_MISSING : 1;
   const bugRatio = job.bugs / SCOPES[job.scope].bugs;
   const mBug = 1 - 0.25 * (1 - Math.exp(-0.9 * bugRatio));
   const rep = freshness(G, job);
@@ -173,7 +183,7 @@ export function evaluate(G, job) {
   const prev = job.sequelOf ? G.games.find((g) => g.id === job.sequelOf) : null;
   const mSeq = prev ? seqFatigue(prev) : 1;
   const cap = SCOPE_CAP[job.scope];
-  const raw0 = s0 * mCompat * mFit * mAud * mPlat * mBug * mFresh * mSeq;
+  const raw0 = s0 * mCompat * mFit * mAud * mPlat * mVr * mBug * mFresh * mSeq;
   // Små spel kan aldrig bli mästerverk: ambitionen avgör taket.
   const raw = softCap(raw0, cap);
 
@@ -212,6 +222,7 @@ export function evaluate(G, job) {
     { k: 'bugs', level: -fl.bugs, v: job.bugs, ratio: bugRatio },
     { k: 'platform', level: fl.platform, v: pf },
     { k: 'audience', level: fl.audience, v: mAud },
+    ...(vr ? [{ k: 'vr', level: vr, v: mVr }] : []),
   ];
   insights.find((i) => i.k === 'bugs').level = fl.bugs;
 
@@ -221,7 +232,7 @@ export function evaluate(G, job) {
     reviews,
     flags,
     insights,
-    parts: { rd, rt, r, s0, compat, mCompat, fit: ff.fit, mFit, mAud, mPlat, mBug, mFresh, mSeq, bugRatio, par, parTotal, rep, year },
+    parts: { rd, rt, r, s0, compat, mCompat, fit: ff.fit, mFit, mAud, mPlat, mVr, mBug, mFresh, mSeq, bugRatio, par, parTotal, rep, year },
     ff,
   };
 }

@@ -312,6 +312,9 @@ Kalibrera i den här ordningen: MARKNAD-tabellen (storleken), sedan THIRD (royal
 - Headsetet följer reglerna för en bärbar enhet: egen plattform av slaget `vr` (namn Mirage), egen arkitektur med
   Systemkretsar, licens, devkit, bakåtkompatibilitet, butiken, koncernsynergin och köpta exklusiva. Generationen är
   den bästa konsolens (inte en lägre), och plattformen gynnar action, simulering och skjutspel som Lumen VR.
+- Ett spel på en VR-plattform (Lumen VR eller Mirage) behöver en motor med motordelen VR-rendering: utan den blir
+  råbetyget 15 % lägre, med den 3 % högre (`vrFit` i `sim/score.js`). Guiden varnar när plattformen är VR och motorn
+  saknar delen, och studioanteckningarna i rapporten säger vilket det blev.
 - Botar `--hw --vr --end=2026` (24 seeds): kassa 2026 933 M$ mot 893 M$ med bara `--hw` (+4,5 %). Första Mirage
   (2017) säljer 300 000–520 000 enheter, når vikt 10–17 och tjänar 28–59 M$ plus 7–22 M$ i licenser.
 

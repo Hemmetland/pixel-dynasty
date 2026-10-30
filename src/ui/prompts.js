@@ -213,7 +213,7 @@ function scopeNote(rep, J) {
   const cap = SCOPE_CAP[J.scope];
   if (!sc || !cap) return '';
   const p = rep.parts || {};
-  const raw0 = p.s0 * p.mCompat * p.mFit * p.mAud * (p.mPlat ?? 1) * (p.mBug ?? 1) * (p.mFresh ?? 1) * (p.mSeq ?? 1);
+  const raw0 = p.s0 * p.mCompat * p.mFit * p.mAud * (p.mPlat ?? 1) * (p.mVr ?? 1) * (p.mBug ?? 1) * (p.mFresh ?? 1) * (p.mSeq ?? 1);
   const loss = cap < 10 && raw0 > 0 ? raw0 - softCap(raw0, cap) : 0;
   const v = rep.flags?.find((f) => f.k === 'scope')?.v || 0;
   const name = `<b>${L(sc.name)}</b>`;
@@ -230,7 +230,7 @@ function scopeNote(rep, J) {
 
 function insightRow(x, rep, J) {
   const lvl = x.level > 0 ? 'good' : x.level < 0 ? 'bad' : 'ok';
-  const ic = { compat: 'sparkle', focus: 'sliders', design: 'bulb', tech: 'cpu', bugs: 'bug', platform: 'gamepad', audience: 'user' }[x.k];
+  const ic = { compat: 'sparkle', focus: 'sliders', design: 'bulb', tech: 'cpu', bugs: 'bug', platform: 'gamepad', audience: 'user', vr: 'vr' }[x.k];
   let txt = '';
   if (x.k === 'compat') txt = t('ins.compat.' + lvl, { v: t('compat.' + Math.round(x.v)) });
   else if (x.k === 'focus') {
@@ -240,6 +240,7 @@ function insightRow(x, rep, J) {
   else if (x.k === 'bugs') txt = t('ins.bugs.' + lvl, { n: Math.round(x.v), m: SCOPES[J.scope].bugs });
   else if (x.k === 'platform') txt = t('ins.platform.' + lvl);
   else if (x.k === 'audience') txt = t('ins.audience.' + lvl);
+  else if (x.k === 'vr') txt = t('ins.vr.' + lvl);
   void rep;
   return `<div class="in ${lvl}"><span class="ii">${icon(ic)}</span><span>${txt}</span></div>`;
 }

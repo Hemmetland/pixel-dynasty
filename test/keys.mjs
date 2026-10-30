@@ -21,7 +21,7 @@ const keys = [...out].sort();
 // minst en nyckel med prefixet; varje id kontrolleras av testerna eller i strings.js.
 const DYN = [
   'arch.', 'compat.', 'diff.', 'expo.d', 'expo.o', 'fin.c.', 'help.', 'hw.arch.', 'hw.cls.', 'hw.clsTip.', 'hw.pd.', 'hw.pk.', 'hw.q.', 'hw.qTip.',
-  'hw.tab.', 'hw.type.', 'hw.typeD.', 'ins.', 'ins.audience.', 'ins.bugs.', 'ins.compat.', 'ins.focus.', 'ins.platform.', 'mkt.tab.', 'skill.',
+  'hw.tab.', 'hw.type.', 'hw.typeD.', 'ins.', 'ins.audience.', 'ins.bugs.', 'ins.compat.', 'ins.focus.', 'ins.platform.', 'ins.vr.', 'mkt.tab.', 'skill.',
   'staff.train.', 'tut.',
 ];
 if (process.argv.includes('--missing')) {

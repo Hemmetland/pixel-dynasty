@@ -8,7 +8,7 @@ import { PHASES } from '../data/categories.js';
 import { PLATFORMS, PLATFORM, potential, platTier, techMult, pcGeneration } from '../data/platforms.js';
 import { SCOPES, SCOPE_IDS, AUDIENCES, yearOf, yfOf, engineMult } from '../sim/const.js';
 import { startProject, platformOpen, teamOutput, baseHype } from '../sim/dev.js';
-import { phaseCats, idealFocus, normFocus, techWeight, platFit, startFocus, seqFatigue } from '../sim/score.js';
+import { phaseCats, idealFocus, normFocus, techWeight, platFit, startFocus, seqFatigue, vrFit } from '../sim/score.js';
 import { franchiseMult } from '../sim/sales.js';
 import { seriesHype, rootOf } from '../sim/franchise.js';
 import { buyLicense, licenseCost } from '../sim/actions.js';
@@ -251,7 +251,7 @@ function stepMarket(G) {
     ? `<div class="wz-sec"><div class="lbl">${t('wiz.engine')}</div><div class="seg wrap-seg"><button class="${!W.engineId ? 'on' : ''}" data-act="w-eng" data-id="">${t('wiz.noEngine')}</button>${G.engines.map((e) => `<button class="${W.engineId === e.id ? 'on' : ''}" data-act="w-eng" data-id="${e.id}">${esc(e.name)} <span class="faint">+${Math.round((engineMult(e, yfOf(G.t), engineCap(G, { ...W, engineId: e.id })) - 1) * 100)}%</span></button>`).join('')}</div>${PLATFORM[W.platform]?.own ? `<p class="hint" style="margin-top:6px">${icon('cpu')} ${t(ownPlatOpt(G, W) ? 'wiz.ownOpt' : 'wiz.ownOptHint')}</p>` : ''}</div>`
     : '';
   return `
-    <div class="wz-sec"><div class="lbl">${t('wiz.platform')}</div><div class="plats">${cards}</div></div>
+    <div class="wz-sec"><div class="lbl">${t('wiz.platform')}</div><div class="plats">${cards}</div>${vrFit(G, W.platform, W.engineId) ? `<p class="hint" style="margin-top:8px${vrFit(G, W.platform, W.engineId) < 0 ? ';color:var(--warn)' : ''}">${icon('vr')} ${t(vrFit(G, W.platform, W.engineId) > 0 ? 'wiz.vrOk' : 'wiz.vrNeed')}</p>` : ''}</div>
     <div class="wz-sec"><div class="lbl">${t('wiz.scope')}</div><div class="grid scopes">${scopes}</div></div>
     <div class="grid" style="grid-template-columns:repeat(auto-fit,minmax(240px,1fr));gap:16px">
       <div class="wz-sec"><div class="lbl">${t('wiz.audience')}</div><div class="seg">${audiences.map((a) => `<button class="${W.audience === a.id ? 'on' : ''}" data-act="w-aud" data-id="${a.id}">${L(a.name)}</button>`).join('')}</div></div>
