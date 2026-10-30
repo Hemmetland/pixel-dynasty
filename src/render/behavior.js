@@ -494,6 +494,8 @@ function stepAct(S, scene, act, dt) {
 }
 
 // ── Vid skrivbordet ──
+// en kort sträckpaus stående vid stolen (två varv av den ritade posen), bara med spriten
+const stretch = () => (getSprite('char.stretch') ? ['stretch', 8 / 3] : null);
 function deskPose(S, a, st, dt, typing, crunch) {
   a.deskT -= dt;
   if (a.deskT <= 0 || !a.deskPose) {
@@ -504,12 +506,12 @@ function deskPose(S, a, st, dt, typing, crunch) {
     if (typing) {
       if (crunch) [pose, dur] = r < 0.78 ? ['type', rand(S, 5, 12)] : r < 0.9 ? ['tired', 2.8] : ['drink', 2.4];
       else if (r < 0.64) [pose, dur] = ['type', rand(S, 5, 13)];
-      else if (r < 0.78) [pose, dur] = ['sit', rand(S, 2, 4.5)];
+      else if (r < 0.78) [pose, dur] = (r >= 0.75 && stretch()) || ['sit', rand(S, 2, 4.5)];
       else if (r < 0.88) [pose, dur] = ['think', rand(S, 2.2, 4.5)];
       else if (r < 0.95 || mood >= 55) [pose, dur] = ['drink', 3.4];
       else [pose, dur] = ['tired', 2.8];
     } else if (mood < 28 && r < 0.55) [pose, dur] = ['sleep', rand(S, 5, 10)];
-    else if (r < 0.34) [pose, dur] = ['sitIdle', rand(S, 2, 5)];
+    else if (r < 0.34) [pose, dur] = (r >= 0.3 && stretch()) || ['sitIdle', rand(S, 2, 5)];
     else if (r < 0.52) [pose, dur] = ['think', rand(S, 2.5, 5)];
     else if (r < 0.68) [pose, dur] = ['read', rand(S, 3, 7)];
     else if (r < 0.8) [pose, dur] = ['type', rand(S, 3, 6)];
@@ -517,8 +519,9 @@ function deskPose(S, a, st, dt, typing, crunch) {
     else [pose, dur] = [mood < 50 ? 'tired' : 'sitIdle', 2.8];
     a.deskPose = pose;
     a.deskT = dur;
+    a.stretchT0 = a.t;
   }
-  setPose(a, a.deskPose, true);
+  setPose(a, a.deskPose, a.deskPose !== 'stretch');
 }
 
 // ── Rörelse ──

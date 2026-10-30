@@ -187,7 +187,7 @@ export const drawWalkerSprite = (ctx, x, y, look, t, dir = 1) => drawCharSprite(
 const STAND_SPRITE = {
   walk: ['char.walk', 9], stand: ['char.stand', 0], drink: ['char.drink', 3], talk: ['char.talk', 4.2], cheer: ['char.cheer', 5], present: ['char.present', 3],
   play: ['char.play', 7], fix: ['char.fix', 5], phone: ['char.phone', 4.2], laptop: ['char.laptop', 8], walkLaptop: ['char.walkLaptop', 9], wave: ['char.wave', 5],
-  walkBox: ['char.walkBox', 9], walkCup: ['char.walkCup', 9], shake: ['char.shake', 4], notes: ['char.notes', 4],
+  walkBox: ['char.walkBox', 9], walkCup: ['char.walkCup', 9], shake: ['char.shake', 4], notes: ['char.notes', 4], stretch: ['char.stretch', 3],
 };
 const WALK_WITH = new Set(['walkLaptop', 'walkBox', 'walkCup']);
 const SEAT_SPRITE = {

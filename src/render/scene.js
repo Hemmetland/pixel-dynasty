@@ -767,7 +767,7 @@ export class Scene {
       // den som bär laptopen till racket har posen 'laptop' även när den går (people.js ritar då gången med laptop)
       const sp = a.carry && a.pose === 'laptop' && a.state !== 'at' ? 'walkLaptop' : a.box && a.pose === 'walk' ? 'walkBox' : a.cup && a.pose === 'walk' ? 'walkCup' : a.pose;
       // i handslaget pumpar båda på samma ruta (aktivitetens klocka), annars skulle händerna glida isär
-      const st = sp === 'shake' && a.act ? a.act.t : a.t + ((a.id | 0) % 7) * 0.37;
+      const st = sp === 'shake' && a.act ? a.act.t : sp === 'stretch' ? a.t - (a.stretchT0 || 0) : a.t + ((a.id | 0) % 7) * 0.37;
       const spr = drawPoseSprite(A, px, py, look, sp, st, a.dir, opts.seated);
       if (!spr) drawPerson(A, px, py, look, a.pose, a.frame, a.dir, opts);
       if (a.state === 'at' && a.m) this.drawFront(A, a, cx, gy);
