@@ -88,13 +88,16 @@ const isFree = (S, s) => !!s && !crowded(S, s);
 const take = (S, s, a) => S.occ.set(s.id, { spot: s, id: a.id });
 const sitsAt = (s) => s.kind === 'seat' || s.kind === 'sofa';
 
+// den som lyssnar och står antecknar, med den ritade posen
+const notes = () => (getSprite('char.notes') ? 'notes' : 'stand');
+
 // Anläggningar (slots) på en våning: samma punkt som det gamla beteendet (slot.x + 14).
 function facSpots(S, scene, f) {
   const out = [];
   for (const [id, fc] of Object.entries(scene.G.office.fac)) {
     const slot = scene.L.slots[fc.slot];
     if (!slot || slot.floor !== f) continue;
-    const pose = { coffee: 'drink', gameroom: 'cheer', training: 'stand', lab: 'laptop', qa: 'laptop', marketing: 'present', server: 'laptop' }[id] || 'stand';
+    const pose = { coffee: 'drink', gameroom: 'cheer', training: notes(), lab: 'laptop', qa: 'laptop', marketing: 'present', server: 'laptop' }[id] || 'stand';
     // spelrummet: med den ritade spelposen står man vänd mot arkadmaskinen (som ritas på slot.x+3 till +16) med händerna på panelen
     if (id === 'gameroom' && getSprite('char.play')) out.push({ id: `fac-${id}`, kind: 'fac', fid: id, x: slot.x + 21, fy: slot.fy, floor: f, dir: -1, pose: 'play', room: `f${f}-facility${fc.slot}` });
     else out.push({ id: `fac-${id}`, kind: 'fac', fid: id, x: slot.x + 14, fy: slot.fy, floor: f, dir: 1, pose, room: `f${f}-facility${fc.slot}` });
@@ -402,7 +405,7 @@ function scriptPose(S, act, m, a) {
       if (m.role === 'present') return setPose(a, speak ? 'present' : 'stand', false);
       if (m.role === 'board') return setPose(a, speak ? 'present' : 'stand', false);
       if (m.role === 'seat') return setPose(a, speak ? 'talk' : m.listen === 'drink' ? 'drink' : 'sit', true);
-      return setPose(a, speak ? 'talk' : 'stand', false);
+      return setPose(a, speak ? 'talk' : notes(), false);
     case 'lounge':
       if (m.role === 'stand') return setPose(a, speak ? 'talk' : 'stand', false);
       return setPose(a, speak ? 'talk' : m.listen === 'sit' ? 'sitIdle' : m.listen, true);
@@ -418,7 +421,7 @@ function scriptPose(S, act, m, a) {
       if (m.role === 'fix') return setPose(a, speak && act.m.length > 1 ? 'talk' : 'fix', false);
       return setPose(a, speak ? 'talk' : 'stand', false);
     case 'board':
-      if (m.role === 'stand') return setPose(a, speak ? 'talk' : 'stand', false);
+      if (m.role === 'stand') return setPose(a, speak ? 'talk' : notes(), false);
       return setPose(a, speak ? 'present' : 'stand', false);
     case 'window':
       return setPose(a, m.listen === 'drink' ? 'drink' : 'stand', false);
