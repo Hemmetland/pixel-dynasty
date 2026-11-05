@@ -591,6 +591,15 @@ ok(true, 'alla händelser körda');
     const m1 = GP.money;
     ok(S.boughtPlatform(GP, c2) === null && GP.money === m1 + 500 && !c2.buyEx, 'en nedlagd plattform ger tillbaka hälften');
     P.state = 'market';
+    // förlaget köps efter avtalet men före släppet: spelet kommer ändå ut exklusivt på din plattform
+    const c3 = GP.comps.find((x) => !x.owned && x !== c && x !== c2);
+    c3.next ||= { topic: GP.u.topics[0], genre: GP.u.genres[0] };
+    c3.buyEx = { plat: id, t: GP.t, price: 1000 };
+    Object.assign(c3, { owned: true, ownedT: GP.t, paid: 1, subRev: 0, sub: null });
+    S.releaseComp(GP, c3);
+    const r3 = GP.market.releases[GP.market.releases.length - 1];
+    ok(r3.comp === c3.id && r3.platform === id && r3.ex && !c3.buyEx, 'ett köpt exklusivt spel håller även när förlaget köps före släppet');
+    c3.owned = false;
     pl.weight = w0;
   }
   const b0 = P.boost || 0;

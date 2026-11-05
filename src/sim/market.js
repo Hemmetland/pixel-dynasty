@@ -82,8 +82,8 @@ export function releaseComp(G, c) {
     total = fpTotal(total, fp, plat, yf);
     plat = fp;
   }
-  // ett spel du köpt som exklusivt till din plattform
-  const bought = !c.owned && c.buyEx ? boughtPlatform(G, c) : null;
+  // ett spel du köpt som exklusivt till din plattform (gäller även om du köpt förlaget efter avtalet)
+  const bought = c.buyEx ? boughtPlatform(G, c) : null;
   if (bought) {
     total = (total * Math.max(0.4, potential(bought, yf))) / Math.max(0.4, potential(plat, yf));
     plat = bought;
