@@ -14,12 +14,13 @@ import { FR_KINDS, frOf, seriesList, activeDeal, seriesHype, canFranchise, canAc
 import { REMASTER_AGE, REMASTER_MIN, portsOf, portable, remasterable, portCost, portWeeks, portScore, portForecast, portTargets, remasterTargets, startPort, portRevenue } from '../sim/ports.js';
 import { plot, gridLines } from './chart.js';
 import { MONTHS } from './core.js';
-import { fmtNum } from '../core/util.js';
+import { fmtNum, fmtFull } from '../core/util.js';
 import { lang } from '../core/i18n.js';
 import { openSequel } from './wizard.js';
 import { studioNotes } from './prompts.js';
 import { crowdNote } from './crowd.js';
 import { openExpansion } from './wizard.js';
+import { CERTS, certOf, certCounts, nextCert, totalUnits, records } from '../sim/charts.js';
 import { SUB_TIERS, OPS, PRICE_MIN, PRICE_MAX, PATCH_WEEKS, EVENT_WEEKS, SURGE_WEEKS, tierMix, liveMonth, serverCap, livePatchCost, startLivePatch, setLivePrice, setLiveOps, closeLive, rivalMmos, rivalPull, rivalFactor, eventOn, eventReadyIn, liveEventCost, startLiveEvent, SHOP, isF2P, canGoF2P, goF2P, setLiveShop, liveLoad, liveArpu } from '../sim/live.js';
 
 // Stäng servrarna och gör till gratisspel kräver två tryck: första trycket "armerar" knappen för det spelet
@@ -207,6 +208,40 @@ function livePanel(G, g) {
     </div></div>`;
 }
 
+// Skivor och rekord. Skivans namn står med liten bokstav i tabellen (för löpande text), här med stor.
+const cap = (x) => x.charAt(0).toUpperCase() + x.slice(1);
+const discChip = (c) => `<span class="chip c disc" style="--c:${c.color}">${icon('disc')}${cap(L(c.name))}</span>`;
+// Troféhyllan överst i biblioteket: en skiva per nivå med antal spel, och studions fyra rekord
+function shelf(G) {
+  if (!G.games.length) return '';
+  const n = certCounts(G);
+  const any = n.some((x) => x > 0);
+  const row = CERTS.map((c, i) => `<div class="sh-disc ${n[i] ? 'on' : ''}" style="--c:${c.color}" data-tip="${esc(t('lib.certAt', { cert: cap(L(c.name)), n: fmtFull(c.units) }))}">${icon('disc')}<b class="num">${n[i]}</b><span>${cap(L(c.name))}</span></div>`).join('');
+  const r = records(G);
+  const rec = (key, g, val) => (g ? `<button class="sh-rec" data-act="lib-open" data-id="${g.id}"><span class="lbl">${t(key)}</span><b class="num">${val}</b><span class="faint sh-t">${esc(g.title)}</span></button>` : '');
+  const recs = rec('lib.rec.score', r.score, r.score && r.score.score.toFixed(1)) + rec('lib.rec.units', r.units, r.units && fmtNum(totalUnits(r.units))) + rec('lib.rec.week', r.week, r.week && money(r.week.weekly[0])) + rec('lib.rec.top', r.top, r.top && tn('lib.weeks', r.top.chart.top));
+  return `<div class="card shelf" style="margin-bottom:16px"><div class="row" style="margin-bottom:8px"><div class="lbl">${t('lib.shelf')}</div></div>
+    <div class="sh-discs">${row}</div>
+    <div class="hint" style="margin-top:8px">${any ? t('lib.shelfHelp') : t('lib.shelfEmpty', { n: fmtFull(CERTS[0].units) })}</div>
+    ${recs ? `<div class="sh-recs">${recs}</div>` : ''}</div>`;
+}
+// Ett spels plats på topplistan, skiva och väg till nästa skiva (i spelets detaljvy)
+function fameCard(G, g) {
+  const c = certOf(g);
+  const nx = nextCert(g);
+  const ch = g.chart;
+  const r = records(G);
+  const tags = [r.score === g && G.games.length > 1 ? t('lib.rec.score') : '', r.units === g && G.games.length > 1 ? t('lib.rec.units') : '', r.week === g && G.games.length > 1 ? t('lib.rec.week') : '', r.top === g ? t('lib.rec.top') : ''].filter(Boolean);
+  const chart = ch && ch.best
+    ? `<div class="fm-rank disp" style="color:${ch.best === 1 ? 'var(--gold)' : ch.best <= 3 ? 'var(--good)' : 'var(--text)'}">#${ch.best}</div><div><b>${t('lib.chartPeak')}</b><div class="faint" style="font-size:12px">${tn('lib.chartWeeks', ch.weeks)}${ch.top ? ' · ' + tn('lib.chartTop', ch.top) : ''}</div></div>`
+    : `<div class="fm-rank disp faint">–</div><div class="faint">${t('lib.chartNone')}</div>`;
+  const disc = `<div class="fm-disc ${c ? 'on' : ''}" style="--c:${c ? c.color : 'var(--faint)'}">${icon('disc')}</div>
+    <div style="flex:1;min-width:0">${c ? `<b style="color:${c.color}">${cap(L(c.name))}</b>` : `<b class="faint">${t('lib.units')}: ${fmtNum(totalUnits(g))}</b>`}
+      ${nx ? `<div style="margin:5px 0 3px">${bar(nx.pct * 100, nx.cert.color, 'thin')}</div><div class="faint" style="font-size:12px">${t('lib.nextCert', { n: fmtNum(Math.ceil(nx.left)), cert: L(nx.cert.name) })}</div>` : `<div class="faint" style="font-size:12px">${t('lib.allCerts')}</div>`}</div>`;
+  return `<div class="card fame" style="margin-top:16px"><div class="row wrap" style="margin-bottom:8px;gap:6px 8px"><div class="lbl" style="margin-right:auto">${t('lib.chart')}</div>${tags.map((x) => `<span class="tag" style="--c:var(--gold)">${icon('star')}${x}</span>`).join('')}</div>
+    <div class="fm-grid"><div class="row" style="gap:12px">${chart}</div><div class="row" style="gap:12px" data-tip="${esc(t('lib.shelfHelp'))}">${disc}</div></div></div>`;
+}
+
 function listView(G) {
   if (!G.games.length) return `<div class="empty">${icon('gamepad')}<div class="h3" style="margin-bottom:6px">${t('lib.empty')}</div><div>${t('lib.emptyHelp')}</div></div>`;
   const cards = G.games
@@ -218,13 +253,13 @@ function listView(G) {
       return `<button class="card hov game" data-act="lib-open" data-id="${g.id}">
         ${coverImg(spec(g), 72)}
         <div style="flex:1;min-width:0;text-align:left"><b class="h3" style="display:block;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${esc(g.title)}</b>
-          <div class="row wrap" style="gap:5px;margin:6px 0"><span class="chip c" style="--c:${ge.color}">${L(ge.name)}</span><span class="chip">${L(tp.name)}</span>${g.expansionOf ? `<span class="chip c" style="--c:var(--good)">${t('dev.expChip')}</span>` : ''}</div>
+          <div class="row wrap" style="gap:5px;margin:6px 0"><span class="chip c" style="--c:${ge.color}">${L(ge.name)}</span><span class="chip">${L(tp.name)}</span>${g.expansionOf ? `<span class="chip c" style="--c:var(--good)">${t('dev.expChip')}</span>` : ''}${certOf(g) ? discChip(certOf(g)) : ''}</div>
           <div class="faint" style="font-size:12px">${esc(PLATFORM[g.platform].name)} · ${dateOf(g.t).year}${portsOf(g).length ? ' · ' + tn('lib.ports', portsOf(g).length) : ''}</div>
           <div class="row" style="gap:12px;margin-top:6px;font-size:12.5px"><span style="color:var(--money)">${money(g.revenue + (g.live ? g.live.rev : 0) + portRevenue(g))}</span>${g.live && !g.live.closed ? `<span class="tag" style="--c:var(--good)">${t('live.tag')} · ${fmtNum(g.live.subs)}</span>` : `<span class="faint">${g.ended ? t('lib.ended') : t('lib.onSale')}</span>`}</div></div>
         <div class="disp" style="font-size:39px;color:${scoreColor(g.score)};align-self:flex-start">${g.score.toFixed(1)}</div></button>`;
     })
     .join('');
-  return `${seriesPanel(G)}<div class="grid" style="grid-template-columns:repeat(auto-fill,minmax(310px,1fr))">${cards}</div>`;
+  return `${shelf(G)}${seriesPanel(G)}<div class="grid" style="grid-template-columns:repeat(auto-fill,minmax(310px,1fr))">${cards}</div>`;
 }
 
 // Spelserier överst i biblioteket: erbjudanden om licensaffärer och en rad per serie med avtal, filmer och sparad hype
@@ -348,6 +383,7 @@ function detailView(G, id) {
       </div>
     </div>
     ${livePanel(G, g)}
+    ${fameCard(G, g)}
     <div class="card" style="margin-top:16px"><div class="row" style="margin-bottom:6px"><div class="lbl">${t('lib.sales')}</div><span class="sp"></span><span class="faint" style="font-size:12px">${g.ended ? t('lib.ended') : t('lib.forecast', { v: money(g.total) })}</span></div>${salesChart(g)}</div>
     ${portsPanel(G, g)}
     <div class="grid" style="grid-template-columns:repeat(auto-fit,minmax(240px,1fr));margin-top:16px">${texts.map((r, i) => `<div class="rev show" style="--c:${REVIEWERS[i].color}"><div class="rv-h"><div class="rv-av">${icon(['cpu', 'book', 'heart', 'skull'][i])}</div><div style="flex:1"><b>${L(REVIEWERS[i].name)}</b></div><div class="rv-s num" style="color:${scoreColor(r.score)}">${r.score.toFixed(1)}</div></div><div class="rv-t"><b>${esc(r.headline)}</b>${r.detail ? `<p>${esc(r.detail)}</p>` : ''}</div></div>`).join('')}</div>

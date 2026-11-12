@@ -1,4 +1,5 @@
 // Prestationer. check(G) körs varje månad och efter lansering.
+import { certIndex, totalUnits } from './certs.js';
 const A = (id, glyph, sv, en, dsv, den, check) => ({ id, glyph, name: { sv, en }, desc: { sv: dsv, en: den }, check });
 const best = (G) => G.stats.bestScore;
 // Hur många spel serien som g avslutar har (g, föregångaren, dess föregångare …)
@@ -10,6 +11,8 @@ function seriesLen(G, g) {
   }
   return n;
 }
+// spel med minst skiva nummer min (0 silver, 1 guld, 2 platina, 3 diamant); räknat ur sålda exemplar så att gamla sparningar får sina
+const discs = (G, min) => G.games.filter((g) => certIndex(totalUnits(g)) >= min).length;
 const liveEvents = (G) => G.games.reduce((a, g) => a + ((g.live && g.live.events) || 0), 0);
 export const ACHIEVEMENTS = [
   A('first_game', 'a_game', 'Första spelet', 'First Release', 'Släpp ditt första spel.', 'Release your first game.', (G) => G.games.length >= 1),
@@ -54,6 +57,14 @@ export const ACHIEVEMENTS = [
   A('conglomerate', 'a_crown', 'Koncernchefen', 'The Conglomerate', 'Ha tre helt integrerade dotterbolag samtidigt.', 'Own three fully integrated subsidiaries at once.', (G) => (G.comps || []).filter((c) => c.owned && c.sub && c.sub.mode === 'int' && c.sub.integ >= 1).length >= 3),
   A('launcher', 'a_crown', 'Plattformen', 'The Platform', 'Få tio miljoner användare i din egen butik.', 'Reach ten million users in your own store.', (G) => (G.stats.storeUsers || 0) >= 1e7),
   A('label5', 'a_star', 'Förläggare', 'Publisher', 'Ge ut fem spel från andra studior.', 'Publish five games from other studios.', (G) => (G.stats.published || 0) >= 5),
+  A('chart1', 'a_star', 'Listetta', 'Chart Topper', 'Få ett spel till förstaplatsen på topplistan.', 'Take a game to number one on the charts.', (G) => (G.stats.no1 || 0) >= 1),
+  A('disc_gold', 'a_disc', 'Guldskiva', 'Gold Disc', 'Sälj 100 000 exemplar av ett spel.', 'Sell 100,000 copies of one game.', (G) => discs(G, 1) >= 1),
+  A('disc_platinum', 'a_disc', 'Platinaskiva', 'Platinum Disc', 'Sälj 500 000 exemplar av ett spel.', 'Sell 500,000 copies of one game.', (G) => discs(G, 2) >= 1),
+  A('disc_diamond', 'a_disc', 'Diamantskiva', 'Diamond Disc', 'Sälj två miljoner exemplar av ett spel.', 'Sell two million copies of one game.', (G) => discs(G, 3) >= 1),
+  A('disc_wall', 'a_disc', 'Skivväggen', 'Wall of Discs', 'Ha tio spel med guldskiva eller finare.', 'Have ten games with a gold disc or better.', (G) => discs(G, 1) >= 10),
+  A('hw_platform', 'a_chip', 'Egen plattform', 'Platform Holder', 'Lansera en egen spelplattform.', 'Launch a game platform of your own.', (G) => (G.hw?.plats?.length || 0) >= 1),
+  A('hw_factory', 'a_chip', 'Fabrikör', 'Factory Owner', 'Bygg en egen fabrik för din hårdvara.', 'Build a factory for your own hardware.', (G) => (G.hw?.fab?.lvl || 0) >= 1),
+  A('hw_vr', 'a_chip', 'En annan verklighet', 'Another Reality', 'Lansera ett eget VR-headset.', 'Launch a VR headset of your own.', (G) => (G.hw?.products || []).some((P) => P.type === 'vr')),
   A('legend', 'a_clock', 'Legend', 'Legend', 'Spela till år 2020.', 'Play until the year 2020.', (G) => G.t >= 48 * 40),
 ];
 export const ACH = Object.fromEntries(ACHIEVEMENTS.map((a) => [a.id, a]));

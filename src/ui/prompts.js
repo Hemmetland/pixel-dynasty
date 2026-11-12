@@ -111,6 +111,8 @@ function reportPrompt(app, G, p, finish) {
     .join('');
   const ins = studioNotes(rep, J) + crowdNote(G, J, false);
   const learned = G.know.combos[J.topic + '|' + J.genre] ? '' : `<div class="learn">${icon('sparkle')}<span>${t('rep.learned', { combo: `<b>${L(tp.name)} × ${L(ge.name)}</b>`, v: `<b>${t('compat.' + Math.round(rep.parts.compat))}</b>` })}</span></div>`;
+  // slår spelet studions högsta betyg? (från det tredje spelet, de första sätter bara ribban)
+  const record = G.stats.gamesMade >= 2 && total > G.stats.bestScore;
   const outlook = total >= 9 ? 'rep.o4' : total >= 7.5 ? 'rep.o3' : total >= 6 ? 'rep.o2' : total >= 4.5 ? 'rep.o1' : 'rep.o0';
   UI.modal(`
     <div class="report">
@@ -133,7 +135,7 @@ function reportPrompt(app, G, p, finish) {
             <div style="--c:var(--rp)"><b class="num">+${J.rpGained}</b><span>${t('hud.rp')}</span></div>
           </div>
         </div>
-        <div class="rp-score" id="rp-score" style="--c:${scoreColor(total)}"><div class="ring"><svg viewBox="0 0 100 100"><circle cx="50" cy="50" r="44" class="r0"/><circle cx="50" cy="50" r="44" class="r1" id="rp-ring" stroke-dasharray="276.5" stroke-dashoffset="276.5"/></svg><div class="big num" id="rp-avg">–</div></div><div class="stamp" id="rp-stamp">${t(outlook)}</div></div>
+        <div class="rp-score" id="rp-score" style="--c:${scoreColor(total)}"><div class="ring"><svg viewBox="0 0 100 100"><circle cx="50" cy="50" r="44" class="r0"/><circle cx="50" cy="50" r="44" class="r1" id="rp-ring" stroke-dasharray="276.5" stroke-dashoffset="276.5"/></svg><div class="big num" id="rp-avg">–</div></div><div class="stamp" id="rp-stamp">${t(outlook)}</div>${record ? `<div class="rp-rec">${icon('star')}${t('rep.record')}</div>` : ''}</div>
       </div>
       <div class="revs">${cards}</div>
       <div class="rp-notes" id="rp-notes"><div class="lbl" style="margin-bottom:8px">${t('rep.notes')}</div><div class="ins">${ins}</div>${learned}</div>

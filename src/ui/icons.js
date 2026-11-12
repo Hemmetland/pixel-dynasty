@@ -78,6 +78,7 @@ const ICONS = {
   globe: P('<circle cx="12" cy="12" r="9"/><path d="M3 12h18M12 3c3 3 3 15 0 18M12 3c-3 3-3 15 0 18"/>'),
   refresh: P('<path d="M20 5v5h-5M4 19v-5h5M5.5 9A7.5 7.5 0 0 1 19 10M18.5 15A7.5 7.5 0 0 1 5 14"/>'),
   skull: P('<path d="M12 3a8 8 0 0 0-8 8c0 2.6 1.2 4.2 3 5.3V20h10v-3.7c1.8-1.1 3-2.7 3-5.3a8 8 0 0 0-8-8z"/><circle cx="9" cy="11.5" r="1.4" fill="currentColor"/><circle cx="15" cy="11.5" r="1.4" fill="currentColor"/><path d="M10.5 20v-2M13.5 20v-2"/>'),
+  disc: P('<circle cx="12" cy="12" r="9"/><circle cx="12" cy="12" r="2.6"/><path d="M12 5.6a6.4 6.4 0 0 1 6.4 6.4M5.6 12a6.4 6.4 0 0 0 6.4 6.4"/>'),
   crown: P('<path d="M3.5 18.5l-1-11 5.5 4.5L12 5l4 8 5.5-5.5-1 11z"/>'),
   eye: P('<path d="M2.5 12S6 5.5 12 5.5 21.5 12 21.5 12 18 18.5 12 18.5 2.5 12 2.5 12z"/><circle cx="12" cy="12" r="3"/>'),
   sliders: P('<path d="M5 4v16M12 4v16M19 4v16"/><circle cx="5" cy="9" r="2" fill="currentColor"/><circle cx="12" cy="15" r="2" fill="currentColor"/><circle cx="19" cy="8" r="2" fill="currentColor"/>'),

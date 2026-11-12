@@ -24,6 +24,8 @@ export function fmtNum(n) {
   else s = a.toLocaleString('en-US').replace(/,/g, ' ');
   return (n < 0 ? '−' : '') + s;
 }
+// hela talet med mellanslag som tusentalsavgränsare (för jämna trösklar som 100 000)
+export const fmtFull = (n) => Math.round(n).toLocaleString('en-US').replace(/,/g, ' ');
 export const fmtScore = (n) => (Math.round(n * 10) / 10).toFixed(1);
 export const uid = (() => {
   let n = 0;

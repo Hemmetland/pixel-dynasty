@@ -457,3 +457,15 @@ if (args.includes('--parts')) {
     console.log(`${S.yearOf(g.t)} ${g.scope.padEnd(6)} ${g.platform.padEnd(9)} team ${g.team} rd ${p.rd.toFixed(2)} rt ${p.rt.toFixed(2)} r ${p.r.toFixed(2)} s0 ${p.s0.toFixed(1)} compat ${p.compat} mFit ${p.mFit.toFixed(2)} mBug ${p.mBug.toFixed(2)} => ${g.score}`);
   }
 }
+// UNITDBG=1: sålda exemplar per spel (för att väga skivor och rekord mot spelets faktiska försäljning)
+if (process.env.UNITDBG) for (const g of G.games) console.log(`   u ${S.yearOf(g.t)} ${g.scope} ${g.score} ${Math.round(g.units)}${g.live ? ' live' : ''}${g.expansionOf ? ' exp' : ''}`);
+// CHARTDBG=1: listplaceringar och skivor per spel
+if (process.env.CHARTDBG) {
+  for (const g of G.games) console.log(`   c ${S.yearOf(g.t)} ${g.scope} ${g.score} best ${g.chart ? g.chart.best : '-'} weeks ${g.chart ? g.chart.weeks : 0} top ${g.chart ? g.chart.top : 0} cert ${g.cert ?? -1} units ${Math.round(S.totalUnits(g))}`);
+  console.log(`   discs ${S.certCounts(G).join('/')} no1 ${G.stats.no1 || 0} news ${['chartIn', 'chartClimb', 'chartTop', 'recWeek', 'recUnits', 'cert'].map((k) => k + ' ' + G.news.filter((n) => n.key === 'news.' + k).length).join(', ')}`);
+}
+if (process.env.CHARTDBG === '2') {
+  const rel = G.market.releases.slice(-40);
+  for (const r of rel) console.log(`   r ${S.yearOf(r.t)} ${r.scope} ${r.score} total ${Math.round(r.total / 1e6 * 10) / 10}M ${r.studio}${r.mmo ? ' mmo' : ''}`);
+  for (const g of G.games.slice(-8)) console.log(`   g ${S.yearOf(g.t)} ${g.scope} ${g.score} total ${Math.round(g.total / 1e6 * 10) / 10}M rev ${Math.round(g.revenue / 1e6 * 10) / 10}M`);
+}

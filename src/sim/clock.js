@@ -15,6 +15,7 @@ import { subWeek } from './acquire.js';
 import { groupWeek, costSave } from './group.js';
 import { storeWeek } from './store.js';
 import { hwWeek } from './hardware.js';
+import { chartWeek } from './charts.js';
 import { monthlyMarket, updateTrends } from './market.js';
 import { rollDevEvent, rollStudioEvent } from './events.js';
 import { runAwards, expoOffer } from './awards.js';
@@ -47,6 +48,7 @@ function weekly(G) {
   for (const s of G.staff) if (s.trainSkill && s.trainUntil <= G.t) finishTraining(G, s);
   salesWeek(G);
   portWeek(G);
+  chartWeek(G);
   pubWeek(G);
   frWeek(G);
   subWeek(G);

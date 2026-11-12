@@ -1,5 +1,6 @@
 import { Scene } from '../render/scene.js';
 import { on, emit } from '../core/bus.js';
+import { fmtFull } from '../core/util.js';
 import { setLang, detectLang, t } from '../core/i18n.js';
 import { loadSettings, saveSettings, saveGame, loadGame } from '../core/store.js';
 import { newGame } from '../sim/state.js';
@@ -170,6 +171,15 @@ export const app = {
       sfx.play('achievement');
       toast(t('toast.achievement', { name: `<b>${L(a.name)}</b>` }), 'award', 8000);
     });
+    // en skiva som är minst lika fin som studions finaste firas; lägre skivor står bara i krönikan
+    on('cert', (c) => {
+      if (this.mode !== 'play' || !c.big) return;
+      const name = L(c.cert.name);
+      toast(t('toast.cert', { cert: `<b style="color:${c.cert.color}">${name.charAt(0).toUpperCase() + name.slice(1)}</b>`, title: `<b>${esc(c.game.title)}</b>`, n: fmtFull(c.cert.units) }), 'award', 9000);
+      sfx.play('fanfare');
+      sc.confetti(60 + c.i * 30);
+    });
+    on('chartTop', () => this.mode === 'play' && sc.confetti(50));
     on('released', (g) => {
       sc.celebrateNow(3.5);
       if (g.score >= 8) sc.confetti(110);

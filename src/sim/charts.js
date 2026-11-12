@@ -1,0 +1,105 @@
+// Efter släppet: spelets väg på topplistan, skivor för sålda exemplar och studions rekord.
+// Allt här är uppvisning (nyheter, statistik och prestationer). Inget ändrar pengar, fans eller försäljning, så
+// balansen är densamma med och utan det.
+import { emit } from '../core/bus.js';
+import { fmtNum, fmtFull, fmtMoney } from '../core/util.js';
+import { note } from './news.js';
+import { topSellers } from './market.js';
+import { CERTS, certIndex, totalUnits } from '../data/certs.js';
+
+export { CERTS, certIndex, totalUnits };
+
+export const CHART_SIZE = 10;
+const CHART_WEEKS = 12;
+
+export const certOf = (g) => CERTS[g.cert ?? certIndex(totalUnits(g))] || null;
+// nästa skiva och hur långt det är kvar (null när diamanten är nådd)
+export function nextCert(g) {
+  const c = CERTS[certIndex(totalUnits(g)) + 1];
+  return c ? { cert: c, left: Math.max(0, c.units - totalUnits(g)), pct: Math.min(1, totalUnits(g) / c.units) } : null;
+}
+// antal spel per skiva (bara den högsta skivan för varje spel räknas)
+export function certCounts(G) {
+  const n = CERTS.map(() => 0);
+  for (const g of G.games) {
+    const i = g.cert ?? certIndex(totalUnits(g));
+    if (i >= 0) n[i]++;
+  }
+  return n;
+}
+export const discs = (G, min = 0) => certCounts(G).reduce((a, n, i) => a + (i >= min ? n : 0), 0);
+
+// Studions rekord, räknade ur spellistan (så att gamla sparningar får dem direkt)
+export function records(G) {
+  const by = (f) => G.games.reduce((b, g) => (f(g) > (b ? f(b) : 0) ? g : b), null);
+  return {
+    score: by((g) => g.score),
+    units: by((g) => totalUnits(g)),
+    week: by((g) => (g.weekly && g.weekly[0]) || 0),
+    top: by((g) => (g.chart && g.chart.top) || 0),
+  };
+}
+
+// Veckovis, efter försäljningen: listplaceringar, skivor och säljrekord
+export function chartWeek(G) {
+  const S = G.stats;
+  // en sparning från före skivorna: ge spelen sina skivor i tysthet i stället för en skur av nyheter
+  if (!G.flags.charts) {
+    G.flags.charts = 1;
+    for (const g of G.games) g.cert = certIndex(totalUnits(g));
+    S.bestCert = G.games.reduce((a, g) => Math.max(a, g.cert), -1);
+    const r = records(G);
+    S.recUnits = r.units ? r.units.id : 0;
+    S.recWeek = r.week ? r.week.weekly[0] : 0;
+  }
+  const selling = G.games.filter((g) => !g.ended && g.weekly.length);
+  if (selling.length) {
+    const rows = topSellers(G, CHART_WEEKS, CHART_SIZE);
+    for (const g of selling) {
+      const rank = rows.findIndex((r) => r.yours && r.id === g.id) + 1;
+      if (!rank) continue;
+      const c = g.chart || (g.chart = { best: 0, weeks: 0, top: 0 });
+      c.weeks++;
+      if (rank === 1) c.top++;
+      if (c.best && rank >= c.best) continue;
+      const first = !c.best;
+      const before = c.best;
+      c.best = rank;
+      if (rank === 1) {
+        S.no1 = (S.no1 || 0) + 1;
+        note(G, 'news.chartTop', { title: g.title }, 'good');
+        emit('chartTop', g);
+      } else if (first) note(G, 'news.chartIn', { title: g.title, n: rank }, 'info');
+      else if (rank <= 3 && before > 3) note(G, 'news.chartClimb', { title: g.title, n: rank }, 'info');
+    }
+    // bästa första veckan (från det tredje spelet, de första slår alltid varandra)
+    for (const g of selling) {
+      if (g.weekly.length !== 1) continue;
+      if (G.games.length >= 3 && g.weekly[0] > (S.recWeek || 0) && S.recWeek > 0) {
+        g.recWeek = 1;
+        note(G, 'news.recWeek', { title: g.title, v: fmtMoney(g.weekly[0]) }, 'good', true);
+      }
+      S.recWeek = Math.max(S.recWeek || 0, g.weekly[0]);
+    }
+  }
+  let champ = G.games.find((g) => g.id === S.recUnits) || null;
+  for (const g of G.games) {
+    const u = totalUnits(g);
+    const i = certIndex(u);
+    if (i > (g.cert ?? -1)) {
+      g.cert = i;
+      g.certT = G.t;
+      // en skiva firas när den är minst lika fin som studions finaste hittills; lägre skivor noteras bara i krönikan
+      const big = i >= (S.bestCert ?? -1);
+      S.bestCert = Math.max(S.bestCert ?? -1, i);
+      note(G, 'news.cert', { title: g.title, cert: CERTS[i].name, n: fmtFull(CERTS[i].units) }, 'award', true);
+      emit('cert', { game: g, cert: CERTS[i], i, big });
+    }
+    // studions mest sålda spel byter ägare
+    if (g !== champ && u > (champ ? totalUnits(champ) : 0)) {
+      if (champ && u >= 1000) note(G, 'news.recUnits', { title: g.title, prev: champ.title, n: fmtNum(Math.round(totalUnits(champ))) }, 'good');
+      champ = g;
+      S.recUnits = g.id;
+    }
+  }
+}

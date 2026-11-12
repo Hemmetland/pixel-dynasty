@@ -672,6 +672,53 @@ ok(true, 'alla händelser körda');
   for (let i = 0; i < 12; i++) { GL.t++; S.hwWeek(GL); }
   ok(S.fabLvl(GL) === 2 && Number.isFinite(GL.money), 'fabriken följer med sparningen');
 }
+// topplista, skivor och rekord: listplatsen följer topplistan, skivor delas ut vid trösklarna (porteringar inräknade),
+// bara studions finaste skiva firas, rekorden byter ägare, en äldre sparning får sina skivor utan nyheter och
+// inget av det rör pengar eller fans
+{
+  const GC = S.newGame({ studio: 'C', seed: 21 });
+  S.makeCompetitors(GC); S.initWorld(GC);
+  GC.t = 48 * 12;
+  const mk = (id, score, week, units) => ({ id, title: 'C' + id, t: GC.t - 1, score, topic: 'fantasy', genre: 'rpg', platform: 'pc', scope: 'medium', weekly: [week], units, revenue: week, total: week * 8, priceAt: 30, tail: 1, ended: false, fansGained: 0, ports: [] });
+  const certs = [];
+  const { on } = await import('../src/core/bus.js');
+  on('cert', (c) => certs.push(c));
+  ok(S.certIndex(9999) === -1 && S.certIndex(10000) === 0 && S.certIndex(499999) === 1 && S.certIndex(2e6) === 3, 'trösklarna för silver, guld, platina och diamant');
+  // en äldre sparning: spelen har redan sålt, skivorna sätts utan nyheter
+  GC.games.push(Object.assign(mk(1, 7, 100, 150000), { ended: true }), Object.assign(mk(4, 6, 50, 900), { ended: true }));
+  const n0 = GC.news.length;
+  S.chartWeek(GC);
+  ok(GC.flags.charts === 1 && GC.games[0].cert === 1 && GC.stats.bestCert === 1 && !certs.length && !GC.news.some((n) => n.key === 'news.cert') && GC.news.length >= n0, 'en äldre sparning får sina skivor i tysthet');
+  // ett nytt spel som säljer mer än alla andra går in som etta
+  const big = mk(2, 9, 5e8, 20000);
+  GC.games.push(big);
+  const m0 = GC.money, f0 = GC.fans;
+  S.chartWeek(GC);
+  ok(big.chart && big.chart.best === 1 && big.chart.top === 1 && big.chart.weeks === 1 && GC.stats.no1 === 1 && GC.news.some((n) => n.key === 'news.chartTop'), 'en storsäljare går in som etta på topplistan');
+  ok(big.cert === 0 && certs.length === 1 && certs[0].big === false && certs[0].cert.id === 'silver', 'en lägre skiva än studions finaste noteras utan firande');
+  ok(GC.news.some((n) => n.key === 'news.recWeek') && big.recWeek === 1 && GC.stats.recWeek === 5e8, 'bästa första veckan blir ett rekord');
+  ok(GC.money === m0 && GC.fans === f0, 'listan och skivorna rör inte pengar eller fans');
+  // spelet säljer vidare (porteringen räknas med): guld, platina och till sist studions mest sålda
+  big.weekly.push(1e8);
+  big.ports.push({ platform: 'nova32', units: 480000, revenue: 0, weekly: [], ended: true });
+  S.chartWeek(GC);
+  ok(big.cert === 2 && certs[certs.length - 1].big === true && GC.stats.bestCert === 2 && S.certOf(big).id === 'platinum', 'porteringens exemplar räknas och den finaste skivan firas');
+  ok(GC.stats.recUnits === big.id && GC.news.some((n) => n.key === 'news.recUnits'), 'studions mest sålda spel byter ägare');
+  ok(big.chart.weeks === 2 && big.chart.top === 2 && GC.news.filter((n) => n.key === 'news.chartTop').length === 1, 'veckorna på listan räknas och ettan firas en gång');
+  const nx = S.nextCert(big);
+  ok(nx && nx.cert.id === 'diamond' && Math.round(nx.left) === 2e6 - 500000 && S.certCounts(GC).join() === '0,1,1,0' && S.discs(GC, 1) === 2 && S.discs(GC) === 2, 'nästa skiva och hyllans antal');
+  const R = S.records(GC);
+  ok(R.score === big && R.units === big && R.week === big && R.top === big, 'studions rekord räknas ur spellistan');
+  // ett spel utanför listan får ingen placering
+  const small = mk(3, 5, 0, 10);
+  GC.games.push(small);
+  S.chartWeek(GC);
+  ok(!small.chart && small.cert === undefined, 'ett spel som inte säljer hamnar utanför listan');
+  S.checkAchievements(GC);
+  ok(GC.ach.includes('chart1') && GC.ach.includes('disc_gold') && GC.ach.includes('disc_platinum') && !GC.ach.includes('disc_diamond'), 'prestationer för listetta och skivor');
+  const GD = importCode(exportCode(GC));
+  ok(GD && GD.games[2].cert === 2 && GD.games[2].chart.top === big.chart.top && GD.stats.no1 === 1, 'skivor och listplatser följer med sparningen');
+}
 // årets summa per kategori: förra året till finansfönstret och årsrapporten, en äldre sparning räknar en del av året
 {
   const GY = S.newGame({ studio: 'Y', seed: 5 }); S.makeCompetitors(GY); S.initWorld(GY);
