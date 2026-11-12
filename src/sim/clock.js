@@ -15,7 +15,7 @@ import { subWeek } from './acquire.js';
 import { groupWeek, costSave } from './group.js';
 import { storeWeek } from './store.js';
 import { hwWeek } from './hardware.js';
-import { chartWeek } from './charts.js';
+import { chartWeek, rankYear } from './charts.js';
 import { monthlyMarket, updateTrends } from './market.js';
 import { rollDevEvent, rollStudioEvent } from './events.js';
 import { runAwards, expoOffer } from './awards.js';
@@ -123,6 +123,7 @@ function monthly(G, d) {
     G.lastYear = { year: yearOf(G.t) - 1, bd: G.yr || {}, part: G.yrT != null };
     G.yr = {};
     G.yrT = null;
+    rankYear(G);
     G.pending.push({ type: 'year', id: G.uid++, year: yearOf(G.t) - 1 });
   }
   if (G.t === 48 * 41 && !G.flags.ending) {

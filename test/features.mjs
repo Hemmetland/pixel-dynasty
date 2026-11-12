@@ -742,8 +742,31 @@ ok(true, 'alla händelser körda');
   ok(!small.chart && small.cert === undefined, 'ett spel som inte säljer hamnar utanför listan');
   S.checkAchievements(GC);
   ok(GC.ach.includes('chart1') && GC.ach.includes('disc_gold') && GC.ach.includes('disc_platinum') && !GC.ach.includes('disc_diamond'), 'prestationer för listetta och skivor');
+  // branschrankningen: spelförsäljningen senaste året, dotterbolag räknas till ägaren, årets plats sparas
+  {
+    const rk0 = S.studioRanking(GC);
+    const me0 = rk0.find((r) => r.you);
+    ok(rk0.length === GC.comps.length + 1 && me0.pos === 1 && me0.rev === 6e8 + 150 && Math.abs(rk0.reduce((a, r) => a + r.share, 0) - 1) < 1e-9, 'din studio står i rankningen efter årets spelförsäljning');
+    const cA = GC.comps[0], cB = GC.comps[1];
+    const rel = (c, total) => GC.market.releases.push({ id: GC.uid++, t: GC.t - 3, comp: c.id, studio: c.name, color: c.color, title: { sv: 'R', en: 'R' }, score: 8, total, platform: 'pc', genre: 'rpg', topic: 'fantasy', scope: 'large', price: 30, tail: 1 });
+    rel(cA, 3e10); rel(cB, 1e9);
+    const rk1 = S.studioRanking(GC);
+    ok(rk1[0].id === cA.id && S.studioRank(GC).pos === 2 && rk1[0].rev > 0 && rk1[0].rev < 3e10, 'en konkurrent som säljer mer går förbi (bara veckorna som gått räknas)');
+    const y0 = S.rankYear(GC);
+    ok(GC.ranks.length === 1 && GC.ranks[0].pos === 2 && y0.prev === null && !GC.stats.topStudio, 'årets plats sparas');
+    cA.owned = true;
+    const rk2 = S.studioRanking(GC);
+    ok(rk2.length === GC.comps.length && S.studioRank(GC).pos === 1 && S.studioRank(GC).rev > me0.rev, 'ett dotterbolags försäljning räknas till dig');
+    const y1 = S.rankYear(GC);
+    ok(y1.prev.pos === 2 && y1.now.pos === 1 && GC.stats.topStudio === S.yearOf(GC.t) - 1 && GC.news.some((n) => n.key === 'news.rankTop'), 'första året som störst blir en nyhet');
+    S.rankYear(GC);
+    ok(GC.news.filter((n) => n.key === 'news.rankTop').length === 1 && GC.ranks.length === 3, 'nyheten kommer bara första gången');
+    cA.owned = false;
+    S.checkAchievements(GC);
+    ok(GC.ach.includes('top_studio') && !GC.ach.includes('top_decade'), 'prestationen för störst i branschen');
+  }
   const GD = importCode(exportCode(GC));
-  ok(GD && GD.games[2].cert === 2 && GD.games[2].chart.top === big.chart.top && GD.stats.no1 === 1, 'skivor och listplatser följer med sparningen');
+  ok(GD && GD.ranks.length === 3 && GD.games[2].cert === 2 && GD.games[2].chart.top === big.chart.top && GD.stats.no1 === 1, 'skivor och listplatser följer med sparningen');
 }
 // årets summa per kategori: förra året till finansfönstret och årsrapporten, en äldre sparning räknar en del av året
 {

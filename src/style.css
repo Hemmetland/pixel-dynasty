@@ -402,6 +402,8 @@ button.pn-c:hover { background: rgba(150, 172, 255, 0.13); border-color: var(--l
 @media (max-width: 700px) { .hw-ctl { grid-template-columns: 1fr; } .hw-spark { width: 90px; } }
 @media (max-width: 480px) { .hw-orow { grid-template-columns: 26px minmax(0, 1fr) 64px 70px; } .hw-orow > :nth-child(3) { display: none; } }
 .rv-row.owned { box-shadow: inset 3px 0 0 var(--good); }
+.rv-row.you { background: rgba(77, 225, 208, 0.1); border-color: rgba(77, 225, 208, 0.45); }
+.rv-row.owned { margin-left: 22px; }
 @media (max-width: 560px) { .rv-row { flex-wrap: wrap; } .acq-cell { width: 100%; min-width: 0; } }
 .pub-grid { grid-template-columns: minmax(0, 1.4fr) minmax(0, 1fr); gap: 20px; align-items: start; }
 @media (max-width: 860px) { .pub-grid { grid-template-columns: minmax(0, 1fr); } .pt-row .pt-st { min-width: 0; } }
@@ -620,6 +622,10 @@ input[type='range']::-moz-range-thumb { width: 18px; height: 18px; border-radius
 .fm-disc { width: 44px; height: 44px; border-radius: 50%; display: grid; place-items: center; flex: none; color: var(--c); background: color-mix(in srgb, var(--c) 12%, transparent); }
 .fm-disc .ic { width: 28px; height: 28px; }
 .fm-disc.on { box-shadow: 0 0 14px color-mix(in srgb, var(--c) 45%, transparent); }
+.yr-rank { display: flex; align-items: center; gap: 16px; margin-top: 16px; }
+.yr-rank .yr-pos { font: 700 40px/1 var(--disp); color: var(--accent); min-width: 64px; text-align: center; }
+.yr-rank.top { border-color: rgba(255, 207, 90, 0.5); background: rgba(255, 207, 90, 0.07); }
+.yr-rank.top .yr-pos { color: var(--gold); text-shadow: 0 0 16px rgba(255, 207, 90, 0.5); }
 .rp-rec { display: none; margin-top: 10px; font-size: 11px; font-weight: 800; letter-spacing: 0.08em; text-transform: uppercase; color: var(--gold); }
 .rp-rec .ic { width: 13px; height: 13px; margin-right: 4px; vertical-align: -2px; }
 .rp-score.show .rp-rec { display: block; animation: recpop 0.7s var(--ease) 0.5s both; }
@@ -916,7 +922,7 @@ input[type='range']::-moz-range-thumb { width: 18px; height: 18px; border-radius
 .choice .fxrow .chip .gl { width: 13px; height: 13px; }
 .evchoice { font-size: 12px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.06em; margin-bottom: 6px; }
 /* Konkurrentlistan på telefon: styrkestapeln får ge plats åt namnet */
-@media (max-width: 520px) { .rv-str { display: none; } }
+@media (max-width: 520px) { .rv-str { display: none; } .rv-str.share { display: block; order: 9; width: calc(100% - 42px) !important; margin-left: 42px; } }
 /* Förfiningar i forskningsfönstret */
 .rfgrid { display: grid; grid-template-columns: repeat(auto-fill, minmax(min(250px, 100%), 1fr)); gap: 10px; margin-bottom: 18px; }
 .rfgrid .rn { position: relative; width: auto; height: auto; gap: 6px; }

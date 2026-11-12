@@ -5,6 +5,8 @@ import { emit } from '../core/bus.js';
 import { fmtNum, fmtFull, fmtMoney } from '../core/util.js';
 import { note } from './news.js';
 import { topSellers } from './market.js';
+import { curveFor } from './sales.js';
+import { yearOf, WEEKS_PER_YEAR } from './const.js';
 import { CERTS, certIndex, totalUnits } from '../data/certs.js';
 
 export { CERTS, certIndex, totalUnits };
@@ -102,4 +104,54 @@ export function chartWeek(G) {
       S.recUnits = g.id;
     }
   }
+}
+
+// ── Branschrankningen ─────────────────────────────────────────────
+// Studiornas spelförsäljning de senaste 48 veckorna, din studio bland konkurrenterna. Dina dotterbolag räknas till dig.
+// Bara spelförsäljning (egna spel, porteringar och konkurrenternas släpp), så att alla mäts med samma mått.
+export function studioRanking(G, weeks = WEEKS_PER_YEAR) {
+  const from = G.t - weeks; // veckor efter 'from' räknas
+  const by = new Map();
+  for (const r of (G.market && G.market.releases) || []) {
+    const age = G.t - r.t;
+    if (age < 0) continue;
+    const c = curveFor(r.score, r.tail || 1);
+    let k = 0;
+    for (let w = Math.max(0, age - weeks + 1); w <= age && w < c.length; w++) k += c[w];
+    if (k > 0) by.set(r.comp, (by.get(r.comp) || 0) + r.total * k);
+  }
+  const span = (x) => x.weekly.reduce((a, v, i) => a + (x.t + 1 + i > from ? v : 0), 0);
+  let you = 0;
+  for (const g of G.games) {
+    you += span(g);
+    for (const p of g.ports || []) you += span(p);
+  }
+  const rows = [];
+  for (const c of G.comps || []) {
+    if (c.owned) you += by.get(c.id) || 0;
+    else rows.push({ id: c.id, name: c.name, color: c.color, rev: by.get(c.id) || 0, comp: c });
+  }
+  rows.push({ id: 0, name: G.studio, color: '#4de1d0', rev: you, you: true });
+  rows.sort((a, b) => b.rev - a.rev || (a.you ? 1 : b.you ? -1 : a.id - b.id));
+  const total = rows.reduce((a, r) => a + r.rev, 0);
+  rows.forEach((r, i) => {
+    r.pos = i + 1;
+    r.share = total > 0 ? r.rev / total : 0;
+  });
+  return rows;
+}
+export const studioRank = (G) => studioRanking(G).find((r) => r.you);
+// Årets slut: din plats sparas (för årsrapporten och pilarna i rankningen), och första gången du är störst blir det en nyhet
+export function rankYear(G) {
+  const me = studioRank(G);
+  const hist = G.ranks || (G.ranks = []);
+  const prev = hist[hist.length - 1];
+  hist.push({ y: yearOf(G.t) - 1, pos: me.pos, share: Math.round(me.share * 1000) / 1000, rev: Math.round(me.rev) });
+  if (hist.length > 60) hist.shift();
+  if (me.pos === 1 && me.rev > 0 && !G.stats.topStudio) {
+    G.stats.topStudio = yearOf(G.t) - 1;
+    note(G, 'news.rankTop', { studio: G.studio, y: yearOf(G.t) - 1 }, 'award', true);
+    emit('rankTop', me);
+  }
+  return { now: me, prev: prev || null };
 }

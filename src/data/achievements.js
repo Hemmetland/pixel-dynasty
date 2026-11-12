@@ -62,6 +62,8 @@ export const ACHIEVEMENTS = [
   A('disc_platinum', 'a_disc', 'Platinaskiva', 'Platinum Disc', 'Sälj 500 000 exemplar av ett spel.', 'Sell 500,000 copies of one game.', (G) => discs(G, 2) >= 1),
   A('disc_diamond', 'a_disc', 'Diamantskiva', 'Diamond Disc', 'Sälj två miljoner exemplar av ett spel.', 'Sell two million copies of one game.', (G) => discs(G, 3) >= 1),
   A('disc_wall', 'a_disc', 'Skivväggen', 'Wall of Discs', 'Ha tio spel med guldskiva eller finare.', 'Have ten games with a gold disc or better.', (G) => discs(G, 1) >= 10),
+  A('top_studio', 'a_crown', 'Störst i branschen', 'Top of the Industry', 'Avsluta ett år som den studio som säljer mest spel.', 'End a year as the studio that sells the most games.', (G) => !!G.stats.topStudio),
+  A('top_decade', 'a_crown', 'Tio år på tronen', 'A Decade on the Throne', 'Var störst i branschen tio år (de behöver inte följa på varandra).', 'Be the biggest studio in the industry for ten years (they need not be in a row).', (G) => (G.ranks || []).filter((r) => r.pos === 1).length >= 10),
   A('hw_platform', 'a_chip', 'Egen plattform', 'Platform Holder', 'Lansera en egen spelplattform.', 'Launch a game platform of your own.', (G) => (G.hw?.plats?.length || 0) >= 1),
   A('hw_factory', 'a_chip', 'Fabrikör', 'Factory Owner', 'Bygg en egen fabrik för din hårdvara.', 'Build a factory for your own hardware.', (G) => (G.hw?.fab?.lvl || 0) >= 1),
   A('hw_vr', 'a_chip', 'En annan verklighet', 'Another Reality', 'Lansera ett eget VR-headset.', 'Launch a VR headset of your own.', (G) => (G.hw?.products || []).some((P) => P.type === 'vr')),

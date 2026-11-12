@@ -421,6 +421,13 @@ function yearPrompt(app, G, p, finish) {
   const sources = inc.length >= 2
     ? `<div class="card" style="margin-top:16px"><div class="lbl" style="margin-bottom:8px">${t('year.sources')}</div><div class="col" style="gap:7px">${inc.slice(0, 5).map(([k, v]) => `<div><div class="kv" style="margin-bottom:3px"><span>${t('fin.c.' + k)}</span><b class="up num">+${money(v)}</b></div>${bar((v / top) * 100, 'var(--money)', 'thin')}</div>`).join('')}</div></div>`
     : '';
+  // årets plats i branschrankningen (sparas vid årsskiftet; saknas för år före rankningen i en äldre sparning)
+  const rk = (G.ranks || []).find((r) => r.y === p.year);
+  const rkPrev = (G.ranks || []).find((r) => r.y === p.year - 1);
+  const rkD = rk && rkPrev ? rkPrev.pos - rk.pos : 0;
+  const rankCard = rk
+    ? `<div class="card yr-rank ${rk.pos === 1 ? 'top' : ''}"><div class="yr-pos">${rk.pos}</div><div style="flex:1;min-width:0"><div class="lbl">${t('year.rank')}</div><div class="h3">${rk.pos === 1 ? t('year.rankTop') : t('year.rankPos', { n: rk.pos, m: 1 + G.comps.filter((c) => !c.owned).length })}${rkD ? `<span class="tag" style="--c:${rkD > 0 ? 'var(--good)' : 'var(--bug)'};margin-left:8px">${rkD > 0 ? '▲' : '▼'} ${Math.abs(rkD)}</span>` : ''}</div><div class="faint" style="font-size:12.5px">${t('mkt.rank.share', { n: Math.round(rk.share * 100) })} · ${t('mkt.rank.help')}</div></div></div>`
+    : '';
   UI.modal(`
     <div class="win-head"><div class="wi" style="--wc:var(--gold)">${icon('calendar')}</div><h2>${t('year.title', { y: p.year })}<div class="sub">${esc(G.studio)}</div></h2></div>
     <div class="win-body">
@@ -431,10 +438,15 @@ function yearPrompt(app, G, p, finish) {
         <div class="counter" style="--c:var(--accent)"><div class="v num">${yGames.length}</div><div class="k">${t('year.games')}</div></div>
       </div>
       ${best ? `<div class="card row" style="margin-top:16px;gap:16px">${coverImg({ id: best.id, title: best.title, topic: best.topic, genre: best.genre, platform: best.platform }, 64)}<div style="flex:1"><div class="lbl">${t('year.best')}</div><div class="h3">${esc(best.title)}</div><div class="muted">${L(TOPIC[best.topic].name)} · ${L(GENRE[best.genre].name)}</div></div><div class="disp" style="font-size:44px;color:${scoreColor(best.score)}">${best.score.toFixed(1)}</div></div>` : `<p class="muted" style="margin-top:16px">${t('year.none')}</p>`}
+      ${rankCard}
       ${sources}
     </div>
     <div class="win-foot"><span class="sp"></span><button class="btn primary lg" data-act="yr-ok">${t('year.next', { y: p.year + 1 })}${icon('arrow')}</button></div>`,
-    () => act('yr-ok', () => finish()),
+    () => {
+      act('yr-ok', () => finish());
+      // första året (eller åter) som störst i branschen firas
+      if (rk && rk.pos === 1 && (!rkPrev || rkPrev.pos !== 1)) app.scene.confetti(90);
+    },
     'md',
   );
 }

@@ -469,3 +469,5 @@ if (process.env.CHARTDBG === '2') {
   for (const r of rel) console.log(`   r ${S.yearOf(r.t)} ${r.scope} ${r.score} total ${Math.round(r.total / 1e6 * 10) / 10}M ${r.studio}${r.mmo ? ' mmo' : ''}`);
   for (const g of G.games.slice(-8)) console.log(`   g ${S.yearOf(g.t)} ${g.scope} ${g.score} total ${Math.round(g.total / 1e6 * 10) / 10}M rev ${Math.round(g.revenue / 1e6 * 10) / 10}M`);
 }
+// RANKDBG=1: studions plats i branschrankningen vid varje årsskifte
+if (process.env.RANKDBG) console.log('   rank ' + (G.ranks || []).map((r) => `${r.y}:${r.pos}(${Math.round(r.share * 100)}%)`).join(' '));
