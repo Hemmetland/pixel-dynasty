@@ -225,7 +225,7 @@ export const glMethods = {
     wd.drawSky(clear(R.sky));
     gl.upload('sky', R.sky.c);
     // skyline och tända fönster ändras bara när staden byggs om
-    if (R.bgFor !== wd.layers || R.bgGy !== gy || R.bgBack !== wd.backdrop || R.bgFab !== `${wd.fab}:${wd.lampX}`) {
+    if (R.bgFor !== wd.layers || R.bgGy !== gy || R.bgBack !== wd.backdrop || R.bgFab !== `${wd.fab}:${wd.lampX}:${wd.bldHalf}:${wd.W}`) {
       wd.drawBackdrop(clear(R.bg));
       gl.upload('bg', R.bg.c);
       wd.drawLitWindows(clear(R.emis), 1);
@@ -233,7 +233,7 @@ export const glMethods = {
       R.bgFor = wd.layers;
       R.bgGy = gy;
       R.bgBack = wd.backdrop;
-      R.bgFab = `${wd.fab}:${wd.lampX}`;
+      R.bgFab = `${wd.fab}:${wd.lampX}:${wd.bldHalf}:${wd.W}`;
     }
     // mark och träd ändras med årstid och väder
     const wz = wd.weather;

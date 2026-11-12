@@ -129,6 +129,7 @@ export class Scene {
     this.emotes = [];
     this.lightCache = null;
     this.world.lampX = this.L.BW > 424 ? Math.round(this.L.BW / 2 + 44) : 230; // gatlyktorna står utanför breda hus
+    this.world.bldHalf = Math.round(this.L.BW / 2);
     this.fit();
     this.syncActors(first);
     this.world.setYear(yearOf(G.t));

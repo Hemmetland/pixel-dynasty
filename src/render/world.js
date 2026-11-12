@@ -96,6 +96,7 @@ export class World {
     this.birds = [];
     this.nextBird = 6;
     this.fab = 0; // den egna fabrikens nivå (0 = ingen), syns bakom huset till höger
+    this.bldHalf = 212; // husets halva bredd (se Scene.rebuildLayout); fabriken står mellan huset och bildkanten
   }
 
   resize(W, H, groundY) {
@@ -472,10 +473,11 @@ export class World {
   }
 
   // Den egna fabriken: en hall med sågtandstak per nivå och en skorsten per hall, strax utanför den första gatlyktan
-  // till höger om huset
+  // till höger om huset. Räcker inte platsen fram till bildkanten flyttas den in mot huset så att alla hallar syns.
   fabLayout() {
     const n = this.fab;
-    const x0 = Math.round(this.W / 2 + this.lampX + 14);
+    const w = n * 30;
+    const x0 = Math.max(Math.round(this.W / 2 + this.bldHalf + 8), Math.min(Math.round(this.W / 2 + this.lampX + 14), this.W - w - 6));
     const halls = [];
     const tops = [];
     for (let i = 0; i < n; i++) {
@@ -483,7 +485,7 @@ export class World {
       halls.push(x);
       tops.push({ x: x + 24, y: this.groundY - 40 - (i === 0 ? 4 : 0) });
     }
-    return { x0, halls, tops };
+    return { x0, x1: x0 + w, halls, tops };
   }
   drawFactory(ctx, lit) {
     if (!this.fab) return;
@@ -593,7 +595,10 @@ export class World {
     const autumn = this.month >= 8 && this.month <= 10;
     const winter = this.month === 11 || this.month <= 1;
     const spring = this.month >= 2 && this.month <= 4;
+    // gatuträd som skulle stå framför fabriken och dess skylt ritas inte
+    const fab = this.fab ? this.fabLayout() : null;
     for (const x of this.treeX || []) {
+      if (fab && x > fab.x0 - 14 && x < fab.x1 + 14) continue;
       ctx.fillStyle = '#5a3a22';
       ctx.fillRect(x - 1, gy - 22, 3, 22);
       ctx.fillStyle = '#7a5232';
