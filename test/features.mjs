@@ -144,6 +144,32 @@ ok(true, 'alla händelser körda');
   S.setLiveShop(G3f, gf.id, 1);
   for (let i = 0; i < 48; i++) S.liveWeek(G3f), G3f.t++;
   ok(gf.live.subs > 300000 && Number.isFinite(G3f.money), 'gratisspelet växer under ett år (' + Math.round(gf.live.subs) + ' spelare)');
+  // utsikter: delarna ger tillsammans samma målnivå som spelet räknar med
+  const GO = JSON.parse(JSON.stringify(GL));
+  GO.office.fac.server = { lvl: 3, slot: 0 };
+  const go = GO.games[GO.games.length - 1];
+  go.live.price = [1.2, 1, 1]; go.live.ops = 2;
+  const fx = S.liveFactors(GO, go);
+  ok(Math.abs(go.live.pot * fx.age * fx.fresh * fx.price * fx.era * fx.ops * fx.event * fx.rivals - S.liveTarget(GO, go)) < 1e-6 * fx.target && fx.price < 1 && fx.ops > 1 && fx.fresh < 1 && fx.full === false, 'utsikternas delar ger tillsammans målnivån');
+  // löpande uppdateringar: startar vid 70, betalas som en vanlig, väntar när kassan inte räcker och säger till en gång
+  go.live.fresh = 71.5; go.live.patch = null; GO.money = 1e9;
+  ok(S.setLiveAuto(GO, go.id, true) === true && go.live.auto === 1, 'löpande uppdateringar slås på');
+  S.liveWeek(GO); GO.t++;
+  ok(!go.live.patch, 'ingen uppdatering medan innehållet är färskare än 70');
+  const costA = S.livePatchCost(GO, go);
+  S.liveWeek(GO); GO.t++;
+  ok(go.live.patch && go.live.patch.until === GO.t - 1 + S.PATCH_WEEKS && GO.month.breakdown.patches === -costA, 'en löpande uppdatering startar av sig själv och kostar som en vanlig');
+  for (let i = 0; i < S.PATCH_WEEKS; i++) S.liveWeek(GO), GO.t++;
+  ok(!go.live.patch && go.live.fresh > 85, 'uppdateringen blir klar och innehållet färskt (' + Math.round(go.live.fresh) + ')');
+  go.live.fresh = 60; GO.money = S.livePatchCost(GO, go) * 2;
+  const nA = GO.news.filter((n) => n.key === 'live.news.autoPaused').length;
+  S.liveWeek(GO); GO.t++; S.liveWeek(GO); GO.t++;
+  ok(!go.live.patch && GO.news.filter((n) => n.key === 'live.news.autoPaused').length === nA + 1, 'utan kassa väntar uppdateringen och det sägs en gång');
+  // inaktuellt innehåll: en varning, och en ny först när det varit färskt emellan
+  S.setLiveAuto(GO, go.id, false);
+  go.live.fresh = 30.5; GO.money = 1e9;
+  for (let i = 0; i < 4; i++) S.liveWeek(GO), GO.t++;
+  ok(GO.news.filter((n) => n.key === 'live.news.stale').length === 1 && go.live.staleWarn === 1, 'inaktuellt innehåll varnar en gång');
 }
 // porteringar: kräver forskning och licens, ett spel i taget, betyget åldras, säljer veckovis utan att röra G.rng
 {

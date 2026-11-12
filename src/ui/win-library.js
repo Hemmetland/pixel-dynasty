@@ -21,7 +21,7 @@ import { studioNotes } from './prompts.js';
 import { crowdNote } from './crowd.js';
 import { openExpansion } from './wizard.js';
 import { CERTS, certOf, certCounts, nextCert, totalUnits, records } from '../sim/charts.js';
-import { SUB_TIERS, OPS, PRICE_MIN, PRICE_MAX, PATCH_WEEKS, EVENT_WEEKS, SURGE_WEEKS, tierMix, liveMonth, serverCap, livePatchCost, startLivePatch, setLivePrice, setLiveOps, closeLive, rivalMmos, rivalPull, rivalFactor, eventOn, eventReadyIn, liveEventCost, startLiveEvent, SHOP, isF2P, canGoF2P, goF2P, setLiveShop, liveLoad, liveArpu } from '../sim/live.js';
+import { SUB_TIERS, OPS, PRICE_MIN, PRICE_MAX, PATCH_WEEKS, EVENT_WEEKS, SURGE_WEEKS, tierMix, liveMonth, serverCap, livePatchCost, startLivePatch, setLivePrice, setLiveOps, closeLive, rivalMmos, rivalPull, rivalFactor, liveFactors, setLiveAuto, AUTO_FRESH, AUTO_BUFFER, eventOn, eventReadyIn, liveEventCost, startLiveEvent, SHOP, isF2P, canGoF2P, goF2P, setLiveShop, liveLoad, liveArpu } from '../sim/live.js';
 
 // Stäng servrarna och gör till gratisspel kräver två tryck: första trycket "armerar" knappen för det spelet
 let closeArmed = null;
@@ -144,6 +144,23 @@ function rivalList(G, g) {
   return `<div class="lbl" style="margin:16px 0 4px">${t('live.rivals')}</div><p class="hint" style="margin-bottom:8px">${t(rows.length ? 'live.rivalsHelp' : 'live.rivalsNone')}</p>${rows.length ? `<div class="col" style="gap:6px">${rows.join('')}</div>` : ''}`;
 }
 
+// Utsikter: vart spelarbasen är på väg och vad som höjer eller sänker den just nu (bara delar som märks, minst 1 %)
+const FX_KEY = { age: 'live.fx.age', fresh: 'live.fx.fresh', price: 'live.fx.price', shop: 'live.fx.shop', era: 'live.fx.era', ops: 'live.fx.ops', event: 'live.fx.event', rivals: 'live.fx.rivals' };
+function outlook(G, g) {
+  const L = g.live;
+  const f = liveFactors(G, g);
+  const dir = f.target > L.subs * 1.02 ? 'up' : f.target < L.subs * 0.98 ? 'down' : 'flat';
+  const col = dir === 'up' ? 'var(--good)' : dir === 'down' ? 'var(--bug)' : 'var(--text)';
+  const chips = ['fresh', 'price', 'ops', 'event', 'rivals', 'era', 'age']
+    .map((k) => [k === 'price' && isF2P(L) ? 'shop' : k, Math.round((f[k] - 1) * 100)])
+    .filter(([, p]) => p !== 0)
+    .map(([k, p]) => `<span class="chip c" style="--c:${p > 0 ? 'var(--good)' : 'var(--bug)'}">${t(FX_KEY[k])} <b class="num">${p > 0 ? '+' : '−'}${Math.abs(p)} %</b></span>`);
+  if (f.full) chips.unshift(`<span class="chip c" style="--c:var(--bug)">${icon('lock')}${t('live.fx.full')}</span>`);
+  return `<div class="lbl" style="margin:16px 0 4px">${t('live.outlook')}</div>
+    <div class="row wrap" style="gap:6px 10px" data-tip="${esc(t('live.trendHelp'))}"><b class="num" style="color:${col};font-size:15px">${t(TREND_KEY[dir], { n: fmtNum(f.target) })}</b>${chips.join('')}</div>`;
+}
+const TREND_KEY = { up: 'live.trend.up', down: 'live.trend.down', flat: 'live.trend.flat' };
+
 // Evenemangsknappen: pågår, väntar på nästa eller kan starta
 function eventBtn(G, g) {
   const L = g.live;
@@ -193,6 +210,7 @@ function livePanel(G, g) {
       <div data-tip="${esc(t('live.freshTip'))}"><div class="row" style="font-size:12.5px;margin-bottom:4px"><span>${t('live.fresh')}</span><span class="sp"></span><b style="color:${fcol}">${t(FRESH_KEY[fk])}</b></div>${bar(L.fresh, fcol, 'thin')}</div>
       <div data-tip="${esc(t('live.loadTip', { n: fmtNum(used), m: fmtNum(cap) }))}"><div class="row" style="font-size:12.5px;margin-bottom:4px"><span>${t('live.load')}</span><span class="sp"></span><b class="num" style="color:${load > 1 ? 'var(--bug)' : load > 0.85 ? 'var(--warn)' : 'var(--text)'}">${Math.round(load * 100)}%</b></div>${bar(load * 100, load > 1 ? 'var(--bug)' : load > 0.85 ? 'var(--warn)' : 'var(--accent)', 'thin')}</div>
     </div>
+    ${outlook(G, g)}
     <div class="lbl" style="margin:16px 0 4px">${t(f2p ? 'live.chartPlayers' : 'live.chart')}</div>${subsChart(G, g)}
     ${rivalList(G, g)}
     ${pay}
@@ -205,7 +223,9 @@ function livePanel(G, g) {
       <button class="btn" data-act="lv-exp" data-id="${g.id}" ${G.job ? 'disabled' : ''}>${icon('plus')}${t('live.expand')}</button>
       <span class="sp"></span>
       <button class="btn ${armed ? 'danger' : 'ghost'}" data-act="lv-close" data-id="${g.id}">${icon('x')}${t(armed ? 'live.closeSure' : 'live.close')}</button>
-    </div></div>`;
+    </div>
+    <div class="ltier" style="margin-top:10px"><div style="flex:1;min-width:0"><b>${t('live.auto')}</b><div class="faint" style="font-size:11.5px">${t('live.autoHelp', { n: AUTO_FRESH, m: AUTO_BUFFER })}</div></div>
+      <button class="switch ${L.auto ? 'on' : ''}" data-act="lv-auto" data-id="${g.id}" role="switch" aria-checked="${L.auto ? 'true' : 'false'}" aria-label="${esc(t('live.auto'))}"><i></i></button></div></div>`;
 }
 
 // Skivor och rekord. Skivans namn står med liten bokstav i tabellen (för löpande text), här med stor.
@@ -216,7 +236,7 @@ function shelf(G) {
   if (!G.games.length) return '';
   const n = certCounts(G);
   const any = n.some((x) => x > 0);
-  const row = CERTS.map((c, i) => `<div class="sh-disc ${n[i] ? 'on' : ''}" style="--c:${c.color}" data-tip="${esc(t('lib.certAt', { cert: cap(L(c.name)), n: fmtFull(c.units) }))}">${icon('disc')}<b class="num">${n[i]}</b><span>${cap(L(c.name))}</span></div>`).join('');
+  const row = CERTS.map((c, i) => `<div class="sh-disc ${n[i] ? 'on' : ''}" style="--c:${c.color}" data-tip="${esc(t('lib.certAt', { cert: cap(L(c.name)), n: fmtFull(c.units) }))}">${icon('disc')}<b class="num">${n[i]}</b><span>${L(c.short)}</span></div>`).join('');
   const r = records(G);
   const rec = (key, g, val) => (g ? `<button class="sh-rec" data-act="lib-open" data-id="${g.id}"><span class="lbl">${t(key)}</span><b class="num">${val}</b><span class="faint sh-t">${esc(g.title)}</span></button>` : '');
   const recs = rec('lib.rec.score', r.score, r.score && r.score.score.toFixed(1)) + rec('lib.rec.units', r.units, r.units && fmtNum(totalUnits(r.units))) + rec('lib.rec.week', r.week, r.week && money(r.week.weekly[0])) + rec('lib.rec.top', r.top, r.top && tn('lib.weeks', r.top.chart.top));
@@ -456,6 +476,14 @@ act('lv-price', (el) => {
 });
 act('lv-ops', (el) => {
   setLiveOps(UI.app.G, +el.dataset.id, +el.dataset.i);
+  UI.refresh();
+});
+act('lv-auto', (el) => {
+  const G = UI.app.G;
+  const g = G.games.find((x) => x.id === +el.dataset.id);
+  if (!g || !g.live) return;
+  setLiveAuto(G, g.id, !g.live.auto);
+  sfx.play('click');
   UI.refresh();
 });
 act('lv-patch', (el) => {

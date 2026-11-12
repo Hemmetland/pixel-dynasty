@@ -39,6 +39,13 @@ const FRESH_DECAY = 1.1;
 export const PATCH_WEEKS = 8;
 const PATCH_FRESH = 30;
 const MILESTONES = [10000, 100000, 1000000, 5000000, 10000000];
+// Löpande uppdateringar (L.auto): en ny innehållsuppdatering startar av sig själv när färskheten sjunkit till AUTO_FRESH
+// och kassan räcker till AUTO_BUFFER uppdateringar. Samma pris som en uppdatering du startar själv.
+export const AUTO_FRESH = 70;
+export const AUTO_BUFFER = 3;
+// Varning när innehållet blivit inaktuellt (en gång, och igen först när det varit färskt emellan)
+const STALE_WARN = 30;
+const STALE_RESET = 50;
 // Evenemang i spelet: pågår EVENT_WEEKS veckor, nästa kan starta EVENT_GAP veckor efter förra starten. Lockar tillbaka
 // spelare (målnivån × EVENT_LIFT), ger lite färskhet och halverar dragningen från konkurrenternas MMO medan det pågår.
 export const EVENT_WEEKS = 4;
@@ -121,6 +128,24 @@ export function liveTarget(G, g) {
   const price = isF2P(L) ? F2P_POT * SHOP[L.shop | 0].mult : Math.exp(-PRICE_ELAST * (tierMix(G, L).k - 1)) * subEra(yearOf(G.t));
   const ev = eventOn(G, L) ? EVENT_LIFT : 1;
   return L.pot * age * fresh * price * OPS[L.ops].mult * ev * rivalFactor(G, g);
+}
+// Samma målnivå del för del, för driftpanelen: varje del som multiplikator (1 = ingen påverkan) mot ett nytt spel med
+// färskt innehåll, normalpris och normal drift. full = servrarna är fulla och håller tillbaka spelarna.
+export function liveFactors(G, g) {
+  const L = g.live;
+  const f2p = isF2P(L);
+  const cap = serverCap(G);
+  return {
+    age: Math.exp((-0.06 * Math.max(0, G.t - L.t0)) / WEEKS_PER_YEAR),
+    fresh: 0.4 + (0.6 * L.fresh) / 100,
+    price: f2p ? SHOP[L.shop | 0].mult : Math.exp(-PRICE_ELAST * (tierMix(G, L).k - 1)),
+    era: f2p ? 1 : subEra(yearOf(G.t)),
+    ops: OPS[L.ops].mult,
+    event: eventOn(G, L) ? EVENT_LIFT : 1,
+    rivals: rivalFactor(G, g),
+    full: cap > 0 ? liveLoad(G) > cap : true,
+    target: liveTarget(G, g),
+  };
 }
 // Intäkt och kostnad per månad med nuvarande spelare
 export function liveMonth(G, g) {
@@ -240,6 +265,20 @@ export function liveWeek(G) {
       mark(G, L, 'patch');
       note(G, 'live.news.patch', { title: g.title }, 'good');
     }
+    // löpande uppdateringar startar nästa av sig själva; räcker inte kassan sägs det till en gång
+    if (L.auto && !L.patch && L.fresh <= AUTO_FRESH) {
+      if (G.money >= livePatchCost(G, g) * AUTO_BUFFER) {
+        startLivePatch(G, g.id);
+        L.autoWarn = 0;
+      } else if (!L.autoWarn) {
+        L.autoWarn = 1;
+        note(G, 'live.news.autoPaused', { title: g.title }, 'bad');
+      }
+    }
+    if (L.fresh < STALE_WARN && !L.patch && !L.staleWarn) {
+      L.staleWarn = 1;
+      note(G, 'live.news.stale', { title: g.title }, 'bad');
+    } else if (L.fresh >= STALE_RESET) L.staleWarn = 0;
     let target = liveTarget(G, g);
     // fullt på servrarna: nya spelare kommer inte in och några tröttnar på köerna
     if (over > 0) target = Math.min(target, L.subs * (1 - Math.min(0.05, over * 0.1)));
@@ -338,6 +377,13 @@ export function setLivePrice(G, id, tier, ratio) {
   const g = liveOf(G, id);
   if (!g || tier < 0 || tier > 2) return false;
   g.live.price[tier] = Math.round(clamp(ratio, PRICE_MIN, PRICE_MAX) * 20) / 20;
+  return true;
+}
+export function setLiveAuto(G, id, on) {
+  const g = liveOf(G, id);
+  if (!g) return false;
+  g.live.auto = on ? 1 : 0;
+  g.live.autoWarn = 0;
   return true;
 }
 export function setLiveOps(G, id, ops) {
