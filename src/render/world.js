@@ -4,6 +4,7 @@ import { randomLook } from '../sim/people.js';
 import { drawVehicle, vehicleSize } from './vehicles.js';
 import { drawBackdropCover } from './sprites.js';
 import { drawWalkerSprite, drawBuyerSprite } from './charsprite.js';
+import { drawEmote } from './emotes.js';
 
 const BAYER = [0, 8, 2, 10, 12, 4, 14, 6, 3, 11, 1, 9, 15, 7, 13, 5].map((v) => (v + 0.5) / 16);
 
@@ -64,6 +65,9 @@ export const STREET = {
   pedY: 42,
   H: 46,
 };
+
+// hur länge en fotgängares pratbubbla syns (sekunder)
+const PED_EMOTE = 4.5;
 
 const CAR_COLORS = ['#e8504a', '#4a90e0', '#f2c84a', '#6cc86a', '#e8e8f0', '#2a2f3c', '#c860c8', '#f2883a', '#3fb8a8', '#8a92a8'];
 
@@ -289,15 +293,20 @@ export class World {
     this.cars = this.cars.filter((c) => (c.dir > 0 ? c.x < this.W + 4 : c.x > -4));
     this.nextPed -= dt;
     if (this.nextPed <= 0) {
-      this.nextPed = 4 + Math.random() * 8;
+      // o.buzz = gatans reaktion på studions senaste spel: fler går förbi efter en succé, och en del får en pratbubbla
+      const bz = o.buzz;
+      this.nextPed = (4 + Math.random() * 8) * (bz ? bz.rate : 1);
       const dir = Math.random() < 0.5 ? 1 : -1;
       // de första veckorna efter att studions hårdvara kommit ut bär en del fotgängare hem en låda i produktens färg
       const box = o.buyers && Math.random() < 0.45 ? o.buyers[Math.floor(Math.random() * o.buyers.length)] : null;
-      this.peds.push({ x: dir > 0 ? -12 : this.W + 12, dir, v: 10 + Math.random() * 8, t: 0, look: randomLook(Math.random), box });
+      const emote = bz && Math.random() < bz.p ? bz.kind : null;
+      this.peds.push({ x: dir > 0 ? -12 : this.W + 12, dir, v: 10 + Math.random() * 8, t: 0, look: randomLook(Math.random), box, emote, et: 0, e0: 0.12 + Math.random() * 0.5 });
     }
     for (const p of this.peds) {
       p.x += p.dir * p.v * dt;
       p.t += dt * 6;
+      // bubblan dyker upp en bit in i bilden (olika långt för olika fotgängare) och lever PED_EMOTE sekunder
+      if (p.emote && (p.et > 0 || (p.dir > 0 ? p.x > this.W * p.e0 : p.x < this.W * (1 - p.e0)))) p.et += dt;
     }
     this.peds = this.peds.filter((p) => p.x > -20 && p.x < this.W + 20);
   }
@@ -650,6 +659,16 @@ export class World {
     for (const p of this.peds) {
       if (p.box && drawBuyerSprite(ctx, p.x, gy + STREET.pedY, p.look, p.t, p.dir, p.box.color, p.box.dark, p.box.light)) continue;
       if (!drawWalkerSprite(ctx, p.x, gy + STREET.pedY, p.look, p.t, p.dir)) drawPerson(ctx, p.x, gy + STREET.pedY, p.look, 'walk', Math.floor(p.t) % 4, p.dir, {});
+    }
+  }
+
+  // Fotgängarnas pratbubblor (ritas efter ljuset, tillsammans med personalens, så att natten inte dämpar dem)
+  pedEmotes() {
+    return this.peds.some((p) => p.emote && p.et > 0 && p.et < PED_EMOTE);
+  }
+  drawPedEmotes(ctx) {
+    for (const p of this.peds) {
+      if (p.emote && p.et > 0 && p.et < PED_EMOTE) drawEmote(ctx, p.x, this.groundY + STREET.pedY - 28, p.emote, p.et, PED_EMOTE, this.time);
     }
   }
 

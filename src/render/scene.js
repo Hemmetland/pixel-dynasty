@@ -41,6 +41,22 @@ function hwBuyers(G) {
   return out.length ? out : null;
 }
 
+// Gatans reaktion på studions senaste spel: de första veckorna efter släppet får en del fotgängare en pratbubbla (hjärta
+// för en succé, utropstecken för ett bra spel, zzz för en flopp), och efter en succé går fler förbi. Klingar av vecka
+// för vecka. Bara bild: inget i simuleringen läser det.
+const BUZZ_WEEKS = 6;
+function gameBuzz(G) {
+  const g = G.games[G.games.length - 1];
+  if (!g) return null;
+  const age = G.t - g.t;
+  if (age < 0 || age >= BUZZ_WEEKS) return null;
+  const kind = g.score >= 8 ? 'heart' : g.score >= 6.5 ? 'exclam' : g.score < 5 ? 'zzz' : null;
+  if (!kind) return null;
+  const fade = 1 - age / BUZZ_WEEKS;
+  const p = (g.score >= 9 ? 0.75 : g.score >= 8 ? 0.55 : g.score >= 6.5 ? 0.3 : 0.35) * (0.4 + 0.6 * fade);
+  return { kind, p, rate: g.score >= 8 ? 1 - 0.5 * fade : 1 };
+}
+
 const SCALES = [0.6, 0.75, 0.9, 1, 1.5, 2, 2.5, 3, 4, 5, 6];
 const STREET_SLACK = 26;
 // Poser där en person vid skrivbordet inte tittar på skärmen (v2): skärmen dämpas
@@ -595,7 +611,7 @@ export class Scene {
     if (!G || !this.L) return;
     this.time += dt;
     const d = dateOf(G.t);
-    this.world.update(dt, { speed: this.speed, paused: this.paused, month: d.month, reduced: this.reduced, todLock: this.todLock, weatherLock: this.weatherLock, brands: hwBrands(G), buyers: hwBuyers(G), fab: G.hw?.fab?.lvl || 0 });
+    this.world.update(dt, { speed: this.speed, paused: this.paused, month: d.month, reduced: this.reduced, todLock: this.todLock, weatherLock: this.weatherLock, brands: hwBrands(G), buyers: hwBuyers(G), buzz: gameBuzz(G), fab: G.hw?.fab?.lvl || 0 });
     this.updateActors(dt);
     this.updateCat(dt);
     this.updateFx(dt);
@@ -918,6 +934,7 @@ export class Scene {
 
   // Pratbubblor ovanför huvudet (emotes.js). Ritas efter ljuset så att de aldrig dämpas av natten.
   drawEmotes(ctx) {
+    this.world.drawPedEmotes(ctx);
     if (!this.emotes.length) return;
     const cx = Math.round(this.iw / 2);
     for (const e of this.emotes) {

@@ -261,7 +261,7 @@ export const glMethods = {
       gl.upload('front', R.front.c);
     }
     // överlägg som inte ska belysas: flytande tal, konfetti, nedtoning, markering
-    const fxOn = this.floaters.length > 0 || this.emotes.length > 0 || this.fx.length > 0 || this.fade > 0.01 || !!this.hover;
+    const fxOn = this.floaters.length > 0 || this.emotes.length > 0 || wd.pedEmotes() || this.fx.length > 0 || this.fade > 0.01 || !!this.hover;
     if (fxOn) {
       const g = clear(R.fx);
       this.drawFloaters(g);
