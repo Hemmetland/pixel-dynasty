@@ -150,7 +150,7 @@ ok(true, 'alla händelser körda');
   const go = GO.games[GO.games.length - 1];
   go.live.price = [1.2, 1, 1]; go.live.ops = 2;
   const fx = S.liveFactors(GO, go);
-  ok(Math.abs(go.live.pot * fx.age * fx.fresh * fx.price * fx.era * fx.ops * fx.event * fx.rivals - S.liveTarget(GO, go)) < 1e-6 * fx.target && fx.price < 1 && fx.ops > 1 && fx.fresh < 1 && fx.full === false, 'utsikternas delar ger tillsammans målnivån');
+  ok(Math.abs(go.live.pot * fx.age * fx.fresh * fx.price * fx.era * fx.ops * fx.event * fx.rivals * fx.regions - S.liveTarget(GO, go)) < 1e-6 * fx.target && fx.regions === 1 && fx.price < 1 && fx.ops > 1 && fx.fresh < 1 && fx.full === false, 'utsikternas delar ger tillsammans målnivån');
   // löpande uppdateringar: startar vid 70, betalas som en vanlig, väntar när kassan inte räcker och säger till en gång
   go.live.fresh = 71.5; go.live.patch = null; GO.money = 1e9;
   ok(S.setLiveAuto(GO, go.id, true) === true && go.live.auto === 1, 'löpande uppdateringar slås på');
@@ -170,6 +170,37 @@ ok(true, 'alla händelser körda');
   go.live.fresh = 30.5; GO.money = 1e9;
   for (let i = 0; i < 4; i++) S.liveWeek(GO), GO.t++;
   ok(GO.news.filter((n) => n.key === 'live.news.stale').length === 1 && go.live.staleWarn === 1, 'inaktuellt innehåll varnar en gång');
+  // regioner: ett nytt onlinespel börjar på hemmamarknaden, öppnar en region i taget mot betalning och får då fler spelare.
+  // Regionens marknad måste finnas det året, genren avgör hur mycket den ger, och ett äldre spel finns redan överallt.
+  const GR = JSON.parse(JSON.stringify(GL));
+  GR.office.fac.server = { lvl: 3, slot: 0 };
+  GR.money = 1e9;
+  const gr = GR.games[GR.games.length - 1];
+  const lr = gr.live;
+  ok(Array.isArray(lr.regions) && lr.regions.length === 0 && S.regionMult(gr) === 1 && S.HOME < 1, 'ett nytt onlinespel börjar på hemmamarknaden');
+  ok(S.regionsOpen(GR, gr).map((r) => r.id).join() === 'na,eu,asia,latam' && Math.abs(S.regionBonus(gr, 'asia') - S.REGION.asia.bonus * 1.35) < 1e-9 && S.regionBonus(gr, 'na') === S.REGION.na.bonus, 'regionerna 2006, och rollspel går extra bra i Asien');
+  GR.t = 48 * 19; // 1999: Asien och Latinamerika har inte öppnat än
+  ok(S.regionsOpen(GR, gr).map((r) => r.id).join() === 'na,eu' && S.startLiveRegion(GR, gr.id, 'asia') === false, 'en region går inte att öppna innan marknaden finns');
+  GR.t = 48 * 26;
+  const t0 = S.liveTarget(GR, gr);
+  const costR = S.liveRegionCost(GR, gr, 'eu');
+  const m0 = GR.money;
+  ok(costR > 0 && S.startLiveRegion(GR, gr.id, 'eu') === true && GR.money === m0 - costR && lr.region.id === 'eu' && lr.region.until === GR.t + S.REGION_WEEKS, 'en region öppnas mot betalning och tar några veckor');
+  ok(typeof S.startLiveRegion(GR, gr.id, 'na') === 'string' && GR.money === m0 - costR && S.liveTarget(GR, gr) === t0, 'en region i taget, och ingen effekt förrän den öppnat');
+  for (let i = 0; i <= S.REGION_WEEKS; i++) S.liveWeek(GR), GR.t++;
+  const fresh0 = lr.fresh;
+  lr.fresh = 50; // samma färskhet som vid t0, så att bara regionen skiljer
+  const fr = S.liveFactors(GR, gr);
+  ok(lr.regions.join() === 'eu' && !lr.region && Math.abs(fr.regions - (1 + S.regionBonus(gr, 'eu'))) < 1e-9 && GR.news.some((n) => n.key === 'live.news.region' && n.vars.region.sv === 'Europa') && lr.marks.some((m) => m.k === 'region'), 'regionen öppnar: nyhet, markör i diagrammet och fler spelare som mål');
+  lr.fresh = fresh0;
+  for (const id of ['na', 'asia', 'latam']) {
+    ok(S.startLiveRegion(GR, gr.id, id) === true, 'öppna ' + id);
+    for (let i = 0; i <= S.REGION_WEEKS; i++) S.liveWeek(GR), GR.t++;
+  }
+  S.checkAchievements(GR);
+  ok(lr.regions.length === 4 && S.regionsOpen(GR, gr).length === 0 && GR.stats.liveWorld === 1 && GR.ach.includes('live_world') && S.regionMult(gr) * S.HOME > 0.98 && S.regionMult(gr) * S.HOME < 1.1, 'alla regioner: prestationen, och ungefär lika många spelare som före regionerna');
+  delete lr.regions;
+  ok(S.regionMult(gr) === 1 && S.regionsOpen(GR, gr).length === 0 && S.startLiveRegion(GR, gr.id, 'na') === false, 'ett onlinespel från en äldre sparning finns redan i hela världen');
 }
 // porteringar: kräver forskning och licens, ett spel i taget, betyget åldras, säljer veckovis utan att röra G.rng
 {

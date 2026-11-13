@@ -23,7 +23,7 @@ import { openExpansion } from './wizard.js';
 import { CERTS, certOf, certCounts, nextCert, totalUnits, records } from '../sim/charts.js';
 import { fanVoices, fanSource } from '../sim/fans.js';
 import { FAN_SOURCE } from '../data/fanvoices.js';
-import { SUB_TIERS, OPS, PRICE_MIN, PRICE_MAX, PATCH_WEEKS, EVENT_WEEKS, SURGE_WEEKS, tierMix, liveMonth, serverCap, livePatchCost, startLivePatch, setLivePrice, setLiveOps, closeLive, rivalMmos, rivalPull, rivalFactor, liveFactors, setLiveAuto, AUTO_FRESH, AUTO_BUFFER, eventOn, eventReadyIn, liveEventCost, startLiveEvent, SHOP, isF2P, canGoF2P, goF2P, setLiveShop, liveLoad, liveArpu } from '../sim/live.js';
+import { SUB_TIERS, OPS, PRICE_MIN, PRICE_MAX, PATCH_WEEKS, EVENT_WEEKS, SURGE_WEEKS, tierMix, liveMonth, serverCap, livePatchCost, startLivePatch, setLivePrice, setLiveOps, closeLive, rivalMmos, rivalPull, rivalFactor, liveFactors, setLiveAuto, AUTO_FRESH, AUTO_BUFFER, eventOn, eventReadyIn, liveEventCost, startLiveEvent, SHOP, isF2P, canGoF2P, goF2P, setLiveShop, liveLoad, liveArpu, REGIONS, REGION_NAME, REGION_WEEKS, regionBonus, regionsOpen, liveRegionCost, startLiveRegion } from '../sim/live.js';
 
 // Stäng servrarna och gör till gratisspel kräver två tryck: första trycket "armerar" knappen för det spelet
 let closeArmed = null;
@@ -67,9 +67,10 @@ const MARK = {
   patch: ['wrench', 'var(--accent)', 'live.mk.patch'],
   down: ['x', 'var(--bug)', 'live.mk.down'],
   f2p: ['refresh', 'var(--warn)', 'live.mk.f2p'],
+  region: ['globe', 'var(--good)', 'live.mk.region'],
   rival: ['flag', '', 'live.mk.rival'],
 };
-const LEGEND = { exp: 'live.lg.exp', ev: 'live.lg.ev', patch: 'live.lg.patch', down: 'live.lg.down', f2p: 'live.lg.f2p', rival: 'live.lg.rival' };
+const LEGEND = { exp: 'live.lg.exp', ev: 'live.lg.ev', patch: 'live.lg.patch', down: 'live.lg.down', f2p: 'live.lg.f2p', region: 'live.lg.region', rival: 'live.lg.rival' };
 const when = (tt) => {
   const d = dateOf(tt);
   return `${MONTHS[lang][d.month]} ${d.year}`;
@@ -150,13 +151,13 @@ function rivalList(G, g) {
 }
 
 // Utsikter: vart spelarbasen är på väg och vad som höjer eller sänker den just nu (bara delar som märks, minst 1 %)
-const FX_KEY = { age: 'live.fx.age', fresh: 'live.fx.fresh', price: 'live.fx.price', shop: 'live.fx.shop', era: 'live.fx.era', ops: 'live.fx.ops', event: 'live.fx.event', rivals: 'live.fx.rivals' };
+const FX_KEY = { regions: 'live.fx.regions', age: 'live.fx.age', fresh: 'live.fx.fresh', price: 'live.fx.price', shop: 'live.fx.shop', era: 'live.fx.era', ops: 'live.fx.ops', event: 'live.fx.event', rivals: 'live.fx.rivals' };
 function outlook(G, g) {
   const L = g.live;
   const f = liveFactors(G, g);
   const dir = f.target > L.subs * 1.02 ? 'up' : f.target < L.subs * 0.98 ? 'down' : 'flat';
   const col = dir === 'up' ? 'var(--good)' : dir === 'down' ? 'var(--bug)' : 'var(--text)';
-  const chips = ['fresh', 'price', 'ops', 'event', 'rivals', 'era', 'age']
+  const chips = ['fresh', 'price', 'ops', 'event', 'regions', 'rivals', 'era', 'age']
     .map((k) => [k === 'price' && isF2P(L) ? 'shop' : k, Math.round((f[k] - 1) * 100)])
     .filter(([, p]) => p !== 0)
     .map(([k, p]) => {
@@ -177,6 +178,30 @@ function eventBtn(G, g) {
   const wait = eventReadyIn(G, L);
   const label = eventOn(G, L) ? tn('live.eventOn', L.ev.until - G.t) : wait > 0 ? tn('live.eventWait', wait) : t('live.event') + ' · ' + money(liveEventCost(G, g));
   return `<button class="btn" data-act="lv-event" data-id="${g.id}" ${wait > 0 ? 'disabled' : ''} data-tip="${esc(t('live.eventTip', { n: EVENT_WEEKS }))}">${icon('star')}${label}</button>`;
+}
+
+// Regioner: hemmamarknaden och de delar av världen spelet kan öppna servrar i (en i taget). Ett spel från före regionerna
+// finns redan överallt och visar bara det.
+function regionPanel(G, g) {
+  const lv = g.live;
+  const head = `<div class="lbl" style="margin:16px 0 4px">${t('live.regions')}</div>`;
+  if (!lv.regions) return `${head}<p class="hint">${icon('globe')} ${t('live.regionWorld')}</p>`;
+  const year = dateOf(G.t).year;
+  const open = regionsOpen(G, g);
+  const row = (name, sub, right) => `<div class="ltier"><div style="flex:1;min-width:0"><b>${name}</b>${sub ? `<div class="faint" style="font-size:11.5px">${sub}</div>` : ''}</div>${right}</div>`;
+  const done = `<span class="tag" style="--c:var(--good)">${icon('check')}${t('live.regionOpen')}</span>`;
+  const rows = REGIONS.map((r) => {
+    const fit = r.fit[g.genre] || 1;
+    const sub = t('live.regionAdd', { n: Math.round(regionBonus(g, r.id) * 100) }) + (fit > 1 ? ' · ' + t('live.regionHot') : fit < 1 ? ' · ' + t('live.regionCold') : '');
+    const name = L(REGION_NAME[r.id]);
+    if (lv.regions.includes(r.id)) return row(name, sub, done);
+    if (lv.region && lv.region.id === r.id) return row(name, sub, `<span class="tag" style="--c:var(--accent)">${icon('clock')}${t('live.regionOpening', { n: Math.max(0, lv.region.until - G.t) })}</span>`);
+    if (year < r.from) return row(name, sub, `<span class="faint" style="font-size:12px">${icon('lock')} ${t('live.regionFrom', { y: r.from })}</span>`);
+    const cost = liveRegionCost(G, g, r.id);
+    const can = open.some((x) => x.id === r.id) && !lv.region;
+    return row(name, sub, `<button class="btn sm" data-act="lv-region" data-id="${g.id}" data-r="${r.id}" ${can && G.money >= cost ? '' : 'disabled'}>${icon('globe')}${t('live.regionGo')} · ${money(cost)}</button>`);
+  }).join('');
+  return `${head}<p class="hint" style="margin-bottom:8px">${t('live.regionsHelp', { n: REGION_WEEKS })}</p><div class="col" style="gap:6px">${row(t('live.regionHome'), '', done)}${rows}</div>`;
 }
 
 // Driftpanelen för ett onlinespel: spelare, intäkter, innehåll, serverlast, konkurrenter, priser per nivå, drift och åtgärder
@@ -223,6 +248,7 @@ function livePanel(G, g) {
     ${outlook(G, g)}
     <div class="lbl" style="margin:16px 0 4px">${t(f2p ? 'live.chartPlayers' : 'live.chart')}</div>${subsChart(G, g)}
     ${rivalList(G, g)}
+    ${regionPanel(G, g)}
     ${pay}
     <div class="lbl" style="margin:16px 0 6px">${t('live.ops')}</div>
     <div class="seg">${OPS.map((_, i) => `<button class="${L.ops === i ? 'on' : ''}" data-act="lv-ops" data-id="${g.id}" data-i="${i}">${t(OPS_KEY[i])}</button>`).join('')}</div>
@@ -509,6 +535,12 @@ act('lv-patch', (el) => {
   const r = startLivePatch(UI.app.G, +el.dataset.id);
   if (r === true) sfx.play('click');
   else errToast(r);
+  UI.refresh();
+});
+act('lv-region', (el) => {
+  const r = startLiveRegion(UI.app.G, +el.dataset.id, el.dataset.r);
+  if (r === true) sfx.play('coin');
+  else if (r) errToast(r);
   UI.refresh();
 });
 act('lv-event', (el) => {

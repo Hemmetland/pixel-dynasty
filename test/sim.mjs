@@ -24,6 +24,7 @@ const mmo = args.includes('--mmo');
 const events = mmo && !args.includes('--no-events');
 // --f2p: gör onlinespelen till gratisspel från 2010
 const f2p = mmo && args.includes('--f2p');
+const regions = mmo && !args.includes('--no-regions');
 // --ports: porterar spel med betyg 7+ till den licensierade plattform som väntas ge bäst betyg
 const ports = args.includes('--ports');
 // --publish: ger ut andra studiors spel när demons intervall har mitten 7 eller mer
@@ -346,6 +347,11 @@ function manage(G) {
     // evenemang när en konkurrent drar spelare eller innehållet börjar bli gammalt (om --events)
     if (events && !S.eventReadyIn(G, g.live) && (S.rivalFactor(G, g) < 0.92) && G.money > S.liveEventCost(G, g) * 4) S.startLiveEvent(G, g.id);
     if (S.liveLoad(G) > S.serverCap(G) * 0.85 && S.facLevel(G, 'server') < 3 && G.money > S.facCost(G, 'server') * 2) S.buildFacility(G, 'server');
+    // regioner: öppna nästa när kassan räcker och servrarna har plats (inte med --no-regions)
+    if (regions && !g.live.region && S.liveLoad(G) < S.serverCap(G) * 0.8) {
+      const r = S.regionsOpen(G, g)[0];
+      if (r && G.money > S.liveRegionCost(G, g, r.id) * 4) S.startLiveRegion(G, g.id, r.id);
+    }
   }
   if (mmo && S.liveUnlocked(G) && S.facLevel(G, 'server') < 1 && G.money > S.facCost(G, 'server') * 3) S.buildFacility(G, 'server');
   // lån vid behov
@@ -407,7 +413,7 @@ if (args.includes('--legacy')) {
 if (args.includes('--live')) {
   for (const g of G.games.filter((x) => x.live)) {
     const L = g.live;
-    console.log(`live ${S.yearOf(L.t0)}${L.closed ? '-' + S.yearOf(L.closed) : ''} ${g.title.en || g.title} score ${g.score}${L.model === 'f2p' ? ' f2p' : ''} peak ${Math.round(L.peak).toLocaleString()} subs ${Math.round(L.subs).toLocaleString()} exps ${L.exps.length} events ${L.events || 0} evcost $${Math.round((L.evCost || 0) / 1e6)}M rev $${Math.round(L.rev / 1e6)}M cost $${Math.round(L.cost / 1e6)}M`);
+    console.log(`live ${S.yearOf(L.t0)}${L.closed ? '-' + S.yearOf(L.closed) : ''} ${g.title.en || g.title} score ${g.score}${L.model === 'f2p' ? ' f2p' : ''} peak ${Math.round(L.peak).toLocaleString()} subs ${Math.round(L.subs).toLocaleString()} exps ${L.exps.length} events ${L.events || 0} evcost $${Math.round((L.evCost || 0) / 1e6)}M rev $${Math.round(L.rev / 1e6)}M cost $${Math.round(L.cost / 1e6)}M regions ${L.regions ? L.regions.join('+') || 'home' : 'world'} regcost $${Math.round((L.regionCost || 0) / 1e5) / 10}M`);
   }
   for (const m of (G.market.mmos || [])) console.log(`rival ${S.yearOf(m.t0)}${m.closed ? '-' + S.yearOf(m.closed) : ''} ${m.studio} ${m.title.en} ${m.genre} score ${m.score}`);
 }

@@ -53,6 +53,26 @@ export const EVENT_GAP = 16;
 const EVENT_FRESH = 6;
 const EVENT_LIFT = 1.08;
 
+// Regioner: ett nytt onlinespel öppnar på hemmamarknaden (HOME av hela världens spelare) och kan sedan öppna servrar i
+// fler delar av världen, en i taget. bonus = hur mycket regionen lägger till, räknat mot hemmamarknaden, och fit = vilka
+// genrer regionen tycker extra mycket (eller mindre) om. Med alla fyra regioner öppna når spelet ungefär lika många som
+// ett onlinespel gjorde innan regionerna fanns (några procent fler i en genre som regionerna gillar), så regionerna delar
+// upp tillväxten i steg i stället för att göra onlinespel lönsammare.
+// Sparningar från före regionerna har L.regions odefinierat: de spelen finns redan i hela världen.
+export const HOME = 0.6;
+export const REGION_WEEKS = 6;
+export const REGIONS = [
+  { id: 'na', bonus: 0.24, cost: 1, from: 0, fit: { shooter: 1.3, action: 1.2, racing: 1.1, strategy: 0.9 } },
+  { id: 'eu', bonus: 0.21, cost: 1.1, from: 0, fit: { strategy: 1.3, simulation: 1.2, rpg: 1.1, shooter: 0.9 } },
+  { id: 'asia', bonus: 0.16, cost: 1.4, from: 2000, fit: { rpg: 1.35, strategy: 1.15, casual: 1.1, shooter: 0.85 } },
+  { id: 'latam', bonus: 0.06, cost: 0.7, from: 2004, fit: { casual: 1.3, racing: 1.2, action: 1.1 } },
+];
+export const REGION = Object.fromEntries(REGIONS.map((r) => [r.id, r]));
+// Vad en region lägger till för just det här spelet (andel av hemmamarknadens spelare)
+export const regionBonus = (g, id) => REGION[id].bonus * (REGION[id].fit[g.genre] || 1);
+// Alla öppna regioner tillsammans, som multiplikator på spelarbasen (1 = bara hemmamarknaden, eller ett äldre spel)
+export const regionMult = (g) => 1 + (g.live.regions || []).reduce((a, id) => a + (REGION[id] ? regionBonus(g, id) : 0), 0);
+
 // Gratisspel: från F2P_YEAR. Spelarpotentialen × F2P_POT; butikens nivåer ger intäkt per spelare och månad (andel av
 // standardpriset) och påverkar hur många som stannar. En gratisspelare belastar servrarna och kostar som F2P_LOAD av en
 // prenumerant, och räknas som F2P_PAY av en betalande när kostnader och expansionsköp räknas. En aggressiv butik ger mer
@@ -79,6 +99,12 @@ export function liveArpu(G, L) {
   return tierMix(G, L).arpu;
 }
 
+export const REGION_NAME = {
+  na: { sv: 'Nordamerika', en: 'North America' },
+  eu: { sv: 'Europa', en: 'Europe' },
+  asia: { sv: 'Asien', en: 'Asia' },
+  latam: { sv: 'Latinamerika', en: 'Latin America' },
+};
 const fmtN = (n) => Math.round(n).toLocaleString('en-US').replace(/,/g, ' ');
 // Spelets historia för spelardiagrammet: evenemang, klar uppdatering och serveravbrott (expansionerna finns i L.exps).
 // Saknas i sparningar från före diagrammarkörerna och skapas då vid första händelsen.
@@ -127,7 +153,7 @@ export function liveTarget(G, g) {
   const fresh = 0.4 + (0.6 * L.fresh) / 100;
   const price = isF2P(L) ? F2P_POT * SHOP[L.shop | 0].mult : Math.exp(-PRICE_ELAST * (tierMix(G, L).k - 1)) * subEra(yearOf(G.t));
   const ev = eventOn(G, L) ? EVENT_LIFT : 1;
-  return L.pot * age * fresh * price * OPS[L.ops].mult * ev * rivalFactor(G, g);
+  return L.pot * age * fresh * price * OPS[L.ops].mult * ev * rivalFactor(G, g) * regionMult(g);
 }
 // Samma målnivå del för del, för driftpanelen: varje del som multiplikator (1 = ingen påverkan) mot ett nytt spel med
 // färskt innehåll, normalpris och normal drift. full = servrarna är fulla och håller tillbaka spelarna.
@@ -143,6 +169,7 @@ export function liveFactors(G, g) {
     ops: OPS[L.ops].mult,
     event: eventOn(G, L) ? EVENT_LIFT : 1,
     rivals: rivalFactor(G, g),
+    regions: regionMult(g),
     full: cap > 0 ? liveLoad(G) > cap : true,
     target: liveTarget(G, g),
   };
@@ -161,9 +188,9 @@ export function launchLive(G, game) {
   const units = forecast(G, game, { noise: false }) / priceOf(yearOf(G.t));
   game.total *= 0.55;
   game.live = {
-    t0: G.t, pot: units * 0.18 * Math.exp(0.3 * (game.score - 7)), subs: 0, peak: 0, fresh: 100,
+    t0: G.t, pot: units * 0.18 * Math.exp(0.3 * (game.score - 7)) * HOME, subs: 0, peak: 0, fresh: 100,
     price: [1, 1, 1], ops: 1, patch: null, closed: 0, rev: 0, cost: 0, hist: [], outages: 0, ms: 0, exps: [], marks: [],
-    boost: G.t + 10, hype: game.hype || 0,
+    boost: G.t + 10, hype: game.hype || 0, regions: [], region: null,
   };
   G.stats.liveLaunched = (G.stats.liveLaunched || 0) + 1;
   note(G, 'live.news.launch', { title: game.title }, 'good');
@@ -264,6 +291,15 @@ export function liveWeek(G) {
       L.patch = null;
       mark(G, L, 'patch');
       note(G, 'live.news.patch', { title: g.title }, 'good');
+    }
+    // servrarna i en ny region öppnar: fler spelare hittar spelet, och de kommer fort de första veckorna
+    if (L.region && G.t >= L.region.until) {
+      L.regions.push(L.region.id);
+      L.boost = Math.max(L.boost, G.t + 8);
+      mark(G, L, 'region');
+      note(G, 'live.news.region', { title: g.title, region: REGION_NAME[L.region.id] }, 'good');
+      if (L.regions.length === REGIONS.length) G.stats.liveWorld = (G.stats.liveWorld || 0) + 1;
+      L.region = null;
     }
     // löpande uppdateringar startar nästa av sig själva; räcker inte kassan sägs det till en gång
     if (L.auto && !L.patch && L.fresh <= AUTO_FRESH) {
@@ -370,6 +406,35 @@ export function startLiveEvent(G, id) {
   L.evCost = (L.evCost || 0) + cost;
   L.fresh = Math.min(100, L.fresh + EVENT_FRESH);
   L.boost = Math.max(L.boost, G.t + EVENT_WEEKS + 1);
+  return true;
+}
+// Regioner som spelet kan öppna härnäst (inte redan öppna, och regionens marknad finns det året). Ett spel från före
+// regionerna finns redan överallt.
+export function regionsOpen(G, g) {
+  const L = g.live;
+  if (!L || !L.regions) return [];
+  const year = yearOf(G.t);
+  return REGIONS.filter((r) => !L.regions.includes(r.id) && year >= r.from);
+}
+// Att öppna en region (översättning och serverhall): REGION_MONTHS månaders standardintäkter från de spelare regionen
+// väntas ge, plus en grundkostnad. Priset följer spelets potential och inte dagens spelare, så det lönar sig inte att
+// öppna allt första veckan medan servrarna står tomma.
+const REGION_MONTHS = 8;
+export function liveRegionCost(G, g, id) {
+  const year = yearOf(G.t);
+  return Math.round(((g.live.pot * regionBonus(g, id) * subPrices(year)[0] * REGION_MONTHS + 100000 * moneyScale(year)) * REGION[id].cost) / 1000) * 1000;
+}
+export function startLiveRegion(G, id, region) {
+  const g = liveOf(G, id);
+  if (!g) return false;
+  const L = g.live;
+  if (!regionsOpen(G, g).some((r) => r.id === region)) return false;
+  if (L.region) return t('err.liveRegion');
+  const cost = liveRegionCost(G, g, region);
+  if (G.money < cost) return t('err.money');
+  spend(G, cost, 'servers');
+  L.region = { id: region, t: G.t, until: G.t + REGION_WEEKS };
+  L.regionCost = (L.regionCost || 0) + cost;
   return true;
 }
 // Pris för en nivå relativt standardpriset, i steg om 5 %

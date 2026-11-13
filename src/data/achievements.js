@@ -48,6 +48,7 @@ export const ACHIEVEMENTS = [
   A('blend8', 'a_star', 'Genreblandare', 'Genre Blender', 'Få betyg 8 eller mer med ett spel som blandar två genrer.', 'Score 8 or more with a game that blends two genres.', (G) => G.games.some((g) => g.genre2 && g.score >= 8)),
   A('comeback', 'a_star', 'Comeback', 'Comeback', 'Släpp ett spel med betyg 8 eller mer direkt efter ett med under 5.', 'Release a game scoring 8 or more right after one scoring under 5.', (G) => G.games.some((g, i) => i > 0 && g.score >= 8 && G.games[i - 1].score < 5)),
   A('exp3', 'a_globe', 'Levande värld', 'Living World', 'Släpp tre expansioner till samma onlinespel.', 'Release three expansions for the same online game.', (G) => G.games.some((g) => g.live && g.live.exps.length >= 3)),
+  A('live_world', 'a_globe', 'Världen runt', 'Around the World', 'Öppna ett onlinespel i alla regioner.', 'Open an online game in every region.', (G) => (G.stats.liveWorld || 0) >= 1),
   A('events10', 'a_globe', 'Festfixare', 'Party Planner', 'Ordna tio evenemang i dina onlinespel.', 'Run ten events in your online games.', (G) => liveEvents(G) >= 10),
   A('outlast', 'a_globe', 'Sist kvar', 'Last One Standing', 'Ha ett onlinespel igång när en konkurrents MMO stänger.', 'Have an online game running when a rival MMO shuts down.', (G) => (G.stats.outlasted || 0) >= 1),
   A('ports3', 'a_globe', 'Överallt', 'Everywhere', 'Porta ett spel till tre andra plattformar.', 'Port one game to three other platforms.', (G) => G.games.some((g) => (g.ports || []).filter((p) => p.kind !== 'remaster').length >= 3)),
