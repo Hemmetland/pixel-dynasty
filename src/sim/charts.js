@@ -5,7 +5,7 @@ import { emit } from '../core/bus.js';
 import { fmtNum, fmtFull, fmtMoney } from '../core/util.js';
 import { note } from './news.js';
 import { topSellers } from './market.js';
-import { curveFor } from './sales.js';
+import { curveFor, unitRev } from './sales.js';
 import { liveMonth } from './live.js';
 import { yearOf, WEEKS_PER_YEAR, WEEKS_PER_MONTH } from './const.js';
 import { CERTS, certIndex, totalUnits } from '../data/certs.js';
@@ -105,14 +105,19 @@ export function chartWeek(G) {
       S.recUnits = g.id;
     }
   }
+  if (G.t % WEEKS_PER_MONTH === 0) rankMonth(G);
 }
 
 // ── Branschrankningen ─────────────────────────────────────────────
 // Studiornas spelförsäljning de senaste 48 veckorna, din studio bland konkurrenterna. Dina dotterbolag räknas till dig.
 // Konkurrenterna är förlag: storspelen som syns på topplistan är bara en del av det de säljer, så i rankningen räknas hela
-// katalogen (catalogOf), och ett starkare förlag har en bredare katalog. Då börjar du längst ner bland jättarna och får
+// katalogen (catalogOf) plus äldre titlar (backlistOf), och ett starkare förlag har en bredare katalog. Då börjar du längst ner bland jättarna och får
 // arbeta dig uppåt. Rankningen är bara uppvisning: priser, uppköp och din egen försäljning räknas som förut.
 export const catalogOf = (c) => 1.5 + 2.5 * (c.strength || 1);
+// Förlagen fanns före 1980 och säljer äldre titlar hela tiden: en liten grundförsäljning per år som följer prisnivån.
+// Den märks mest de första åren (ingen står på noll, och en garagestudio börjar längst ner) och drunknar sedan i släppen.
+const BACKLIST = 150;
+export const backlistOf = (G, c, weeks = WEEKS_PER_YEAR) => (unitRev(yearOf(G.t)) * BACKLIST * (0.6 + 0.5 * (c.strength || 1)) * weeks) / WEEKS_PER_YEAR;
 // Dina onlinespels intäkter under perioden (abonnemang och butik). Historiken sparar summan per månad; äldre sparningar
 // saknar den och får i stället dagens månadsintäkt gånger tolv.
 function liveSpan(G, g, weeks) {
@@ -145,7 +150,7 @@ export function studioRanking(G, weeks = WEEKS_PER_YEAR) {
   }
   const rows = [];
   for (const c of G.comps || []) {
-    const rev = (by.get(c.id) || 0) * catalogOf(c);
+    const rev = (by.get(c.id) || 0) * catalogOf(c) + backlistOf(G, c, weeks);
     if (c.owned) you += rev;
     else rows.push({ id: c.id, name: c.name, color: c.color, rev, comp: c });
   }
@@ -159,6 +164,23 @@ export function studioRanking(G, weeks = WEEKS_PER_YEAR) {
   return rows;
 }
 export const studioRank = (G) => studioRanking(G).find((r) => r.you);
+// Varje månad: når du en bättre plats än någonsin förr blir det en nyhet med studion du gick om. Platser du redan haft
+// firas inte igen (de byter ofta ägare när släpp kommer och går), så det blir som mest en nyhet per plats på stegen.
+// En sparning från före stegen börjar på den bästa plats den haft, utan nyheter.
+export function rankMonth(G) {
+  const S = G.stats;
+  const rows = studioRanking(G);
+  const i = rows.findIndex((r) => r.you);
+  const me = rows[i];
+  if (S.bestRank == null) {
+    S.bestRank = G.games.length ? Math.min(me.pos, ...(G.ranks || []).map((r) => r.pos)) : rows.length;
+    return;
+  }
+  if (me.pos >= S.bestRank || !(me.rev > 0)) return;
+  S.bestRank = me.pos;
+  const passed = rows[i + 1];
+  if (passed) note(G, 'news.rankUp', { studio: G.studio, n: me.pos, rival: passed.name }, 'good');
+}
 // Årets slut: din plats sparas (för årsrapporten och pilarna i rankningen), och första gången du är störst blir det en nyhet
 export function rankYear(G) {
   const me = studioRank(G);

@@ -756,7 +756,8 @@ ok(true, 'alla händelser körda');
     const s0 = cB.strength;
     const r0 = rk1.find((r) => r.id === cB.id).rev;
     cB.strength = s0 + 0.4;
-    ok(S.catalogOf(cB) > S.catalogOf({ strength: s0 }) && Math.abs(S.studioRanking(GC).find((r) => r.id === cB.id).rev / r0 - S.catalogOf(cB) / S.catalogOf({ strength: s0 })) < 1e-9, 'ett starkare förlag räknas med en bredare katalog');
+    const b0 = S.backlistOf(GC, { strength: s0 });
+    ok(S.catalogOf(cB) > S.catalogOf({ strength: s0 }) && b0 > 0 && S.backlistOf(GC, cB) > b0 && Math.abs((S.studioRanking(GC).find((r) => r.id === cB.id).rev - S.backlistOf(GC, cB)) / (r0 - b0) - S.catalogOf(cB) / S.catalogOf({ strength: s0 })) < 1e-9, 'ett starkare förlag räknas med en bredare katalog, och alla har äldre titlar som säljer');
     cB.strength = s0;
     // onlinespelens intäkter under året räknas till din försäljning (summan nu minus summan vid årets början)
     const lg = GC.games[0];
@@ -779,6 +780,27 @@ ok(true, 'alla händelser körda');
     cA.owned = false;
     S.checkAchievements(GC);
     ok(GC.ach.includes('top_studio') && !GC.ach.includes('top_decade'), 'prestationen för störst i branschen');
+  }
+  // stegen: en ny bästa plats blir en nyhet med studion du gick om, och en plats du redan haft firas inte igen
+  {
+    delete GC.stats.bestRank;
+    const n0 = GC.news.length;
+    S.rankMonth(GC);
+    ok(GC.stats.bestRank === Math.min(S.studioRank(GC).pos, ...GC.ranks.map((r) => r.pos)) && GC.news.length === n0, 'en äldre sparning börjar på sin bästa plats utan nyheter');
+    GC.stats.bestRank = 5;
+    const ups = () => GC.news.filter((n) => n.key === 'news.rankUp').length;
+    const u0 = ups();
+    S.rankMonth(GC);
+    const up = GC.news.find((n) => n.key === 'news.rankUp');
+    const rows = S.studioRanking(GC);
+    const me = rows.find((r) => r.you);
+    ok(up && me.pos < 5 && up.vars.n === me.pos && up.vars.rival === rows[me.pos].name && GC.stats.bestRank === me.pos, 'en ny bästa plats blir en nyhet med studion du gick om');
+    S.rankMonth(GC);
+    ok(ups() === u0 + 1, 'samma plats firas inte igen');
+    const GN = S.newGame({ studio: 'N', seed: 2 });
+    S.makeCompetitors(GN); S.initWorld(GN);
+    S.rankMonth(GN);
+    ok(GN.stats.bestRank === GN.comps.length + 1 && S.studioRank(GN).pos === GN.comps.length + 1 && S.studioRanking(GN).every((r) => r.you || r.rev > 0), 'en ny studio börjar längst ner, under förlag som redan säljer');
   }
   const GD = importCode(exportCode(GC));
   ok(GD && GD.ranks.length === 3 && GD.games[2].cert === 2 && GD.games[2].chart.top === big.chart.top && GD.stats.no1 === 1, 'skivor och listplatser följer med sparningen');

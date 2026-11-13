@@ -150,12 +150,18 @@ function rivalsTab(G) {
       <div style="text-align:right;min-width:60px"><div class="disp" style="font-size:23px;color:var(--gold)">${c.best ? c.best.toFixed(1) : '–'}</div><div class="faint" style="font-size:11px">${t('mkt.games', { n: c.games })}</div></div>${acqCell(G, c)}</div>`;
   };
   // din rad: platsen jämförs med förra årsskiftet
+  // avståndet till studion närmast framför (eller försprånget till tvåan när du är störst)
+  const gapLine = (r) => {
+    const o = rank[r.pos === 1 ? 1 : r.pos - 2];
+    if (!o || !(r.rev > 0)) return '';
+    return `<div style="font-size:12px;margin-top:3px;color:${r.pos === 1 ? 'var(--gold)' : 'var(--accent)'}">${t(r.pos === 1 ? 'mkt.rank.lead' : 'mkt.rank.gap', { v: money(Math.abs(o.rev - r.rev)), studio: `<b>${esc(o.name)}</b>`, n: o.pos })}</div>`;
+  };
   const prev = (G.ranks || []).slice(-1)[0];
   const youRow = (r) => {
     const last = G.games[G.games.length - 1];
     const d = prev ? prev.pos - r.pos : 0;
     const move = d ? `<span class="tag" style="--c:${d > 0 ? 'var(--good)' : 'var(--bug)'};margin-left:8px" data-tip="${esc(t('mkt.rank.since', { n: prev.pos }))}">${d > 0 ? '▲' : '▼'} ${Math.abs(d)}</span>` : '';
-    return `<div class="card row rv-row you" style="gap:14px"><div class="rk disp" style="color:${r.pos === 1 ? 'var(--gold)' : 'var(--accent)'}">${r.pos}</div><div class="dotc" style="background:${r.color}"></div><div style="flex:1;min-width:0"><b>${esc(G.studio)}</b><span class="tag" style="--c:var(--accent);margin-left:8px">${t('mkt.you')}</span>${move}<div class="faint" style="font-size:12px">${last ? t('mkt.lastRel', { title: esc(last.title), v: last.score.toFixed(1) }) : t('mkt.noRel')}</div></div>
+    return `<div class="card row rv-row you" style="gap:14px"><div class="rk disp" style="color:${r.pos === 1 ? 'var(--gold)' : 'var(--accent)'}">${r.pos}</div><div class="dotc" style="background:${r.color}"></div><div style="flex:1;min-width:0"><b>${esc(G.studio)}</b><span class="tag" style="--c:var(--accent);margin-left:8px">${t('mkt.you')}</span>${move}<div class="faint" style="font-size:12px">${last ? t('mkt.lastRel', { title: esc(last.title), v: last.score.toFixed(1) }) : t('mkt.noRel')}</div>${gapLine(r)}</div>
       ${share(r)}
       <div style="text-align:right;min-width:60px"><div class="disp" style="font-size:23px;color:var(--gold)">${G.stats.bestScore ? G.stats.bestScore.toFixed(1) : '–'}</div><div class="faint" style="font-size:11px">${t('mkt.games', { n: G.games.length })}</div></div>${canAcquireAny(G) ? '<div class="acq-cell"></div>' : ''}</div>`;
   };
