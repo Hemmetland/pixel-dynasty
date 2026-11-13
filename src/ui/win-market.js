@@ -1,4 +1,4 @@
-import { $, esc, icon, t, L, UI, act, regWin, bar, money, toast, errToast } from './core.js';
+import { $, esc, icon, t, L, UI, act, regWin, bar, money, toast, errToast, pctShare } from './core.js';
 import { sfx } from '../audio/sfx.js';
 import { glyphImg } from '../render/glyphs.js';
 import { coverImg } from '../render/covers.js';
@@ -142,7 +142,7 @@ function rivalsTab(G) {
     ? `<p class="hint" style="margin-bottom:10px">${icon('crown')} ${t('acq.head', { n: own, max: ACQ_MAX, v: money(subIncome(G)) })} ${t('acq.help', { pct: Math.round(SUB_SHARE * 100) })}</p>`
     : yearOf(G.t) >= 1998 ? `<p class="hint" style="margin-bottom:10px">${icon('lock')} ${t('acq.locked')}</p>` : '';
   const lastOf = (c) => G.market.releases.filter((r) => r.comp === c.id).slice(-1)[0];
-  const share = (r) => `<div class="rv-str share" style="width:150px">${bar((r.rev / top) * 100, r.color, 'thin')}<div class="faint" style="font-size:11px;margin-top:3px">${t('mkt.rank.share', { n: Math.round(r.share * 100) })} · ${money(r.rev)}</div></div>`;
+  const share = (r) => `<div class="rv-str share" style="width:150px">${bar((r.rev / top) * 100, r.color, 'thin')}<div class="faint" style="font-size:11px;margin-top:3px">${t('mkt.rank.share', { n: pctShare(r.share) })} · ${money(r.rev)}</div></div>`;
   const compRow = (c, r) => {
     const last = lastOf(c);
     return `<div class="card row rv-row ${c.owned ? 'owned' : ''}" style="gap:14px"><div class="rk disp">${r ? r.pos : ''}</div><div class="dotc" style="background:${c.color}"></div><div style="flex:1;min-width:0"><b>${esc(c.name)}</b><div class="faint" style="font-size:12px">${last ? t('mkt.lastRel', { title: esc(L(last.title)), v: last.score.toFixed(1) }) : t('mkt.noRel')}</div></div>

@@ -617,6 +617,11 @@ input[type='range']::-moz-range-thumb { width: 18px; height: 18px; border-radius
 .sh-rec:hover { border-color: rgba(255, 207, 90, 0.5); }
 .sh-rec b { font: 700 19px/1.15 var(--disp); color: var(--gold); }
 .sh-rec .sh-t { font-size: 12px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.fans { display: grid; grid-template-columns: repeat(auto-fit, minmax(210px, 1fr)); gap: 10px; }
+.fan { padding: 10px 12px; border-radius: 12px; background: rgba(150, 172, 255, 0.06); border: 1px solid var(--line); border-left: 3px solid var(--c); display: flex; flex-direction: column; gap: 8px; }
+.fan p { margin: 0; font-size: 13px; line-height: 1.45; font-style: italic; flex: 1; }
+.fan-n { display: flex; align-items: center; gap: 7px; font-size: 12px; color: var(--muted); min-width: 0; }
+.fan-av { flex: none; width: 20px; height: 20px; border-radius: 50%; display: grid; place-items: center; font-size: 11px; font-weight: 700; color: #0b1026; background: var(--c); }
 .fm-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(230px, 1fr)); gap: 14px 22px; align-items: center; }
 .fm-rank { font-size: 34px; line-height: 1; min-width: 54px; text-align: center; }
 .fm-disc { width: 44px; height: 44px; border-radius: 50%; display: grid; place-items: center; flex: none; color: var(--c); background: color-mix(in srgb, var(--c) 12%, transparent); }

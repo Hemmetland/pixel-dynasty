@@ -6,7 +6,8 @@ import { fmtNum, fmtFull, fmtMoney } from '../core/util.js';
 import { note } from './news.js';
 import { topSellers } from './market.js';
 import { curveFor } from './sales.js';
-import { yearOf, WEEKS_PER_YEAR } from './const.js';
+import { liveMonth } from './live.js';
+import { yearOf, WEEKS_PER_YEAR, WEEKS_PER_MONTH } from './const.js';
 import { CERTS, certIndex, totalUnits } from '../data/certs.js';
 
 export { CERTS, certIndex, totalUnits };
@@ -108,7 +109,23 @@ export function chartWeek(G) {
 
 // ── Branschrankningen ─────────────────────────────────────────────
 // Studiornas spelförsäljning de senaste 48 veckorna, din studio bland konkurrenterna. Dina dotterbolag räknas till dig.
-// Bara spelförsäljning (egna spel, porteringar och konkurrenternas släpp), så att alla mäts med samma mått.
+// Konkurrenterna är förlag: storspelen som syns på topplistan är bara en del av det de säljer, så i rankningen räknas hela
+// katalogen (catalogOf), och ett starkare förlag har en bredare katalog. Då börjar du längst ner bland jättarna och får
+// arbeta dig uppåt. Rankningen är bara uppvisning: priser, uppköp och din egen försäljning räknas som förut.
+export const catalogOf = (c) => 1.5 + 2.5 * (c.strength || 1);
+// Dina onlinespels intäkter under perioden (abonnemang och butik). Historiken sparar summan per månad; äldre sparningar
+// saknar den och får i stället dagens månadsintäkt gånger tolv.
+function liveSpan(G, g, weeks) {
+  const L = g.live;
+  if (!L) return 0;
+  const from = G.t - weeks;
+  const h = (L.hist || []).filter((x) => x.r != null);
+  if (!h.length) return L.closed ? 0 : (liveMonth(G, g).rev * weeks) / WEEKS_PER_MONTH;
+  let base = 0; // summan vid periodens början
+  for (const x of h) if (x.t <= from) base = x.r;
+  if (h[0].t > from && L.t0 <= from) base = h[0].r; // historiken börjar mitt i perioden: räkna från dess första punkt
+  return Math.max(0, L.rev - base);
+}
 export function studioRanking(G, weeks = WEEKS_PER_YEAR) {
   const from = G.t - weeks; // veckor efter 'from' räknas
   const by = new Map();
@@ -123,13 +140,14 @@ export function studioRanking(G, weeks = WEEKS_PER_YEAR) {
   const span = (x) => x.weekly.reduce((a, v, i) => a + (x.t + 1 + i > from ? v : 0), 0);
   let you = 0;
   for (const g of G.games) {
-    you += span(g);
+    you += span(g) + liveSpan(G, g, weeks);
     for (const p of g.ports || []) you += span(p);
   }
   const rows = [];
   for (const c of G.comps || []) {
-    if (c.owned) you += by.get(c.id) || 0;
-    else rows.push({ id: c.id, name: c.name, color: c.color, rev: by.get(c.id) || 0, comp: c });
+    const rev = (by.get(c.id) || 0) * catalogOf(c);
+    if (c.owned) you += rev;
+    else rows.push({ id: c.id, name: c.name, color: c.color, rev, comp: c });
   }
   rows.push({ id: 0, name: G.studio, color: '#4de1d0', rev: you, you: true });
   rows.sort((a, b) => b.rev - a.rev || (a.you ? 1 : b.you ? -1 : a.id - b.id));

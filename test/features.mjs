@@ -749,9 +749,24 @@ ok(true, 'alla händelser körda');
     ok(rk0.length === GC.comps.length + 1 && me0.pos === 1 && me0.rev === 6e8 + 150 && Math.abs(rk0.reduce((a, r) => a + r.share, 0) - 1) < 1e-9, 'din studio står i rankningen efter årets spelförsäljning');
     const cA = GC.comps[0], cB = GC.comps[1];
     const rel = (c, total) => GC.market.releases.push({ id: GC.uid++, t: GC.t - 3, comp: c.id, studio: c.name, color: c.color, title: { sv: 'R', en: 'R' }, score: 8, total, platform: 'pc', genre: 'rpg', topic: 'fantasy', scope: 'large', price: 30, tail: 1 });
-    rel(cA, 3e10); rel(cB, 1e9);
+    rel(cA, 3e10); rel(cB, 1e8);
     const rk1 = S.studioRanking(GC);
-    ok(rk1[0].id === cA.id && S.studioRank(GC).pos === 2 && rk1[0].rev > 0 && rk1[0].rev < 3e10, 'en konkurrent som säljer mer går förbi (bara veckorna som gått räknas)');
+    ok(rk1[0].id === cA.id && S.studioRank(GC).pos === 2 && rk1[0].rev > 0 && rk1[0].rev < 3e10 * S.catalogOf(cA), 'en konkurrent som säljer mer går förbi (bara veckorna som gått räknas)');
+    // förlagen räknas med hela sin katalog, och ett starkare förlag har en bredare
+    const s0 = cB.strength;
+    const r0 = rk1.find((r) => r.id === cB.id).rev;
+    cB.strength = s0 + 0.4;
+    ok(S.catalogOf(cB) > S.catalogOf({ strength: s0 }) && Math.abs(S.studioRanking(GC).find((r) => r.id === cB.id).rev / r0 - S.catalogOf(cB) / S.catalogOf({ strength: s0 })) < 1e-9, 'ett starkare förlag räknas med en bredare katalog');
+    cB.strength = s0;
+    // onlinespelens intäkter under året räknas till din försäljning (summan nu minus summan vid årets början)
+    const lg = GC.games[0];
+    const meA = S.studioRank(GC).rev;
+    lg.live = { t0: GC.t - 200, rev: 5000, closed: 1, hist: [{ t: GC.t - 60, v: 1, r: 1000 }, { t: GC.t - 40, v: 1, r: 3000 }] };
+    ok(Math.abs(S.studioRank(GC).rev - meA - 4000) < 1e-6, 'onlinespelens intäkter under året räknas med');
+    lg.live.t0 = GC.t - 10;
+    lg.live.hist = [{ t: GC.t - 4, v: 1, r: 2000 }];
+    ok(Math.abs(S.studioRank(GC).rev - meA - 5000) < 1e-6, 'ett onlinespel som släpptes under året räknas från starten');
+    delete lg.live;
     const y0 = S.rankYear(GC);
     ok(GC.ranks.length === 1 && GC.ranks[0].pos === 2 && y0.prev === null && !GC.stats.topStudio, 'årets plats sparas');
     cA.owned = true;
@@ -767,6 +782,51 @@ ok(true, 'alla händelser körda');
   }
   const GD = importCode(exportCode(GC));
   ok(GD && GD.ranks.length === 3 && GD.games[2].cert === 2 && GD.games[2].chart.top === big.chart.top && GD.stats.no1 === 1, 'skivor och listplatser följer med sparningen');
+}
+// röster från fansen: tre repliker per spel på båda språken, valda utan G.rng, som följer betyget, det som stack ut och
+// läget just nu, och en replik i krönikan två veckor efter släppet
+{
+  const { FAN_FLAGS, FAN_SPECIAL, FAN_BANDS } = await import('../src/data/fanvoices.js');
+  const GF = S.newGame({ studio: 'Fanstudion', seed: 33 });
+  S.makeCompetitors(GF); S.initWorld(GF);
+  GF.t = 48 * 6; // 1986
+  const mk = (id, score, extra = {}) => Object.assign({ id, title: 'Spel ' + id, t: GF.t, score, topic: 'fantasy', genre: 'rpg', platform: 'pc', scope: 'medium', weekly: [10], units: 5, revenue: 10, total: 80, priceAt: 30, tail: 1, ended: false, fansGained: 0, hype: 30, flags: [], insights: [] }, extra);
+  const hit = mk(1, 9.2, { flags: [{ k: 'bugs', v: 1, w: 1 }, { k: 'tech', v: -1, w: 1 }] });
+  const flop = mk(2, 3.5, { flags: [{ k: 'bugs', v: -1, w: 1 }] });
+  GF.games.push(hit, flop);
+  const rng0 = GF.rng;
+  const vh = S.fanVoices(GF, hit);
+  const vf = S.fanVoices(GF, flop);
+  const whole = (v) => ['sv', 'en'].every((k) => v.text[k] && !/[{}]/.test(v.text[k]) && v.name[k]);
+  ok(vh.length === 3 && vf.length === 3 && [...vh, ...vf].every(whole) && GF.rng === rng0, 'tre röster per spel på båda språken, utan att röra slumpföljden');
+  ok(JSON.stringify(S.fanVoices(GF, hit)) === JSON.stringify(vh) && new Set(vh.map((v) => v.text.sv)).size === 3 && new Set(vh.map((v) => v.name.sv)).size === 3, 'rösterna är desamma varje gång och upprepar sig inte');
+  ok(vh[0].kind === 'band' && vh[0].mood === 1 && FAN_BANDS[0].sv.some((x) => x.replace('{title}', hit.title).replace('{studio}', GF.studio) === vh[0].text.sv) && vf[0].mood === -1, 'första rösten följer betyget');
+  const has = (vs, pool) => vs.some((v) => pool.sv.some((x, i) => v.text.sv.toLowerCase().slice(0, 12) === x.replace('{plat}', PLATFORM.pc.name).toLowerCase().slice(0, 12) && pool.en[i].slice(0, 6).toLowerCase() === v.text.en.slice(0, 6).toLowerCase()));
+  ok(vh[1].kind === 'flag' && vh[1].mood === 1 && has([vh[1]], FAN_FLAGS.bugs['+']) && has([vf[1]], FAN_FLAGS.bugs['-']) && vf[1].mood === -1, 'andra rösten tar upp en styrka i ett bra spel och en svaghet i ett dåligt');
+  ok(vh[2].kind === 'flag' && vh[2].mood === -1 && has([vh[2]], FAN_FLAGS.tech['-']), 'tredje rösten kan vara en avvikande röst');
+  ok(vh[0].name.sv.endsWith(' år') && !vh[0].name.en.endsWith(' år') && S.fanSource(hit) === 'letter' && S.fanSource({ t: 48 * 20 }) === 'forum' && S.fanVoices(GF, mk(3, 7, { t: 48 * 32 }))[0].name.sv.startsWith('@'), 'insändare först, sedan forum och flödet');
+  // uppföljaren nämner föregångaren
+  const seq = mk(4, 8.5, { sequelOf: 1, flags: [{ k: 'sequel', v: 1, w: 1 }] });
+  GF.games.push(seq);
+  ok(S.fanVoices(GF, seq)[1].text.sv.includes(hit.title) || S.fanVoices(GF, seq)[1].text.sv === 'Så här gör man en uppföljare.', 'uppföljarens röst jämför med föregångaren');
+  // läget: en klassiker efter fem år, ett nedlagt onlinespel, gammalt innehåll
+  const sp = (g) => S.fanVoices(GF, g).find((v) => v.kind === 'special');
+  ok(!sp(hit), 'ett nytt spel har inget eftermäle');
+  GF.t += 5 * 48;
+  ok(sp(hit) && sp(hit).mood === 1 && FAN_SPECIAL.classic.sv.some((x) => x.replace('{title}', hit.title) === sp(hit).text.sv) && FAN_SPECIAL.cult.sv.some((x) => x.replace('{title}', flop.title) === sp(flop).text.sv), 'efter fem år blir ett toppspel en klassiker och ett bottennapp kult');
+  hit.live = { closed: GF.t - 1 };
+  ok(FAN_SPECIAL.liveClosed.sv.some((x) => x.replace('{title}', hit.title) === sp(hit).text.sv), 'ett nedlagt onlinespel saknas av spelarna');
+  delete hit.live;
+  // krönikan: en replik två veckor efter släppet, och bara då
+  const fresh = mk(5, 8.2, { t: GF.t - 2, weekly: [10, 8], flags: [{ k: 'design', v: 1, w: 1 }] });
+  GF.games.push(fresh);
+  const money0 = GF.money, fans0 = GF.fans;
+  S.fanWeek(GF);
+  const fn = GF.news.filter((n) => n.key === 'news.fan');
+  ok(fn.length === 1 && fn[0].vars.title === fresh.title && fn[0].vars.quote.sv && fn[0].vars.quote.en && fn[0].vars.name.sv && fn[0].kind === 'good' && has([{ text: fn[0].vars.quote }], FAN_FLAGS.design['+']), 'krönikan citerar en spelare två veckor efter släppet');
+  fresh.weekly.push(6);
+  S.fanWeek(GF);
+  ok(GF.news.filter((n) => n.key === 'news.fan').length === 1 && GF.money === money0 && GF.fans === fans0 && GF.rng === rng0, 'bara en gång per spel, och inget rör pengar, fans eller slumpföljden');
 }
 // årets summa per kategori: förra året till finansfönstret och årsrapporten, en äldre sparning räknar en del av året
 {

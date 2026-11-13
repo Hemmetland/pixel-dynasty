@@ -16,6 +16,7 @@ import { groupWeek, costSave } from './group.js';
 import { storeWeek } from './store.js';
 import { hwWeek } from './hardware.js';
 import { chartWeek, rankYear } from './charts.js';
+import { fanWeek } from './fans.js';
 import { monthlyMarket, updateTrends } from './market.js';
 import { rollDevEvent, rollStudioEvent } from './events.js';
 import { runAwards, expoOffer } from './awards.js';
@@ -49,6 +50,7 @@ function weekly(G) {
   salesWeek(G);
   portWeek(G);
   chartWeek(G);
+  fanWeek(G);
   pubWeek(G);
   frWeek(G);
   subWeek(G);

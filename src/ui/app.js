@@ -255,7 +255,8 @@ export const app = {
     if (!vars) return vars;
     const o = { ...vars };
     for (const k of Object.keys(o)) {
-      if (o[k] && typeof o[k] === 'object') o[k] = `<b>${esc(L(o[k]))}</b>`;
+      if (k === 'quote') o[k] = `<i>${esc(L(o[k]))}</i>`; // ett citat (röster från fansen) står i kursiv, inte i fetstil
+      else if (o[k] && typeof o[k] === 'object') o[k] = `<b>${esc(L(o[k]))}</b>`;
       else if (typeof o[k] === 'string' && k !== 'html') o[k] = `<b>${esc(o[k])}</b>`;
     }
     return o;

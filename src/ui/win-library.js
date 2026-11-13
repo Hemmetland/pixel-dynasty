@@ -21,6 +21,8 @@ import { studioNotes } from './prompts.js';
 import { crowdNote } from './crowd.js';
 import { openExpansion } from './wizard.js';
 import { CERTS, certOf, certCounts, nextCert, totalUnits, records } from '../sim/charts.js';
+import { fanVoices, fanSource } from '../sim/fans.js';
+import { FAN_SOURCE } from '../data/fanvoices.js';
 import { SUB_TIERS, OPS, PRICE_MIN, PRICE_MAX, PATCH_WEEKS, EVENT_WEEKS, SURGE_WEEKS, tierMix, liveMonth, serverCap, livePatchCost, startLivePatch, setLivePrice, setLiveOps, closeLive, rivalMmos, rivalPull, rivalFactor, liveFactors, setLiveAuto, AUTO_FRESH, AUTO_BUFFER, eventOn, eventReadyIn, liveEventCost, startLiveEvent, SHOP, isF2P, canGoF2P, goF2P, setLiveShop, liveLoad, liveArpu } from '../sim/live.js';
 
 // Stäng servrarna och gör till gratisspel kräver två tryck: första trycket "armerar" knappen för det spelet
@@ -28,6 +30,9 @@ let closeArmed = null;
 let f2pArmed = null;
 // Fasta nycklar (inga dynamiska prefix): innehållets skick, driftnivåer och abonnemangsnivåer
 const FRESH_KEY = { hi: 'live.fresh.hi', mid: 'live.fresh.mid', lo: 'live.fresh.lo' };
+// Samma gränser för etiketten, mätaren och märket i utsikterna (75 = högst 15 % färre spelare än med helt nytt innehåll)
+const freshBand = (L) => (L.fresh >= 75 ? 'hi' : L.fresh >= 40 ? 'mid' : 'lo');
+const FRESH_COL = { hi: 'var(--good)', mid: 'var(--warn)', lo: 'var(--bug)' };
 const OPS_KEY = ['live.ops.0', 'live.ops.1', 'live.ops.2'];
 const TIER_KEY = { std: 'live.tier.std', pro: 'live.tier.pro', max: 'live.tier.max' };
 const SHOP_KEY = ['live.shop.0', 'live.shop.1', 'live.shop.2'];
@@ -154,7 +159,12 @@ function outlook(G, g) {
   const chips = ['fresh', 'price', 'ops', 'event', 'rivals', 'era', 'age']
     .map((k) => [k === 'price' && isF2P(L) ? 'shop' : k, Math.round((f[k] - 1) * 100)])
     .filter(([, p]) => p !== 0)
-    .map(([k, p]) => `<span class="chip c" style="--c:${p > 0 ? 'var(--good)' : 'var(--bug)'}">${t(FX_KEY[k])} <b class="num">${p > 0 ? '+' : '−'}${Math.abs(p)} %</b></span>`);
+    .map(([k, p]) => {
+      // innehållet drar alltid lite neråt: märket följer mätarens färg och är neutralt så länge innehållet räknas som färskt
+      const fb = k === 'fresh' ? freshBand(L) : '';
+      const c = fb ? (fb === 'hi' ? 'var(--muted)' : FRESH_COL[fb]) : p > 0 ? 'var(--good)' : 'var(--bug)';
+      return `<span class="chip c" style="--c:${c}">${t(FX_KEY[k])} <b class="num">${p > 0 ? '+' : '−'}${Math.abs(p)} %</b></span>`;
+    });
   if (f.full) chips.unshift(`<span class="chip c" style="--c:var(--bug)">${icon('lock')}${t('live.fx.full')}</span>`);
   return `<div class="lbl" style="margin:16px 0 4px">${t('live.outlook')}</div>
     <div class="row wrap" style="gap:6px 10px" data-tip="${esc(t('live.trendHelp'))}"><b class="num" style="color:${col};font-size:15px">${t(TREND_KEY[dir], { n: fmtNum(f.target) })}</b>${chips.join('')}</div>`;
@@ -180,8 +190,8 @@ function livePanel(G, g) {
   const used = liveLoad(G);
   const f2p = isF2P(L);
   const load = cap ? used / cap : 1;
-  const fk = L.fresh >= 60 ? 'hi' : L.fresh >= 30 ? 'mid' : 'lo';
-  const fcol = fk === 'hi' ? 'var(--good)' : fk === 'mid' ? 'var(--warn)' : 'var(--bug)';
+  const fk = freshBand(L);
+  const fcol = FRESH_COL[fk];
   const tiers = SUB_TIERS.map((id, i) => `<div class="ltier"><div style="flex:1;min-width:0"><b>${t(TIER_KEY[id])}</b><div class="faint" style="font-size:11.5px">${t('live.share', { n: Math.round(mix.share[i] * 100) })} · ${t('live.default', { v: money(mix.def[i]) })}</div></div>
       <button class="iconbtn" data-act="lv-price" data-id="${g.id}" data-i="${i}" data-d="-1" aria-label="${t('live.cheaper')}" data-tip="${t('live.cheaper')}" ${L.price[i] <= PRICE_MIN ? 'disabled' : ''}>${icon('minus')}</button>
       <b class="num lprice">${money(mix.prices[i])}<span class="faint">${t('ui.perMonth')}</span></b>
@@ -260,6 +270,14 @@ function fameCard(G, g) {
       ${nx ? `<div style="margin:5px 0 3px">${bar(nx.pct * 100, nx.cert.color, 'thin')}</div><div class="faint" style="font-size:12px">${t('lib.nextCert', { n: fmtNum(Math.ceil(nx.left)), cert: L(nx.cert.name) })}</div>` : `<div class="faint" style="font-size:12px">${t('lib.allCerts')}</div>`}</div>`;
   return `<div class="card fame" style="margin-top:16px"><div class="row wrap" style="margin-bottom:8px;gap:6px 8px"><div class="lbl" style="margin-right:auto">${t('lib.chart')}</div>${tags.map((x) => `<span class="tag" style="--c:var(--gold)">${icon('star')}${x}</span>`).join('')}</div>
     <div class="fm-grid"><div class="row" style="gap:12px">${chart}</div><div class="row" style="gap:12px" data-tip="${esc(t('lib.shelfHelp'))}">${disc}</div></div></div>`;
+}
+
+// Röster från spelarna under recensionerna: två från släppet och en som följer läget just nu
+const MOOD_COL = { 1: 'var(--good)', 0: 'var(--warn)', '-1': 'var(--bug)' };
+function fansCard(G, g) {
+  const vs = fanVoices(G, g);
+  return `<div class="card" style="margin-top:16px"><div class="row" style="margin-bottom:8px" data-tip="${esc(t('lib.fansHelp'))}"><div class="lbl">${t('lib.fans')}</div><span class="sp"></span><span class="faint" style="font-size:12px">${L(FAN_SOURCE[fanSource(g)])}</span></div>
+    <div class="fans">${vs.map((v) => `<div class="fan" style="--c:${MOOD_COL[v.mood]}"><p>${t('lib.quote', { q: esc(L(v.text)) })}</p><div class="fan-n"><span class="fan-av">${esc(L(v.name).replace('@', '').charAt(0).toUpperCase())}</span>${esc(L(v.name))}</div></div>`).join('')}</div></div>`;
 }
 
 function listView(G) {
@@ -407,6 +425,7 @@ function detailView(G, id) {
     <div class="card" style="margin-top:16px"><div class="row" style="margin-bottom:6px"><div class="lbl">${t('lib.sales')}</div><span class="sp"></span><span class="faint" style="font-size:12px">${g.ended ? t('lib.ended') : t('lib.forecast', { v: money(g.total) })}</span></div>${salesChart(g)}</div>
     ${portsPanel(G, g)}
     <div class="grid" style="grid-template-columns:repeat(auto-fit,minmax(240px,1fr));margin-top:16px">${texts.map((r, i) => `<div class="rev show" style="--c:${REVIEWERS[i].color}"><div class="rv-h"><div class="rv-av">${icon(['cpu', 'book', 'heart', 'skull'][i])}</div><div style="flex:1"><b>${L(REVIEWERS[i].name)}</b></div><div class="rv-s num" style="color:${scoreColor(r.score)}">${r.score.toFixed(1)}</div></div><div class="rv-t"><b>${esc(r.headline)}</b>${r.detail ? `<p>${esc(r.detail)}</p>` : ''}</div></div>`).join('')}</div>
+    ${fansCard(G, g)}
     ${g.insights?.length ? `<div class="card" style="margin-top:16px"><div class="lbl" style="margin-bottom:8px">${t('rep.notes')}</div><div class="ins">${studioNotes(g, g)}${crowdNote(G, g, true)}</div></div>` : ''}
     <div class="row wrap" style="gap:10px;margin-top:16px">
       ${G.u.flags.sequels ? `<button class="btn primary" data-act="lib-seq" data-id="${g.id}" ${G.job ? 'disabled' : ''}>${icon('film')}${t('lib.sequel')}</button>` : `<span class="hint">${icon('lock')} ${t('lib.seqLocked')}</span>`}

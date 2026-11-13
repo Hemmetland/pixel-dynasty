@@ -321,7 +321,7 @@ export function liveWeek(G) {
       }
     }
     if (G.t % WEEKS_PER_MONTH === 0) {
-      L.hist.push({ t: G.t, v: Math.round(L.subs) });
+      L.hist.push({ t: G.t, v: Math.round(L.subs), r: Math.round(L.rev) }); // r = intäkter hittills (för branschrankningen)
       if (L.hist.length > 120) L.hist.shift();
     }
   }

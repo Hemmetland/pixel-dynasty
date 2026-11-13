@@ -277,3 +277,5 @@ export const MONTHS = {
   sv: ['jan', 'feb', 'mar', 'apr', 'maj', 'jun', 'jul', 'aug', 'sep', 'okt', 'nov', 'dec'],
   en: ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'],
 };
+// En marknadsandel i hela procent; en liten andel som avrundas till noll skrivs "<1" så att den inte ser ut att saknas
+export const pctShare = (x) => (x > 0 && Math.round(x * 100) === 0 ? '&lt;1' : Math.round(x * 100));

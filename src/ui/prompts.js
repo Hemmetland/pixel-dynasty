@@ -1,4 +1,4 @@
-import { $, $$, esc, icon, t, L, UI, act, money, toast, errToast, bar } from './core.js';
+import { $, $$, esc, icon, t, L, UI, act, money, toast, errToast, bar, pctShare } from './core.js';
 import { sfx } from '../audio/sfx.js';
 import { glyphImg } from '../render/glyphs.js';
 import { coverImg } from '../render/covers.js';
@@ -426,7 +426,7 @@ function yearPrompt(app, G, p, finish) {
   const rkPrev = (G.ranks || []).find((r) => r.y === p.year - 1);
   const rkD = rk && rkPrev ? rkPrev.pos - rk.pos : 0;
   const rankCard = rk
-    ? `<div class="card yr-rank ${rk.pos === 1 ? 'top' : ''}"><div class="yr-pos">${rk.pos}</div><div style="flex:1;min-width:0"><div class="lbl">${t('year.rank')}</div><div class="h3">${rk.pos === 1 ? t('year.rankTop') : t('year.rankPos', { n: rk.pos, m: 1 + G.comps.filter((c) => !c.owned).length })}${rkD ? `<span class="tag" style="--c:${rkD > 0 ? 'var(--good)' : 'var(--bug)'};margin-left:8px">${rkD > 0 ? '▲' : '▼'} ${Math.abs(rkD)}</span>` : ''}</div><div class="faint" style="font-size:12.5px">${t('mkt.rank.share', { n: Math.round(rk.share * 100) })} · ${t('mkt.rank.help')}</div></div></div>`
+    ? `<div class="card yr-rank ${rk.pos === 1 ? 'top' : ''}"><div class="yr-pos">${rk.pos}</div><div style="flex:1;min-width:0"><div class="lbl">${t('year.rank')}</div><div class="h3">${rk.pos === 1 ? t('year.rankTop') : t('year.rankPos', { n: rk.pos, m: 1 + G.comps.filter((c) => !c.owned).length })}${rkD ? `<span class="tag" style="--c:${rkD > 0 ? 'var(--good)' : 'var(--bug)'};margin-left:8px">${rkD > 0 ? '▲' : '▼'} ${Math.abs(rkD)}</span>` : ''}</div><div class="faint" style="font-size:12.5px">${t('mkt.rank.share', { n: pctShare(rk.share) })} · ${t('mkt.rank.help')}</div></div></div>`
     : '';
   UI.modal(`
     <div class="win-head"><div class="wi" style="--wc:var(--gold)">${icon('calendar')}</div><h2>${t('year.title', { y: p.year })}<div class="sub">${esc(G.studio)}</div></h2></div>
