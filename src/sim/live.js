@@ -424,6 +424,13 @@ export function liveRegionCost(G, g, id) {
   const year = yearOf(G.t);
   return Math.round(((g.live.pot * regionBonus(g, id) * subPrices(year)[0] * REGION_MONTHS + 100000 * moneyScale(year)) * REGION[id].cost) / 1000) * 1000;
 }
+// Vad regionen väntas ge med dagens innehåll, priser och drift: spelare, och intäkt per månad efter driftkostnaden.
+// Priset har en grundkostnad, så för ett litet onlinespel kan en region kosta mer än den någonsin ger tillbaka.
+export function regionGain(G, g, id) {
+  const L = g.live;
+  const players = (liveTarget(G, g) / regionMult(g)) * regionBonus(g, id);
+  return { players, month: players * (liveArpu(G, L) - costPerSub(G, L)) };
+}
 export function startLiveRegion(G, id, region) {
   const g = liveOf(G, id);
   if (!g) return false;

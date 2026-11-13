@@ -208,6 +208,10 @@ export function relUnitsTotal(rel, now) {
 }
 
 // Topplista över de senaste veckorna: konkurrenter + dina spel.
+// På topplistan räknas konkurrenternas spel med förlagens räckvidd (egen publik, reklam och butiksavtal): CHART_REACH
+// gånger den försäljning släppet har i böckerna. Utan den toppade en framgångsrik studio listan med nästan varje spel,
+// och en listetta betydde ingenting. Gäller bara listan: priser, uppköp, butik och royalty räknar som förut.
+export const CHART_REACH = 5;
 export function topSellers(G, weeks = 12, limit = 10) {
   const now = G.t;
   const rows = [];
@@ -216,7 +220,7 @@ export function topSellers(G, weeks = 12, limit = 10) {
     let rev = 0;
     for (let w = Math.max(0, now - r.t - weeks + 1); w <= now - r.t; w++) {
       const c = curveFor(r.score, r.tail || 1)[w];
-      if (c) rev += r.total * c;
+      if (c) rev += r.total * c * CHART_REACH;
     }
     if (rev > 0) rows.push({ title: r.title, studio: r.studio, color: r.color, score: r.score, rev, units: rev / r.price, platform: r.platform, genre: r.genre, topic: r.topic, yours: false, id: r.id, mmo: !!r.mmo });
   }

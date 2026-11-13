@@ -144,7 +144,11 @@ function handlePending(G) {
       const ev = EV[p.ev];
       S.resolveEvent(G, p.id, Math.floor(Math.random() * ev.choices.length));
     } else if (p.type === 'bailout') { S.takeBailout(G); G.pending.shift(); } else if (p.type === 'expo') S.resolveExpo(G, p.id, 0);
-    else G.pending.shift();
+    else {
+      // AWARDDBG=1: galans vinnare de första åren (kategori, betyg, * = ditt spel, antal på topplistan just då)
+      if (process.env.AWARDDBG && p.type === 'award' && p.year <= 1984) console.log(`   gala ${p.year}: ` + p.cats.map((c) => `${c.id} ${c.nominees[0].score.toFixed(1)}${c.nominees[0].yours ? '*' : ''} (${c.nominees.map((n) => n.score.toFixed(1) + (n.yours ? '*' : '')).join(' ')})`).join(' | ') + ` chart ${S.topSellers(G, 12, 10).length}`);
+      G.pending.shift();
+    }
   }
 }
 

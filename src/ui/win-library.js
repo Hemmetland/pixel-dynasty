@@ -23,7 +23,7 @@ import { openExpansion } from './wizard.js';
 import { CERTS, certOf, certCounts, nextCert, totalUnits, records } from '../sim/charts.js';
 import { fanVoices, fanSource } from '../sim/fans.js';
 import { FAN_SOURCE } from '../data/fanvoices.js';
-import { SUB_TIERS, OPS, PRICE_MIN, PRICE_MAX, PATCH_WEEKS, EVENT_WEEKS, SURGE_WEEKS, tierMix, liveMonth, serverCap, livePatchCost, startLivePatch, setLivePrice, setLiveOps, closeLive, rivalMmos, rivalPull, rivalFactor, liveFactors, setLiveAuto, AUTO_FRESH, AUTO_BUFFER, eventOn, eventReadyIn, liveEventCost, startLiveEvent, SHOP, isF2P, canGoF2P, goF2P, setLiveShop, liveLoad, liveArpu, REGIONS, REGION_NAME, REGION_WEEKS, regionBonus, regionsOpen, liveRegionCost, startLiveRegion } from '../sim/live.js';
+import { SUB_TIERS, OPS, PRICE_MIN, PRICE_MAX, PATCH_WEEKS, EVENT_WEEKS, SURGE_WEEKS, tierMix, liveMonth, serverCap, livePatchCost, startLivePatch, setLivePrice, setLiveOps, closeLive, rivalMmos, rivalPull, rivalFactor, liveFactors, setLiveAuto, AUTO_FRESH, AUTO_BUFFER, eventOn, eventReadyIn, liveEventCost, startLiveEvent, SHOP, isF2P, canGoF2P, goF2P, setLiveShop, liveLoad, liveArpu, REGIONS, regionGain, REGION_NAME, REGION_WEEKS, regionBonus, regionsOpen, liveRegionCost, startLiveRegion } from '../sim/live.js';
 
 // Stäng servrarna och gör till gratisspel kräver två tryck: första trycket "armerar" knappen för det spelet
 let closeArmed = null;
@@ -199,7 +199,10 @@ function regionPanel(G, g) {
     if (year < r.from) return row(name, sub, `<span class="faint" style="font-size:12px">${icon('lock')} ${t('live.regionFrom', { y: r.from })}</span>`);
     const cost = liveRegionCost(G, g, r.id);
     const can = open.some((x) => x.id === r.id) && !lv.region;
-    return row(name, sub, `<button class="btn sm" data-act="lv-region" data-id="${g.id}" data-r="${r.id}" ${can && G.money >= cost ? '' : 'disabled'}>${icon('globe')}${t('live.regionGo')} · ${money(cost)}</button>`);
+    // vad regionen väntas ge, så att priset går att väga mot intäkten
+    const gain = regionGain(G, g, r.id);
+    const est = t('live.regionGain', { n: Math.round(gain.players) === 1 ? 1 : fmtNum(gain.players), v: money(gain.month) });
+    return row(name, `${sub}<br>${est}`, `<button class="btn sm" data-act="lv-region" data-id="${g.id}" data-r="${r.id}" ${can && G.money >= cost ? '' : 'disabled'}>${icon('globe')}${t('live.regionGo')} · ${money(cost)}</button>`);
   }).join('');
   return `${head}<p class="hint" style="margin-bottom:8px">${t('live.regionsHelp', { n: REGION_WEEKS })}</p><div class="col" style="gap:6px">${row(t('live.regionHome'), '', done)}${rows}</div>`;
 }

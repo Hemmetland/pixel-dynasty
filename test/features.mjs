@@ -186,6 +186,8 @@ ok(true, 'alla händelser körda');
   const t0 = S.liveTarget(GR, gr);
   const costR = S.liveRegionCost(GR, gr, 'eu');
   const m0 = GR.money;
+  const gainR = S.regionGain(GR, gr, 'eu');
+  ok(Math.abs(gainR.players - t0 * S.regionBonus(gr, 'eu')) < 1e-6 && Math.abs(gainR.month - gainR.players * (S.liveArpu(GR, lr) - S.costPerSub(GR, lr))) < 1e-6 && gainR.month > 0, 'regionens väntade spelare och månadsintäkt går att väga mot priset');
   ok(costR > 0 && S.startLiveRegion(GR, gr.id, 'eu') === true && GR.money === m0 - costR && lr.region.id === 'eu' && lr.region.until === GR.t + S.REGION_WEEKS, 'en region öppnas mot betalning och tar några veckor');
   ok(typeof S.startLiveRegion(GR, gr.id, 'na') === 'string' && GR.money === m0 - costR && S.liveTarget(GR, gr) === t0, 'en region i taget, och ingen effekt förrän den öppnat');
   for (let i = 0; i <= S.REGION_WEEKS; i++) S.liveWeek(GR), GR.t++;
@@ -946,6 +948,16 @@ ok(true, 'alla händelser körda');
   ok(GO.story.length === 9 && GO.stats.fanMark === 3, 'det som redan finns i historien läggs inte till igen, och en äldre sparning börjar tyst på sin fannivå');
   const GS = importCode(exportCode(GO));
   ok(GS && GS.story.length === 9 && GS.story[0].key === 'hist.firstGame', 'historien följer med sparningen');
+}
+// topplistan räknar konkurrenternas spel med förlagens räckvidd, så att en listetta kräver ett riktigt storspel
+{
+  const GT = S.newGame({ studio: 'Lista', seed: 47 });
+  S.makeCompetitors(GT); S.initWorld(GT);
+  GT.t = 100;
+  GT.market.releases.push({ id: 1, t: 100, comp: 1, studio: 'X', color: '#fff', title: { sv: 'R', en: 'R' }, score: 8, total: 1000, platform: 'pc', genre: 'rpg', topic: 'fantasy', scope: 'small', price: 10, tail: 1 });
+  GT.games.push({ id: 2, title: 'Mitt', t: 100, score: 8, topic: 'fantasy', genre: 'rpg', platform: 'pc', scope: 'small', weekly: [1000 * S.curveFor(8, 1)[0] * 3], units: 1, revenue: 1, total: 1000, priceAt: 10, tail: 1, ports: [] });
+  const rows = S.topSellers(GT, 12, 10);
+  ok(S.CHART_REACH === 5 && rows.length === 2 && !rows[0].yours && Math.abs(rows[0].rev - 1000 * S.curveFor(8, 1)[0] * 5) < 1e-9 && Math.abs(rows[0].units - rows[0].rev / 10) < 1e-9 && rows[1].yours, 'konkurrentens spel räknas med förlagets räckvidd på topplistan');
 }
 // ärkerivalen: studion närmast framför blir rival, årets duell avgörs vid årsskiftet, raka segrar avgör den och en ny
 // rival utses. Duellen rör varken pengar, fans eller slumpföljden.
