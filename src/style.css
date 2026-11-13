@@ -905,7 +905,7 @@ input[type='range']::-moz-range-thumb { width: 18px; height: 18px; border-radius
   .rp-score { margin: 0 auto; width: 100%; }
   .rp-top > div:nth-child(2) { flex: 1 1 160px; min-width: 0; }
   .rp-stats { gap: 12px; }
-  #coach { bottom: 134px; left: 50%; transform: translateX(-50%); }
+  #coach { top: 112px; bottom: auto; left: 50%; transform: translateX(-50%); }
 }
 @media (max-width: 400px) {
   .brand .dt .tod .ic { display: none; }
@@ -931,6 +931,11 @@ input[type='range']::-moz-range-thumb { width: 18px; height: 18px; border-radius
   .tab { padding: 10px 14px; }
   #devpanel .dev-actions .btn { min-height: 38px; }
   .dev-actions .btn[data-act='job-cancel'] { flex: none; width: 44px; padding: 0; }
+}
+/* Smal pekskärm (360 px): studions namn och hastighetsknapparna ska rymmas på samma rad, annars hamnar kassan över utvecklingspanelen */
+@media (pointer: coarse) and (max-width: 380px) {
+  .speed button { width: 32px; }
+  .brand { gap: 7px; }
 }
 @media (prefers-reduced-motion: reduce) { * { animation-duration: 0.01ms !important; animation-iteration-count: 1 !important; transition-duration: 0.01ms !important; } }
 

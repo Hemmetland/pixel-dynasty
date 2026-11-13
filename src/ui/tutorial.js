@@ -38,6 +38,16 @@ export function initTutorial(root) {
   on('title', hide);
 }
 
+// Mobil: handledningen ligger uppe i himlen (där utvecklingspanelen annars är) eller strax under panelen när den syns,
+// så att huset och gatan inte täcks. På bredare skärmar står den kvar nere till vänster.
+const narrow = () => typeof matchMedia !== 'undefined' && matchMedia('(max-width: 760px)').matches;
+function place() {
+  if (!el) return;
+  const dp = $('#devpanel');
+  const under = narrow() && dp && dp.classList.contains('on') && dp.offsetHeight;
+  el.style.top = under ? dp.offsetTop + dp.offsetHeight + 8 + 'px' : '';
+}
+
 function hide() {
   if (!el) return;
   el.classList.remove('on');
@@ -62,10 +72,11 @@ function update() {
   }
   G.flags.tutDone = G.flags.tutDone || [];
   if (curStep) {
-    if (curStep.done(G) || UI.cur === curStep.target) {
-      if (UI.cur !== curStep.target || curStep.done(G)) finishStep();
-      else if (UI.cur === curStep.target) hide();
-    }
+    place();
+    // Klart: bocka av steget. Annars göms rutan medan stegets fönster är öppet. Ett steg utan fönster (target null) får
+    // inte räknas som "fönstret är öppet" när inget fönster är öppet: då blinkade rutan var halv sekund.
+    if (curStep.done(G)) finishStep();
+    else if (curStep.target && UI.cur === curStep.target) hide();
     return;
   }
   if (UI.cur || UI.modalOn) return;
@@ -86,6 +97,7 @@ function show(s) {
   curStep = s;
   el.innerHTML = `<div class="ci">${icon(s.icon)}</div><div class="tx"><div class="h">${t('tut.' + s.id + '.h')}</div>${t('tut.' + s.id + '.b')}<div class="row"><button class="btn sm primary" data-act="coach-ok">${t('tut.ok')}</button><button class="btn sm ghost" data-act="coach-skip">${t('tut.skip')}</button></div></div>`;
   el.classList.add('on');
+  place();
   if (s.target) {
     const b = $(`.dk[data-key="${s.target}"]`);
     if (b) b.classList.add('coach-target');

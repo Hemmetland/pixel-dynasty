@@ -226,7 +226,9 @@ function placeToasts() {
     dpSeen = dp;
   }
   const on = narrow() && dp && dp.classList.contains('on') && dp.offsetHeight;
-  box.style.top = on ? dp.offsetTop + dp.offsetHeight + 8 + 'px' : '';
+  // handledningen ligger på samma ställe på mobilen: notiserna hamnar under den
+  const coach = narrow() ? $('#coach.on') : null;
+  box.style.top = coach && coach.offsetHeight ? coach.offsetTop + coach.offsetHeight + 8 + 'px' : on ? dp.offsetTop + dp.offsetHeight + 8 + 'px' : '';
 }
 const dropToast = (el) => {
   if (el.classList.contains('out')) return;

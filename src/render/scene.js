@@ -187,6 +187,15 @@ export class Scene {
       // Stående skärm: centrera byggnad och gata i det lediga området.
       const free = vh - this.insets.top - this.insets.bottom + STREET_SLACK;
       gyScreen = this.insets.top + (free - (bh + STREET.H) * s) / 2 + bh * s;
+      // På mobilen ligger utvecklingspanelen över himlen (insets.card = dess underkant). Flytta ner huset så att det syns
+      // under panelen: taket strax under den om det får plats, och gatan aldrig lägre än precis ovanför dockan. Blir det
+      // plats över hamnar det mesta som himmel ovanför taket i stället för gräs under gatan. Skalan ändras inte.
+      const card = this.insets.card || 0;
+      if (card > this.insets.top) {
+        const low = vh - this.insets.bottom + STREET_SLACK - STREET.H * s;
+        const roof = card + 8 + bh * s;
+        gyScreen = Math.max(gyScreen, roof <= low ? roof + 0.7 * (low - roof) : low);
+      }
     }
     this.groundY = Math.round(Math.min(gyScreen / s, this.ih - STREET.H - 2));
     this.world.resize(this.iw, this.ih, this.groundY);

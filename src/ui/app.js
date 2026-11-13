@@ -18,6 +18,8 @@ import './windows.js';
 
 const TICK = 0.6;
 const SPEEDS = [0, 1, 2.2, 5];
+// Utvecklingspanelens underkant på mobilen innan den har mätts (en vanlig spelpanel på en 390 px bred skärm)
+const CARD_BOTTOM = 290;
 
 export const app = {
   G: null,
@@ -93,8 +95,21 @@ export const app = {
     const h = this.root.clientHeight;
     const narrow = w < 720;
     if (this.mode === 'title') this.scene.resize(w, h, { top: Math.min(340, h * 0.5), bottom: 60 });
-    else this.scene.resize(w, h, { top: narrow ? 64 : 70, bottom: narrow ? 138 : 118 });
+    else this.scene.resize(w, h, { top: narrow ? 64 : 70, bottom: narrow ? 138 : 118, card: w <= 760 ? this.cardBottom || CARD_BOTTOM : 0 });
     fitHUD();
+  },
+  // Mobilen: utvecklingspanelen ligger över scenen, och huset placeras under den (scene.fit). Panelens underkant mäts när
+  // den syns. Bara en högre panel flyttar huset (en gång), så att scenen inte hoppar när ett projekt börjar eller slutar.
+  measureCard() {
+    const w = this.root.clientWidth;
+    if (w > 760 || this.mode !== 'play') return;
+    const el = this.root.querySelector('#devpanel.on');
+    if (!el || !el.offsetHeight) return;
+    const b = Math.round(el.getBoundingClientRect().bottom - this.root.getBoundingClientRect().top);
+    if (b > (this.cardBottom || CARD_BOTTOM) + 6 && b < this.root.clientHeight * 0.5) {
+      this.cardBottom = b;
+      this.resize();
+    }
   },
 
   wire() {
@@ -380,6 +395,10 @@ export const app = {
       updateHUD(G, dt);
       updateDock(G);
       updateDev(G);
+      if ((this.cardT = (this.cardT || 0) + dt) > 1) {
+        this.cardT = 0;
+        this.measureCard();
+      }
       emit('frame', dt);
     }
     if (this.scene.G) {
