@@ -171,6 +171,77 @@ ok(true, 'alla händelser körda');
   go.live.fresh = 30.5; GO.money = 1e9;
   for (let i = 0; i < 4; i++) S.liveWeek(GO), GO.t++;
   ok(GO.news.filter((n) => n.key === 'live.news.stale').length === 1 && go.live.staleWarn === 1, 'inaktuellt innehåll varnar en gång');
+  // prishöjningar: en höjning märks veckan efter (nivåns andel av spelarna × höjningen), mildare med färskt innehåll, och
+  // sedan har spelarna vant sig vid det nya priset. En sänkning, ett pris som ångras samma vecka och en äldre sparning
+  // utan prisminne ger ingen reaktion. Butiken i ett gratisspel fungerar på samma sätt.
+  {
+    const mk = (fresh) => {
+      const GH = JSON.parse(JSON.stringify(GL));
+      GH.office.fac.server = { lvl: 3, slot: 0 };
+      const gh = GH.games[GH.games.length - 1];
+      gh.live.fresh = fresh;
+      S.liveWeek(GH); GH.t++; // första veckan sätter prisminnet
+      return [GH, gh];
+    };
+    const [GH, gh] = mk(50);
+    const lh = gh.live;
+    ok(lh.pref.join() === '1,1,1' && S.hikeShare(GH, lh) === 0, 'prisminnet sätts första veckan, utan reaktion');
+    S.setLivePrice(GH, gh.id, 0, 1.2);
+    S.setLivePrice(GH, gh.id, 0, 1);
+    ok(S.hikeShare(GH, lh) === 0, 'ett pris som ångras samma vecka märks inte');
+    S.setLivePrice(GH, gh.id, 0, 1.2);
+    const h = S.hikeShare(GH, lh);
+    ok(Math.abs(h - 0.7 * 0.2 * 0.9 * S.hikeMood(lh)) < 1e-9 && h > 0.1 && h < 0.2, 'höjd Standard med 20 %: andelen som säger upp sig (' + (h * 100).toFixed(1) + ' %)');
+    // samma vecka med och utan reaktion: skillnaden är de som sa upp sig (minus den lilla del som redan hunnit ersättas)
+    const GB = JSON.parse(JSON.stringify(GH));
+    GB.games[GB.games.length - 1].live.pref = [1.2, 1, 1];
+    const s0 = lh.subs;
+    const fans0 = GH.fans;
+    const nH = GH.news.filter((n) => n.key === 'live.news.hike').length;
+    S.liveWeek(GH); GH.t++;
+    S.liveWeek(GB); GB.t++;
+    const diff = GB.games[GB.games.length - 1].live.subs - lh.subs;
+    const hWeek = 0.7 * 0.2 * 0.9 * S.hikeMood(lh); // färskheten är densamma som när veckan räknades
+    ok(diff > s0 * hWeek * 0.8 && diff < s0 * hWeek * 1.001, 'höjningen kostar spelare veckan efter (' + Math.round(diff) + ' av ' + Math.round(s0) + ')');
+    ok(GH.news.filter((n) => n.key === 'live.news.hike').length === nH + 1 && lh.marks.some((m) => m.k === 'price') && GH.fans < fans0 - 1 + 200000 * 0.00025 * 3 && lh.pref.join() === '1.2,1,1', 'höjningen ger en nyhet, en markör och några förlorade fans');
+    ok(S.fanVoices(GH, gh).some((v) => v.kind === 'special' && v.mood < 0 && /höj|dyrare/i.test(v.text.sv)) && lh.hikeT === GH.t - 1, 'spelarnas röster klagar på höjningen');
+    const s1 = lh.subs;
+    S.liveWeek(GH); GH.t++;
+    ok(S.hikeShare(GH, lh) === 0 && lh.subs > s1 * 0.95 && GH.news.filter((n) => n.key === 'live.news.hike').length === nH + 1, 'sedan har spelarna vant sig: ingen ny reaktion');
+    S.setLivePrice(GH, gh.id, 0, 0.8);
+    ok(S.hikeShare(GH, lh) === 0, 'en sänkning ger ingen reaktion');
+    S.liveWeek(GH); GH.t++;
+    S.setLivePrice(GH, gh.id, 0, 1);
+    ok(S.hikeShare(GH, lh) > 0.15, 'att höja tillbaka efter en sänkning kostar: att växla pris lönar sig inte');
+    // innehållets skick: färskt halverar, inaktuellt gör reaktionen hälften större
+    const at = (fresh) => { const [Gx, gx] = mk(fresh); gx.live.fresh = fresh; S.setLivePrice(Gx, gx.id, 0, 1.2); return S.hikeShare(Gx, gx.live); };
+    ok(Math.abs(at(100) - 0.126 * 0.5) < 1e-9 && Math.abs(at(0) - 0.126 * 1.5) < 1e-9 && at(100) < at(60) && at(60) < at(20), 'färskt innehåll halverar reaktionen, inaktuellt gör den hälften större');
+    const [GC, gc] = mk(50);
+    for (let i = 0; i < 3; i++) S.setLivePrice(GC, gc.id, i, 2.5);
+    ok(S.hikeShare(GC, gc.live) === S.HIKE_MAX, 'som mest säger 30 % upp sig på en gång');
+    // äldre sparning: prisminnet saknas och priset är redan ändrat
+    const [GO2, go2] = mk(50);
+    S.setLivePrice(GO2, go2.id, 0, 1.5);
+    delete go2.live.pref;
+    const so = go2.live.subs;
+    S.liveWeek(GO2); GO2.t++;
+    ok(go2.live.subs > so * 0.94 && !GO2.news.some((n) => n.key === 'live.news.hike') && go2.live.pref.join() === '1.5,1,1', 'en äldre sparning utan prisminne får det utan reaktion');
+    // gratisspelets butik
+    const GS = JSON.parse(JSON.stringify(G3f));
+    const gs = GS.games[GS.games.length - 1];
+    gs.live.fresh = 100;
+    ok(gs.live.sref === 1 && S.hikeShare(GS, gs.live) === 0, 'butikens nivå är invand');
+    S.setLiveShop(GS, gs.id, 2);
+    const hs = S.hikeShare(GS, gs.live);
+    ok(Math.abs(hs - (1 - S.SHOP[2].mult / S.SHOP[1].mult) * 0.6 * 0.5) < 1e-9, 'en hårdare butik får spelare att sluta direkt (' + (hs * 100).toFixed(1) + ' %)');
+    S.liveWeek(GS); GS.t++;
+    ok(GS.news.some((n) => n.key === 'live.news.shopHike') && gs.live.sref === 2, 'butiken ger en nyhet och blir invand');
+    const vsS = S.fanVoices(GS, gs);
+    GS.t += S.HIKE_TALK;
+    ok(vsS.some((v) => /butiken|kostar extra/i.test(v.text.sv)) && !S.fanVoices(GS, gs).some((v) => /butiken|kostar extra/i.test(v.text.sv)), 'rösterna om butiken hörs i åtta veckor');
+    S.setLiveShop(GS, gs.id, 0);
+    ok(S.hikeShare(GS, gs.live) === 0, 'en snällare butik ger ingen reaktion');
+  }
   // regioner: ett nytt onlinespel börjar på hemmamarknaden, öppnar en region i taget mot betalning och får då fler spelare.
   // Regionens marknad måste finnas det året, genren avgör hur mycket den ger, och ett äldre spel finns redan överallt.
   const GR = JSON.parse(JSON.stringify(GL));

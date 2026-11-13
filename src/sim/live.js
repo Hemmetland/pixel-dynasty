@@ -87,6 +87,18 @@ export const SHOP = [
   { arpu: 0.44, mult: 0.62 },
 ];
 export const isF2P = (L) => L.model === 'f2p';
+// Prishöjningar. Spelarna har vant sig vid sina priser (L.pref, pris per nivå) och vid butiken (L.sref). Höjs en nivås
+// pris, eller görs butiken mer påträngande, säger en del upp sig veckan efter i stället för att sakta droppa av: nivåns
+// andel av spelarna × höjningen × HIKE_K, eller butikens tapp i lockelse × SHOP_K, och som mest HIKE_MAX av spelarna.
+// Färskt innehåll halverar reaktionen och inaktuellt innehåll gör den hälften större, så en höjning passar bäst direkt
+// efter en uppdatering eller expansion, och att växla pris fram och tillbaka lönar sig inte. En sänkning märks inte här:
+// spelarna kommer i vanlig takt. Sparningar från före prisminnet får det första veckan, utan reaktion.
+const HIKE_K = 0.9;
+const SHOP_K = 0.6;
+export const HIKE_MAX = 0.3;
+const HIKE_FANS = 0.02; // fans som lämnar studion per spelare som säger upp sig (högst 1 % av fansen)
+export const HIKE_TALK = 8; // så många veckor pratar spelarna om höjningen (rösterna i biblioteket)
+export const hikeMood = (L) => clamp(1.6 - 1.1 * (L.fresh / 100), 0.5, 1.5);
 // Spelare omräknade till betalande (för kostnader och köp) och till serverlast
 export const payBase = (L) => L.subs * (isF2P(L) ? F2P_PAY : 1);
 const loadOf = (L) => L.subs * (isF2P(L) ? F2P_LOAD : 1);
@@ -136,6 +148,19 @@ export function tierMix(G, L) {
   const k = r.reduce((a, x, i) => a + TIER_W[i] * x, 0);
   const arpu = share.reduce((a, s, i) => a + s * prices[i], 0);
   return { share, prices, def, k, arpu };
+}
+// Andel av spelarna som säger upp sig när veckan går, med dagens priser mot dem spelarna är vana vid (0 = ingen höjning)
+export function hikeShare(G, L) {
+  let raw = 0;
+  if (isF2P(L)) {
+    const from = SHOP[L.sref ?? (L.shop | 0)].mult;
+    raw = Math.max(0, 1 - SHOP[L.shop | 0].mult / from) * SHOP_K;
+  } else {
+    const ref = L.pref || L.price;
+    const share = tierMix(G, { price: ref }).share;
+    raw = L.price.reduce((a, p, i) => a + share[i] * Math.max(0, clamp(p, PRICE_MIN, PRICE_MAX) / clamp(ref[i], PRICE_MIN, PRICE_MAX) - 1), 0) * HIKE_K;
+  }
+  return Math.min(HIKE_MAX, raw * hikeMood(L));
 }
 // Serverkapacitet (spelare totalt) från serverrummets nivå; billigare hårdvara med åren och dubbelt med molntjänster.
 export function serverCap(G) {
@@ -315,6 +340,20 @@ export function liveWeek(G) {
       L.staleWarn = 1;
       note(G, 'live.news.stale', { title: g.title }, 'bad');
     } else if (L.fresh >= STALE_RESET) L.staleWarn = 0;
+    // en prishöjning märks: en del säger upp sig direkt, och sedan har spelarna vant sig vid de nya priserna
+    const hike = hikeShare(G, L);
+    if (hike > 0) {
+      const lost = L.subs * hike;
+      L.subs -= lost;
+      G.fans = Math.max(0, G.fans - Math.min(G.fans * 0.01, lost * HIKE_FANS));
+      if (hike >= 0.01 && lost >= 10) {
+        mark(G, L, 'price');
+        L.hikeT = G.t;
+        note(G, isF2P(L) ? 'live.news.shopHike' : 'live.news.hike', { title: g.title, n: fmtN(lost) }, 'bad');
+      }
+    }
+    L.pref = L.price.slice();
+    if (isF2P(L)) L.sref = L.shop | 0;
     let target = liveTarget(G, g);
     // fullt på servrarna: nya spelare kommer inte in och några tröttnar på köerna
     if (over > 0) target = Math.min(target, L.subs * (1 - Math.min(0.05, over * 0.1)));

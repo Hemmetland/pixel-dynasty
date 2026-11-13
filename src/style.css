@@ -629,6 +629,11 @@ input[type='range']::-moz-range-thumb { width: 18px; height: 18px; border-radius
 .fm-disc.on { box-shadow: 0 0 14px color-mix(in srgb, var(--c) 45%, transparent); }
 .yr-rank { display: flex; align-items: center; gap: 16px; margin-top: 16px; }
 .yr-rank .yr-pos { font: 700 40px/1 var(--disp); color: var(--accent); min-width: 64px; text-align: center; }
+.hike { margin-top: 8px; }
+.hike.on { display: flex; gap: 6px; align-items: flex-start; color: var(--bug); }
+.hike.on .ic { width: 14px; height: 14px; flex: none; margin-top: 2px; }
+.hike.on span { color: var(--muted); }
+.hike.on b { color: var(--bug); }
 .aw-gain { margin: 14px 4px 0; text-align: center; font-size: 13.5px; opacity: 0; transition: opacity 0.6s var(--ease); }
 .aw-gain.show { opacity: 1; }
 .aw-gain .ic { width: 14px; height: 14px; color: var(--gold); vertical-align: -2px; }

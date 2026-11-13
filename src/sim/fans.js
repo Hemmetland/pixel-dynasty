@@ -8,7 +8,7 @@ import { PLATFORM } from '../data/platforms.js';
 import { GENRE_FORMS, TOPIC_PROPER } from '../data/reviews.js';
 import { FAN_BANDS, FAN_FLAGS, FAN_SPECIAL, FAN_FIRST, FAN_HANDLES } from '../data/fanvoices.js';
 import { yearOf, WEEKS_PER_YEAR } from './const.js';
-import { liveFactors, isF2P } from './live.js';
+import { liveFactors, isF2P, HIKE_TALK } from './live.js';
 import { note } from './news.js';
 
 const LANGS = ['sv', 'en'];
@@ -29,6 +29,7 @@ function liveState(G, g) {
   if (L.closed) return 'liveClosed';
   const f = liveFactors(G, g);
   if (f.full) return 'liveFull';
+  if (L.hikeT != null && G.t - L.hikeT < HIKE_TALK) return isF2P(L) ? 'liveShopHike' : 'liveHike';
   if (L.fresh < 40) return 'liveStale';
   if (!isF2P(L) && f.price < 0.9) return 'livePricey';
   return L.fresh >= 75 ? 'liveFresh' : 'liveMid';

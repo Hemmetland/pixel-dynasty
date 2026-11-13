@@ -23,7 +23,7 @@ import { openExpansion } from './wizard.js';
 import { CERTS, certOf, certCounts, nextCert, totalUnits, records } from '../sim/charts.js';
 import { fanVoices, fanSource } from '../sim/fans.js';
 import { FAN_SOURCE } from '../data/fanvoices.js';
-import { SUB_TIERS, OPS, PRICE_MIN, PRICE_MAX, PATCH_WEEKS, EVENT_WEEKS, SURGE_WEEKS, tierMix, liveMonth, serverCap, livePatchCost, startLivePatch, setLivePrice, setLiveOps, closeLive, rivalMmos, rivalPull, rivalFactor, liveFactors, setLiveAuto, AUTO_FRESH, AUTO_BUFFER, eventOn, eventReadyIn, liveEventCost, startLiveEvent, SHOP, isF2P, canGoF2P, goF2P, setLiveShop, liveLoad, liveArpu, REGIONS, regionGain, REGION_NAME, REGION_WEEKS, regionBonus, regionsOpen, liveRegionCost, startLiveRegion } from '../sim/live.js';
+import { SUB_TIERS, OPS, PRICE_MIN, PRICE_MAX, PATCH_WEEKS, EVENT_WEEKS, SURGE_WEEKS, tierMix, liveMonth, serverCap, livePatchCost, startLivePatch, setLivePrice, setLiveOps, closeLive, rivalMmos, rivalPull, rivalFactor, liveFactors, setLiveAuto, AUTO_FRESH, AUTO_BUFFER, eventOn, eventReadyIn, liveEventCost, startLiveEvent, SHOP, isF2P, canGoF2P, goF2P, setLiveShop, liveLoad, liveArpu, hikeShare, REGIONS, regionGain, REGION_NAME, REGION_WEEKS, regionBonus, regionsOpen, liveRegionCost, startLiveRegion } from '../sim/live.js';
 
 // Stäng servrarna och gör till gratisspel kräver två tryck: första trycket "armerar" knappen för det spelet
 let closeArmed = null;
@@ -68,9 +68,10 @@ const MARK = {
   down: ['x', 'var(--bug)', 'live.mk.down'],
   f2p: ['refresh', 'var(--warn)', 'live.mk.f2p'],
   region: ['globe', 'var(--good)', 'live.mk.region'],
+  price: ['trend', 'var(--bug)', 'live.mk.price'],
   rival: ['flag', '', 'live.mk.rival'],
 };
-const LEGEND = { exp: 'live.lg.exp', ev: 'live.lg.ev', patch: 'live.lg.patch', down: 'live.lg.down', f2p: 'live.lg.f2p', region: 'live.lg.region', rival: 'live.lg.rival' };
+const LEGEND = { exp: 'live.lg.exp', ev: 'live.lg.ev', patch: 'live.lg.patch', down: 'live.lg.down', f2p: 'live.lg.f2p', region: 'live.lg.region', price: 'live.lg.price', rival: 'live.lg.rival' };
 const when = (tt) => {
   const d = dateOf(tt);
   return `${MONTHS[lang][d.month]} ${d.year}`;
@@ -207,6 +208,16 @@ function regionPanel(G, g) {
   return `${head}<p class="hint" style="margin-bottom:8px">${t('live.regionsHelp', { n: REGION_WEEKS })}</p><div class="col" style="gap:6px">${row(t('live.regionHome'), '', done)}${rows}</div>`;
 }
 
+// Prishöjningar: vad en höjning som väntar kostar när veckan går, och hur spelarna tar en höjning just nu
+const HIKE_KEY = { hi: 'live.hike.hi', mid: 'live.hike.mid', lo: 'live.hike.lo' };
+const HIKE_NOW = { hi: 'live.hike.hi', mid: 'live.hike.midNow', lo: 'live.hike.lo' };
+function hikeLine(G, L) {
+  const share = hikeShare(G, L);
+  const fb = freshBand(L);
+  if (share <= 0 || L.subs < 1) return `<p class="hint hike">${t(HIKE_KEY[fb])}</p>`;
+  return `<p class="hint hike on">${icon('trend')} <span><b>${t(isF2P(L) ? 'live.hike.shopNow' : 'live.hike.now', { n: fmtNum(L.subs * share) })}</b> ${t(HIKE_NOW[fb])}</span></p>`;
+}
+
 // Driftpanelen för ett onlinespel: spelare, intäkter, innehåll, serverlast, konkurrenter, priser per nivå, drift och åtgärder
 function livePanel(G, g) {
   const L = g.live;
@@ -231,9 +242,9 @@ function livePanel(G, g) {
   const pay = f2p
     ? `<div class="lbl" style="margin:14px 0 4px">${t('live.shop')}</div><p class="hint" style="margin-bottom:8px">${t('live.shopHelp')}</p>
     <div class="row wrap" style="gap:10px"><div class="seg">${SHOP.map((_, i) => `<button class="${(L.shop | 0) === i ? 'on' : ''}" data-act="lv-shop" data-id="${g.id}" data-i="${i}">${t(SHOP_KEY[i])}</button>`).join('')}</div>
-    <span class="faint" style="font-size:12.5px">${t('live.arpu', { v: money(liveArpu(G, L)) })}</span></div>`
+    <span class="faint" style="font-size:12.5px">${t('live.arpu', { v: money(liveArpu(G, L)) })}</span></div>${hikeLine(G, L)}`
     : `<div class="lbl" style="margin:14px 0 4px">${t('live.tiers')}</div><p class="hint" style="margin-bottom:8px">${t('live.tierHelp')}</p>
-    <div class="col" style="gap:6px">${tiers}</div>
+    <div class="col" style="gap:6px">${tiers}</div>${hikeLine(G, L)}
     ${canGoF2P(G, L) ? `<div class="ltier f2p-row" style="margin-top:8px"><div style="flex:1;min-width:0"><b>${t('live.f2pHead')}</b><div class="faint" style="font-size:11.5px">${t('live.f2pHelp')}</div></div>
       <button class="btn sm ${f2pArm ? 'danger' : ''}" data-act="lv-f2p" data-id="${g.id}">${icon('refresh')}${t(f2pArm ? 'live.f2pSure' : 'live.f2p')}</button></div>` : ''}`;
   return `<div class="card live-card" style="margin-top:16px">
