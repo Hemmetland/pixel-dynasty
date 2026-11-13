@@ -1,4 +1,5 @@
 import { emit } from '../core/bus.js';
+import { fmtNum, fmtMoney } from '../core/util.js';
 import { tOf } from './const.js';
 import { AWARD_CATS } from './awards.js';
 
@@ -51,6 +52,8 @@ const MILESTONES = {
   'news.hwLaunch': [{ as: 'hist.firstHw', once: true }],
   'news.hwPlat': [{ as: 'hist.hwPlat' }],
   'live.news.launch': [{}],
+  'hist.fans': [{}],
+  'hist.cash': [{}],
   'live.news.expansion': [{ as: 'hist.firstExp', once: true }],
   'live.news.region': [{ as: 'hist.firstRegion', once: true }],
   'live.news.subs': [{}],
@@ -67,11 +70,12 @@ export function milestone(G, key, vars = {}, once = false) {
   if (h.length > STORY_MAX) h.splice(0, h.length - STORY_MAX);
 }
 
-// Mått som passeras: fansen och kassan. Nivån sparas i stats, så en äldre sparning börjar tyst på sin nuvarande nivå
-// i stället för att få alla steg på en gång.
+// Mått som passeras: fansen och kassan. Varje steg firas med en nyhet och hamnar i historien. Nivån sparas i stats, så
+// en äldre sparning börjar tyst på sin nuvarande nivå i stället för att få alla steg på en gång.
+const round = (s) => s.replace(/\.0+(?=[KMB])/, ''); // jämna tal skrivs kort: 100K, $10M
 const MARKS = [
-  { stat: 'fanMark', key: 'hist.fans', of: (G) => G.fans, steps: [1e4, 1e5, 1e6, 1e7, 1e8] },
-  { stat: 'cashMark', key: 'hist.cash', of: (G) => G.money, steps: [1e6, 1e7, 1e8, 1e9, 1e10] },
+  { stat: 'fanMark', key: 'hist.fans', of: (G) => G.fans, steps: [1e4, 1e5, 1e6, 1e7, 1e8], fmt: (n) => round(fmtNum(n)) },
+  { stat: 'cashMark', key: 'hist.cash', of: (G) => G.money, steps: [1e6, 1e7, 1e8, 1e9, 1e10], fmt: (n) => round(fmtMoney(n)) },
 ];
 // alla nycklar som kan hamna i historien (testerna kontrollerar att var och en har en text)
 export const STORY_KEYS = [...new Set(['hist.founded', 'hist.cert', ...MARKS.map((m) => m.key), ...Object.entries(MILESTONES).flatMap(([k, list]) => list.map((m) => m.as || k))])];
@@ -84,7 +88,7 @@ export function storyWeek(G) {
     if (G.stats[m.stat] == null) G.stats[m.stat] = lvl;
     else if (lvl > G.stats[m.stat]) {
       G.stats[m.stat] = lvl;
-      milestone(G, m.key, { n: m.steps[lvl - 1] });
+      note(G, m.key, { n: m.fmt(m.steps[lvl - 1]) }, 'award');
     }
   }
 }

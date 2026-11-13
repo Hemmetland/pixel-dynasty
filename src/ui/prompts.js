@@ -22,6 +22,7 @@ import { music } from '../audio/sfx.js';
 import { crowdNote } from './crowd.js';
 import { legacy, LEGACY_RANKS } from '../sim/legacy.js';
 import { rivalOf, rivalLast } from '../sim/rival.js';
+import { recordRun } from '../core/store.js';
 
 let timers = [];
 const later = (fn, ms) => timers.push(setTimeout(fn, ms));
@@ -466,8 +467,12 @@ function yearPrompt(app, G, p, finish) {
   );
 }
 
+// studions plats i studiohallen (saknas om webbläsaren inte får spara)
+const hallLine = (h) => (h && h.of > 1 ? `<p class="hint" style="margin-top:12px">${icon('crown')} ${t('hall.place', { n: h.place, m: h.of })}</p>` : h ? `<p class="hint" style="margin-top:12px">${icon('crown')} ${t('hall.first')}</p>` : '');
+
 // ── Konkurs ───────────────────────────────────────────────────────
 function gameoverPrompt(app, G) {
+  const hall = recordRun(G);
   UI.modal(`
     <div class="win-head"><div class="wi" style="--wc:var(--bug)">${icon('skull')}</div><h2>${t('over.title')}<div class="sub">${esc(G.studio)}</div></h2></div>
     <div class="win-body"><p class="evtext">${t('over.text', { y: 1980 + Math.floor(G.over.t / 48) })}</p>
@@ -475,7 +480,7 @@ function gameoverPrompt(app, G) {
         <div class="counter" style="--c:var(--accent)"><div class="v num">${G.games.length}</div><div class="k">${t('year.games')}</div></div>
         <div class="counter" style="--c:var(--gold)"><div class="v num">${G.stats.bestScore.toFixed(1)}</div><div class="k">${t('over.best')}</div></div>
         <div class="counter" style="--c:var(--money)"><div class="v num">${money(G.stats.revenue)}</div><div class="k">${t('over.total')}</div></div>
-      </div></div>
+      </div>${hallLine(hall)}</div>
     <div class="win-foot"><span class="sp"></span><button class="btn primary lg" data-act="over-title">${t('over.again')}</button></div>`,
     () => act('over-title', () => {
       app.promptActive = false;
@@ -492,6 +497,7 @@ function endingPrompt(app, G, p, finish) {
   const lg = legacy(G);
   const rank = lg.rank;
   const next = rank < 3 ? ` · ${t('end.next', { rank: t(END_RANK[rank + 1]), n: LEGACY_RANKS[rank + 1] })}` : '';
+  const hall = recordRun(G);
   UI.modal(`
     <div class="win-head"><div class="wi" style="--wc:var(--gold)">${icon('crown')}</div><h2>${t('end.title')}<div class="sub">${esc(G.studio)} · 1980–2020</div></h2></div>
     <div class="win-body"><div class="stamp big" style="--c:var(--gold)">${t(END_RANK[rank])}</div><div class="muted" style="margin-top:10px">${t('end.legacy', { n: lg.points })}${next}</div><p class="evtext" style="margin-top:14px">${t('end.text')}</p>
@@ -501,7 +507,7 @@ function endingPrompt(app, G, p, finish) {
         <div class="counter" style="--c:var(--money)"><div class="v num">${money(G.stats.revenue)}</div><div class="k">${t('over.total')}</div></div>
         <div class="counter" style="--c:var(--fans)"><div class="v num">${fmtNum(G.fans)}</div><div class="k">${t('hud.fans')}</div></div>
         <div class="counter" style="--c:var(--hot)"><div class="v num">${G.awards.length}</div><div class="k">${t('end.awards')}</div></div>
-      </div></div>
+      </div>${hallLine(hall)}</div>
     <div class="win-foot"><button class="btn" data-act="end-title">${t('menu.title')}</button><span class="sp"></span><button class="btn primary lg" data-act="end-go">${t('end.keep')}${icon('arrow')}</button></div>`,
     () => {
       act('end-go', () => finish());

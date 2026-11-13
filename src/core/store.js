@@ -1,9 +1,12 @@
 import { SAVE_VERSION, DIFFICULTY, newGame } from '../sim/state.js';
 import { migrateLooks } from '../sim/people.js';
 import { setOwnPlatforms } from '../data/platforms.js';
+import { hallEntry, hallSort } from '../sim/legacy.js';
 
 const KEY = 'pixel-dynasty-save-v1';
 const SKEY = 'pixel-dynasty-settings-v1';
+const HKEY = 'pixel-dynasty-hall-v1';
+const HALL_MAX = 20;
 
 export const DEFAULT_SETTINGS = { lang: null, music: true, sfx: true, musicVol: 0.5, sfxVol: 0.7, crt: false, hd: false, reduced: false, menuPause: true, tutorial: true, speed: 2 };
 
@@ -19,6 +22,27 @@ export function saveSettings(s) {
   try {
     localStorage.setItem(SKEY, JSON.stringify(s));
   } catch { /* privat läge */ }
+}
+
+// Studiohallen: tidigare studior, bäst först. En studio skrivs in när de fyrtio åren är slut eller vid konkurs, och
+// raden uppdateras om studion spelar vidare.
+export function loadHall() {
+  try {
+    const a = JSON.parse(localStorage.getItem(HKEY) || '[]');
+    return Array.isArray(a) ? hallSort(a.filter((x) => x && x.id && x.studio)) : [];
+  } catch {
+    return [];
+  }
+}
+export function recordRun(G) {
+  try {
+    const e = hallEntry(G);
+    const list = hallSort([...loadHall().filter((x) => x.id !== e.id), e]).slice(0, HALL_MAX);
+    localStorage.setItem(HKEY, JSON.stringify(list));
+    return { place: list.findIndex((x) => x.id === e.id) + 1, of: list.length };
+  } catch {
+    return null;
+  }
 }
 
 export function hasSave() {
@@ -42,6 +66,7 @@ export function saveGame(G) {
   try {
     const meta = { studio: G.studio, t: G.t, money: G.money, games: G.games.length, staff: G.staff.length, over: !!G.over, at: Date.now() };
     localStorage.setItem(KEY, JSON.stringify({ v: SAVE_VERSION, meta, G }));
+    if (G.over || (G.flags && G.flags.ending)) recordRun(G);
     return true;
   } catch {
     return false;

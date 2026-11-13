@@ -8,12 +8,13 @@ import { newGame } from '../sim/state.js';
 import { makeCompetitors } from '../sim/market.js';
 import { initWorld } from '../sim/clock.js';
 import { refreshCandidates, randomLook, extraLook, LOOK_N, EXTRA_N } from '../sim/people.js';
-import { hasSave, saveMeta } from '../core/store.js';
+import { hasSave, saveMeta, loadHall } from '../core/store.js';
 import { STUDIO_NAMES, FIRST, LAST } from '../data/names.js';
 import { dateOf } from '../sim/const.js';
 import { LOGOS } from './hud.js';
 import { lang } from '../core/i18n.js';
 import { money } from './core.js';
+import { L } from '../core/i18n.js';
 
 const N = { studio: '', founder: '', look: null, arch: 'designer', diff: 'normal', logo: 0 };
 const rnd = (a) => a[Math.floor(Math.random() * a.length)];
@@ -157,6 +158,7 @@ function renderTitle() {
       ${meta && meta.over ? `<button class="btn lg" disabled><span>${icon('skull')}${t('over.title')}</span><small>${esc(meta.studio)} · ${d.year}</small></button>` : ''}
       ${meta && !meta.over ? `<button class="btn primary lg" data-act="tt-continue"><span>${icon('play')}${t('title.continue')}</span><small>${esc(meta.studio)} · ${d.year} · ${money(meta.money)}</small></button>` : ''}
       <button class="btn ${meta && !meta.over ? '' : 'primary'} lg" data-act="tt-new">${icon('plus')}${t('title.new')}</button>
+      ${loadHall().length ? `<button class="btn lg" data-act="tt-hall">${icon('crown')}${t('title.hall')}</button>` : ''}
       <button class="btn lg" data-act="tt-lang">${icon('globe')}${lang === 'sv' ? 'English' : 'Svenska'}</button>
       <button class="btn lg" data-act="tt-sound" style="min-width:150px">${icon(UI.app.settings.music ? 'volume' : 'mute')}${t(UI.app.settings.music ? 'title.soundOn' : 'title.soundOff')}</button>
       <button class="btn lg" data-act="tt-help" style="min-width:56px">${icon('info')}</button>
@@ -228,6 +230,32 @@ act('tt-sound', () => {
   renderTitle();
 });
 act('tt-help', () => UI.open('help', null, { force: true }));
+act('tt-hall', () => {
+  UI.open('hall', null, { force: true });
+  sfx.play('open');
+});
+
+// ── Studiohallen: tidigare studior, bäst först ──
+const HALL_RANK = ['end.rank0', 'end.rank1', 'end.rank2', 'end.rank3'];
+regWin({
+  id: 'hall',
+  icon: 'crown',
+  color: 'var(--gold)',
+  size: 'md',
+  title: () => t('hall.title'),
+  render() {
+    const rows = loadHall()
+      .map((e, i) => {
+        const c = e.over ? 'var(--bug)' : i === 0 ? 'var(--gold)' : 'var(--accent)';
+        const bits = [t('hist.sum.games', { n: e.games }), money(e.revenue), e.awards ? t('hist.sum.awards', { n: e.awards }) : '', t('diff.' + (e.diff || 'normal'))].filter(Boolean).join(' · ');
+        return `<div class="card row hall-row" style="gap:14px;--c:${c}"><div class="hall-n disp">${i + 1}</div><div style="flex:1;min-width:0"><div class="row" style="gap:4px 8px;flex-wrap:wrap"><b>${esc(e.studio)}</b><span class="tag" style="--c:${c}">${e.over ? t('hall.over', { y: e.year }) : t(HALL_RANK[e.rank] || HALL_RANK[0])}</span></div>
+          <div class="faint" style="font-size:12px;margin-top:2px">${bits}</div>${e.best ? `<div class="faint" style="font-size:12px">${t('hall.best', { title: `<b>${esc(L(e.best.title))}</b>`, v: e.best.score.toFixed(1) })}</div>` : ''}</div>
+          <div style="text-align:right"><div class="disp hall-p">${e.points}</div><div class="faint" style="font-size:11px">${t('hall.points')}</div></div></div>`;
+      })
+      .join('');
+    return `<p class="hint" style="margin-bottom:10px">${t('hall.help')}</p><div class="col" style="gap:8px">${rows}</div>`;
+  },
+});
 
 function intro(done) {
   const el = $('#intro');

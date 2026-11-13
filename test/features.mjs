@@ -912,7 +912,7 @@ ok(true, 'alla händelser körda');
   GH.fans = 12000; GH.money = 2.5e7; S.storyWeek(GH); S.storyWeek(GH);
   GH.fans = 90000; S.storyWeek(GH);
   const marks = S.storyOf(GH).slice(before).map((m) => m.key + ':' + m.vars.n);
-  ok(marks.join() === 'hist.fans:10000,hist.cash:10000000' && GH.stats.fanMark === 1 && GH.stats.cashMark === 2, 'fansen och kassan blir milstolpar en gång per steg');
+  ok(marks.join() === 'hist.fans:10K,hist.cash:$10M' && GH.stats.fanMark === 1 && GH.stats.cashMark === 2 && GH.news.filter((n) => n.key === 'hist.fans' || n.key === 'hist.cash').length === 2, 'fansen och kassan blir milstolpar och nyheter en gång per steg');
   GH.money = money0;
   for (let i = 0; i < 10; i++) GH.games.push({ id: 100 + i, title: 'G' + i, t: 0, score: 6, expansionOf: i === 9 ? 100 : null });
   rel('news.release', 'Nio', '6.0');
@@ -958,6 +958,22 @@ ok(true, 'alla händelser körda');
   GT.games.push({ id: 2, title: 'Mitt', t: 100, score: 8, topic: 'fantasy', genre: 'rpg', platform: 'pc', scope: 'small', weekly: [1000 * S.curveFor(8, 1)[0] * 3], units: 1, revenue: 1, total: 1000, priceAt: 10, tail: 1, ports: [] });
   const rows = S.topSellers(GT, 12, 10);
   ok(S.CHART_REACH === 5 && rows.length === 2 && !rows[0].yours && Math.abs(rows[0].rev - 1000 * S.curveFor(8, 1)[0] * 5) < 1e-9 && Math.abs(rows[0].units - rows[0].rev / 10) < 1e-9 && rows[1].yours, 'konkurrentens spel räknas med förlagets räckvidd på topplistan');
+}
+// studiohallen: studions rad och hallens ordning (själva lagringen ligger i webbläsaren)
+{
+  const GA = S.newGame({ studio: 'Hall', seed: 48 });
+  S.makeCompetitors(GA); S.initWorld(GA);
+  GA.t = 48 * 12;
+  GA.games.push({ id: 1, title: 'Ett', t: 10, score: 6 }, { id: 2, title: 'Två', t: 60, score: 8.8 }, { id: 3, title: 'Exp', t: 70, score: 9.5, expansionOf: 2 });
+  GA.stats.revenue = 5e6; GA.stats.bestScore = 8.8; GA.fans = 4000;
+  GA.awards.push({ year: 1985, cat: 'goty', title: 'Två' });
+  const e = S.hallEntry(GA);
+  ok(e.id === '48:Hall' && e.year === 1992 && !e.over && e.games === 2 && e.awards === 1 && e.best.title === 'Exp' && e.points === S.legacy(GA).points && e.revenue === 5e6, 'studions rad i studiohallen');
+  GA.over = { type: 'bankrupt', t: 48 * 9 };
+  const bust = S.hallEntry(GA);
+  ok(bust.over && bust.year === 1989, 'en konkursad studio skrivs in med konkursåret');
+  const order = S.hallSort([{ id: 'a', points: 50, revenue: 1 }, bust, { id: 'b', points: 80, revenue: 1 }, { id: 'c', points: 80, revenue: 9 }]).map((x) => x.id);
+  ok(order.join() === 'c,b,a,48:Hall', 'hallen: bäst eftermäle först, sedan omsättning, konkurser sist');
 }
 // ärkerivalen: studion närmast framför blir rival, årets duell avgörs vid årsskiftet, raka segrar avgör den och en ny
 // rival utses. Duellen rör varken pengar, fans eller slumpföljden.

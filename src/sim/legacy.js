@@ -1,6 +1,7 @@
 // Studions eftermäle när de fyrtio åren är slut: poäng (0–100) av total omsättning, priser, bästa betyg, fans och kontor.
 // Rangen avgör titeln på slutskärmen (end.rank0–3).
 import { clamp } from '../core/util.js';
+import { yearOf } from './const.js';
 
 // Gränser för Kultstudio, Branschnamn, Spelgigant och Dynasti. En stark studio landar kring 80–90, Dynasti kräver toppspel.
 export const LEGACY_RANKS = [0, 50, 75, 90];
@@ -18,4 +19,29 @@ export function legacy(G) {
   let rank = 0;
   for (let i = 0; i < LEGACY_RANKS.length; i++) if (points >= LEGACY_RANKS[i]) rank = i;
   return { points, parts, rank };
+}
+
+// Studions rad i studiohallen (sparas utanför sparfilen, så att tidigare studior finns kvar när en ny börjar): namn,
+// år, eftermäle och det bästa spelet. id skiljer studiorna åt, så en studio som spelar vidare uppdaterar sin egen rad.
+export function hallEntry(G) {
+  const lg = legacy(G);
+  const best = G.games.slice().sort((a, b) => b.score - a.score || a.t - b.t)[0];
+  return {
+    id: G.seed + ':' + G.studio,
+    studio: G.studio,
+    year: yearOf(G.over ? G.over.t : G.t),
+    over: !!G.over,
+    diff: G.difficulty,
+    points: lg.points,
+    rank: lg.rank,
+    revenue: Math.round(G.stats.revenue),
+    fans: Math.round(G.fans),
+    games: G.games.filter((g) => !g.expansionOf).length,
+    awards: G.awards.length,
+    best: best ? { title: best.title, score: best.score } : null,
+  };
+}
+// Hallens ordning: högst eftermäle först, sedan störst omsättning. En konkursad studio står efter dem som klarade sig.
+export function hallSort(list) {
+  return list.slice().sort((a, b) => (a.over ? 1 : 0) - (b.over ? 1 : 0) || b.points - a.points || b.revenue - a.revenue);
 }

@@ -745,6 +745,9 @@ input[type='range']::-moz-range-thumb { width: 18px; height: 18px; border-radius
 .rp-notes { padding: 6px 24px 18px; opacity: 0; transition: 0.6s var(--ease); }
 .rp-notes.show { opacity: 1; }
 .ins { display: grid; grid-template-columns: repeat(auto-fit, minmax(min(300px, 100%), 1fr)); gap: 7px; }
+.hall-row { border-left: 3px solid var(--c); }
+.hall-n { font-size: 20px; min-width: 26px; text-align: center; color: var(--c); }
+.hall-p { font-size: 24px; color: var(--gold); }
 .story { position: relative; padding-left: 4px; }
 .story::before { content: ''; position: absolute; left: 17px; top: 34px; bottom: 14px; width: 2px; background: var(--line); }
 .story.one::before { display: none; }
