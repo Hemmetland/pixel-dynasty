@@ -1,5 +1,8 @@
 import { $, $$, esc, icon, t, L, UI, act, regWin, money, toast, errToast, MONTHS } from './core.js';
 import { dateOf } from '../sim/const.js';
+import { fmtNum } from '../core/util.js';
+import { storyOf } from '../sim/news.js';
+import { CERTS } from '../data/certs.js';
 import { lang } from '../core/i18n.js';
 import { music } from '../audio/sfx.js';
 import { ACHIEVEMENTS } from '../data/achievements.js';
@@ -59,25 +62,74 @@ regWin({
 });
 
 // ── Nyheter ──
+// Fliken Historia: studions milstolpar, äldst först, med ett årtal per år. Grundandet läggs till först.
+const NW = { tab: 'news' };
+const STORY_IC = {
+  'hist.founded': ['flag', 'var(--accent)'], 'hist.firstGame': ['gamepad', 'var(--accent)'], 'hist.firstHit': ['star', 'var(--gold)'], 'hist.firstNo1': ['trend', 'var(--good)'],
+  'hist.cert': ['disc', 'var(--gold)'], 'hist.firstAward': ['trophy', 'var(--gold)'], 'news.awardWins': ['trophy', 'var(--gold)'], 'news.office': ['building', 'var(--accent)'],
+  'news.rankUp': ['chart', 'var(--accent)'], 'news.rankTop': ['crown', 'var(--gold)'], 'news.filmGood': ['film', 'var(--fans)'], 'news.acquired': ['bank', 'var(--money)'],
+  'hist.firstPub': ['book', 'var(--design)'], 'hist.store': ['cart', 'var(--money)'], 'news.storeUsers': ['cart', 'var(--money)'], 'hist.hwLab': ['cpu', 'var(--tech)'],
+  'hist.hwFab': ['factory', 'var(--tech)'], 'hist.firstHw': ['gpu', 'var(--tech)'], 'hist.hwPlat': ['console', 'var(--tech)'],
+  'hist.games': ['gamepad', 'var(--accent)'], 'hist.fans': ['heart', 'var(--fans)'], 'hist.cash': ['money', 'var(--money)'],
+};
+const LIVE_HIST = new Set(['hist.f2p', 'hist.firstExp', 'hist.firstRegion']);
+const boldVars = (o) => {
+  const vars = {};
+  // strängar och {sv,en}-titlar (konkurrenternas spel) i fetstil, citat i kursiv
+  for (const [k, v] of Object.entries(o || {})) vars[k] = k === 'quote' ? `<i>${esc(L(v))}</i>` : typeof v === 'string' || (v && typeof v === 'object') ? `<b>${esc(L(v))}</b>` : v;
+  return vars;
+};
+function storyTab(G) {
+  const rows = [{ t: 0, key: 'hist.founded', vars: { studio: G.studio } }, ...storyOf(G)];
+  let year = 0;
+  const list = rows
+    .map((m) => {
+      const d = dateOf(m.t);
+      const [ic, col] = STORY_IC[m.key] || (m.key.startsWith('live.') || LIVE_HIST.has(m.key) ? ['globe', 'var(--good)'] : ['star', 'var(--accent)']);
+      const cert = m.key === 'hist.cert' ? CERTS[m.vars.i] : null;
+      const vars = boldVars(cert ? { title: m.vars.title, cert: L(cert.name) } : m.vars);
+      // jämna tal skrivs kort: 100K fans, $10M
+      if (m.key === 'hist.fans' || m.key === 'hist.cash') vars.n = `<b>${(m.key === 'hist.cash' ? money(m.vars.n) : fmtNum(m.vars.n)).replace(/\.0+(?=[KMB])/, '')}</b>`;
+      const head = d.year !== year ? `<div class="st-y disp">${d.year}</div>` : '';
+      year = d.year;
+      return `${head}<div class="st-row" style="--c:${cert ? cert.color : col}"><span class="st-dot">${icon(ic)}</span><div style="flex:1;min-width:0"><div>${t(m.key, vars)}</div><div class="faint" style="font-size:11px">${MONTHS[lang][d.month]} ${d.year}</div></div></div>`;
+    })
+    .join('');
+  // överst: studion i siffror
+  const games = G.games.filter((g) => !g.expansionOf).length;
+  const sum = [
+    ['flag', 'var(--accent)', t('hist.sum.since', { y: dateOf(0).year })],
+    games && ['gamepad', 'var(--design)', t('hist.sum.games', { n: games })],
+    G.stats.hits && ['star', 'var(--gold)', t('hist.sum.hits', { n: G.stats.hits })],
+    G.awards.length && ['trophy', 'var(--gold)', t('hist.sum.awards', { n: G.awards.length })],
+  ].filter(Boolean);
+  const chips = sum.map(([ic, c, text]) => `<span class="chip c" style="--c:${c}">${icon(ic)}${text}</span>`).join('');
+  return `<div class="st-sum">${chips}</div><p class="hint" style="margin-bottom:6px">${t('hist.help')}</p><div class="story${rows.length < 2 ? ' one' : ''}">${list}</div>`;
+}
 regWin({
   id: 'news',
   icon: 'mail',
   color: 'var(--design)',
   size: 'md',
   title: () => t('news.title'),
+  headExtra: () => `<div class="tabs">${['news', 'story'].map((k) => `<button class="tab ${NW.tab === k ? 'on' : ''}" data-act="nw-tab" data-id="${k}">${t('news.tab.' + k)}</button>`).join('')}</div>`,
   render(G) {
+    if (NW.tab === 'story') return storyTab(G);
     if (!G.news.length) return `<div class="empty">${icon('mail')}<div>${t('news.empty')}</div></div>`;
     const NIC = { info: 'info', good: 'check', bad: 'bug', platform: 'gamepad', award: 'trophy', research: 'flask', money: 'money', hire: 'team' };
     return `<div class="col" style="gap:7px">${G.news
       .map((n) => {
         const d = dateOf(n.t);
-        const vars = {};
-        // strängar och {sv,en}-titlar (konkurrenternas spel) i fetstil
-        for (const [k, v] of Object.entries(n.vars || {})) vars[k] = k === 'quote' ? `<i>${esc(L(v))}</i>` : typeof v === 'string' || (v && typeof v === 'object') ? `<b>${esc(L(v))}</b>` : v;
+        const vars = boldVars(n.vars);
         return `<div class="in ${n.kind === 'good' ? 'good' : n.kind === 'bad' ? 'bad' : 'ok'}"><span class="ii">${icon(NIC[n.kind] || 'info')}</span><span style="flex:1">${t(n.key, vars)}</span><span class="faint" style="font-size:11px;white-space:nowrap">${d.year} · ${MONTHS[lang][d.month]}</span></div>`;
       })
       .join('')}</div>`;
   },
+});
+
+act('nw-tab', (el) => {
+  NW.tab = el.dataset.id;
+  UI.refresh();
 });
 
 // ── Meny ──

@@ -366,6 +366,15 @@ function manage(G) {
 }
 
 const G = S.newGame({ studio: 'Bot', seed, difficulty: diff });
+// NEWSDBG=1: hur många notiser (toastar) spelaren får per år och vilka som är vanligast (för att hitta torka och brus)
+const toasts = {};
+if (process.env.NEWSDBG) {
+  const { on } = await import('../src/core/bus.js');
+  on('toast', (n) => {
+    const y = S.yearOf(G.t);
+    (toasts[y] || (toasts[y] = [])).push(n.key);
+  });
+}
 S.makeCompetitors(G);
 S.initWorld(G);
 let lastYear = 1979;
@@ -477,3 +486,15 @@ if (process.env.CHARTDBG === '2') {
 }
 // RANKDBG=1: studions plats i branschrankningen vid varje årsskifte
 if (process.env.RANKDBG) console.log('   rank ' + (G.ranks || []).map((r) => `${r.y}:${r.pos}(${Math.round(r.share * 100)}%)`).join(' '));
+if (process.env.NEWSDBG) {
+  const all = {};
+  const per = [];
+  for (const [y, ks] of Object.entries(toasts)) {
+    per.push(`${y}:${ks.length}`);
+    for (const k of ks) all[k] = (all[k] || 0) + 1;
+  }
+  console.log('   toasts/year ' + per.join(' '));
+  console.log('   top ' + Object.entries(all).sort((a, b) => b[1] - a[1]).slice(0, 28).map(([k, n]) => `${k} ${n}`).join(', '));
+}
+// STORYDBG=1: studions historia (milstolparna) i slutet
+if (process.env.STORYDBG) console.log('   story ' + S.storyOf(G).length + ': ' + S.storyOf(G).map((m) => `${S.yearOf(m.t)} ${m.key.replace(/^(news|hist|live\.news)\./, '')}${m.vars.n ? ' ' + m.vars.n : ''}`).join(' | '));

@@ -3,7 +3,7 @@
 // balansen är densamma med och utan det.
 import { emit } from '../core/bus.js';
 import { fmtNum, fmtFull, fmtMoney } from '../core/util.js';
-import { note } from './news.js';
+import { note, milestone } from './news.js';
 import { topSellers } from './market.js';
 import { curveFor, unitRev } from './sales.js';
 import { liveMonth } from './live.js';
@@ -14,6 +14,7 @@ export { CERTS, certIndex, totalUnits };
 
 export const CHART_SIZE = 10;
 const CHART_WEEKS = 12;
+const CHART_ROUTINE = 3;
 
 export const certOf = (g) => CERTS[g.cert ?? certIndex(totalUnits(g))] || null;
 // nästa skiva och hur långt det är kvar (null när diamanten är nådd)
@@ -58,6 +59,8 @@ export function chartWeek(G) {
   const selling = G.games.filter((g) => !g.ended && g.weekly.length);
   if (selling.length) {
     const rows = topSellers(G, CHART_WEEKS, CHART_SIZE);
+    // en studio som redan haft CHART_ROUTINE listettor får bara notis om nya ettor; att gå in på listan står i krönikan
+    const routine = (S.no1 || 0) >= CHART_ROUTINE;
     for (const g of selling) {
       const rank = rows.findIndex((r) => r.yours && r.id === g.id) + 1;
       if (!rank) continue;
@@ -72,8 +75,8 @@ export function chartWeek(G) {
         S.no1 = (S.no1 || 0) + 1;
         note(G, 'news.chartTop', { title: g.title }, 'good');
         emit('chartTop', g);
-      } else if (first) note(G, 'news.chartIn', { title: g.title, n: rank }, 'info');
-      else if (rank <= 3 && before > 3) note(G, 'news.chartClimb', { title: g.title, n: rank }, 'info');
+      } else if (first) note(G, 'news.chartIn', { title: g.title, n: rank }, 'info', routine);
+      else if (rank <= 3 && before > 3) note(G, 'news.chartClimb', { title: g.title, n: rank }, 'info', routine);
     }
     // bästa första veckan (från det tredje spelet, de första slår alltid varandra)
     for (const g of selling) {
@@ -94,6 +97,7 @@ export function chartWeek(G) {
       g.certT = G.t;
       // en skiva firas när den är minst lika fin som studions finaste hittills; lägre skivor noteras bara i krönikan
       const big = i >= (S.bestCert ?? -1);
+      if (i > (S.bestCert ?? -1)) milestone(G, 'hist.cert', { title: g.title, i });
       S.bestCert = Math.max(S.bestCert ?? -1, i);
       note(G, 'news.cert', { title: g.title, cert: CERTS[i].name, n: fmtFull(CERTS[i].units) }, 'award', true);
       emit('cert', { game: g, cert: CERTS[i], i, big });
@@ -183,10 +187,12 @@ export function rankMonth(G) {
 }
 // Årets slut: din plats sparas (för årsrapporten och pilarna i rankningen), och första gången du är störst blir det en nyhet
 export function rankYear(G) {
-  const me = studioRank(G);
+  const rows = studioRanking(G);
+  const me = rows.find((r) => r.you);
+  const near = rows[me.pos === 1 ? 1 : me.pos - 2];
   const hist = G.ranks || (G.ranks = []);
   const prev = hist[hist.length - 1];
-  hist.push({ y: yearOf(G.t) - 1, pos: me.pos, share: Math.round(me.share * 1000) / 1000, rev: Math.round(me.rev) });
+  hist.push({ y: yearOf(G.t) - 1, pos: me.pos, share: Math.round(me.share * 1000) / 1000, rev: Math.round(me.rev), near: near ? near.name : '', gap: near ? Math.round(Math.abs(near.rev - me.rev)) : 0 });
   if (hist.length > 60) hist.shift();
   if (me.pos === 1 && me.rev > 0 && !G.stats.topStudio) {
     G.stats.topStudio = yearOf(G.t) - 1;

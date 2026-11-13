@@ -4,6 +4,7 @@ import { RESEARCH } from '../src/data/research.js';
 import { EVENTS } from '../src/data/events.js';
 import { exportCode, importCode } from '../src/core/store.js';
 import { PLATFORM, PLATFORMS } from '../src/data/platforms.js';
+import { STRINGS } from '../src/data/strings.js';
 let fails = 0;
 const ok = (c, m) => { if (!c) { fails++; console.log('FAIL', m); } else console.log('ok  ', m); };
 const G = S.newGame({ studio: 'T', seed: 7, difficulty: 'normal' });
@@ -800,7 +801,7 @@ ok(true, 'alla händelser körda');
     ok(Math.abs(S.studioRank(GC).rev - meA - 5000) < 1e-6, 'ett onlinespel som släpptes under året räknas från starten');
     delete lg.live;
     const y0 = S.rankYear(GC);
-    ok(GC.ranks.length === 1 && GC.ranks[0].pos === 2 && y0.prev === null && !GC.stats.topStudio, 'årets plats sparas');
+    ok(GC.ranks.length === 1 && GC.ranks[0].pos === 2 && y0.prev === null && !GC.stats.topStudio && GC.ranks[0].near === cA.name && GC.ranks[0].gap === Math.round(rk1[0].rev - S.studioRank(GC).rev), 'årets plats sparas med avståndet till studion framför');
     cA.owned = true;
     const rk2 = S.studioRanking(GC);
     ok(rk2.length === GC.comps.length && S.studioRank(GC).pos === 1 && S.studioRank(GC).rev > me0.rev, 'ett dotterbolags försäljning räknas till dig');
@@ -880,6 +881,71 @@ ok(true, 'alla händelser körda');
   fresh.weekly.push(6);
   S.fanWeek(GF);
   ok(GF.news.filter((n) => n.key === 'news.fan').length === 1 && GF.money === money0 && GF.fans === fans0 && GF.rng === rng0, 'bara en gång per spel, och inget rör pengar, fans eller slumpföljden');
+}
+// studions historia: de stora ögonblicken sparas för gott (bara första gången där det gäller), en äldre sparning får sin
+// historia byggd ur det som finns kvar, och inget av det rör pengar eller slumpföljden
+{
+  const GH = S.newGame({ studio: 'Historia', seed: 44 });
+  S.makeCompetitors(GH); S.initWorld(GH);
+  const rng0 = GH.rng, money0 = GH.money;
+  const rel = (key, title, v) => S.note(GH, key, { title, studio: GH.studio, v }, 'info', true);
+  rel('news.release', 'A', '6.0'); rel('news.hit1', 'B', '8.5'); rel('news.hit2', 'C', '9.0'); rel('news.flop', 'D', '3.0');
+  const keys = () => S.storyOf(GH).map((m) => m.key + ':' + (m.vars.title || m.vars.n || ''));
+  ok(keys().join() === 'hist.firstGame:A,hist.firstHit:B', 'första spelet och första succén sparas en gång');
+  S.note(GH, 'news.rankUp', { studio: GH.studio, n: 8, rival: 'X' }, 'good', true);
+  S.note(GH, 'news.rankUp', { studio: GH.studio, n: 4, rival: 'X' }, 'good', true);
+  S.note(GH, 'news.fan', { name: 'N', title: 'A', quote: { sv: 'q', en: 'q' } }, 'info', true);
+  S.note(GH, 'news.office', { studio: GH.studio, name: 'Kontor' }, 'good', true);
+  S.note(GH, 'news.office', { studio: GH.studio, name: 'Hus' }, 'good', true);
+  S.note(GH, 'news.chartTop', { title: 'B' }, 'good', true); S.note(GH, 'news.chartTop', { title: 'C' }, 'good', true);
+  ok(keys().slice(2).join() === 'news.rankUp:4,news.office:,news.office:,hist.firstNo1:B', 'bara topp fem i rankningen, varje flytt och första listettan blir milstolpar; vanliga nyheter blir det inte');
+  // priser: första priset, och sedan bara galor som slår studions största skörd
+  const gala = (key, n, year) => S.note(GH, key, { title: 'B', cat: { sv: 'Årets spel', en: 'Game of the Year' }, year, n }, 'award', true);
+  gala('news.awardWins', 2, 1985); gala('news.awardWin', 1, 1986); gala('news.awardWins', 2, 1987); gala('news.awardWins', 3, 1988); gala('news.awardWins', 3, 1989);
+  const prizes = S.storyOf(GH).filter((m) => m.key === 'hist.firstAward' || m.key === 'news.awardWins').map((m) => m.key.split('.')[1] + m.vars.year);
+  ok(prizes.join() === 'firstAward1985,awardWins1988', 'första priset sparas en gång och en gala bara när skörden är studions största');
+  // fansen och kassan: varje steg en gång, och studions tionde spel
+  const before = S.storyOf(GH).length;
+  S.storyWeek(GH);
+  GH.fans = 12000; GH.money = 2.5e7; S.storyWeek(GH); S.storyWeek(GH);
+  GH.fans = 90000; S.storyWeek(GH);
+  const marks = S.storyOf(GH).slice(before).map((m) => m.key + ':' + m.vars.n);
+  ok(marks.join() === 'hist.fans:10000,hist.cash:10000000' && GH.stats.fanMark === 1 && GH.stats.cashMark === 2, 'fansen och kassan blir milstolpar en gång per steg');
+  GH.money = money0;
+  for (let i = 0; i < 10; i++) GH.games.push({ id: 100 + i, title: 'G' + i, t: 0, score: 6, expansionOf: i === 9 ? 100 : null });
+  rel('news.release', 'Nio', '6.0');
+  GH.games.push({ id: 110, title: 'Tio', t: 0, score: 6 });
+  rel('news.release', 'Tio', '6.0');
+  GH.games.push({ id: 111, title: 'Elva', t: 0, score: 6 });
+  rel('news.release', 'Elva', '6.0');
+  const nth = S.storyOf(GH).filter((m) => m.key === 'hist.games');
+  ok(nth.length === 1 && nth[0].vars.n === 10 && nth[0].vars.title === 'Tio', 'studions tionde spel är en milstolpe, expansioner räknas inte');
+  GH.games.length = 0;
+  ok(S.STORY_KEYS.every((k) => STRINGS[k] && STRINGS[k].length === 2), 'varje milstolpe har en text på båda språken: ' + S.STORY_KEYS.filter((k) => !STRINGS[k]).join());
+  // skivor: studions första av varje slag
+  GH.t = 48 * 6; GH.flags.charts = 1; GH.stats.bestCert = -1;
+  const mk = (id, units) => ({ id, title: 'S' + id, t: GH.t - 30, score: 7, topic: 'fantasy', genre: 'rpg', platform: 'pc', scope: 'medium', weekly: [0], units, revenue: 1, total: 8, priceAt: 30, tail: 1, ended: true, fansGained: 0, ports: [] });
+  GH.games.push(mk(1, 150000));
+  S.chartWeek(GH);
+  GH.games.push(mk(2, 20000), mk(3, 300000));
+  S.chartWeek(GH);
+  const certs = S.storyOf(GH).filter((m) => m.key === 'hist.cert');
+  ok(certs.length === 1 && certs[0].vars.i === 1 && certs[0].vars.title === 'S1' && GH.rng === rng0 && GH.money === money0, 'studions första guldskiva är en milstolpe, nästa guld och en silver är det inte');
+  // en äldre sparning utan historia: byggs ur spellistan första gången den läses
+  const GO = S.newGame({ studio: 'Gammal', seed: 45 });
+  S.makeCompetitors(GO); S.initWorld(GO);
+  GO.t = 48 * 12;
+  GO.games.push(Object.assign(mk(1, 500), { t: 10, score: 6 }), Object.assign(mk(2, 150000), { t: 60, score: 8.4, cert: 1, certT: 80, chart: { best: 1, weeks: 5, top: 2 } }), Object.assign(mk(3, 20000), { t: 70, score: 7, cert: 0, certT: 90 }), Object.assign(mk(4, 9e5), { t: 200, score: 8, cert: 2, certT: 230, live: { t0: 200 } }));
+  GO.stats.topStudio = 1988;
+  GO.awards.push({ year: 1982, cat: 'fan', title: 'S2' }, { year: 1983, cat: 'goty', title: 'S2' }, { year: 1984, cat: 'goty', title: 'S4' }, { year: 1984, cat: 'tech', title: 'S4' });
+  delete GO.story;
+  const old = S.storyOf(GO).map((m) => m.key + ':' + (m.vars.title || m.vars.y) + ':' + m.t);
+  ok(old.join() === 'hist.firstGame:S1:10,hist.firstHit:S2:60,hist.firstNo1:S2:60,hist.cert:S2:80,hist.firstAward:S2:143,live.news.launch:S4:200,hist.cert:S4:230,news.awardWins:S4:239,news.rankTop:1988:432' && GO.story.length === 9 && GO.story[4].vars.cat.en === 'Fan Favourite' && GO.story[7].vars.n === 2, 'en äldre sparning får sin historia ur spellistan');
+  GO.fans = 5e6; delete GO.stats.fanMark; S.storyWeek(GO);
+  S.note(GO, 'news.hit1', { title: 'Ny', studio: 'Gammal', v: '9.0' }, 'good', true);
+  ok(GO.story.length === 9 && GO.stats.fanMark === 3, 'det som redan finns i historien läggs inte till igen, och en äldre sparning börjar tyst på sin fannivå');
+  const GS = importCode(exportCode(GO));
+  ok(GS && GS.story.length === 9 && GS.story[0].key === 'hist.firstGame', 'historien följer med sparningen');
 }
 // årets summa per kategori: förra året till finansfönstret och årsrapporten, en äldre sparning räknar en del av året
 {
