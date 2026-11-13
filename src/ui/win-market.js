@@ -15,6 +15,7 @@ import { CATEGORIES } from '../data/categories.js';
 import { idealFocus } from '../sim/score.js';
 import { canStore } from '../sim/store.js';
 import { studioRanking } from '../sim/charts.js';
+import { rivalOf, rivalLog } from '../sim/rival.js';
 import { storeTab } from './store-tab.js';
 import { groupTab } from './group-tab.js';
 import { STABLE_MIN, stability } from '../sim/group.js';
@@ -133,6 +134,7 @@ function acqCell(G, c) {
 
 // Branschrankningen: alla studior efter spelförsäljningen de senaste tolv månaderna, din studio bland dem. Dotterbolagen
 // räknas till dig och står direkt under din rad.
+const END_KEY = { done: 'mkt.rival.end.done', away: 'mkt.rival.end.away', bought: 'mkt.rival.end.bought' };
 function rivalsTab(G) {
   const rank = studioRanking(G);
   const owned = ownedComps(G);
@@ -143,9 +145,25 @@ function rivalsTab(G) {
     : yearOf(G.t) >= 1998 ? `<p class="hint" style="margin-bottom:10px">${icon('lock')} ${t('acq.locked')}</p>` : '';
   const lastOf = (c) => G.market.releases.filter((r) => r.comp === c.id).slice(-1)[0];
   const share = (r) => `<div class="rv-str share" style="width:150px">${bar((r.rev / top) * 100, r.color, 'thin')}<div class="faint" style="font-size:11px;margin-top:3px">${t('mkt.rank.share', { n: pctShare(r.share) })} · ${money(r.rev)}</div></div>`;
+  // ärkerivalen: märkt i listan, med duellens ställning i ett kort överst
+  const foe = rivalOf(G);
+  const duelCard = () => {
+    const me = rank.find((r) => r.you);
+    const them = rank.find((r) => r.id === foe.id);
+    if (!me || !them) return '';
+    const R = G.rival;
+    const hi = Math.max(1, me.rev, them.rev);
+    const line = (name, r, c) => `<div><div class="kv" style="margin-bottom:3px"><span>${esc(name)}</span><b class="num">${money(r.rev)}</b></div>${bar((r.rev / hi) * 100, c, 'thin')}</div>`;
+    const lead = me.rev >= them.rev;
+    // de senaste avslutade duellerna, nyast först
+    const past = rivalLog(G).slice(-4).reverse().map((x) => `<span class="chip">${esc(x.name)} <b class="num">${x.w}–${x.l}</b> <span class="faint">${t(END_KEY[x.end] || END_KEY.done)}</span></span>`).join('');
+    return `<div class="card duel" style="margin-bottom:10px"><div class="row" style="gap:8px;margin-bottom:8px;flex-wrap:wrap"><span class="ii" style="color:var(--hot)">${icon('target')}</span><b style="flex:1;min-width:0">${t('mkt.rival.head', { rival: esc(foe.name) })}</b><span class="tag" style="--c:var(--hot)">${t('mkt.rival.score', { w: R.w, l: R.l })}</span></div>
+      <div class="col" style="gap:7px">${line(G.studio, me, 'var(--accent)')}${line(foe.name, them, foe.color)}</div>
+      <p class="hint" style="margin-top:8px"><span style="color:${lead ? 'var(--good)' : 'var(--bug)'}">${t(lead ? 'mkt.rival.lead' : 'mkt.rival.trail', { v: money(Math.abs(me.rev - them.rev)), rival: esc(foe.name) })}</span> ${t('mkt.rival.help')} <span class="faint">${t('mkt.rival.since', { y: R.since })}</span></p>${past ? `<div class="lbl" style="margin:10px 0 6px">${t('mkt.rival.past')}</div><div class="row" style="gap:6px;flex-wrap:wrap">${past}</div>` : ''}</div>`;
+  };
   const compRow = (c, r) => {
     const last = lastOf(c);
-    return `<div class="card row rv-row ${c.owned ? 'owned' : ''}" style="gap:14px"><div class="rk disp">${r ? r.pos : ''}</div><div class="dotc" style="background:${c.color}"></div><div style="flex:1;min-width:0"><b>${esc(c.name)}</b><div class="faint" style="font-size:12px">${last ? t('mkt.lastRel', { title: esc(L(last.title)), v: last.score.toFixed(1) }) : t('mkt.noRel')}</div></div>
+    return `<div class="card row rv-row ${c.owned ? 'owned' : ''}" style="gap:14px"><div class="rk disp">${r ? r.pos : ''}</div><div class="dotc" style="background:${c.color}"></div><div style="flex:1;min-width:0"><b>${esc(c.name)}</b>${foe === c ? `<span class="tag" style="--c:var(--hot);margin-left:8px">${t('mkt.rival.tag')}</span>` : ''}<div class="faint" style="font-size:12px">${last ? t('mkt.lastRel', { title: esc(L(last.title)), v: last.score.toFixed(1) }) : t('mkt.noRel')}</div></div>
       ${r ? share(r) : `<div class="rv-str" style="width:150px">${bar(((c.strength - 0.4) / 1.3) * 100, c.color, 'thin')}<div class="faint" style="font-size:11px;margin-top:3px">${t('mkt.strength')}</div></div>`}
       <div style="text-align:right;min-width:60px"><div class="disp" style="font-size:23px;color:var(--gold)">${c.best ? c.best.toFixed(1) : '–'}</div><div class="faint" style="font-size:11px">${t('mkt.games', { n: c.games })}</div></div>${acqCell(G, c)}</div>`;
   };
@@ -166,7 +184,7 @@ function rivalsTab(G) {
       <div style="text-align:right;min-width:60px"><div class="disp" style="font-size:23px;color:var(--gold)">${G.stats.bestScore ? G.stats.bestScore.toFixed(1) : '–'}</div><div class="faint" style="font-size:11px">${t('mkt.games', { n: G.games.length })}</div></div>${canAcquireAny(G) ? '<div class="acq-cell"></div>' : ''}</div>`;
   };
   const list = rank.map((r) => (r.you ? youRow(r) + owned.map((c) => compRow(c, null)).join('') : compRow(r.comp, r))).join('');
-  return `${rumorsHTML(G)}<div class="lbl" style="margin-bottom:4px">${t('mkt.rank.head')}</div><p class="hint" style="margin-bottom:10px">${t('mkt.rank.help')}</p>${head}<div class="col" style="gap:8px">${list}</div>`;
+  return `${rumorsHTML(G)}<div class="lbl" style="margin-bottom:4px">${t('mkt.rank.head')}</div><p class="hint" style="margin-bottom:10px">${t('mkt.rank.help')}</p>${head}${foe ? duelCard() : ''}<div class="col" style="gap:8px">${list}</div>`;
 }
 
 // Fliken Egen butik visas från 2001 (låst tills forskningen är klar), fliken Koncern med forskningen Uppköp

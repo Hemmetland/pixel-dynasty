@@ -25,6 +25,8 @@ const RELEASE = [{ as: 'hist.firstGame', once: true }, NTH];
 const HIT = [{ as: 'hist.firstGame', once: true }, { as: 'hist.firstHit', once: true }, NTH];
 // en gala med flera priser är en milstolpe bara när skörden är studions största hittills
 const HAUL = (v, h) => !h.some((x) => (x.key === 'news.awardWins' || x.key === 'hist.firstAward') && (x.vars.n || 1) >= v.n);
+// ett uppköp av ärkerivalen får en egen rad
+const isRival = (G, v) => !!G.rival && G.rival.name === v.studio;
 const MILESTONES = {
   'news.release': RELEASE,
   'news.flop': RELEASE,
@@ -38,7 +40,9 @@ const MILESTONES = {
   'news.awardWin': [{ as: 'hist.firstAward', once: true }],
   'news.awardWins': [{ as: 'hist.firstAward', once: true }, { if: HAUL }],
   'news.filmGood': [{}],
-  'news.acquired': [{}],
+  'news.acquired': [{ if: (v, h, G) => !isRival(G, v) }, { as: 'hist.rivalBought', if: (v, h, G) => isRival(G, v), vars: (v, G) => ({ studio: G.studio, rival: v.studio }) }],
+  'news.rival': [{ as: 'hist.firstRival', once: true }],
+  'news.rivalDone': [{ as: 'hist.rivalDone', once: true }],
   'news.pubRelease': [{ as: 'hist.firstPub', once: true }],
   'news.storeOpen': [{ as: 'hist.store', once: true }],
   'news.storeUsers': [{}],

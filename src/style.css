@@ -629,6 +629,8 @@ input[type='range']::-moz-range-thumb { width: 18px; height: 18px; border-radius
 .fm-disc.on { box-shadow: 0 0 14px color-mix(in srgb, var(--c) 45%, transparent); }
 .yr-rank { display: flex; align-items: center; gap: 16px; margin-top: 16px; }
 .yr-rank .yr-pos { font: 700 40px/1 var(--disp); color: var(--accent); min-width: 64px; text-align: center; }
+.yr-duel { display: flex; align-items: center; gap: 6px; margin-top: 5px; font-size: 12.5px; }
+.yr-duel .ic { flex: none; width: 14px; height: 14px; color: var(--c); }
 .yr-rank.top { border-color: rgba(255, 207, 90, 0.5); background: rgba(255, 207, 90, 0.07); }
 .yr-rank.top .yr-pos { color: var(--gold); text-shadow: 0 0 16px rgba(255, 207, 90, 0.5); }
 .rp-rec { display: none; margin-top: 10px; font-size: 11px; font-weight: 800; letter-spacing: 0.08em; text-transform: uppercase; color: var(--gold); }

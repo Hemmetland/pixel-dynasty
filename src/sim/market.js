@@ -108,7 +108,8 @@ export function releaseComp(G, c) {
   c.next = rollNext(G, yearOf(c.nextT));
   c.strength = clamp(c.strength + c.growth * (score >= mean ? 1 : 0.4) - 0.004, 0.45, 1.7);
   // krönikan: konkurrenternas allra största spel, högst ett per halvår så att krönikan mest handlar om din studio
-  if (score >= 9 && G.t - (G.market.hitT ?? -1e9) >= 24) {
+  if (G.rival && G.rival.id === c.id && !c.owned) note(G, 'news.rivalRel', { rival: c.name, title, v: score.toFixed(1) }, 'info');
+  else if (score >= 9 && G.t - (G.market.hitT ?? -1e9) >= 24) {
     G.market.hitT = G.t;
     note(G, 'news.rivalHit', { studio: c.name, title, v: score.toFixed(1) }, 'info', true);
   }

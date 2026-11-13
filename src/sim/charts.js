@@ -4,6 +4,7 @@
 import { emit } from '../core/bus.js';
 import { fmtNum, fmtFull, fmtMoney } from '../core/util.js';
 import { note, milestone } from './news.js';
+import { rivalYear, rivalMonth } from './rival.js';
 import { topSellers } from './market.js';
 import { curveFor, unitRev } from './sales.js';
 import { liveMonth } from './live.js';
@@ -176,6 +177,8 @@ export function rankMonth(G) {
   const rows = studioRanking(G);
   const i = rows.findIndex((r) => r.you);
   const me = rows[i];
+  // går du om ärkerivalen får den nyheten notisen, och klivet på stegen står bara i krönikan
+  const flip = rivalMonth(G, rows);
   if (S.bestRank == null) {
     S.bestRank = G.games.length ? Math.min(me.pos, ...(G.ranks || []).map((r) => r.pos)) : rows.length;
     return;
@@ -183,7 +186,7 @@ export function rankMonth(G) {
   if (me.pos >= S.bestRank || !(me.rev > 0)) return;
   S.bestRank = me.pos;
   const passed = rows[i + 1];
-  if (passed) note(G, 'news.rankUp', { studio: G.studio, n: me.pos, rival: passed.name }, 'good');
+  if (passed) note(G, 'news.rankUp', { studio: G.studio, n: me.pos, rival: passed.name }, 'good', flip === 'pass');
 }
 // Årets slut: din plats sparas (för årsrapporten och pilarna i rankningen), och första gången du är störst blir det en nyhet
 export function rankYear(G) {
@@ -192,7 +195,7 @@ export function rankYear(G) {
   const near = rows[me.pos === 1 ? 1 : me.pos - 2];
   const hist = G.ranks || (G.ranks = []);
   const prev = hist[hist.length - 1];
-  hist.push({ y: yearOf(G.t) - 1, pos: me.pos, share: Math.round(me.share * 1000) / 1000, rev: Math.round(me.rev), near: near ? near.name : '', gap: near ? Math.round(Math.abs(near.rev - me.rev)) : 0 });
+  hist.push({ y: yearOf(G.t) - 1, pos: me.pos, share: Math.round(me.share * 1000) / 1000, rev: Math.round(me.rev), near: near ? near.name : '', gap: near ? Math.round(Math.abs(near.rev - me.rev)) : 0, ...rivalYear(G, rows) });
   if (hist.length > 60) hist.shift();
   if (me.pos === 1 && me.rev > 0 && !G.stats.topStudio) {
     G.stats.topStudio = yearOf(G.t) - 1;

@@ -486,6 +486,8 @@ if (process.env.CHARTDBG === '2') {
 }
 // RANKDBG=1: studions plats i branschrankningen vid varje årsskifte
 if (process.env.RANKDBG) console.log('   rank ' + (G.ranks || []).map((r) => `${r.y}:${r.pos}(${Math.round(r.share * 100)}%)`).join(' '));
+// RIVALDBG=1: duellen mot ärkerivalen år för år (V/F = vinst/förlust, > ny rival, tvåans andel av din försäljning när du är störst)
+if (process.env.RIVALDBG) console.log('   duel ' + (G.ranks || []).map((r) => `${r.y}:${r.pos}${r.duel ? (r.duel.win ? 'V' : 'F') + (r.duel.end ? '!' + r.duel.end : '') : ''}${r.rival ? '>' + r.rival.slice(0, 8) : ''}${r.pos === 1 && r.rev ? '(' + Math.round(((r.rev - r.gap) / r.rev) * 100) + ')' : ''}`).join(' '));
 if (process.env.NEWSDBG) {
   const all = {};
   const per = [];

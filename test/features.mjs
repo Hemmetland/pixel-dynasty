@@ -947,6 +947,56 @@ ok(true, 'alla händelser körda');
   const GS = importCode(exportCode(GO));
   ok(GS && GS.story.length === 9 && GS.story[0].key === 'hist.firstGame', 'historien följer med sparningen');
 }
+// ärkerivalen: studion närmast framför blir rival, årets duell avgörs vid årsskiftet, raka segrar avgör den och en ny
+// rival utses. Duellen rör varken pengar, fans eller slumpföljden.
+{
+  const GR = S.newGame({ studio: 'Duell', seed: 46 });
+  S.makeCompetitors(GR); S.initWorld(GR);
+  GR.t = 48;
+  const [a, b, c, d, e] = GR.comps;
+  const rows = (order) => order.map((x, i) => (x === 'me' ? { id: 0, name: GR.studio, you: true, rev: 100 - i, pos: i + 1 } : { id: x.id, name: x.name, rev: 100 - i, pos: i + 1, comp: x }));
+  const year = (order) => { GR.t += 48; return S.rivalYear(GR, rows(order)); };
+  const money0 = GR.money, fans0 = GR.fans;
+  let o = S.rivalYear(GR, rows([a, b, 'me', c, d, e]));
+  ok(o.rival === b.name && !o.duel && !o.again && GR.rival.since === 1981 && S.rivalOf(GR) === b, 'studion närmast framför blir ärkerival');
+  o = year([a, b, 'me', c, d, e]);
+  ok(o.duel && o.duel.name === b.name && !o.duel.win && o.duel.l === 1 && !o.duel.end && !o.rival && GR.rival.run === -1, 'rivalen sålde mer: årets poäng går till rivalen');
+  year([a, 'me', b, c, d, e]);
+  o = year([a, 'me', b, c, d, e]);
+  ok(o.duel.win && o.duel.w === 2 && !o.duel.end && GR.rival.id === b.id, 'två raka segrar avgör inte duellen mot en rival som ligger intill');
+  o = year([a, 'me', b, c, d, e]);
+  const log = () => S.rivalLog(GR).map((x) => `${x.name === a.name ? 'a' : x.name === b.name ? 'b' : x.name === c.name ? 'c' : 'd'}:${x.w}-${x.l}:${x.end}`).join();
+  ok(o.duel.end === 'done' && o.rival === a.name && log() === 'b:3-1:done' && GR.rival.since === 1985 && GR.rival.w === 0, 'tre raka segrar avgör duellen och studion närmast framför blir ny rival');
+  year(['me', c, d, a, b, e]);
+  o = year(['me', c, d, a, b, e]);
+  ok(o.duel.end === 'done' && o.rival === c.name && log() === 'b:3-1:done,a:2-0:done', 'två segrar räcker när rivalen halkat tre platser efter, och den som är störst får tvåan som rival');
+  year([c, a, b, d, 'me', e]); year([c, a, b, d, 'me', e]);
+  o = year([c, a, b, d, 'me', e]);
+  ok(o.duel.end === 'away' && o.rival === d.name && log().endsWith('c:0-3:away'), 'en rival som dragit ifrån i tre år byts mot studion närmast framför');
+  year([a, b, 'me', d, c, e]); year([a, b, 'me', d, c, e]);
+  o = year([a, b, 'me', d, c, e]);
+  ok(o.duel.end === 'done' && o.rival === b.name && o.again === true, 'en gammal rival kan komma tillbaka');
+  // månadens koll: en nyhet när ni går om varandra, men inte två inom ett halvår
+  const flips = () => GR.news.filter((n) => n.key === 'news.rivalPass' || n.key === 'news.rivalPassed').length;
+  GR.t += 30;
+  const f0 = flips();
+  ok(S.rivalMonth(GR, rows([a, 'me', b, c, d, e])) === 'pass' && flips() === f0 + 1 && GR.news[0].key === 'news.rivalPass', 'en nyhet när du går om rivalen');
+  GR.t += 4;
+  ok(S.rivalMonth(GR, rows([a, b, 'me', c, d, e])) === '' && S.rivalMonth(GR, rows([a, b, 'me', c, d, e])) === '' && flips() === f0 + 1, 'ingen ny nyhet om ni byter plats igen inom ett halvår');
+  // rivalens släpp är en nyhet, andras släpp är det inte
+  const n1 = GR.news.filter((n) => n.key === 'news.rivalRel').length;
+  S.releaseComp(GR, b); S.releaseComp(GR, a);
+  const rr = GR.news.filter((n) => n.key === 'news.rivalRel');
+  ok(rr.length === n1 + 1 && rr[0].vars.rival === b.name && S.rivalLast(GR).comp === b.id, 'ärkerivalens släpp blir en nyhet');
+  // uppköp: duellen slutar, och historien får en egen rad
+  S.note(GR, 'news.acquired', { studio: b.name, v: 1990 }, 'good', true);
+  b.owned = true;
+  ok(S.rivalOf(GR) === null, 'en uppköpt rival är inte längre rival');
+  o = year([a, 'me', c, d, e]);
+  const hist = S.storyOf(GR).map((m) => m.key).filter((k) => /[rR]ival|acquired/.test(k));
+  ok(!o.duel && o.rival === a.name && log().endsWith('b:0-0:bought') && hist.join() === 'hist.firstRival,hist.rivalDone,hist.rivalBought', 'köper du rivalen slutar duellen, och historien minns första rivalen, första avgjorda duellen och köpet');
+  ok(GR.money === money0 && GR.fans === fans0, 'duellen rör inte pengar eller fans');
+}
 // årets summa per kategori: förra året till finansfönstret och årsrapporten, en äldre sparning räknar en del av året
 {
   const GY = S.newGame({ studio: 'Y', seed: 5 }); S.makeCompetitors(GY); S.initWorld(GY);

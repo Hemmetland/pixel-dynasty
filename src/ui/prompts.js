@@ -21,6 +21,7 @@ import { bailoutAmount, takeBailout, declineBailout } from '../sim/studio.js';
 import { music } from '../audio/sfx.js';
 import { crowdNote } from './crowd.js';
 import { legacy, LEGACY_RANKS } from '../sim/legacy.js';
+import { rivalOf, rivalLast } from '../sim/rival.js';
 
 let timers = [];
 const later = (fn, ms) => timers.push(setTimeout(fn, ms));
@@ -92,6 +93,15 @@ function phasePrompt(app, G, p, finish) {
 }
 
 // ── Recensioner ───────────────────────────────────────────────────
+// Recensionsrapporten: spelets betyg mot ärkerivalens senaste spel.
+function rivalNote(G, score) {
+  const foe = rivalOf(G);
+  const last = foe && rivalLast(G);
+  if (!last || score === last.score) return '';
+  const win = score > last.score;
+  return `<div class="in ${win ? 'good' : 'bad'}"><span class="ii">${icon('target')}</span><span>${t(win ? 'ins.rival.win' : 'ins.rival.loss', { rival: `<b>${esc(foe.name)}</b>`, title: `<i>${esc(L(last.title))}</i>`, v: `<b>${last.score.toFixed(1)}</b>` })}</span></div>`;
+}
+const DUEL_KEY = { win: 'year.duel.win', loss: 'year.duel.loss', done: 'year.duel.done', away: 'year.duel.away' };
 function reportPrompt(app, G, p, finish) {
   const J = G.job;
   const rep = J.report;
@@ -109,7 +119,7 @@ function reportPrompt(app, G, p, finish) {
       </div>`;
     })
     .join('');
-  const ins = studioNotes(rep, J) + crowdNote(G, J, false);
+  const ins = studioNotes(rep, J) + crowdNote(G, J, false) + rivalNote(G, rep.score);
   const learned = G.know.combos[J.topic + '|' + J.genre] ? '' : `<div class="learn">${icon('sparkle')}<span>${t('rep.learned', { combo: `<b>${L(tp.name)} × ${L(ge.name)}</b>`, v: `<b>${t('compat.' + Math.round(rep.parts.compat))}</b>` })}</span></div>`;
   // slår spelet studions högsta betyg? (från det tredje spelet, de första sätter bara ribban)
   const record = G.stats.gamesMade >= 2 && total > G.stats.bestScore;
@@ -425,8 +435,13 @@ function yearPrompt(app, G, p, finish) {
   const rk = (G.ranks || []).find((r) => r.y === p.year);
   const rkPrev = (G.ranks || []).find((r) => r.y === p.year - 1);
   const rkD = rk && rkPrev ? rkPrev.pos - rk.pos : 0;
+  // årets duell mot ärkerivalen, och en ny rival när pressen pekat ut en
+  const dl = [];
+  if (rk && rk.duel) dl.push([rk.duel.win ? 'var(--good)' : 'var(--bug)', t(DUEL_KEY[rk.duel.end === 'done' ? 'done' : rk.duel.end === 'away' ? 'away' : rk.duel.win ? 'win' : 'loss'], { rival: `<b>${esc(rk.duel.name)}</b>`, w: rk.duel.w, l: rk.duel.l })]);
+  if (rk && rk.rival) dl.push(['var(--hot)', t(rk.again ? 'year.duel.again' : 'year.duel.new', { rival: `<b>${esc(rk.rival)}</b>` })]);
+  const duelLines = dl.map(([c, text]) => `<div class="yr-duel" style="--c:${c}">${icon('target')}<span>${text}</span></div>`).join('');
   const rankCard = rk
-    ? `<div class="card yr-rank ${rk.pos === 1 ? 'top' : ''}"><div class="yr-pos">${rk.pos}</div><div style="flex:1;min-width:0"><div class="lbl">${t('year.rank')}</div><div class="h3">${rk.pos === 1 ? t('year.rankTop') : t('year.rankPos', { n: rk.pos, m: 1 + G.comps.filter((c) => !c.owned).length })}${rkD ? `<span class="tag" style="--c:${rkD > 0 ? 'var(--good)' : 'var(--bug)'};margin-left:8px">${rkD > 0 ? '▲' : '▼'} ${Math.abs(rkD)}</span>` : ''}</div><div class="faint" style="font-size:12.5px">${t('mkt.rank.share', { n: pctShare(rk.share) })}${rk.near && rk.rev > 0 ? ' · ' + t(rk.pos === 1 ? 'mkt.rank.lead' : 'mkt.rank.gap', { v: money(rk.gap), studio: `<b>${esc(rk.near)}</b>`, n: rk.pos - 1 }) : ''}</div></div></div>`
+    ? `<div class="card yr-rank ${rk.pos === 1 ? 'top' : ''}"><div class="yr-pos">${rk.pos}</div><div style="flex:1;min-width:0"><div class="lbl">${t('year.rank')}</div><div class="h3">${rk.pos === 1 ? t('year.rankTop') : t('year.rankPos', { n: rk.pos, m: 1 + G.comps.filter((c) => !c.owned).length })}${rkD ? `<span class="tag" style="--c:${rkD > 0 ? 'var(--good)' : 'var(--bug)'};margin-left:8px">${rkD > 0 ? '▲' : '▼'} ${Math.abs(rkD)}</span>` : ''}</div><div class="faint" style="font-size:12.5px">${t('mkt.rank.share', { n: pctShare(rk.share) })}${rk.near && rk.rev > 0 ? ' · ' + t(rk.pos === 1 ? 'mkt.rank.lead' : 'mkt.rank.gap', { v: money(rk.gap), studio: `<b>${esc(rk.near)}</b>`, n: rk.pos - 1 }) : ''}</div>${duelLines}</div></div>`
     : '';
   UI.modal(`
     <div class="win-head"><div class="wi" style="--wc:var(--gold)">${icon('calendar')}</div><h2>${t('year.title', { y: p.year })}<div class="sub">${esc(G.studio)}</div></h2></div>
