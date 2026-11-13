@@ -828,6 +828,15 @@ input[type='range']::-moz-range-thumb { width: 18px; height: 18px; border-radius
 #coach .tx { flex: 1; font-size: 13.5px; line-height: 1.45; }
 #coach .tx .h { font: 700 20px var(--disp); margin-bottom: 3px; }
 #coach .row { margin-top: 8px; gap: 8px; }
+/* Mobil och låg skärm: en tätare ruta, så att mer av huset syns bredvid den */
+@media (max-width: 760px), (max-height: 559px) {
+  #coach { padding: 10px 12px; gap: 10px; }
+  #coach .ci { width: 30px; height: 30px; border-radius: 9px; }
+  #coach .tx { font-size: 12.5px; line-height: 1.4; }
+  #coach .tx .h { font-size: 17px; margin-bottom: 2px; }
+  #coach .row { margin-top: 6px; }
+  #coach .btn.sm { min-height: 32px; }
+}
 .coach-target { animation: ring 1.4s infinite; position: relative; z-index: 2; }
 @keyframes ring { 0% { box-shadow: 0 0 0 0 rgba(255, 207, 90, 0.7); } 100% { box-shadow: 0 0 0 14px rgba(255, 207, 90, 0); } }
 

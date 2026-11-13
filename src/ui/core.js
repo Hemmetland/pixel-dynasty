@@ -216,7 +216,7 @@ const narrow = () => typeof matchMedia !== 'undefined' && matchMedia('(max-width
 // Mobil: notiserna läggs under utvecklingspanelen i stället för över den (följer panelens höjd)
 let dpSeen = null;
 const ro = typeof ResizeObserver !== 'undefined' ? new ResizeObserver(() => placeToasts()) : null;
-function placeToasts() {
+export function placeToasts() {
   const box = $('#toasts');
   const dp = $('#devpanel');
   if (!box) return;
@@ -229,6 +229,13 @@ function placeToasts() {
   // handledningen ligger på samma ställe på mobilen: notiserna hamnar under den
   const coach = narrow() ? $('#coach.on') : null;
   box.style.top = coach && coach.offsetHeight ? coach.offsetTop + coach.offsetHeight + 8 + 'px' : on ? dp.offsetTop + dp.offsetHeight + 8 + 'px' : '';
+  // låg skärm (liggande mobil): handledningen ligger uppe till höger, där notiserna annars visas. De hamnar under den.
+  box.style.marginTop = '';
+  const lowCoach = !narrow() && typeof matchMedia !== 'undefined' && matchMedia('(max-height: 559px)').matches ? $('#coach.on') : null;
+  if (lowCoach && lowCoach.offsetHeight) {
+    const gap = lowCoach.getBoundingClientRect().bottom + 8 - box.getBoundingClientRect().top;
+    if (gap > 0) box.style.marginTop = Math.round(gap) + 'px';
+  }
 }
 const dropToast = (el) => {
   if (el.classList.contains('out')) return;

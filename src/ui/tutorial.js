@@ -1,4 +1,4 @@
-import { $, $$, icon, t, UI, act } from './core.js';
+import { $, $$, icon, t, UI, act, placeToasts } from './core.js';
 import { on } from '../core/bus.js';
 import { canUpgradeOffice } from '../sim/studio.js';
 
@@ -38,14 +38,28 @@ export function initTutorial(root) {
   on('title', hide);
 }
 
-// Mobil: handledningen ligger uppe i himlen (där utvecklingspanelen annars är) eller strax under panelen när den syns,
-// så att huset och gatan inte täcks. På bredare skärmar står den kvar nere till vänster.
-const narrow = () => typeof matchMedia !== 'undefined' && matchMedia('(max-width: 760px)').matches;
+// Var rutan ligger. Mobil: uppe i himlen (där utvecklingspanelen annars är) eller strax under panelen när den syns, så
+// att huset och gatan inte täcks. Låg skärm (liggande mobil): uppe till höger över studions sammanfattning, eftersom
+// utvecklingspanelen fyller vänsterkanten och huset mitten. Annars nere till vänster (stilmallen). Notiserna flyttas
+// efter rutan.
+const mq = (q) => typeof matchMedia !== 'undefined' && matchMedia(q).matches;
 function place() {
   if (!el) return;
   const dp = $('#devpanel');
-  const under = narrow() && dp && dp.classList.contains('on') && dp.offsetHeight;
-  el.style.top = under ? dp.offsetTop + dp.offsetHeight + 8 + 'px' : '';
+  const dpOn = dp && dp.classList.contains('on') && dp.offsetHeight;
+  const st = el.style;
+  st.top = st.left = st.right = st.bottom = st.width = st.zIndex = '';
+  if (mq('(max-width: 760px)')) {
+    if (dpOn) st.top = dp.offsetTop + dp.offsetHeight + 8 + 'px';
+  } else if (mq('(max-height: 559px)')) {
+    st.left = 'auto';
+    st.right = '12px';
+    st.top = '66px';
+    st.bottom = 'auto';
+    st.width = Math.round(Math.min(300, el.parentNode.clientWidth * 0.4)) + 'px';
+    st.zIndex = '13'; // över högerspalten, som annars ligger överst
+  }
+  placeToasts();
 }
 
 function hide() {
@@ -53,6 +67,7 @@ function hide() {
   el.classList.remove('on');
   for (const b of $$('.coach-target')) b.classList.remove('coach-target');
   curStep = null;
+  placeToasts();
 }
 function finishStep() {
   const G = UI.app.G;
