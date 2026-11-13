@@ -9,7 +9,7 @@ export const LEGACY_RANKS = [0, 50, 75, 90];
 export function legacy(G) {
   const parts = {
     revenue: clamp(12 * Math.log10(Math.max(1, G.stats.revenue) / 1e6), 0, 36),
-    awards: clamp(0.25 * G.awards.length, 0, 20),
+    awards: clamp(0.35 * G.awards.length, 0, 20),
     best: clamp(5 * (G.stats.bestScore - 6), 0, 20),
     fans: clamp(4 * Math.log10(Math.max(1, G.fans) / 1000), 0, 16),
     office: 2 * G.office.tier,

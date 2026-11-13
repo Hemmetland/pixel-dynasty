@@ -959,6 +959,40 @@ ok(true, 'alla händelser körda');
   const rows = S.topSellers(GT, 12, 10);
   ok(S.CHART_REACH === 5 && rows.length === 2 && !rows[0].yours && Math.abs(rows[0].rev - 1000 * S.curveFor(8, 1)[0] * 5) < 1e-9 && Math.abs(rows[0].units - rows[0].rev / 10) < 1e-9 && rows[1].yours, 'konkurrentens spel räknas med förlagets räckvidd på topplistan');
 }
+// galan: hålls från 1981, publikpriset mäts mot konkurrenternas spel med förlagens räckvidd, och en nominering utan
+// vinst ger en tredjedel av prisets belöning
+{
+  const GW = S.newGame({ studio: 'Gala', seed: 49 });
+  S.makeCompetitors(GW); S.initWorld(GW);
+  const rel = (t, score, total) => { const r = { id: GW.uid++, t, comp: 1, studio: 'X', color: '#fff', title: { sv: 'R' + score, en: 'R' + score }, score, total, platform: 'pc', genre: 'rpg', topic: 'fantasy', scope: 'small', price: 10, tail: 1 }; GW.market.releases.push(r); return r; };
+  const mine = (t, score, units) => GW.games.push({ id: GW.uid++, title: 'M' + score, t, score, topic: 'fantasy', genre: 'rpg', platform: 'pc', scope: 'small', units, total: units * 10, priceAt: 10, parts: { rd: 1, rt: 1 }, weekly: [], ports: [] });
+  GW.t = 47;
+  for (const sc of [5, 5.5, 6]) rel(10, sc, 1e5);
+  mine(20, 9, 500);
+  S.runAwards(GW);
+  ok(S.FIRST_GALA === 1981 && !GW.pending.length && !GW.awards.length && !GW.news.length, 'ingen gala 1980');
+  // 1981: ditt spel har högst betyg, men konkurrentens säljer mer när förlagets räckvidd räknas
+  GW.t = 48 + 47;
+  const top = [5, 5.5, 6].map((sc) => rel(48 + 10, sc, 1e5))[2];
+  const theirs = S.relUnitsTotal(top, 96);
+  mine(48 + 20, 9, Math.round(theirs * 2));
+  const f0 = GW.fans, m0 = GW.money;
+  S.runAwards(GW);
+  const p1 = GW.pending[0];
+  const fanCat = p1.cats.find((c) => c.id === 'fan');
+  ok(GW.awards.map((a) => a.cat).join() === 'goty,design,tech' && !fanCat.nominees[0].yours && fanCat.nominees.some((n) => n.yours) && GW.games[1].units > theirs && GW.games[1].units < theirs * S.CHART_REACH, 'publikpriset går till spelet som säljer mest med förlagets räckvidd');
+  ok(p1.gain.noms === 1 && p1.gain.fans === GW.fans - f0 && p1.gain.money === GW.money - m0 && p1.gain.fans > Math.round(300 * 2) && GW.news[0].key === 'news.awardWins', 'galans belöning: vinsterna och en tredjedel för nomineringen');
+  // 1982: nominerad i alla kategorier utan att vinna
+  GW.pending.length = 0;
+  GW.t = 96 + 47;
+  for (const sc of [9.5, 6, 5]) rel(96 + 10, sc, 1e6);
+  mine(96 + 20, 7, 100);
+  const f1 = GW.fans;
+  S.runAwards(GW);
+  const p2 = GW.pending[0];
+  const exp = [1, 0.5, 0.5, 1].reduce((f, k) => f + Math.round((300 + f * 0.06) * k * S.NOM_SHARE), f1);
+  ok(GW.awards.length === 3 && p2.gain.noms === 4 && GW.fans === exp && GW.news[0].key === 'news.awardNom' && GW.news[0].vars.n === 4, 'nomineringar utan vinst ger en tredjedel av belöningen och en rad i krönikan');
+}
 // studiohallen: studions rad och hallens ordning (själva lagringen ligger i webbläsaren)
 {
   const GA = S.newGame({ studio: 'Hall', seed: 48 });

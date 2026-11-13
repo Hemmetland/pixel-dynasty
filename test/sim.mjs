@@ -145,8 +145,8 @@ function handlePending(G) {
       S.resolveEvent(G, p.id, Math.floor(Math.random() * ev.choices.length));
     } else if (p.type === 'bailout') { S.takeBailout(G); G.pending.shift(); } else if (p.type === 'expo') S.resolveExpo(G, p.id, 0);
     else {
-      // AWARDDBG=1: galans vinnare de första åren (kategori, betyg, * = ditt spel, antal på topplistan just då)
-      if (process.env.AWARDDBG && p.type === 'award' && p.year <= 1984) console.log(`   gala ${p.year}: ` + p.cats.map((c) => `${c.id} ${c.nominees[0].score.toFixed(1)}${c.nominees[0].yours ? '*' : ''} (${c.nominees.map((n) => n.score.toFixed(1) + (n.yours ? '*' : '')).join(' ')})`).join(' | ') + ` chart ${S.topSellers(G, 12, 10).length}`);
+      // AWARDDBG=1: galans vinnare de första åren (kategori, betyg, * = ditt spel, fältet: konkurrenternas spel + dina)
+      if (process.env.AWARDDBG && p.type === 'award' && p.year <= 1984) console.log(`   gala ${p.year}: ` + p.cats.map((c) => `${c.id} ${c.nominees[0].score.toFixed(1)}${c.nominees[0].yours ? '*' : ''} (${c.nominees.map((n) => n.score.toFixed(1) + (n.yours ? '*' : '')).join(' ')})`).join(' | ') + ` field ${G.market.releases.filter((r) => S.yearOf(r.t) === p.year).length}+${G.games.filter((g) => S.yearOf(g.t) === p.year).length}`);
       G.pending.shift();
     }
   }
@@ -487,6 +487,12 @@ if (process.env.CHARTDBG === '2') {
   const rel = G.market.releases.slice(-40);
   for (const r of rel) console.log(`   r ${S.yearOf(r.t)} ${r.scope} ${r.score} total ${Math.round(r.total / 1e6 * 10) / 10}M ${r.studio}${r.mmo ? ' mmo' : ''}`);
   for (const g of G.games.slice(-8)) console.log(`   g ${S.yearOf(g.t)} ${g.scope} ${g.score} total ${Math.round(g.total / 1e6 * 10) / 10}M rev ${Math.round(g.revenue / 1e6 * 10) / 10}M`);
+}
+// AWARDDBG=1: studions priser per år
+if (process.env.AWARDDBG) {
+  const by = {};
+  for (const a of G.awards) by[a.year] = (by[a.year] || 0) + 1;
+  console.log('   awards ' + G.awards.length + ': ' + Object.entries(by).map(([y, n]) => y + ':' + n).join(' '));
 }
 // RANKDBG=1: studions plats i branschrankningen vid varje årsskifte
 if (process.env.RANKDBG) console.log('   rank ' + (G.ranks || []).map((r) => `${r.y}:${r.pos}(${Math.round(r.share * 100)}%)`).join(' '));

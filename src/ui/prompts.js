@@ -341,6 +341,7 @@ function awardPrompt(app, G, p, finish) {
       <div class="spot s1"></div><div class="spot s2"></div>
       <div class="aw-title"><div class="lbl" style="color:var(--gold)">${t('aw.show')}</div><div class="h2">${t('aw.head', { y: p.year })}</div></div>
       <div class="aw-grid">${blocks}</div>
+      ${p.gain && (p.gain.fans || p.gain.money) ? `<p class="aw-gain" id="aw-gain">${icon(wins.length ? 'trophy' : 'star')} ${t(wins.length ? 'aw.gain' : 'aw.gainNom', { fans: `<b>+${fmtNum(p.gain.fans)}</b>`, money: `<b>${money(p.gain.money)}</b>` })}</p>` : ''}
       <div class="win-foot" style="background:transparent;border:0"><button class="btn ghost" data-act="aw-skip" id="aw-skip">${icon('fast')}${t('rep.skip')}</button><span class="sp"></span><button class="btn gold lg" id="aw-done" data-act="aw-done" disabled>${wins.length ? t('aw.thanks') : t('ui.continue')}</button></div>
     </div>`,
     (el) => {
@@ -368,6 +369,7 @@ function awardPrompt(app, G, p, finish) {
         const fin = () => {
           const b = $('#aw-done', el);
           if (b) b.disabled = false;
+          $('#aw-gain', el)?.classList.add('show');
           const s = $('#aw-skip', el);
           if (s) s.style.visibility = 'hidden';
         };
