@@ -441,6 +441,8 @@ export function fitHUD() {
   const ribbon = !mobile && vw >= 960 && side - 18 < 176;
   els.dev.classList.toggle('ribbon', ribbon);
   els.dev.classList.toggle('narrow', !mobile && !ribbon && dw < 272);
+  // Låg skärm (liggande mobil): en tätare panel som ryms mellan toppraden och dockan
+  els.dev.classList.toggle('low', !mobile && !ribbon && short);
   const open = panelsOpen();
   els.rcol.classList.toggle('closed', !mobile && !open);
   els.rcol.classList.toggle('sheet', mobile && sheetOpen);

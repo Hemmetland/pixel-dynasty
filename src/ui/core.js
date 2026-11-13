@@ -247,7 +247,9 @@ export function toast(text, kind = 'info', ms = 5200) {
   el.innerHTML = `<div class="ti">${icon(TOAST_ICON[kind] || 'info')}</div><div>${text}</div>`;
   el.addEventListener('click', () => dropToast(el)); // tryck bort
   box.appendChild(el);
-  const max = narrow() ? 2 : 3;
+  // låg skärm (liggande mobil): en notis i taget, annars når högen ner över dockan
+  const low = typeof matchMedia !== 'undefined' && matchMedia('(max-height: 559px)').matches;
+  const max = narrow() ? 2 : low ? 1 : 3;
   const live = [...box.children].filter((c) => !c.classList.contains('out'));
   for (const o of live.slice(0, Math.max(0, live.length - max))) dropToast(o);
   placeToasts();
