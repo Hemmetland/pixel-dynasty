@@ -1454,3 +1454,26 @@ input[type='range']::-moz-range-thumb { width: 18px; height: 18px; border-radius
   .tt-menu .btn.lg.tt-util { grid-column: span 2; min-width: 0 !important; padding-left: 8px; padding-right: 8px; }
   .tt-menu .btn.lg.tt-util[data-act="tt-sound"] { font-size: 13px; }
 }
+
+/* ── Butiken: nivå-, temavecko-, skyltfönster- och önskelistkorten får samma yta som skyltfönstret och hyllan ── */
+.sf-card { position: relative; overflow: hidden; --c: var(--accent); }
+.sf-ev { --c: var(--gold); } .sf-ev.on { --c: var(--hot); } .sf-spot { --c: var(--gold); } .sf-wish { --c: var(--fans, #ff6aa8); }
+.sf-card::before { content: ''; position: absolute; left: 0; right: 0; top: 0; height: 3px; background: linear-gradient(90deg, transparent, var(--c), transparent); opacity: 0.7; }
+.sf-card > .row:first-child > .ic { flex: none; width: 30px; height: 30px; padding: 6px; border-radius: 9px; color: var(--c); background: color-mix(in srgb, var(--c) 16%, transparent); box-shadow: inset 0 0 0 1px color-mix(in srgb, var(--c) 35%, transparent); }
+.sf-card > .row:first-child { align-items: center; }
+.sf-lvl .bar { height: 10px; border-radius: 6px; }
+.sf-lvl .bar > i { box-shadow: 0 0 12px -1px var(--accent); }
+.sf-spot { background: radial-gradient(110% 70% at 50% -25%, color-mix(in srgb, var(--gold) 15%, transparent), transparent 70%), var(--card, rgba(255, 255, 255, 0.04)); border-color: color-mix(in srgb, var(--gold) 28%, var(--line)); }
+.sf-spot-row { border-radius: 12px; padding: 6px 8px; transition: background 0.12s; }
+.sf-spot-row:not(.on):hover { background: rgba(255, 255, 255, 0.04); }
+.sf-spot-row + .sf-spot-row { border-top-color: transparent; }
+.sf-spot-row .btn.sm:not([disabled]) { background: linear-gradient(180deg, #ffd978, #f2a63a); color: #2a1a04; border-color: transparent; font-weight: 700; box-shadow: 0 4px 12px -6px #f2a63a; }
+.sf-spot-row .btn.sm:not([disabled]):hover { filter: brightness(1.08); }
+.sf-spot-row .ell { display: block; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.sf-spot-row > img, .sf-spot-row > canvas { flex: none; border-radius: 6px; box-shadow: 0 3px 8px -3px #000; }
+.sf-wish { background: linear-gradient(135deg, color-mix(in srgb, var(--c) 10%, transparent), transparent 60%); }
+@media (max-width: 760px) {
+  .sf-spot-row { flex-wrap: wrap; }
+  .sf-spot-row .btn.sm { width: 100%; justify-content: center; }
+  .sf-spot-row.on { flex-wrap: nowrap; }
+}
