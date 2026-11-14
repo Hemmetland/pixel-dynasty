@@ -7,7 +7,7 @@ import { GENRE } from '../data/genres.js';
 import { PLATFORM } from '../data/platforms.js';
 import { dateOf, TICKS_PER_WEEK } from '../sim/const.js';
 import { rpPerWeek } from '../sim/research.js';
-import { canUpgradeOffice, capacity, tierOf, nextTier } from '../sim/studio.js';
+import { canUpgradeOffice, capacity, tierOf, nextTier, officeReqs } from '../sim/studio.js';
 import { canHire, workers, teamFatigue, FATIGUE_MAX, FATIGUE_GRACE } from '../sim/people.js';
 import { canLicense } from '../sim/actions.js';
 import { RESEARCH, RES } from '../data/research.js';
@@ -21,6 +21,7 @@ import { saveSettings } from '../core/store.js';
 import { CLIENTS, BRIEFS } from '../data/events.js';
 import { ACHIEVEMENTS } from '../data/achievements.js';
 import { crowdChip } from './crowd.js';
+import { REQ, reqValue, reqPct } from './win-studio.js';
 
 export const LOGOS = ['c_gameplay', 'g_action', 't_space', 't_fantasy', 't_robots', 't_pirates', 'g_casual', 't_magic'];
 
@@ -41,6 +42,7 @@ const disp = { money: 0, rp: 0, fans: 0 };
 let lastDock = 0;
 // Panelernas cache: raderna byggs om bara när uppsättningen ändras, annars uppdateras texten på plats.
 let rowsKey = '';
+let goalKey = '';
 let brandKey = '';
 let logoKey = '';
 let lastPanels = 0;
@@ -48,7 +50,7 @@ let sheetOpen = false;
 let weekPct = 0;
 
 export function buildHUD(root) {
-  rowsKey = brandKey = logoKey = devKey = '';
+  rowsKey = brandKey = logoKey = devKey = goalKey = '';
   lastPanels = 0;
   root.insertAdjacentHTML('beforeend', `
     <div id="hud">
@@ -86,6 +88,7 @@ export function buildHUD(root) {
         <section class="pn glass" id="pn-tasks">
           <div class="pn-th"><span class="lbl">${t('pn.tasks')}</span><span class="cnt num"></span></div>
           <div class="pn-rows"></div>
+          <div class="pn-rows pn-goalrow"></div>
         </section>
       </div>
       <div id="toasts"></div>
@@ -119,6 +122,7 @@ export function buildHUD(root) {
     studio: $('#pn-studio'),
     tasks: $('#pn-tasks'),
     rows: $('#pn-tasks .pn-rows'),
+    goalrow: $('#pn-tasks .pn-goalrow'),
     clock: $('#clockp'),
     pbar: $('#pbar'),
   };
@@ -320,6 +324,21 @@ function taskRows(G, job) {
   return [job, res[0], mkt, port, res[1], sales, res[2]].filter(Boolean).slice(0, 3).sort((a, b) => a.grp - b.grp);
 }
 
+// Nästa mål, alltid synligt under uppgifterna när handledningen är över: närmaste kontor (med det första krav som saknas
+// och hur nära man är), annars nästa prestation. Allt läses ur befintligt state.
+function goalOf(G) {
+  if (G.games.length < 2) return null;
+  const nx = nextTier(G);
+  if (nx) {
+    const miss = officeReqs(G, nx).find((r) => !r.ok);
+    if (!miss) return { id: 'o' + nx.id + 'ok', ic: 'building', c: 'var(--gold)', name: t('pn.goalNm', { name: L(nx.name) }), sub: t('pn.goalReady'), pct: 100, go: 'studio', tip: t('studio.reqReady') };
+    const why = REQ[miss.id][2];
+    return { id: 'o' + nx.id + miss.id, ic: 'building', c: 'var(--gold)', name: t('pn.goalNm', { name: L(nx.name) }), sub: `${t('pn.req.' + miss.id)} ${reqValue(miss)}`, pct: reqPct(miss), go: 'studio', tip: t(why) };
+  }
+  const na = ACHIEVEMENTS.find((a) => !G.ach.includes(a.id));
+  if (na) return { id: 'a' + na.id, ic: 'target', c: 'var(--gold)', name: t('pn.goalNm', { name: L(na.name) }), sub: L(na.desc), pct: 0, go: 'achievements', tip: t('pn.goalTip', { x: G.ach.length, y: ACHIEVEMENTS.length }) };
+  return null;
+}
 const rowHTML = (r) => {
   const tag = r.go ? 'button' : 'div';
   return `<${tag} class="tk${r.go ? ' go' : ''}" style="--c:${r.c}"${r.go ? ` data-act="pn-go" data-go="${r.go}"` : ''} data-tip=""><span class="ti">${icon(r.ic)}</span><span class="tn"><b class="nm"></b><span class="sb"></span></span><b class="pc num"></b><span class="bar thin"><i></i></span></${tag}>`;
@@ -381,6 +400,21 @@ function updatePanels(G) {
     els.rows.innerHTML = rows.length
       ? rows.map(rowHTML).join('')
       : `<button class="tk idle go" data-act="pn-go" data-go="wizard" data-tip="${esc(t('pn.idleHint'))}"><span class="ti">${icon('plus')}</span><span class="tn"><b class="nm">${t('pn.idle')}</b><span class="sb">${t('pn.idleHint')}</span></span></button>`;
+  }
+  // nästa mål
+  const gl = goalOf(G);
+  const gkey = gl ? gl.id : '';
+  if (gkey !== goalKey) {
+    goalKey = gkey;
+    els.goalrow.innerHTML = gl ? `<button class="tk go goal${gl.pct ? '' : ' nobar'}" style="--c:${gl.c}" data-act="dock" data-id="${gl.go}" data-tip=""><span class="ti">${icon(gl.ic)}</span><span class="tn"><b class="nm"></b><span class="sb"></span></span><b class="pc num"></b><span class="bar thin"><i></i></span></button>` : '';
+  }
+  if (gl) {
+    const ge = els.goalrow.firstElementChild;
+    put($('.nm', ge), gl.name);
+    put($('.sb', ge), gl.sub);
+    put($('.pc', ge), gl.pct ? pct(gl.pct) + '%' : '');
+    setBar(ge, gl.pct);
+    ge.dataset.tip = gl.tip;
   }
   put($('.cnt', els.tasks), rows.length ? String(rows.length) : '');
   rows.forEach((r, i) => {

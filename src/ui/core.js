@@ -247,6 +247,8 @@ export function toast(text, kind = 'info', ms = 5200) {
   if (!box) return;
   // samma text igen: låt den gamla försvinna så att den nya hamnar sist
   for (const o of box.children) if (o.dataset.txt === text) o.remove();
+  // lästid: längre texter får stå kvar längre (cirka 55 ms per tecken, högst nio sekunder)
+  ms = Math.min(9000, Math.max(ms, 2400 + 55 * text.replace(/<[^>]*>/g, '').length));
   const el = document.createElement('div');
   el.className = 'toast glass';
   el.dataset.txt = text;
@@ -261,6 +263,17 @@ export function toast(text, kind = 'info', ms = 5200) {
   const live = [...box.children].filter((c) => !c.classList.contains('out'));
   for (const o of live.slice(0, Math.max(0, live.length - max))) dropToast(o);
   placeToasts();
+  // Högen får inte nå ner över klockan (eller dockan): är det trångt faller de äldsta
+  const clock = $('#clockp');
+  const limit = clock && clock.offsetHeight ? clock.getBoundingClientRect().top : innerHeight - 90;
+  const room = limit - 8 - box.getBoundingClientRect().top;
+  const keep = [...box.children].filter((c) => !c.classList.contains('out'));
+  let used = keep.reduce((n, c) => n + c.offsetHeight + 6, 0);
+  while (keep.length > 1 && used > room) {
+    const o = keep.shift();
+    used -= o.offsetHeight + 6;
+    dropToast(o);
+  }
   setTimeout(() => dropToast(el), ms);
 }
 

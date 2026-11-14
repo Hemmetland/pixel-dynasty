@@ -293,11 +293,21 @@ function eventPrompt(app, G, p, finish) {
     (el) => {
       act('ev-pick', (b) => {
         const ch = ev.choices[+b.dataset.i];
+        const risky = previewFx(G, ch.fx, { who: p.who, game: p.game }).some((o) => o.k === 'risk');
         const out = resolveEvent(G, p.id, +b.dataset.i) || [];
         sfx.play('click');
         // vad som hände: utfallstexten (sista, så att en slumpgren vinner över valets egen text), annars valet
         const res = out.filter((o) => o.k === 'text').pop();
         const chips = out.filter((o) => o.k !== 'text').map(fxChip).join('');
+        // Ett val utan slump visade redan sina effekter på knappen: då går spelet vidare direkt och utfallet (valet, utfallstexten
+        // och effekterna) visas som en notis, i stället för en ruta till att klicka bort. Ett val med slump visar utfallet i en ruta.
+        if (!risky) {
+          toast(`<b>${L(ch.label)}</b>${res ? `<br>${evText(res.v, vars)}` : ''}${chips ? `<span class="fxrow">${chips}</span>` : ''}`, 'info');
+          app.promptActive = false;
+          UI.closeModal();
+          app.menuChanged();
+          return;
+        }
         $('#ev-body', el).innerHTML = (res ? `<div class="evchoice muted">${L(ch.label)}</div><p class="evtext">${evText(res.v, vars)}</p>` : `<p class="evtext">${L(ch.label)}</p>`) + `<div class="row wrap" style="gap:8px;margin:14px 0">${chips || `<span class="muted">${t('ev.nothing')}</span>`}</div><div class="row"><span class="sp"></span><button class="btn primary" data-act="ev-ok">${t('ui.continue')}${icon('arrow')}</button></div>`;
         act('ev-ok', () => {
           app.promptActive = false;
