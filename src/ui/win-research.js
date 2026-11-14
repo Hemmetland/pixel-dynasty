@@ -18,22 +18,24 @@ const touch = () => typeof matchMedia !== 'undefined' && matchMedia('(hover: non
 // Smal skärm: listvy i stället för det breda trädet
 const narrow = () => typeof matchMedia !== 'undefined' && matchMedia('(max-width: 760px)').matches;
 const ORDER = { active: 0, available: 1, locked: 2, future: 3, done: 4 };
-let layout = null;
+const layouts = {};
 
-function buildLayout() {
-  if (layout) return layout;
+// Ett träd för alla kategorier, eller bara en kategori (då räknas djupet inom kategorin så att inga kolumner står tomma).
+function buildLayout(only = 'all') {
+  if (layouts[only]) return layouts[only];
   const depth = {};
   const d = (id) => {
     if (depth[id] != null) return depth[id];
     const r = RES[id];
-    depth[id] = r.req.length ? 1 + Math.max(...r.req.map(d)) : 0;
+    const reqs = only === 'all' ? r.req : r.req.filter((q) => RES[q].cat === only);
+    depth[id] = reqs.length ? 1 + Math.max(...reqs.map(d)) : 0;
     return depth[id];
   };
-  RESEARCH.forEach((r) => d(r.id));
+  RESEARCH.filter((r) => only === 'all' || r.cat === only).forEach((r) => d(r.id));
   const pos = {};
   let y0 = 0;
   const lanes = [];
-  for (const cat of RESEARCH_CATS) {
+  for (const cat of RESEARCH_CATS.filter((c) => only === 'all' || c.id === only)) {
     const nodes = RESEARCH.filter((r) => r.cat === cat.id);
     const colCount = {};
     const sorted = nodes.slice().sort((a, b) => depth[a.id] - depth[b.id] || a.year - b.year);
@@ -49,18 +51,18 @@ function buildLayout() {
     lanes.push({ cat, y: y0, h: 34 + maxRows * (NH + GY) + 10 });
     y0 += 34 + maxRows * (NH + GY) + 22;
   }
-  const maxD = Math.max(...Object.values(depth));
-  layout = { pos, lanes, W: (maxD + 1) * (NW + GX), H: y0 };
-  return layout;
+  const maxD = Math.max(...Object.keys(pos).map((k) => depth[k]));
+  layouts[only] = { pos, lanes, W: (maxD + 1) * (NW + GX), H: y0 };
+  return layouts[only];
 }
 
 function nodeHTML(G, r, L_, list = false) {
   const st = researchStatus(G, r.id);
-  const p = L_.pos[r.id];
+  const p = L_.pos[r.id] || { x: 0, y: 0 };
   const cat = RESEARCH_CATS.find((c) => c.id === r.cat);
   const act_ = G.research.active.find((a) => a.id === r.id);
   const can = st === 'available' ? canResearch(G, r.id) : st;
-  const dim = !list && R.cat !== 'all' && R.cat !== r.cat;
+  const dim = false;
   const hide = !list && R.only && st !== 'available';
   const ic = hasGlyph(r.glyph) ? glyphImg(r.glyph, cat.color, 16, false) : icon(CAT_ICON[r.cat]);
   const missing = r.req.filter((q) => !G.research.done.includes(q)).map((q) => L(RES[q].name)).join(', ');
@@ -133,10 +135,21 @@ function detailHTML(G) {
 
 function linesHTML(G, L_) {
   let s = '';
+  const chain = new Set();
+  const walk = (id) => {
+    if (chain.has(id)) return;
+    chain.add(id);
+    RES[id].req.forEach(walk);
+  };
+  if (R.sel && RES[R.sel]) walk(R.sel);
   for (const r of RESEARCH) {
     const to = L_.pos[r.id];
+    if (!to) continue;
     for (const q of r.req) {
       const fr = L_.pos[q];
+      if (!fr) continue;
+      const hot = chain.size && chain.has(r.id) && chain.has(q);
+      const cross = RES[q].cat !== r.cat;
       const x1 = fr.x + NW;
       const y1 = fr.y + NH / 2;
       const x2 = to.x;
@@ -144,7 +157,7 @@ function linesHTML(G, L_) {
       const mx = (x1 + x2) / 2;
       const done = G.research.done.includes(q);
       const cat = RESEARCH_CATS.find((c) => c.id === r.cat);
-      s += `<path d="M${x1} ${y1} C ${mx} ${y1}, ${mx} ${y2}, ${x2} ${y2}" class="rl ${done ? 'on' : ''}" style="--c:${cat.color}"/>`;
+      s += `<path d="M${x1} ${y1} C ${mx} ${y1}, ${mx} ${y2}, ${x2} ${y2}" class="rl ${done ? 'on' : ''} ${cross ? 'x' : ''} ${hot ? 'hot' : ''} ${chain.size && !hot ? 'off' : ''}" style="--c:${cat.color}"/>`;
     }
   }
   return s;
@@ -161,7 +174,7 @@ regWin({
   },
   sub: (G) => `${t('res.rp')}: <b style="color:var(--rp)">${fmtNum(G.rp)}</b> · +${rpPerWeek(G).toFixed(1)}${t('ui.perWeek')} · ${t('res.slots')}: ${G.research.active.length}/${researchSlots(G)}`,
   render(G) {
-    const L_ = buildLayout();
+    const L_ = buildLayout(R.cat);
     const active = G.research.active
       .map((a) => {
         const r = RES[a.id];
@@ -169,8 +182,15 @@ regWin({
         return `<div class="card row" style="gap:12px;padding:10px 14px;min-width:min(260px,100%);flex:1"><span class="rn-i" style="--c:var(--rp)">${icon(CAT_ICON[r.cat])}</span><div style="flex:1"><b>${name}</b>${bar((a.progress / a.total) * 100, 'var(--rp)', 'thin')}</div><span class="num muted">${Math.ceil((a.total - a.progress) / TICKS_PER_WEEK)}${t('ui.weeksShort')}</span></div>`;
       })
       .join('');
+    const stat = (id) => {
+      const rs = RESEARCH.filter((r) => id === 'all' || r.cat === id);
+      return { n: rs.length, done: rs.filter((r) => researchStatus(G, r.id) === 'done').length, can: rs.filter((r) => researchStatus(G, r.id) === 'available').length };
+    };
     const chips = [{ id: 'all', name: { sv: 'Alla', en: 'All' }, color: 'var(--text)' }, ...RESEARCH_CATS]
-      .map((c) => `<button class="chip btnchip ${R.cat === c.id ? 'on' : ''}" data-act="r-cat" data-id="${c.id}" style="${c.id !== 'all' ? '--c:' + c.color : ''}">${L(c.name)}</button>`)
+      .map((c) => {
+        const q = stat(c.id);
+        return `<button class="chip btnchip rcat ${R.cat === c.id ? 'on' : ''}" data-act="r-cat" data-id="${c.id}" style="--c:${c.id !== 'all' ? c.color : 'var(--rp)'}">${c.id !== 'all' ? `<span class="rcat-i">${icon(CAT_ICON[c.id])}</span>` : ''}<span class="rcat-n">${L(c.name)}</span><span class="rcat-c num">${q.done}/${q.n}</span>${q.can ? `<span class="rcat-a num" title="${esc(t('res.onlyAvail'))}">${q.can}</span>` : ''}<span class="rcat-bar"><i style="width:${Math.round((q.done / q.n) * 100)}%"></i></span></button>`;
+      })
       .join('');
     const done = G.research.done.length;
     const list = narrow();
@@ -182,9 +202,9 @@ regWin({
           .map(([, r]) => nodeHTML(G, r, L_, true))
           .join('')}</div>`
       : `<div class="rtree" data-keep="tree"><div class="rinner" style="width:${L_.W}px;height:${L_.H}px">
-        ${L_.lanes.map((l) => `<div class="lane" style="top:${l.y}px;height:${l.h}px;--c:${l.cat.color}"><span class="ln">${L(l.cat.name)}</span></div>`).join('')}
+        ${L_.lanes.map((l) => `<div class="lane" style="top:${l.y}px;height:${l.h}px;--c:${l.cat.color}"><span class="ln">${L(l.cat.name)} <em class="num">${stat(l.cat.id).done}/${stat(l.cat.id).n}</em></span></div>`).join('')}
         <svg class="rlines" width="${L_.W}" height="${L_.H}">${linesHTML(G, L_)}</svg>
-        ${RESEARCH.map((r) => nodeHTML(G, r, L_)).join('')}
+        ${RESEARCH.filter((r) => L_.pos[r.id]).map((r) => nodeHTML(G, r, L_)).join("")}
       </div></div>`;
     return `
       <div class="row wrap" style="gap:10px;margin-bottom:14px">${active || `<div class="hint" style="flex:1">${icon('info')} ${t('res.idle')}</div>`}</div>
