@@ -23,5 +23,6 @@ Standalone repository (it started as the `game/` folder of Hemmetland/budgetverk
 ## Rules
 - Graphics are procedural by default. Sprites from PixelLab may live in `assets/` (see `docs/PIXELLAB.md`) and always need a procedural fallback; no other image or audio files and no runtime dependencies. All visible text goes through `t()` in both languages. The dev console is the one exception (its own sv/en helper `L()`): it is a developer tool and not part of the release build.
 - Never put API tokens in files or chat. PixelLab uses `PIXELLAB_API_TOKEN` from the environment (`node tools/pixellab.mjs balance`).
+- Plain words: texts are for ordinary players, so avoid jargon in both languages (say "Starkare version", "Kostnad per styck", "Förväntan", "Övertid", not revision, unit cost, hype, crunch) and explain a number's scale ("70 av 100") or add a tooltip.
 - Keep `src/sim` free of DOM and keep results deterministic per seed; old saves (localStorage `pixel-dynasty-save-v1`) must keep loading.
 - Before finishing a change: `npm run lint`, `npm test`, `node test/keys.mjs --missing` (should report 0; new dynamic prefixes go in its DYN list), rebuild.

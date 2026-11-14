@@ -168,7 +168,7 @@ function launchCard(G, J) {
       <div><div class="lbl" style="margin-bottom:6px">${t('hw.firstOrder')}</div>${seg(units, L.units, 'hw-lu', `data-id="${J.id}"`)}<p class="hint" style="margin-top:6px">${t('hw.orderHelp', { n: fmtNum(minOrder(D, L.partner, true)), w: pp.lead })}</p></div>
       <div><div class="lbl" style="margin-bottom:6px">${t('hw.auto')}</div><div class="seg"><button class="${L.auto ? 'on' : ''}" data-act="hw-la" data-id="${J.id}" data-v="1">${t('hw.autoOn')}</button><button class="${L.auto ? '' : 'on'}" data-act="hw-la" data-id="${J.id}" data-v="0">${t('hw.autoOff')}</button></div><p class="hint" style="margin-top:6px">${t('hw.autoHelp')}</p></div>
     </div>
-    <div class="hw-stats" style="margin-top:12px">${stat('hw.s.demand', `~${fmtNum(Math.round(d))}${t('ui.perWeek')}`, t('hw.s.demandTip'))}${stat('hw.s.unit', money(unit))}${stat('hw.s.margin', money(L.price - unit))}${stat('hw.s.compat', Math.round(D.compat), t('hw.s.compatTip'))}${stat('hw.s.defect', t('dist.pct', { n: dec(D.defect * 100) }))}${stat('hw.s.cover', tn('hw.weeksN', weeks))}</div>
+    <div class="hw-stats" style="margin-top:12px">${stat('hw.s.demand', `~${fmtNum(Math.round(d))}${t('ui.perWeek')}`, t('hw.s.demandTip'))}${stat('hw.s.unit', money(unit))}${stat('hw.s.margin', money(L.price - unit))}${stat('hw.s.compat', t('hw.of100', { n: Math.round(D.compat) }), t('hw.s.compatTip'))}${stat('hw.s.defect', t('dist.pct', { n: dec(D.defect * 100) }))}${stat('hw.s.cover', tn('hw.weeksN', weeks))}</div>
     <div class="row wrap" style="gap:8px;margin-top:12px"><span class="hint" style="flex:1 1 220px">${t('hw.launchHelp', { w: pp.lead })}</span><button class="btn primary" data-act="hw-launch" data-id="${J.id}" ${G.money < cost ? 'disabled' : ''}>${icon('rocket')}${t('hw.launch', { v: money(cost) })}</button></div></div>`;
 }
 
@@ -341,10 +341,10 @@ function productCard(G, P) {
     <div class="hw-stats" style="margin-top:10px">
       ${stat('hw.s.share', t('dist.pct', { n: dec(P.share * 100, P.share < 0.1 ? 1 : 0) }), t('hw.s.shareTip'))}
       ${stat('hw.s.sold', `${fmtNum(sold)}${t('ui.perWeek')}`)}
-      ${stat('hw.s.stock', fmtNum(Math.round(P.stock)) + (cover ? ` · ${tn('hw.weeksN', cover)}` : ''), t('hw.s.stockTip'))}
+      ${stat('hw.s.stock', cover ? t('hw.stockVal', { n: fmtNum(Math.round(P.stock)), w: cover }) : t('hw.stockN', { n: fmtNum(Math.round(P.stock)) }), t('hw.s.stockTip'))}
       ${stat('hw.s.pipe', fmtNum(Math.round(pipe)))}
       ${stat('hw.s.unit', money(unit))}
-      ${stat('hw.s.compat', Math.round(P.compat), t('hw.s.compatTip'))}
+      ${stat('hw.s.compat', t('hw.of100', { n: Math.round(P.compat) }), t('hw.s.compatTip'))}
       ${stat('hw.s.total', fmtNum(Math.round(P.sold)))}
       ${stat('hw.s.profit', `<span class="${productProfit(P) >= 0 ? 'up' : 'down'}">${money(productProfit(P))}</span>`, t('hw.s.profitTip'))}
     </div>
