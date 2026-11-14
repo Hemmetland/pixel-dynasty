@@ -131,6 +131,7 @@ export const STRINGS = {
   'err.busy': ['Teamet är redan upptaget med något annat.', 'The team is already busy with something else.'],
   'err.capacity': ['Inga lediga skrivbord. Bygg ut kontoret.', 'No free desks. Expand the office.'],
   'err.money': ['Du har inte råd.', 'You cannot afford that.'],
+  'ev.noSeason': ['Ingen säsong just nu.', 'No season right now.'],
   'err.slots': ['Inga lediga anläggningsplatser. Skaffa ett större kontor.', 'No free facility slots. Get a bigger office.'],
   'err.tooEarly': ['För tidigt – vänta tills spelet kommit en bit.', 'Too early – wait until the game is underway.'],
   'err.rp': ['Inte tillräckligt med forskningspoäng.', 'Not enough research points.'],

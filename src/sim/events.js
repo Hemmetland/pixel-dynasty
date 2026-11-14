@@ -213,13 +213,16 @@ export function resolveEvent(G, promptId, idx) {
 
 // Säkra effekter av ett val, utan att något ändras (för knapparna i händelserutan)
 export const previewFx = (G, fx, ctx) => applyFx(G, fx, [], ctx, true);
-// Går valet inte att göra just nu? En säsong som händelsen erbjuder kräver pengar till det rabatterade priset och att
-// onlinespelet kan starta en säsong (annars hade valet inte gjort något alls).
-export function fxBlocked(G, fx, ctx = {}) {
-  if (!fx.season || !SEASON[fx.season]) return false;
+// Går valet inte att göra just nu? En säsong som händelsen erbjuder kräver att onlinespelet kan starta en säsong (annars
+// hade valet inte gjort något alls) och pengar till det rabatterade priset. Svarar '' (går bra), 'season' (ingen säsong
+// går att starta nu) eller 'money' (för lite pengar).
+export function fxBlockReason(G, fx, ctx = {}) {
+  if (!fx.season || !SEASON[fx.season]) return '';
   const own = G.games.find((g) => g.id === ctx.game);
   const lg = own && own.live && !own.live.closed ? own : liveTop(G);
-  if (!lg) return true;
+  if (!lg) return 'season';
+  if (lg.live.season || seasonReadyIn(G, lg.live) > 0) return 'season';
   const cost = Math.round((liveSeasonCost(G, lg, fx.season) * (1 - (fx.seasonOff || 0))) / 100) * 100;
-  return G.money < cost || !!lg.live.season || seasonReadyIn(G, lg.live) > 0;
+  return G.money < cost ? 'money' : '';
 }
+export const fxBlocked = (G, fx, ctx = {}) => fxBlockReason(G, fx, ctx) !== '';

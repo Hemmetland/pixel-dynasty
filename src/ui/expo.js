@@ -4,7 +4,7 @@ import { sfx } from '../audio/sfx.js';
 import { coverURL } from '../render/covers.js';
 import { glyphImg } from '../render/glyphs.js';
 import { SKINS, HAIRS, SHIRTS, PANTS } from '../render/pal.js';
-import { fmtNum } from '../core/util.js';
+import { fmtNum, fmtFull } from '../core/util.js';
 import { hashStr, seeded } from '../core/rng.js';
 import { BOOTHS, EXPO_LIFT_WEEKS, expoAttendance, expoCost, expoItems, defaultPicks, expoForecast, resolveExpo, itemKey } from '../sim/expo.js';
 import { yearOf } from '../sim/const.js';
@@ -37,7 +37,7 @@ export function expoPrompt(app, G, p) {
     const fc = B ? expoForecast(G, lv, chosen().slice(0, B.slots)) : null;
     return `<button class="choice${sel ? ' sel' : ''}" data-act="ex-booth" data-lv="${lv}" ${lv && !afford(lv) ? 'disabled' : ''}>
       <b>${icon(['x', 'flag', 'star', 'crown'][lv])} ${t('expo.o' + lv)}</b><span class="muted">${t('expo.d' + lv)}</span>
-      ${B ? `<span class="row wrap" style="gap:6px"><span class="tag" style="--c:var(--money)">${money(cost)}</span><span class="chip">${tn('expo.slots', B.slots)}</span><span class="chip">${t('expo.about', { n: fmtNum(fc.visitors) })}</span></span>` : ''}
+      ${B ? `<span class="row wrap" style="gap:6px"><span class="tag" style="--c:var(--money)">${money(cost)}</span><span class="chip">${tn('expo.slots', B.slots)}</span><span class="chip">${t('expo.about', { n: fmtFull(fc.visitors) })}</span></span>` : ''}
     </button>`;
   };
   const itemCard = (x) => {
@@ -58,7 +58,7 @@ export function expoPrompt(app, G, p) {
     const fc = B ? expoForecast(G, st.level, chosen()) : null;
     const slots = B ? B.slots : 0;
     UI.modal(
-      `<div class="win-head"><div class="wi" style="--wc:var(--hot)">${icon('megaphone')}</div><h2>${t('expo.title')} ${year}<div class="sub">${t('expo.sub', { n: fmtNum(expoAttendance(year)) })}</div></h2></div>
+      `<div class="win-head"><div class="wi" style="--wc:var(--hot)">${icon('megaphone')}</div><h2>${t('expo.title')} ${year}<div class="sub">${t('expo.sub', { n: fmtFull(expoAttendance(year)) })}</div></h2></div>
       <div class="win-body" data-keep="body"><p class="evtext">${t('expo.text')}</p>
         <div class="lbl" style="margin:14px 0 8px">${t('expo.booth')}</div>
         <div class="choices">${[1, 2, 3, 0].map(boothCard).join('')}</div>
@@ -66,7 +66,7 @@ export function expoPrompt(app, G, p) {
         <div class="choices">${items.length ? items.map(itemCard).join('') : `<div class="hint">${t('expo.noItems')}</div>`}</div>` : ''}
       </div>
       <div class="win-foot">${B ? `<button class="btn" data-act="ex-skip">${t('expo.o0')}</button>` : ''}<span class="sp"></span>
-        ${B ? `<button class="btn primary lg" data-act="ex-go">${icon('megaphone')}${t('expo.go')} · ${money(fc.cost)} · ${t('expo.about', { n: fmtNum(fc.visitors) })}</button>` : `<button class="btn primary lg" data-act="ex-skip">${t('expo.o0')}</button>`}</div>`,
+        ${B ? `<button class="btn primary lg" data-act="ex-go">${icon('megaphone')}${t('expo.go')} · ${money(fc.cost)} · ${t('expo.about', { n: fmtFull(fc.visitors) })}</button>` : `<button class="btn primary lg" data-act="ex-skip">${t('expo.o0')}</button>`}</div>`,
       bind,
       'md',
     );
@@ -127,7 +127,7 @@ function itemLine(G, r, x) {
 export function showHall(app, G, r, close) {
   const logo = glyphImg(LOGOS[G.logo | 0] || LOGOS[0], '#ffffff', 16, false);
   UI.modal(
-    `<div class="win-head"><div class="wi" style="--wc:var(--hot)">${icon('megaphone')}</div><h2>${t('expo.title')} ${r.year}<div class="sub">${t('expo.sub', { n: fmtNum(r.attendance) })}</div></h2></div>
+    `<div class="win-head"><div class="wi" style="--wc:var(--hot)">${icon('megaphone')}</div><h2>${t('expo.title')} ${r.year}<div class="sub">${t('expo.sub', { n: fmtFull(r.attendance) })}</div></h2></div>
     <div class="win-body" data-keep="body">
       <div class="expo-hall"><canvas id="expo-cv" width="${W}" height="${H}"></canvas>
         <div class="expo-banner disp">${t('expo.banner', { year: r.year })}</div>
@@ -137,7 +137,7 @@ export function showHall(app, G, r, close) {
       <div class="expo-news" id="expo-news"></div>
       <div class="expo-res" id="expo-res" hidden>
         <div class="grid" style="grid-template-columns:repeat(auto-fit,minmax(110px,1fr));margin-top:12px">
-          <div class="counter xc" style="--c:var(--accent)"><span class="xc-i">${icon('user')}</span><div class="v num">${fmtNum(r.visitors)}</div><div class="k">${t('expo.visitors')}</div></div>
+          <div class="counter xc" style="--c:var(--accent)"><span class="xc-i">${icon('user')}</span><div class="v num">${fmtFull(r.visitors)}</div><div class="k">${t('expo.visitors')}</div></div>
           <div class="counter xc" style="--c:var(--fans)"><span class="xc-i">${icon('heart')}</span><div class="v num">+${fmtNum(r.fans)}</div><div class="k">${t('expo.r.fans')}</div></div>
           <div class="counter xc" style="--c:var(--money)"><span class="xc-i">${icon('money')}</span><div class="v num">+${money(r.revenue)}</div><div class="k">${t('expo.r.rev')}</div></div>
           <div class="counter xc" style="--c:var(--bug)"><span class="xc-i">${icon('x')}</span><div class="v num">−${money(r.cost)}</div><div class="k">${t('expo.r.cost')}</div></div>
@@ -459,7 +459,7 @@ function scene(app, G, r) {
     if (ended) return;
     ended = true;
     while (shown < r.lines.length) addLine(r.lines[shown++]);
-    countEl.textContent = fmtNum(r.visitors);
+    countEl.textContent = fmtFull(r.visitors);
     while (crowd.length < maxN) spawn();
     for (const c of crowd) {
       c.x = c.tx;
@@ -493,7 +493,7 @@ function scene(app, G, r) {
     const dt = Math.min(0.05, (ts - last) / 1000);
     last = ts;
     const p = ease(el / DURATION);
-    countEl.textContent = fmtNum(Math.round(r.visitors * p));
+    countEl.textContent = fmtFull(Math.round(r.visitors * p));
     while (crowd.length < Math.round(maxN * p)) spawn();
     const due = Math.floor((el / DURATION) * (r.lines.length + 0.5));
     while (shown < Math.min(r.lines.length, due)) addLine(r.lines[shown++]);

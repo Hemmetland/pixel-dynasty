@@ -383,11 +383,13 @@ ok(true, 'alla händelser körda');
     S.resolveEvent(P.GS, 9104, 0);
     ok(!P.g0.live.season && Number.isFinite(P.GS.money), 'utan pengar startar ingen säsong av en händelse');
     ok(S.fxBlocked(P.GS, EV.live_veterans.choices[0].fx, { game: 7800 }) === true && S.fxBlocked(P.GS, EV.live_veterans.choices[1].fx, { game: 7800 }) === false, 'ett säsongsval utan pengar är spärrat, de andra valen inte');
+    ok(S.fxBlockReason(P.GS, EV.live_veterans.choices[0].fx, { game: 7800 }) === 'money', 'utan pengar är orsaken pengar');
     const Q = mkOld(60);
     Q.g0.live.peak = Q.g0.live.subs * 2;
     ok(S.fxBlocked(Q.GS, EV.live_vote.choices[0].fx, { game: 7800 }) === false, 'med pengar är säsongsvalet öppet');
     S.startLiveSeason(Q.GS, 7800, 'story');
     ok(S.fxBlocked(Q.GS, EV.live_vote.choices[1].fx, { game: 7800 }) === true, 'och spärrat när en säsong redan pågår');
+    ok(S.fxBlockReason(Q.GS, EV.live_vote.choices[1].fx, { game: 7800 }) === 'season' && S.fxBlockReason(Q.GS, EV.live_vote.choices[2].fx, { game: 7800 }) === '', 'spärren säger att det är säsongsplatsen som saknas, och hoppa över är öppet');
   }
 }
 // händelser för onlinespel: gäller det största spelet som är igång och ändrar dess spelare och innehåll
@@ -879,6 +881,17 @@ ok(true, 'alla händelser körda');
     const b0 = PE.boost || 0;
     GE.pending.push({ type: 'expo', id: 7001 });
     ok(S.resolveExpo(GE, 7001, 3, ['hw:' + P.id]) === true && PE.boost > b0 && GE.expoLast.items[0].k === 'hw' && GE.expoLast.lines.some((l) => l.k === 'hw'), 'visad hårdvara får större efterfrågan');
+    // flera produkter: varje får sitt eget antal provare efter styrka, och besökarsiffrorna skrivs med mellanslag
+    const GE2 = JSON.parse(JSON.stringify(GH));
+    GE2.u.flags.expo = true; GE2.money = 5e7;
+    const P2 = JSON.parse(JSON.stringify(GE2.hw.products.find((x) => x.id === P.id)));
+    P2.id = P.id + 1000; P2.name = 'Annan produkt'; P2.compat = 100; P2.defect = 0;
+    GE2.hw.products.push(P2);
+    GE2.pending.push({ type: 'expo', id: 7002 });
+    const q1 = S.expoItems(GE2).find((x) => x.id === P.id).q, q2 = S.expoItems(GE2).find((x) => x.id === P2.id).q;
+    ok(S.resolveExpo(GE2, 7002, 3, ['hw:' + P.id, 'hw:' + P2.id]) === true, 'två produkter på mässan');
+    const hl = GE2.expoLast.lines.filter((l) => l.k === 'hw').map((l) => +l.n.replace(/\s/g, ''));
+    ok(hl.length === 2 && (q1 === q2 ? hl[0] === hl[1] : hl[0] !== hl[1] && Math.sign(hl[0] - hl[1]) === Math.sign(q1 - q2)) && !/[KM]$/.test(GE2.expoLast.lines.find((l) => l.k === 'close').n), 'provarna fördelas efter styrka (q ' + q1.toFixed(2) + ' / ' + q2.toFixed(2) + ', ' + hl.join(' / ') + ') och besökare skrivs med mellanslag');
   }
   // en speldator med eget grafikkort på marknaden blir billigare
   ok(S.unitCost(GH, { type: 'pc', cls: 'mid', qual: 'normal', t: null }, 'halden') < S.unitCost(GH, { type: 'pc', cls: 'mid', qual: 'normal', t: null, parts: [] }, 'halden'), 'egna komponenter gör speldatorn billigare');

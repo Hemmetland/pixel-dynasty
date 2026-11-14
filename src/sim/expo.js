@@ -1,4 +1,4 @@
-import { clamp, fmtNum } from '../core/util.js';
+import { clamp, fmtNum, fmtFull } from '../core/util.js';
 import { hashStr, seeded } from '../core/rng.js';
 import { emit } from '../core/bus.js';
 import { t } from '../core/i18n.js';
@@ -96,7 +96,7 @@ export function resolveExpo(G, promptId, level, ids) {
   if (J) J.cost += cost;
   G.expoLast = runExpo(G, B, picks, cost);
   const r = G.expoLast;
-  note(G, 'news.expo', { year: r.year, n: fmtNum(r.visitors), fans: fmtNum(r.fans) }, 'good', true);
+  note(G, 'news.expo', { year: r.year, n: fmtFull(r.visitors), fans: fmtNum(r.fans) }, 'good', true);
   emit('expoDone', { level, visitors: r.visitors });
   return true;
 }
@@ -108,7 +108,7 @@ function runExpo(G, B, picks, cost) {
   const buzz = expoBuzz(G, picks);
   const visitors = Math.max(20, Math.round(att * B.hall * buzz * (0.88 + 0.24 * rng())));
   const q = picks.length ? picks.reduce((a, x) => a + x.q, 0) / picks.length : 0.3;
-  const lines = [{ k: 'open', n: fmtNum(att) }];
+  const lines = [{ k: 'open', n: fmtFull(att) }];
   const items = [];
   let fanBonus = 0;
   let fanLoss = 0;
@@ -145,7 +145,7 @@ function runExpo(G, B, picks, cost) {
       if (P) {
         row.lift = 0.07 * B.show * clamp(buzz, 0.8, 1.4);
         P.boost = Math.min(0.3, (P.boost || 0) + row.lift);
-        lines.push({ k: 'hw', name: x.name, n: fmtNum(Math.round(visitors * 0.6)) });
+        lines.push({ k: 'hw', name: x.name, n: fmtFull(Math.round(visitors * Math.min(0.8, 0.45 * Math.sqrt(picks.length) * ((0.3 + x.q) / picks.reduce((a, y) => a + 0.3 + y.q, 0))))) });
       }
     } else if (x.k === 'live') {
       const g = G.games.find((y) => y.id === x.id);
@@ -165,7 +165,7 @@ function runExpo(G, B, picks, cost) {
   if (visitors > att * B.hall * 1.25) lines.splice(1, 0, { k: 'queue' });
   if (year >= 2010 && G.fans > 20000 && rng() < 0.5) lines.push({ k: 'streamer' });
   if (buzz > 1.5) lines.push({ k: 'press' });
-  lines.push({ k: 'close', n: fmtNum(visitors) });
+  lines.push({ k: 'close', n: fmtFull(visitors) });
   const fans = Math.round(visitors * 0.1 * (0.6 + 0.8 * q) * (1 + fanBonus) * (1 - Math.min(0.6, fanLoss)));
   const revenue = Math.round(visitors * priceOf(year) * 0.2 * (0.5 + q));
   G.fans += fans;
