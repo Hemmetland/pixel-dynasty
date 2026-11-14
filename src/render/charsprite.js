@@ -5,7 +5,7 @@
 // Resultatet cachas per utseende. Saknas spriten returnerar funktionerna false så att den procedurella figuren ritas.
 import { hex2rgb } from '../core/util.js';
 import { getSprite, spritesVersion, spriteNames } from './sprites.js';
-import { lookColors, SEATED } from './people.js';
+import { lookColors, SEATED, setAvatarSprite } from './people.js';
 
 // Referensfärgen per material i originalbilden (den vanligaste nyansen); övriga nyanser behåller sin ljushet relativt den.
 const REF = { shirt: '#43a09d', hat: '#e88a38', pants: '#3f5b83', skin: '#f7b5a3', shoe: '#d41f30', hair: '#412425' };
@@ -35,7 +35,7 @@ function material(r, g, b, ry, hatRow = 0.3) {
 
 const cache = new WeakMap(); // look -> Map(nyckel -> färdig remsa, 'hairV' -> { v: frisyrvariant, ver })
 
-function build(s, look) {
+function build(s, look, mult = 1) {
   const C = lookColors(look);
   const target = { shirt: C.shirt, hat: C.hat || C.hair, pants: C.pants, skin: C.skin, shoe: C.shoe, hair: C.hair };
   const T = Object.fromEntries(Object.entries(target).map(([k, c]) => [k, hex2rgb(c)]));
@@ -56,8 +56,9 @@ function build(s, look) {
   }
   fg.putImageData(img, 0, 0);
   // ner till scenens skala, ruta för ruta så att grannrutor inte blöder in
-  const W = Math.round(s.fw * s.scale);
-  const H = Math.round(s.fh * s.scale);
+  const sc = s.scale * mult;
+  const W = Math.round(s.fw * sc);
+  const H = Math.round(s.fh * sc);
   const c = document.createElement('canvas');
   c.width = W * s.frames;
   c.height = H;
@@ -118,7 +119,7 @@ function build(s, look) {
     o[i + 2] = d[j + 2];
   }
   g.putImageData(out, 0, 0);
-  return { c, W, H, ax: Math.round(s.ax * s.scale), ay: Math.round(s.ay * s.scale), frames: s.frames, v: spritesVersion() };
+  return { c, W, H, ax: Math.round(s.ax * sc), ay: Math.round(s.ay * sc), frames: s.frames, v: spritesVersion() };
 }
 
 // Frisyrvarianter 'nyckel#1'–'nyckel#3' (kort hår, hästsvans, lockigt; samma rutor och ankare, bara huvudet bytt): den som
@@ -127,7 +128,7 @@ function build(s, look) {
 // byta frisyr mellan poserna.
 const HAIR_VARIANTS = [1, 2, 3];
 // kort, raspat, långt, knut, afro, piggar, lugg, hästsvans, page, mohawk, flint, lockigt, tuppkam, fläta
-const HAIR_KIND = [1, 1, 2, 2, 3, 1, 1, 2, 2, 1, 1, 3, 1, 2];
+export const HAIR_KIND = [1, 1, 2, 2, 3, 1, 1, 2, 2, 1, 1, 3, 1, 2];
 let fullVer = -1;
 let fullV = [];
 function fullVariants() {
@@ -144,9 +145,9 @@ const hairVariant = (look) => {
   return vs.includes(HAIR_KIND[C.style]) ? HAIR_KIND[C.style] : vs[C.style % vs.length];
 };
 
-// Ritar personen som sprite 'key' (t.ex. 'char.walk', 'char.stand', 'char.drink') med fötterna i (x, y), ruta frame.
-export function drawCharSprite(ctx, key, x, y, look, frame = 0, dir = 1) {
-  if (typeof document === 'undefined') return false;
+// Den färgbytta remsan för spriten 'key' (och personens frisyr), eller null. mult > 1 ger en större, skarpare version (porträtt).
+function entryFor(key, look, mult = 1) {
+  if (typeof document === 'undefined') return null;
   let m = cache.get(look);
   if (!m) cache.set(look, (m = new Map()));
   // frisyren väljs om när fler sprites har laddats
@@ -154,16 +155,26 @@ export function drawCharSprite(ctx, key, x, y, look, frame = 0, dir = 1) {
   if (!hv || hv.ver !== spritesVersion()) m.set('hairV', (hv = { v: hairVariant(look), ver: spritesVersion() }));
   const v = hv.v;
   const s = (v && getSprite(`${key}#${v}`)) || getSprite(key);
-  if (!s) return false;
-  let e = m.get(key);
-  if (!e || e.v !== spritesVersion()) m.set(key, (e = build(s, look)));
+  if (!s) return null;
+  const ck = mult === 1 ? key : `${key}@${mult}`;
+  let e = m.get(ck);
+  if (!e || e.v !== spritesVersion()) m.set(ck, (e = build(s, look, mult)));
+  return e;
+}
+
+// Ritar personen som sprite 'key' (t.ex. 'char.walk', 'char.stand', 'char.drink') med fötterna i (x, y), ruta frame.
+export function drawCharSprite(ctx, key, x, y, look, frame = 0, dir = 1, shadow = true) {
+  const e = entryFor(key, look);
+  if (!e) return false;
   const f = (((frame | 0) % e.frames) + e.frames) % e.frames;
   const X = Math.round(x);
   const Y = Math.round(y);
-  ctx.globalAlpha = 0.22;
-  ctx.fillStyle = '#000';
-  ctx.fillRect(X - 5, Y, 11, 1);
-  ctx.globalAlpha = 1;
+  if (shadow) {
+    ctx.globalAlpha = 0.22;
+    ctx.fillStyle = '#000';
+    ctx.fillRect(X - 5, Y, 11, 1);
+    ctx.globalAlpha = 1;
+  }
   if (dir < 0) {
     ctx.save();
     ctx.translate(X, Y);
@@ -218,4 +229,37 @@ export function drawPoseSprite(ctx, x, y, look, pose, t, dir = 1, seated = false
   const draw = (q) => drawCharSprite(ctx, q[0], x, y, look, Math.floor((t || 0) * q[1]), dir);
   // att gå med laptopen, flyttlådan eller muggen ritas som vanlig gång tills den ritade gången finns
   return !!p && (draw(p) || (seat && pose === 'talk' && draw(SEAT_SPRITE.sit)) || (WALK_WITH.has(pose) && draw(STAND_SPRITE.walk)));
+}
+
+// Porträtt för gränssnittet (karaktärsbyggaren, personalkort): samma färgbytta sprite som i huset i stället för den gamla
+// procedurella figuren. Gäller poserna som står på marken; övriga eller saknad sprite ger false (då ritas den gamla figuren).
+export function drawAvatarSprite(ctx, x, y, look, pose = 'stand', frame = 0) {
+  const p = STAND_SPRITE[pose];
+  return !!p && drawCharSprite(ctx, p[0], x, y, look, frame, 1, false);
+}
+setAvatarSprite(drawAvatarSprite, spritesVersion);
+
+// Stort porträtt för karaktärsbyggaren: bildrutorna som dataadresser (mult gånger scenens upplösning), eller null utan sprite.
+// Alla rutor i en pose har samma mått och ankare, så att figuren inte hoppar när rutorna byts.
+const portraits = new WeakMap();
+export function portraitFrames(look, pose = 'stand', mult = 1.5) {
+  const p = STAND_SPRITE[pose];
+  if (!p) return null;
+  const e = entryFor(p[0], look, mult);
+  if (!e) return null;
+  let m = portraits.get(look);
+  if (!m) portraits.set(look, (m = new Map()));
+  const k = pose + '@' + mult;
+  let r = m.get(k);
+  if (r && r.v === e.v) return r;
+  const urls = [];
+  for (let f = 0; f < e.frames; f++) {
+    const c = document.createElement('canvas');
+    c.width = e.W;
+    c.height = e.H;
+    c.getContext('2d').drawImage(e.c, f * e.W, 0, e.W, e.H, 0, 0, e.W, e.H);
+    urls.push(c.toDataURL());
+  }
+  m.set(k, (r = { urls, W: e.W, H: e.H, fps: p[1], v: e.v }));
+  return r;
 }

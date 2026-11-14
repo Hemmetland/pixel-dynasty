@@ -3,14 +3,15 @@ import { identityName } from '../data/identity.js';
 import { sfx, music } from '../audio/sfx.js';
 import { on } from '../core/bus.js';
 import { avatarImg } from '../render/people.js';
+import { portraitFrames, HAIR_KIND } from '../render/charsprite.js';
 import { glyphImg } from '../render/glyphs.js';
-import { SKINS, HAIRS, SHIRTS } from '../render/pal.js';
+import { SKINS, HAIRS, SHIRTS, PANTS, HATS } from '../render/pal.js';
 import { newGame } from '../sim/state.js';
 import { weeklyOf } from '../core/weekly.js';
 import { FOUNDER_UNLOCK, founderUnlocked } from '../sim/legacy.js';
 import { makeCompetitors } from '../sim/market.js';
 import { initWorld } from '../sim/clock.js';
-import { refreshCandidates, randomLook, extraLook, LOOK_N, EXTRA_N } from '../sim/people.js';
+import { refreshCandidates, randomLook } from '../sim/people.js';
 import { hasSave, saveMeta, loadHall, slotList, latestSlot, freeSlot } from '../core/store.js';
 import { STUDIO_NAMES, FIRST, LAST } from '../data/names.js';
 import { dateOf } from '../sim/const.js';
@@ -26,10 +27,19 @@ const rnd = (a) => a[Math.floor(Math.random() * a.length)];
 function randomize() {
   N.studio = rnd(STUDIO_NAMES);
   N.founder = rnd(FIRST) + ' ' + rnd(LAST);
-  N.look = randomLook(Math.random);
-  N.extra = 0;
+  N.look = spriteLook(randomLook(Math.random));
   N.logo = Math.floor(Math.random() * LOGOS.length);
 }
+
+// Spelets figur är en enda sprite som färgbyts: den visar hud, hår (tre frisyrer), tröja, byxor och en keps. Byggaren erbjuder
+// därför bara det som syns, så att förhandsgranskningen blir exakt den figur som sedan går runt i huset.
+const HAIR_PICK = [{ i: 0, k: 'short' }, { i: 2, k: 'tail' }, { i: 4, k: 'curly' }];
+function spriteLook(l) {
+  const hat = Math.random() < 0.25 ? 1 : 0;
+  return { ...l, acc: 0, hat, glasses: 0, beard: 0, headphones: 0, backpack: 0, hoodie: 0, pattern: 0, hatColor: Math.floor(Math.random() * HATS.length) };
+}
+const hairKind = (l) => HAIR_KIND[l.hair % HAIR_KIND.length] - 1;
+let figTimer = 0;
 
 const ARCH = [
   { id: 'designer', ic: 'bulb', c: 'var(--design)' },
@@ -55,14 +65,46 @@ function swatches(list, key, cur) {
   return `<div class="swatches">${list.map((c, i) => `<button class="sw ${cur === i ? 'on' : ''}" data-act="ng-look" data-k="${key}" data-i="${i}" style="background:${c}" aria-label="${key} ${i + 1}"></button>`).join('')}</div>`;
 }
 
-const archSection = (hall) => `<div><div class="lbl" style="margin-bottom:6px">${t('ng.arch')}</div><div class="grid" style="grid-template-columns:repeat(auto-fit,minmax(150px,1fr));gap:8px">${ARCH.map((x) => archCard(x, hall)).join('')}</div></div>`;
-const diffSection = () => `<div><div class="lbl" style="margin-bottom:6px">${t('ng.diff')}</div><div class="seg">${DIFF.map((d) => `<button class="${N.diff === d ? 'on' : ''}" data-act="ng-diff" data-id="${d}">${t('diff.' + d)}</button>`).join('')}</div><div class="hint" style="margin-top:6px">${t('diff.' + N.diff + '.d')}</div></div>`;
-const paceSection = () => `<div><div class="lbl" style="margin-bottom:6px">${t('set.pace')}</div>${paceSeg(UI.app.settings)}<div class="hint" style="margin-top:6px">${t('set.pace.' + paceOf(UI.app.settings) + '.d')}</div></div>`;
+const archSection = (hall) => `<div><div class="grid" style="grid-template-columns:repeat(auto-fit,minmax(150px,1fr));gap:8px">${ARCH.map((x) => archCard(x, hall)).join('')}</div></div>`;
+const diffSection = () => `<div><div class="seg">${DIFF.map((d) => `<button class="${N.diff === d ? 'on' : ''}" data-act="ng-diff" data-id="${d}">${t('diff.' + d)}</button>`).join('')}</div><div class="hint" style="margin-top:6px">${t('diff.' + N.diff + '.d')}</div></div>`;
+const paceSection = () => `<div>${paceSeg(UI.app.settings)}<div class="hint" style="margin-top:6px">${t('set.pace.' + paceOf(UI.app.settings) + '.d')}</div></div>`;
 // Veckans utmaning: samma värld för alla den här veckan, med bakgrund och svårighet låsta så att poängen går att jämföra
 function weeklyBanner() {
   return `<div class="card weekly"><div class="row" style="gap:8px"><span style="color:var(--gold)">${icon('calendar')}</span><b>${t('ng.weekly', { id: N.weekly.id })}</b></div><div class="hint" style="margin-top:6px">${t('ng.weekly.d')}</div>
     <div class="row wrap" style="gap:6px;margin-top:8px"><span class="chip">${t('arch.designer')}</span><span class="chip">${t('diff.normal')}</span><span class="sp"></span><button class="btn sm" data-act="ng-weekly-off">${t('ng.weekly.off')}</button></div></div>`;
 }
+
+// Förhandsvisningens figur: bildrutor ur samma sprite som i huset (rörlig), annars den gamla ritade figuren
+function figure() {
+  const f = portraitFrames(N.look, 'stand', 1.5);
+  if (!f) return `<div class="ng-fig-old">${avatarImg(N.look, 7, 'stand')}</div>`;
+  return `<img class="ng-fig" id="ng-fig" src="${f.urls[0]}" style="--fw:${f.W};--fh:${f.H}" alt="" draggable="false">`;
+}
+// Stående, vinkar ibland och jublar när man slumpar: samma poser som figuren har i spelet
+function animateFigure(el) {
+  clearInterval(figTimer);
+  const img = $('#ng-fig', el);
+  if (!img) return;
+  const seq = [['stand', 26], ['wave', 12], ['stand', 30], ['present', 8]];
+  let si = 0;
+  let n = 0;
+  figTimer = setInterval(() => {
+    if (!img.isConnected) return clearInterval(figTimer);
+    const [pose, len] = seq[si];
+    const f = portraitFrames(N.look, pose, 1.5);
+    if (f) img.src = f.urls[Math.floor(n / 3) % f.urls.length];
+    if (++n >= len) {
+      n = 0;
+      si = (si + 1) % seq.length;
+    }
+  }, 120);
+}
+const hatOn = () => (N.look.hat | 0) === 1;
+const chip = (on, a, d, label) => `<button class="ng-chip ${on ? 'on' : ''}" data-act="${a}" ${d}>${label}</button>`;
+const sec = (n, title, body) => `<section class="ng-sec"><div class="ng-sh"><i>${n}</i><b>${title}</b></div>${body}</section>`;
+const logoPick = () => `<div class="row wrap" style="gap:6px">${LOGOS.map((g, i) => `<button class="logo-opt ${N.logo === i ? 'on' : ''}" data-act="ng-logo" data-i="${i}">${glyphImg(g, '#fff', 16, true)}</button>`).join('')}</div>`;
+// Skylten över dörren, som på titelskärmen: visar studions namn och logotyp medan man skriver
+const sign = () => `<div class="ng-sign"><span class="ng-sign-l" id="ng-sign-l">${glyphImg(LOGOS[N.logo], '#fff', 16, true)}</span><span id="ng-sign-s">${esc(N.studio || 'Nordlys Games')}</span></div>`;
 
 regWin({
   id: 'newgame',
@@ -73,19 +115,23 @@ regWin({
   render() {
     const hall = loadHall();
     if (!founderUnlocked(hall, N.arch)) N.arch = 'designer';
+    const hk = hairKind(N.look);
     return `<div class="ng">
       <div class="ng-av card">
-        <div class="ng-pic">${avatarImg(N.look, 7, 'stand')}</div>
-        <div class="row wrap" style="gap:6px;justify-content:center"><button class="btn sm" data-act="ng-dice">${icon('dice')}${t('ng.random')}</button><button class="btn sm" data-act="ng-hair">${t('ng.hair')}</button><button class="btn sm" data-act="ng-acc">${t('ng.acc')}</button></div>
+        <div class="ng-stage">${figure()}<div class="ng-floor"></div></div>
+        <div class="ng-badge"><span class="ng-badge-i">${icon('user')}</span><span class="ng-badge-t"><b id="ng-badge-f">${esc(N.founder || t('ng.founder'))}</b><small>${t('ng.badge')}</small></span><button class="btn sm" data-act="ng-dice">${icon('dice')}${t('ng.random')}</button></div>
+        <div class="lbl" style="margin:12px 0 5px">${t('ng.hair')}</div>
+        <div class="row wrap" style="gap:6px;justify-content:center">${HAIR_PICK.map((h, i) => chip(!hatOn() && hk === i, 'ng-hairpick', `data-i="${h.i}"`, t('ng.hair.' + h.k))).join('')}${chip(hatOn(), 'ng-hat', '', t('ng.hat'))}</div>
+        ${hatOn() ? `<div class="lbl" style="margin:10px 0 5px">${t('ng.hatColor')}</div>${swatches(HATS, 'hatColor', N.look.hatColor)}` : ''}
         <div class="lbl" style="margin:12px 0 5px">${t('ng.skin')}</div>${swatches(SKINS, 'skin', N.look.skin)}
         <div class="lbl" style="margin:10px 0 5px">${t('ng.hairColor')}</div>${swatches(HAIRS, 'hairColor', N.look.hairColor)}
         <div class="lbl" style="margin:10px 0 5px">${t('ng.shirt')}</div>${swatches(SHIRTS, 'shirt', N.look.shirt)}
+        <div class="lbl" style="margin:10px 0 5px">${t('ng.pants')}</div>${swatches(PANTS, 'pants', N.look.pants)}
       </div>
-      <div class="col" style="gap:16px">
-        <div><div class="lbl" style="margin-bottom:6px">${t('ng.studio')}</div><input class="input" id="ng-studio" maxlength="22" value="${esc(N.studio)}" autocomplete="off"></div>
-        <div><div class="lbl" style="margin-bottom:6px">${t('ng.founder')}</div><input class="input" id="ng-founder" maxlength="24" value="${esc(N.founder)}" autocomplete="off"></div>
-        <div><div class="lbl" style="margin-bottom:6px">${t('ng.logo')}</div><div class="row wrap" style="gap:6px">${LOGOS.map((g, i) => `<button class="logo-opt ${N.logo === i ? 'on' : ''}" data-act="ng-logo" data-i="${i}">${glyphImg(g, '#fff', 16, true)}</button>`).join('')}</div></div>
-        ${N.weekly ? weeklyBanner() : archSection(hall) + diffSection()}${paceSection()}
+      <div class="col" style="gap:14px">
+        ${sec(1, t('ng.studio'), `${sign()}<input class="input" id="ng-studio" maxlength="22" value="${esc(N.studio)}" autocomplete="off"><div class="lbl" style="margin:12px 0 6px">${t('ng.logo')}</div>${logoPick()}`)}
+        ${sec(2, t('ng.founder'), `<input class="input" id="ng-founder" maxlength="24" value="${esc(N.founder)}" autocomplete="off">`)}
+        ${N.weekly ? weeklyBanner() : sec(3, t('ng.arch'), archSection(hall, true)) + sec(4, t('ng.diff'), diffSection(true))}${sec(N.weekly ? 3 : 5, t('set.pace'), paceSection(true))}
       </div></div>`;
   },
   foot() {
@@ -94,8 +140,15 @@ regWin({
   bind(el) {
     const s = $('#ng-studio', el);
     const f = $('#ng-founder', el);
-    s.addEventListener('input', () => (N.studio = s.value));
-    f.addEventListener('input', () => (N.founder = f.value));
+    s.addEventListener('input', () => {
+      N.studio = s.value;
+      $('#ng-sign-s', el).textContent = s.value || 'Nordlys Games';
+    });
+    f.addEventListener('input', () => {
+      N.founder = f.value;
+      $('#ng-badge-f', el).textContent = f.value || t('ng.founder');
+    });
+    animateFigure(el);
   },
 });
 
@@ -111,13 +164,12 @@ act('ng-dice', () => {
   N.logo = keep.logo;
   UI.refresh();
 });
-act('ng-hair', () => {
-  N.look = { ...N.look, hair: (N.look.hair + 1) % LOOK_N.hair };
+act('ng-hairpick', (el) => {
+  N.look = { ...N.look, hair: +el.dataset.i, hat: 0 };
   UI.refresh();
 });
-act('ng-acc', () => {
-  N.extra = ((N.extra || 0) + 1) % EXTRA_N;
-  N.look = extraLook(N.look, N.extra);
+act('ng-hat', () => {
+  N.look = { ...N.look, hat: hatOn() ? 0 : 1 };
   UI.refresh();
 });
 act('ng-logo', (el) => {
