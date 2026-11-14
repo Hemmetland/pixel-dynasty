@@ -1116,6 +1116,22 @@ ok(true, 'alla händelser körda');
   ok(bust.over && bust.year === 1989, 'en konkursad studio skrivs in med konkursåret');
   const order = S.hallSort([{ id: 'a', points: 50, revenue: 1 }, bust, { id: 'b', points: 80, revenue: 1 }, { id: 'c', points: 80, revenue: 9 }]).map((x) => x.id);
   ok(order.join() === 'c,b,a,48:Hall', 'hallen: bäst eftermäle först, sedan omsättning, konkurser sist');
+  // bakgrunder som hallen låser upp: de fyra första finns alltid, de andra tre kräver en tidigare studio
+  const hall0 = [];
+  const hall1 = [{ id: 'x', points: 30, awards: 1 }];
+  const hall2 = [{ id: 'x', points: 55, awards: 0 }];
+  const hall3 = [{ id: 'x', points: 80, awards: 4 }];
+  const open = (h) => S.FOUNDERS.filter((id) => S.founderUnlocked(h, id)).join();
+  ok(open(hall0) === 'designer,coder,visionary,hustler', 'utan tidigare studior finns de fyra första bakgrunderna');
+  ok(open(hall1) === 'designer,coder,visionary,hustler,influencer', 'ett pris låser upp influencern');
+  ok(open(hall2) === 'designer,coder,visionary,hustler,veteran', '50 poäng låser upp veteranen');
+  ok(open(hall3) === S.FOUNDERS.join(), '75 poäng låser upp alla');
+  ok(S.founderNew(hall0, hall1).join() === 'influencer' && S.founderNew(hall1, hall3).join() === 'veteran,tycoon' && S.founderNew(hall3, hall3).length === 0, 'en ny rad pekar ut bakgrunderna som blev upplåsta för första gången');
+  const gi = S.newGame({ studio: 'I', seed: 5, archetype: 'influencer' });
+  const gt = S.newGame({ studio: 'T', seed: 5, archetype: 'tycoon' });
+  const gd = S.newGame({ studio: 'D', seed: 5 });
+  ok(gi.fans === 250 && gd.fans === 0 && gt.money === gd.money + 15000 && gi.staff[0].design === 12 && gd.staff[0].design === 19, 'bakgrunderna ger sina startvärden');
+  ok(Object.keys(S.FOUNDER_UNLOCK).every((id) => S.FOUNDERS.includes(id)) && S.FOUNDERS.every((id) => S.ARCHETYPES[id]), 'varje bakgrund har värden');
 }
 // ärkerivalen: studion närmast framför blir rival, årets duell avgörs vid årsskiftet, raka segrar avgör den och en ny
 // rival utses. Duellen rör varken pengar, fans eller slumpföljden.

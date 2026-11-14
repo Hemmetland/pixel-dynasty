@@ -5,6 +5,7 @@ import { avatarImg } from '../render/people.js';
 import { glyphImg } from '../render/glyphs.js';
 import { SKINS, HAIRS, SHIRTS } from '../render/pal.js';
 import { newGame } from '../sim/state.js';
+import { FOUNDER_UNLOCK, founderUnlocked } from '../sim/legacy.js';
 import { makeCompetitors } from '../sim/market.js';
 import { initWorld } from '../sim/clock.js';
 import { refreshCandidates, randomLook, extraLook, LOOK_N, EXTRA_N } from '../sim/people.js';
@@ -32,7 +33,19 @@ const ARCH = [
   { id: 'coder', ic: 'cpu', c: 'var(--tech)' },
   { id: 'visionary', ic: 'flask', c: 'var(--rp)' },
   { id: 'hustler', ic: 'money', c: 'var(--money)' },
+  { id: 'influencer', ic: 'heart', c: 'var(--fans)' },
+  { id: 'veteran', ic: 'gear', c: 'var(--accent)' },
+  { id: 'tycoon', ic: 'crown', c: 'var(--gold)' },
 ];
+const LOCK_KEY = { awards: 'ng.lock.awards', points: 'ng.lock.points' };
+// En bakgrund som studiohallen låser upp: kortet är låst tills en tidigare studio nått kravet
+function archCard(x, hall) {
+  if (founderUnlocked(hall, x.id)) {
+    return `<button class="card hov arch ${N.arch === x.id ? 'sel' : ''}" data-act="ng-arch" data-id="${x.id}" style="--c:${x.c};text-align:left"><div class="row" style="gap:8px"><span style="color:${x.c}">${icon(x.ic)}</span><b>${t('arch.' + x.id)}</b></div><div class="hint" style="margin-top:4px">${t('arch.' + x.id + '.d')}</div></button>`;
+  }
+  const u = FOUNDER_UNLOCK[x.id];
+  return `<div class="card arch locked" style="--c:${x.c};text-align:left"><div class="row" style="gap:8px"><span>${icon('lock')}</span><b>${t('arch.' + x.id)}</b></div><div class="hint" style="margin-top:4px">${t(LOCK_KEY[u.k], { n: u.n })}</div></div>`;
+}
 const DIFF = ['relaxed', 'normal', 'hardcore'];
 
 function swatches(list, key, cur) {
@@ -46,6 +59,8 @@ regWin({
   size: 'lg',
   title: () => t('ng.title'),
   render() {
+    const hall = loadHall();
+    if (!founderUnlocked(hall, N.arch)) N.arch = 'designer';
     return `<div class="ng">
       <div class="ng-av card">
         <div class="ng-pic">${avatarImg(N.look, 7, 'stand')}</div>
@@ -58,7 +73,7 @@ regWin({
         <div><div class="lbl" style="margin-bottom:6px">${t('ng.studio')}</div><input class="input" id="ng-studio" maxlength="22" value="${esc(N.studio)}" autocomplete="off"></div>
         <div><div class="lbl" style="margin-bottom:6px">${t('ng.founder')}</div><input class="input" id="ng-founder" maxlength="24" value="${esc(N.founder)}" autocomplete="off"></div>
         <div><div class="lbl" style="margin-bottom:6px">${t('ng.logo')}</div><div class="row wrap" style="gap:6px">${LOGOS.map((g, i) => `<button class="logo-opt ${N.logo === i ? 'on' : ''}" data-act="ng-logo" data-i="${i}">${glyphImg(g, '#fff', 16, true)}</button>`).join('')}</div></div>
-        <div><div class="lbl" style="margin-bottom:6px">${t('ng.arch')}</div><div class="grid" style="grid-template-columns:repeat(auto-fit,minmax(150px,1fr));gap:8px">${ARCH.map((x) => `<button class="card hov arch ${N.arch === x.id ? 'sel' : ''}" data-act="ng-arch" data-id="${x.id}" style="--c:${x.c};text-align:left"><div class="row" style="gap:8px"><span style="color:${x.c}">${icon(x.ic)}</span><b>${t('arch.' + x.id)}</b></div><div class="hint" style="margin-top:4px">${t('arch.' + x.id + '.d')}</div></button>`).join('')}</div></div>
+        <div><div class="lbl" style="margin-bottom:6px">${t('ng.arch')}</div><div class="grid" style="grid-template-columns:repeat(auto-fit,minmax(150px,1fr));gap:8px">${ARCH.map((x) => archCard(x, hall)).join('')}</div></div>
         <div><div class="lbl" style="margin-bottom:6px">${t('ng.diff')}</div><div class="seg">${DIFF.map((d) => `<button class="${N.diff === d ? 'on' : ''}" data-act="ng-diff" data-id="${d}">${t('diff.' + d)}</button>`).join('')}</div><div class="hint" style="margin-top:6px">${t('diff.' + N.diff + '.d')}</div></div>
       </div></div>`;
   },

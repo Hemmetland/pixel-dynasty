@@ -1,7 +1,7 @@
 import { SAVE_VERSION, DIFFICULTY, newGame } from '../sim/state.js';
 import { migrateLooks } from '../sim/people.js';
 import { setOwnPlatforms } from '../data/platforms.js';
-import { hallEntry, hallSort } from '../sim/legacy.js';
+import { hallEntry, hallSort, founderNew } from '../sim/legacy.js';
 
 const KEY = 'pixel-dynasty-save-v1';
 const SKEY = 'pixel-dynasty-settings-v1';
@@ -37,9 +37,10 @@ export function loadHall() {
 export function recordRun(G) {
   try {
     const e = hallEntry(G);
-    const list = hallSort([...loadHall().filter((x) => x.id !== e.id), e]).slice(0, HALL_MAX);
+    const before = loadHall();
+    const list = hallSort([...before.filter((x) => x.id !== e.id), e]).slice(0, HALL_MAX);
     localStorage.setItem(HKEY, JSON.stringify(list));
-    return { place: list.findIndex((x) => x.id === e.id) + 1, of: list.length };
+    return { place: list.findIndex((x) => x.id === e.id) + 1, of: list.length, unlocked: founderNew(before, list) };
   } catch {
     return null;
   }

@@ -21,6 +21,18 @@ export function legacy(G) {
   return { points, parts, rank };
 }
 
+// Grundarens bakgrunder: de fyra första finns från start, de tre andra låses upp av en tidigare studio i studiohallen.
+// k = fältet på hallens rad, n = värdet som minst en studio ska ha nått.
+export const FOUNDERS = ['designer', 'coder', 'visionary', 'hustler', 'influencer', 'veteran', 'tycoon'];
+export const FOUNDER_UNLOCK = {
+  influencer: { k: 'awards', n: 1 },
+  veteran: { k: 'points', n: 50 },
+  tycoon: { k: 'points', n: 75 },
+};
+export const founderUnlocked = (hall, id) => !FOUNDER_UNLOCK[id] || hall.some((e) => e[FOUNDER_UNLOCK[id].k] >= FOUNDER_UNLOCK[id].n);
+// Bakgrunder som en ny rad i hallen låser upp för första gången
+export const founderNew = (before, after) => FOUNDERS.filter((id) => !founderUnlocked(before, id) && founderUnlocked(after, id));
+
 // Studions rad i studiohallen (sparas utanför sparfilen, så att tidigare studior finns kvar när en ny börjar): namn,
 // år, eftermäle och det bästa spelet. id skiljer studiorna åt, så en studio som spelar vidare uppdaterar sin egen rad.
 export function hallEntry(G) {

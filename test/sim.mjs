@@ -369,7 +369,7 @@ function manage(G) {
   }
 }
 
-const G = S.newGame({ studio: 'Bot', seed, difficulty: diff });
+const G = S.newGame({ studio: 'Bot', seed, difficulty: diff, archetype: opt('arch', undefined) });
 // NEWSDBG=1: hur många notiser (toastar) spelaren får per år och vilka som är vanligast (för att hitta torka och brus)
 const toasts = {};
 if (process.env.NEWSDBG) {

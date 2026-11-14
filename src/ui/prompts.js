@@ -470,7 +470,12 @@ function yearPrompt(app, G, p, finish) {
 }
 
 // studions plats i studiohallen (saknas om webbläsaren inte får spara)
-const hallLine = (h) => (h && h.of > 1 ? `<p class="hint" style="margin-top:12px">${icon('crown')} ${t('hall.place', { n: h.place, m: h.of })}</p>` : h ? `<p class="hint" style="margin-top:12px">${icon('crown')} ${t('hall.first')}</p>` : '');
+const hallLine = (h) => {
+  const place = h && h.of > 1 ? `<p class="hint" style="margin-top:12px">${icon('crown')} ${t('hall.place', { n: h.place, m: h.of })}</p>` : h ? `<p class="hint" style="margin-top:12px">${icon('crown')} ${t('hall.first')}</p>` : '';
+  // en ny bakgrund att välja när nästa studio startas
+  const fresh = h && h.unlocked && h.unlocked.length ? `<p class="hint" style="margin-top:6px;color:var(--gold)">${icon('lock')} ${t('hall.unlock', { name: h.unlocked.map((id) => `<b>${t('arch.' + id)}</b>`).join(', ') })}</p>` : '';
+  return place + fresh;
+};
 
 // ── Konkurs ───────────────────────────────────────────────────────
 function gameoverPrompt(app, G) {

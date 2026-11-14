@@ -1,6 +1,6 @@
 // Fördelning av betyg för första spelet (bara grundaren, litet spel).
 import * as S from '../src/sim/index.js';
-const arch = ['designer', 'coder', 'visionary', 'hustler'];
+const arch = ['designer', 'coder', 'visionary', 'hustler', 'influencer', 'veteran', 'tycoon'];
 const scope = process.argv[2] || 'small';
 for (const a of arch) {
   const scores = [];

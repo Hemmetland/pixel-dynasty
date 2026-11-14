@@ -642,6 +642,8 @@ input[type='range']::-moz-range-thumb { width: 18px; height: 18px; border-radius
 .yr-rank .yr-pos { font: 700 40px/1 var(--disp); color: var(--accent); min-width: 64px; text-align: center; }
 .gala-card { margin-bottom: 14px; border-color: rgba(255, 207, 90, 0.28); }
 .gala-card > .row .ic { width: 16px; height: 16px; color: var(--gold); }
+.arch.locked { opacity: 0.6; border-style: dashed; cursor: default; }
+.arch.locked .ic { color: var(--muted); }
 .gala-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 6px; }
 @media (max-width: 760px) { .gala-grid { grid-template-columns: 1fr; } }
 .gala-row { align-items: flex-start; }

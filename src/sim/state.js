@@ -18,6 +18,10 @@ export const ARCHETYPES = {
   coder: { d: 11, t: 19, s: 11, r: 8, money: 0, hype: 0 },
   visionary: { d: 14, t: 13, s: 9, r: 15, money: 0, hype: 0 },
   hustler: { d: 13, t: 12, s: 14, r: 8, money: 12000, hype: 0 },
+  // Låses upp av tidigare studior i studiohallen (se FOUNDER_UNLOCK i legacy.js)
+  influencer: { d: 12, t: 10, s: 12, r: 8, money: 0, hype: 0, fans: 250 },
+  veteran: { d: 14, t: 15, s: 11, r: 9, money: 0, hype: 0 },
+  tycoon: { d: 14, t: 13, s: 12, r: 9, money: 15000, hype: 0 },
 };
 
 export function newGame(opts = {}) {
@@ -38,7 +42,7 @@ export function newGame(opts = {}) {
     money: DIFFICULTY[diff].money + arch.money,
     money0: DIFFICULTY[diff].money + arch.money,
     rp: 0,
-    fans: 0,
+    fans: arch.fans || 0,
     nextId: 2,
     staff: [],
     candidates: [],
