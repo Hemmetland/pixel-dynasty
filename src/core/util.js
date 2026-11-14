@@ -1,3 +1,5 @@
+import { lang } from './i18n.js';
+
 export const clamp = (v, a, b) => Math.max(a, Math.min(b, v));
 export const lerp = (a, b, t) => a + (b - a) * t;
 export const sum = (arr, f = (x) => x) => arr.reduce((s, x) => s + f(x), 0);
@@ -5,12 +7,14 @@ export const smooth = (t) => t * t * (3 - 2 * t);
 export const esc = (s) =>
   String(s).replace(/[&<>"']/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' })[c]);
 
+// decimaltecknet följer språket: komma på svenska (1,94M), punkt på engelska
+const dsep = (x) => (lang === 'sv' ? x.replace('.', ',') : x);
 export function fmtMoney(n, short = true) {
   const neg = Math.round(n) < 0;
   const a = Math.abs(Math.round(n));
   let s;
-  if (short && a >= 1e9) s = (a / 1e9).toFixed(a >= 1e10 ? 1 : 2) + 'B';
-  else if (short && a >= 1e6) s = (a / 1e6).toFixed(a >= 1e7 ? 1 : 2) + 'M';
+  if (short && a >= 1e9) s = dsep((a / 1e9).toFixed(a >= 1e10 ? 1 : 2)) + 'B';
+  else if (short && a >= 1e6) s = dsep((a / 1e6).toFixed(a >= 1e7 ? 1 : 2)) + 'M';
   else if (short && a >= 1e5) s = Math.round(a / 1e3) + 'K';
   else s = a.toLocaleString('en-US').replace(/,/g, ' ');
   return (neg ? '−' : '') + '$' + s;
@@ -18,9 +22,9 @@ export function fmtMoney(n, short = true) {
 export function fmtNum(n) {
   const a = Math.abs(Math.round(n));
   let s;
-  if (a >= 1e9) s = (a / 1e9).toFixed(2) + 'B';
-  else if (a >= 1e6) s = (a / 1e6).toFixed(a >= 1e7 ? 1 : 2) + 'M';
-  else if (a >= 1e4) s = (a / 1e3).toFixed(a >= 1e5 ? 0 : 1) + 'K';
+  if (a >= 1e9) s = dsep((a / 1e9).toFixed(2)) + 'B';
+  else if (a >= 1e6) s = dsep((a / 1e6).toFixed(a >= 1e7 ? 1 : 2)) + 'M';
+  else if (a >= 1e4) s = dsep((a / 1e3).toFixed(a >= 1e5 ? 0 : 1)) + 'K';
   else s = a.toLocaleString('en-US').replace(/,/g, ' ');
   return (n < 0 ? '−' : '') + s;
 }

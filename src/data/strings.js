@@ -1187,6 +1187,7 @@ export const STRINGS = {
   'mk.done': ['Kampanjen {name} är igång.', 'The {name} campaign is live.'],
   'ach.title': ['Mål och prestationer', 'Goals and achievements'],
   'ach.sec': ['Prestationer', 'Achievements'],
+  'goal.none': ['Inga nya mål just nu. Forska och bygg vidare så kommer fler.', 'No new goals right now. Keep researching and building and more will appear.'],
   'goal.title': ['Studiomål', 'Studio goals'],
   'goal.help': ['Delmål som visar vad som är nästa steg. Varje klart mål ger en belöning, och nya mål dyker upp när du klarar de gamla.', 'Small goals that show what to do next. Every finished goal gives a reward, and new goals appear as you finish the old ones.'],
   'goal.done': ['{n} av {m} klara', '{n} of {m} done'],
