@@ -1387,6 +1387,10 @@ export const STRINGS = {
   'tut.contracts.b': ['Ta ett <b>uppdrag</b> för snabba pengar medan nästa hit tar form.', 'Take a <b>contract</b> for quick cash while the next hit takes shape.'],
 
   // ── Notiser ──
+  'ev.award': ['Utmärkelse', 'Award'],
+  'ev.milestone': ['Milstolpe', 'Milestone'],
+  'ev.achievement': ['Prestation', 'Achievement'],
+  'ev.show': ['Visa', 'Show'],
   'toast.achievement': ['Prestation: {name}', 'Achievement: {name}'],
   'toast.cert': ['{cert}! {title} har sålt {n} exemplar.', '{cert}! {title} has sold {n} copies.'],
   'toast.contractFail': ['Uppdraget misslyckades: ingen ersättning.', 'Contract failed: no payment.'],

@@ -274,6 +274,44 @@ function fitToasts(box) {
     if (over > 0) el.style.maxHeight = Math.max(34, el.offsetHeight - Math.ceil(over)) + 'px';
   }
 }
+// Händelsekort: viktiga händelser (milstolpar, priser, prestationer) ligger kvar högst upp tills spelaren stänger dem.
+// opts: { kind: 'award' | 'milestone' | 'achievement', text, ic, go } där go är ett fönster som Visa-knappen öppnar.
+const EV = { award: ['trophy', 'var(--gold)', 'ev.award'], milestone: ['flag', 'var(--accent)', 'ev.milestone'], achievement: ['award', 'var(--fans)', 'ev.achievement'] };
+export function eventCard({ kind = 'milestone', text, ic, go = 'news' }) {
+  let box = $('#events');
+  if (!box) {
+    box = document.createElement('div');
+    box.id = 'events';
+    document.body.appendChild(box);
+  }
+  const [def, col, key] = EV[kind] || EV.milestone;
+  for (const o of box.children) if (o.dataset.txt === text) o.remove();
+  const el = document.createElement('div');
+  el.className = 'evcard glass';
+  el.dataset.txt = text;
+  el.style.setProperty('--c', col);
+  el.innerHTML = `<div class="ev-i">${icon(ic || def)}</div><div class="ev-b"><div class="ev-k">${t(key)}</div><div class="ev-t">${text}</div></div>
+    <div class="ev-a">${go ? `<button class="btn sm" data-ev="go">${t('ev.show')}</button>` : ''}<button class="iconbtn" data-ev="x" aria-label="${esc(t('ui.close'))}">${icon('x')}</button></div>`;
+  el.addEventListener('click', (e) => {
+    const b = e.target.closest('[data-ev]');
+    if (!b) return;
+    if (b.dataset.ev === 'go' && go) UI.open(go, null, { force: true });
+    dropEvent(el);
+  });
+  box.prepend(el);
+  // högst tre kort åt gången: de äldsta ligger kvar i nyhetsfliken
+  const live = [...box.children].filter((c) => !c.classList.contains('out'));
+  for (const o of live.slice(3)) dropEvent(o);
+}
+const dropEvent = (el) => {
+  if (el.classList.contains('out')) return;
+  el.classList.add('out');
+  setTimeout(() => el.remove(), 380);
+};
+export const clearEvents = () => {
+  const box = $('#events');
+  if (box) box.innerHTML = '';
+};
 const dropToast = (el) => {
   if (el.classList.contains('out')) return;
   el.classList.add('out');

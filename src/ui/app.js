@@ -11,7 +11,8 @@ import { cancelContract } from '../sim/contracts.js';
 import { refreshCandidates } from '../sim/people.js';
 import { sfx, music } from '../audio/sfx.js';
 import { newDirector, pickMood } from '../audio/director.js';
-import { UI, act, initUICore, toast, $, icon, L, money, esc } from './core.js';
+import { UI, act, initUICore, toast, eventCard, $, icon, L, money, esc } from './core.js';
+import { STORY_KEYS } from '../sim/news.js';
 import { buildHUD, buildDock, updateHUD, updateDock, updateDev, setHUDVisible, flashStat, fitHUD } from './hud.js';
 import { showPrompt } from './prompts.js';
 import { PACE_MULT, paceOf } from './pace.js';
@@ -158,7 +159,11 @@ export const app = {
     on('toast', (n) => {
       if (this.mode !== 'play') return;
       const text = n.text || t(n.key, this.decorate(n.vars));
-      toast(text, n.kind || 'info', undefined, false); // nyheter från spelet: hoppas över när högen inte får plats
+      // viktiga händelser (priser och nyheter som blev en milstolpe i krönikan) ligger kvar som kort tills de stängs
+      const last = this.G && this.G.story && this.G.story[this.G.story.length - 1];
+      const mile = !!last && last.t === this.G.t && STORY_KEYS.includes(n.key);
+      if (n.kind === 'award' || mile) eventCard({ kind: n.kind === 'award' ? 'award' : 'milestone', text });
+      else toast(text, n.kind || 'info', undefined, false); // nyheter från spelet: hoppas över när högen inte får plats
       if (n.kind === 'good') sfx.play('good');
       else if (n.kind === 'bad') sfx.play('bad');
       else sfx.play('notify');
@@ -186,13 +191,13 @@ export const app = {
     });
     on('achievement', (a) => {
       sfx.play('achievement');
-      toast(t('toast.achievement', { name: `<b>${L(a.name)}</b>` }), 'award', 8000);
+      eventCard({ kind: 'achievement', text: t('toast.achievement', { name: `<b>${L(a.name)}</b>` }), go: 'achievements' });
     });
     // en skiva som är minst lika fin som studions finaste firas; lägre skivor står bara i krönikan
     on('cert', (c) => {
       if (this.mode !== 'play' || !c.big) return;
       const name = L(c.cert.name);
-      toast(t('toast.cert', { cert: `<b style="color:${c.cert.color}">${name.charAt(0).toUpperCase() + name.slice(1)}</b>`, title: `<b>${esc(c.game.title)}</b>`, n: fmtFull(c.cert.units) }), 'award', 9000);
+      eventCard({ kind: 'award', ic: 'disc', text: t('toast.cert', { cert: `<b style="color:${c.cert.color}">${name.charAt(0).toUpperCase() + name.slice(1)}</b>`, title: `<b>${esc(c.game.title)}</b>`, n: fmtFull(c.cert.units) }) });
       sfx.play('fanfare');
       sc.confetti(60 + c.i * 30);
     });

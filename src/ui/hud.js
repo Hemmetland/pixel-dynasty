@@ -158,6 +158,8 @@ export function setHUDVisible(on) {
     const el = $('#' + id);
     if (el) el.style.display = on ? '' : 'none';
   }
+  const ev = $('#events');
+  if (ev) ev.style.display = on ? '' : 'none';
   if (!on) $('#toasts').innerHTML = '';
 }
 

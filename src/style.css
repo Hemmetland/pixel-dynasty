@@ -1147,3 +1147,20 @@ input[type='range']::-moz-range-thumb { width: 18px; height: 18px; border-radius
 .ltier.slot .slot-i { flex: 1 1 150px; min-width: 0; text-align: left; }
 .ltier.slot .slot-b { display: flex; gap: 6px; flex: none; margin-left: auto; }
 .ltier.slot .slot-b .btn { white-space: nowrap; }
+
+/* Händelsekort: viktiga händelser som ligger kvar tills de stängs */
+#events { position: fixed; left: 50%; top: 84px; transform: translateX(-50%); width: min(520px, calc(100% - 24px)); display: flex; flex-direction: column; gap: 8px; z-index: 40; pointer-events: none; }
+.evcard { position: relative; display: flex; gap: 12px; align-items: center; padding: 12px 12px 12px 14px; border-radius: 16px; border: 1px solid color-mix(in srgb, var(--c) 55%, transparent); border-left: 4px solid var(--c); background-color: rgba(12,16,34,0.9); background-image: linear-gradient(90deg, color-mix(in srgb, var(--c) 18%, transparent), transparent 70%); box-shadow: 0 18px 40px -16px #000, 0 0 34px -12px var(--c); pointer-events: auto; animation: evin 0.5s var(--ease); }
+.evcard.out { animation: evout 0.35s forwards; }
+.evcard .ev-i { flex: none; width: 44px; height: 44px; border-radius: 13px; display: grid; place-items: center; color: var(--c); background: color-mix(in srgb, var(--c) 18%, transparent); box-shadow: inset 0 0 0 1px color-mix(in srgb, var(--c) 40%, transparent), 0 0 20px -6px var(--c); }
+.evcard .ev-i .ic { width: 24px; height: 24px; }
+.evcard .ev-b { flex: 1; min-width: 0; }
+.evcard .ev-k { font: 800 10.5px var(--font); letter-spacing: 0.14em; text-transform: uppercase; color: var(--c); }
+.evcard .ev-t { font-size: 14.5px; line-height: 1.35; margin-top: 2px; }
+.evcard .ev-t b { color: #fff; }
+.evcard .ev-a { flex: none; display: flex; align-items: center; gap: 6px; }
+@keyframes evin { from { opacity: 0; transform: translateY(-16px) scale(0.96); } to { opacity: 1; transform: none; } }
+@keyframes evout { to { opacity: 0; transform: translateY(-10px) scale(0.97); } }
+@media (max-width: 760px) { #events { top: 96px; } .evcard { padding: 10px; gap: 10px; } .evcard .ev-i { width: 36px; height: 36px; } .evcard .ev-t { font-size: 13px; } }
+@media (max-height: 559px) { #events { top: 60px; width: min(440px, calc(100% - 24px)); } .evcard { padding: 8px 10px; } .evcard .ev-i { width: 32px; height: 32px; } .evcard .ev-t { font-size: 12.5px; } }
+@media (prefers-reduced-motion: reduce) { .evcard, .evcard.out { animation: none; } }
