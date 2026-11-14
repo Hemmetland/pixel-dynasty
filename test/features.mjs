@@ -1808,11 +1808,13 @@ ok(!bad.length, `äldre sparning utan ett av ${paths.length} fält går att spel
   S.note(GB, 'news.rival', { studio: 'R2' }, 'info');
   ok(GB.news[1].big === 1 && !GB.news[0].big, 'första rivalen är en milstolpe, nästa inte');
   // olästa: nyheter nyare än G.flags.newsRead
+  ok(S.unreadNews(GB) === 0, 'ett nytt spel börjar utan olästa nyheter');
   GB.t += 10;
   S.note(GB, 'news.lowCash', {}, 'bad');
-  const n1 = S.unreadNews(GB);
-  GB.flags.newsRead = GB.t;
-  ok(n1 >= 1 && S.unreadNews(GB) === 0, 'olästa viktiga nyheter räknas och nollas när loggen läses');
+  S.note(GB, 'news.chartIn', { title: 'T', n: 40 }, 'info');
+  ok(S.unreadNews(GB) === 1, 'bara viktiga nyheter räknas som olästa');
+  GB.flags.seenNews = GB.t;
+  ok(S.unreadNews(GB) === 0, 'olästa nollas när loggen läses');
   // flaggan ändrar inget i spelet: samma sparning laddar och loggen får bara ett extra fält
   ok(JSON.parse(JSON.stringify(GB.news)).length === GB.news.length, 'nyhetsloggen kan sparas som JSON');
 }

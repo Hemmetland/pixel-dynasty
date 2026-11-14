@@ -11,6 +11,7 @@ export { esc, icon, t, tn, L };
 const acts = new Map();
 export const act = (name, fn) => acts.set(name, fn);
 export const wins = new Map();
+export { unreadNews } from '../sim/news.js';
 export const regWin = (def) => wins.set(def.id, def);
 
 export const UI = {
@@ -331,7 +332,7 @@ function showEvent(box, { kind = 'milestone', text, ic, go = 'news', t0 }) {
     if (!b) return;
     // ett stängt kort räknas som läst: menyknappens räknare går ner
     const G = UI.app && UI.app.G;
-    if (G && t0 != null) G.flags.newsRead = Math.max(G.flags.newsRead ?? -1, t0);
+    if (G && t0 != null) G.flags.seenNews = Math.max(G.flags.seenNews ?? -1, t0);
     if (b.dataset.ev === 'go' && go) UI.open(go, null, { force: true });
     dropEvent(el);
   });

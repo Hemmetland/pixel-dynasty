@@ -16,8 +16,17 @@ const IMPORTANT = new Set([
   'live.news.autoPaused', 'live.news.autoSeasonPaused', 'live.news.stale',
   'news.platform', 'news.cert',
 ]);
-// viktiga nyheter som kommit efter senaste gången loggen öppnades eller ett kort stängdes (G.flags.newsRead, spelets tid)
-export const unreadNews = (G) => G.news.reduce((n, x) => n + (x.big && x.t > (G.flags.newsRead ?? -1) ? 1 : 0), 0);
+// Olästa viktiga nyheter: de som kommit efter senaste gången nyhetsloggen öppnades eller ett händelsekort stängdes (G.flags.seenNews,
+// spelets tid). Vanliga nyheter, rubriker och trendspaning räknas inte. Ett nytt spel börjar på noll.
+export const unreadNews = (G) => {
+  if (G.flags.seenNews == null) G.flags.seenNews = G.t;
+  let n = 0;
+  for (const x of G.news) {
+    if (x.t <= G.flags.seenNews) break;
+    if (x.big) n++;
+  }
+  return n;
+};
 export function note(G, key, vars = {}, kind = 'info', silent = false) {
   const item = { t: G.t, key, vars, kind };
   G.news.unshift(item);

@@ -356,6 +356,7 @@ button.pn-c:hover { background: rgba(150, 172, 255, 0.13); border-color: var(--l
 .card.lockd { opacity: 0.5; filter: grayscale(0.6); }
 .empty { padding: 36px 16px; text-align: center; color: var(--muted); }
 .empty .ic { width: 40px; height: 40px; opacity: 0.5; margin-bottom: 8px; }
+.empty .hint { margin-left: auto; margin-right: auto; }
 .input { width: 100%; height: 42px; padding: 0 14px; border-radius: 11px; background: rgba(5, 8, 20, 0.55); border: 1px solid var(--line2); color: var(--text); font: 600 15px var(--font); user-select: text; -webkit-user-select: text; }
 .input:focus { outline: none; border-color: var(--accent); box-shadow: 0 0 0 3px rgba(77, 225, 208, 0.2); }
 .seg { display: inline-flex; padding: 3px; gap: 3px; border-radius: 11px; background: rgba(5, 8, 20, 0.5); border: 1px solid var(--line); }
@@ -1165,17 +1166,54 @@ input[type='range']::-moz-range-thumb { width: 18px; height: 18px; border-radius
 @media (max-height: 559px) { #events { top: 60px; width: min(440px, calc(100% - 24px)); } .evcard { padding: 8px 10px; } .evcard .ev-i { width: 32px; height: 32px; } .evcard .ev-t { font-size: 12.5px; } }
 @media (prefers-reduced-motion: reduce) { .evcard, .evcard.out { animation: none; } }
 
-/* Viktiga nyheter i loggen och oläst-räknaren på menyknappen (v94) */
+/* Viktiga nyheter i nyhetsloggen och händelsekortens kö (v94) */
 .nws-r:not(.big) { opacity: 0.82; }
 .nws-r.big { border-left-width: 4px; padding-top: 11px; padding-bottom: 11px; background: linear-gradient(90deg, color-mix(in srgb, var(--c) 20%, transparent), rgba(150, 172, 255, 0.05)); font-weight: 600; box-shadow: 0 0 22px -12px var(--c); }
 .nws-k { display: block; font: 800 9.5px/1 var(--font); letter-spacing: 0.14em; text-transform: uppercase; color: var(--c); margin-bottom: 4px; }
 .nws-r.big .ii { box-shadow: inset 0 0 0 1px color-mix(in srgb, var(--c) 55%, transparent), 0 0 14px -4px var(--c); }
 .nws-new { flex: none; font: 800 9.5px/1 var(--font); letter-spacing: 0.1em; text-transform: uppercase; padding: 3px 6px; border-radius: 6px; background: var(--hot); color: #fff; }
-.mn-n { margin-left: auto; font: 700 11px/1 var(--font); padding: 4px 8px; border-radius: 10px; background: var(--hot); color: #fff; }
 .menu-btn { position: relative; }
-.menu-btn[data-n]::after { content: attr(data-n); position: absolute; inset: -6px -5px auto auto; place-self: start end; min-width: 16px; height: 16px; padding: 0 4px; border-radius: 8px; background: var(--hot); color: #fff; font: 700 10px/16px var(--font); text-align: center; box-shadow: 0 0 0 2px var(--solid); }
 .evmore { align-self: center; pointer-events: auto; padding: 6px 14px; border-radius: 999px; font: 700 12px/1 var(--font); color: var(--text); border: 1px solid var(--line2); cursor: pointer; }
 .evmore:hover { background: rgba(150, 172, 255, 0.16); }
 /* Händelsekorten ligger över dockan på smala och låga skärmar, så att de inte täcker utvecklingspanelens knappar */
 @media (max-width: 760px) { #events { top: auto; bottom: calc(max(12px, env(safe-area-inset-bottom, 0px)) + 134px); } }
 @media (max-height: 559px) and (min-width: 761px) { #events { top: auto; bottom: 104px; left: calc(50% + 20px); width: min(380px, calc(100% - 500px)); } }
+/* ── Menyrad i grupper: avgränsare, rullande dock på mobil med toning i kanten ── */
+#dock .dk-s { display: flex; gap: 6px; align-items: stretch; min-width: 0; overflow-x: auto; scrollbar-width: none; overscroll-behavior-x: contain; scroll-snap-type: x proximity; }
+#dock .dk-s::-webkit-scrollbar { display: none; }
+#dock .dsep { flex: none; align-self: center; width: 1px; height: 38px; margin: 0 3px; background: linear-gradient(180deg, transparent, rgba(150, 172, 255, 0.35), transparent); }
+#dock.sl .dk-s { -webkit-mask-image: linear-gradient(90deg, transparent 0, #000 22px); mask-image: linear-gradient(90deg, transparent 0, #000 22px); }
+#dock.sr .dk-s { -webkit-mask-image: linear-gradient(90deg, #000 calc(100% - 22px), transparent); mask-image: linear-gradient(90deg, #000 calc(100% - 22px), transparent); }
+#dock.sl.sr .dk-s { -webkit-mask-image: linear-gradient(90deg, transparent 0, #000 22px, #000 calc(100% - 22px), transparent); mask-image: linear-gradient(90deg, transparent 0, #000 22px, #000 calc(100% - 22px), transparent); }
+@media (min-width: 1100px) { #dock .dk-s { gap: 4px; } }
+@media (max-width: 760px) {
+  #dock .dk-s { gap: 0; width: 100%; }
+  #dock .dsep { height: 30px; margin: 0 2px; }
+  #dock .dk { flex: 1 0 52px; scroll-snap-align: center; }
+  #dock .dk.create { flex: 1.2 0 60px; }
+  #dock .dk .dot, #dock .dk .badge { z-index: 1; }
+}
+
+/* ── Meny som kortrutnät i grupper, nyhetsklocka med olästa ── */
+.menu-btn { position: relative; }
+.menu-btn .badge { position: absolute; right: 4px; top: 4px; min-width: 17px; height: 17px; padding: 0 4px; border-radius: 9px; background: var(--hot); color: #fff; font: 700 10.5px/17px var(--font); text-align: center; box-shadow: 0 0 0 2px var(--solid); display: none; font-style: normal; }
+.menu-btn.has .badge { display: block; }
+.menu-btn.has { color: var(--text); }
+.menu-btn.has .ic { animation: bellring 3.2s var(--ease) infinite; transform-origin: 50% 12%; }
+@keyframes bellring { 0%, 86%, 100% { transform: rotate(0); } 90% { transform: rotate(14deg); } 94% { transform: rotate(-11deg); } 97% { transform: rotate(6deg); } }
+.mresume { position: relative; width: 100%; display: flex; align-items: center; justify-content: center; gap: 12px; padding: 14px 18px; border-radius: 16px; font: 800 16px var(--font); color: var(--accent-ink); background: linear-gradient(180deg, #67f0df, #2fbfb0); box-shadow: 0 10px 26px -10px rgba(77, 225, 208, 0.75), inset 0 1px 0 rgba(255, 255, 255, 0.55); transition: transform 0.15s var(--ease), filter 0.15s; }
+.mresume:hover { transform: translateY(-2px); filter: brightness(1.06); }
+.mresume .ic { width: 22px; height: 22px; }
+.mresume kbd { position: absolute; right: 14px; font: 700 11px var(--font); padding: 2px 7px; border-radius: 6px; background: rgba(0, 0, 0, 0.18); color: inherit; }
+.mgrp { margin-top: 16px; }
+.mgrp .lbl { margin-bottom: 8px; }
+.mgrid { display: grid; grid-template-columns: repeat(auto-fill, minmax(190px, 1fr)); gap: 8px; }
+.mcard { position: relative; display: flex; align-items: center; gap: 12px; padding: 12px 14px; border-radius: 14px; text-align: left; border: 1px solid var(--line); background: linear-gradient(135deg, color-mix(in srgb, var(--c) 10%, transparent), rgba(255, 255, 255, 0.025) 70%); transition: transform 0.15s var(--ease), border-color 0.15s, background 0.15s; }
+.mcard:hover { transform: translateY(-2px); border-color: color-mix(in srgb, var(--c) 60%, transparent); background: linear-gradient(135deg, color-mix(in srgb, var(--c) 20%, transparent), rgba(255, 255, 255, 0.04) 70%); }
+.mcard .mi { position: relative; flex: none; width: 42px; height: 42px; border-radius: 12px; display: grid; place-items: center; color: var(--c); background: color-mix(in srgb, var(--c) 16%, transparent); box-shadow: inset 0 0 0 1px color-mix(in srgb, var(--c) 38%, transparent); }
+.mcard .mi .ic { width: 22px; height: 22px; }
+.mcard .mi .badge { position: absolute; right: -6px; top: -6px; min-width: 18px; height: 18px; border-radius: 9px; padding: 0 5px; background: var(--hot); color: #fff; font: 700 11px/18px var(--font); font-style: normal; text-align: center; box-shadow: 0 0 0 2px var(--solid); }
+.mcard .mt { display: flex; flex-direction: column; min-width: 0; gap: 2px; }
+.mcard .mt b { font-size: 14px; }
+.mcard .mt i { font-style: normal; font-size: 11.5px; color: var(--muted); line-height: 1.3; }
+@media (prefers-reduced-motion: reduce) { .menu-btn.has .ic { animation: none; } }

@@ -1,12 +1,11 @@
-import { $, $$, esc, icon, t, tn, L, UI, act, money, MONTHS, bar, clearEvents } from './core.js';
-import { unreadNews } from '../sim/news.js';
+import { $, $$, esc, icon, t, tn, L, UI, act, money, MONTHS, bar, unreadNews, clearEvents } from './core.js';
 import { glyphImg } from '../render/glyphs.js';
 import { onSpritesLoaded } from '../render/sprites.js';
 import { pixIcon } from './icons.js';
 import { TOPIC } from '../data/topics.js';
 import { GENRE } from '../data/genres.js';
 import { PLATFORM } from '../data/platforms.js';
-import { dateOf, TICKS_PER_WEEK } from '../sim/const.js';
+import { dateOf, yearOf, TICKS_PER_WEEK } from '../sim/const.js';
 import { rpPerWeek } from '../sim/research.js';
 import { canUpgradeOffice, capacity, tierOf, nextTier, officeReqs } from '../sim/studio.js';
 import { canHire, workers, teamFatigue, FATIGUE_MAX, FATIGUE_GRACE } from '../sim/people.js';
@@ -14,6 +13,8 @@ import { canLicense } from '../sim/actions.js';
 import { RESEARCH, RES } from '../data/research.js';
 import { canResearch } from '../sim/research.js';
 import { canHw } from '../sim/hardware.js';
+import { canStore } from '../sim/store.js';
+import { canAcquireAny, ownedComps } from '../sim/acquire.js';
 import { hwDecisions } from './win-hardware.js';
 import { lang } from '../core/i18n.js';
 import { fmtNum, clamp } from '../core/util.js';
@@ -26,16 +27,22 @@ import { REQ, reqValue, reqPct } from './win-studio.js';
 
 export const LOGOS = ['c_gameplay', 'g_action', 't_space', 't_fantasy', 't_robots', 't_pirates', 'g_casual', 't_magic'];
 
+export const hasStore = (G) => canStore(G) || yearOf(G.t) >= 2001;
+export const hasGroup = (G) => canAcquireAny(G) || ownedComps(G).length > 0;
+// Menyraden i grupper (sep = avgränsare före knappen): skapa | studion | spelen och pengarna | uppdrag.
+// Butik och Koncern har egna knappar och visas när de är upplåsta (samma villkor som flikarna i Marknad hade).
 const DOCK = [
   { id: 'wizard', ic: 'plus', k: 'dock.create', create: true },
-  { id: 'research', ic: 'flask', k: 'dock.research' },
+  { id: 'research', ic: 'flask', k: 'dock.research', sep: true },
   { id: 'staff', ic: 'team', k: 'dock.team' },
   { id: 'studio', ic: 'building', k: 'dock.studio' },
+  { id: 'hardware', ic: 'gpu', k: 'dock.hw', when: (G) => canHw(G) },
+  { id: 'library', ic: 'gamepad', k: 'dock.games', sep: true },
+  { id: 'store', ic: 'cart', k: 'dock.store', when: (G) => hasStore(G) },
   { id: 'market', ic: 'chart', k: 'dock.market' },
   { id: 'finance', ic: 'bank', k: 'dock.finance' },
-  { id: 'library', ic: 'gamepad', k: 'dock.games' },
-  { id: 'contracts', ic: 'hammer', k: 'dock.work' },
-  { id: 'hardware', ic: 'gpu', k: 'dock.hw', when: (G) => canHw(G) },
+  { id: 'group', ic: 'network', k: 'dock.group', when: (G) => hasGroup(G) },
+  { id: 'contracts', ic: 'hammer', k: 'dock.work', sep: true },
 ];
 
 let els = {};
@@ -67,6 +74,7 @@ export function buildHUD(root) {
         <div class="stat glass" id="st-rp" style="--c:var(--rp)" data-tip=""><div class="ico">${icon('flask')}</div><div><div class="v num">0</div><div class="s"></div></div></div>
         <div class="stat glass" id="st-fans" style="--c:var(--fans)" data-tip=""><div class="ico">${icon('heart')}</div><div><div class="v num">0</div><div class="s"></div></div></div>
         <button class="glass menu-btn" id="mute-btn" data-act="hud-mute" data-tip="${t('ui.sound')}">${icon('volume')}</button>
+        <button class="glass menu-btn" id="news-btn" data-act="mn-news" data-tip="${t('ui.news')}">${icon('bell')}<i class="badge"></i></button>
         <button class="glass menu-btn" data-act="menu" data-tip="${t('ui.menu')} <span class='kbd'>M</span>">${icon('menu')}</button>
       </div>
     </div>
@@ -174,7 +182,19 @@ const dockItems = () => DOCK.filter((d) => !d.when || (UI.app?.G && d.when(UI.ap
 export function buildDock() {
   const items = dockItems();
   dockKey = items.map((d) => d.id).join();
-  els.dock.innerHTML = items.map((d) => `<button class="dk ${d.create ? 'create' : ''}" data-act="dock" data-id="${d.id}" data-key="${d.id}" data-tip="${t(d.k + '.tip')}">${pixIcon(`ui.dock.${d.id}`, d.ic, 26)}<span class="l">${t(d.k)}</span></button>`).join('');
+  const keep = $('.dk-s', els.dock)?.scrollLeft || 0;
+  els.dock.innerHTML = `<div class="dk-s">${items.map((d) => `${d.sep ? '<span class="dsep"></span>' : ''}<button class="dk ${d.create ? 'create' : ''}" data-act="dock" data-id="${d.id}" data-key="${d.id}" data-tip="${t(d.k + '.tip')}">${pixIcon(`ui.dock.${d.id}`, d.ic, 26)}<span class="l">${t(d.k)}</span></button>`).join('')}</div>`;
+  const sc = $('.dk-s', els.dock);
+  sc.scrollLeft = keep;
+  sc.addEventListener('scroll', dockEdges, { passive: true });
+  dockEdges();
+}
+// Mobilens dock rullar i sidled när knapparna inte ryms: toning i den kant där det finns mer att se
+function dockEdges() {
+  const sc = $('.dk-s', els.dock);
+  if (!sc) return;
+  els.dock.classList.toggle('sl', sc.scrollLeft > 4);
+  els.dock.classList.toggle('sr', sc.scrollLeft + sc.clientWidth < sc.scrollWidth - 4);
 }
 // Sprites laddas efter att dockan byggts: bygg om den (prickar, märken och vald knapp läggs tillbaka av updateDock).
 onSpritesLoaded(() => els.dock && buildDock());
@@ -220,6 +240,14 @@ export function updateHUD(G, dt) {
   set(els.fans, fmtNum(f), tn('hud.fansSub', Math.round(f)), `<b>${t('hud.fans')}</b><br>${t('hud.fansTip')}`);
   // speed
   for (const b of $$('button', els.speed)) b.classList.toggle('on', +b.dataset.v === UI.app.speed);
+  const nb = $('#news-btn');
+  if (nb) {
+    const un = unreadNews(G);
+    nb.classList.toggle('has', un > 0);
+    const bd = $('.badge', nb);
+    const tx = un > 9 ? '9+' : String(un || '');
+    if (bd.textContent !== tx) bd.textContent = tx;
+  }
   const mb = $('#mute-btn');
   if (mb) {
     const on = UI.app.settings.music || UI.app.settings.sfx;
@@ -535,13 +563,6 @@ export function updateDock(G) {
   set('hardware', 'badge', hwDecisions(G));
   set('contracts', 'badge', (!G.job ? G.contracts.length : 0) + (G.pub ? G.pub.pitches.filter((p) => !p.seen).length : 0));
   for (const b of $$('.dk', els.dock)) b.classList.toggle('on', UI.cur === b.dataset.key);
-  // menyknappen visar hur många viktiga nyheter som ännu inte setts (de ligger kvar i nyhetsloggen under Menyn)
-  const mb = $('.menu-btn[data-act="menu"]');
-  if (mb) {
-    const n = unreadNews(G);
-    if (n) mb.dataset.n = n > 9 ? '9+' : n;
-    else delete mb.dataset.n;
-  }
 }
 
 // ── Utvecklingspanel ──

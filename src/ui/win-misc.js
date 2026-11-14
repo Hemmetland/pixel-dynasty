@@ -1,7 +1,7 @@
-import { $, $$, esc, icon, t, L, UI, act, regWin, money, toast, errToast, MONTHS } from './core.js';
+import { $, $$, esc, icon, t, L, UI, act, regWin, money, toast, errToast, MONTHS, unreadNews } from './core.js';
 import { dateOf } from '../sim/const.js';
 import { fmtNum } from '../core/util.js';
-import { storyOf, unreadNews } from '../sim/news.js';
+import { storyOf } from '../sim/news.js';
 import { identity } from '../sim/legacy.js';
 import { identityName } from '../data/identity.js';
 import { CERTS } from '../data/certs.js';
@@ -115,13 +115,13 @@ function storyTab(G) {
 }
 regWin({
   id: 'news',
-  icon: 'mail',
+  icon: 'bell',
   color: 'var(--design)',
   size: 'md',
   title: () => t('news.title'),
   onOpen(G) {
-    NW.since = G.flags.newsRead ?? -1;
-    G.flags.newsRead = G.t;
+    NW.since = G.flags.seenNews ?? G.t; // nya sedan förra gången: flaggas i listan
+    G.flags.seenNews = G.t;
   },
   headExtra: () => `<div class="tabs">${['news', 'story'].map((k) => `<button class="tab ${NW.tab === k ? 'on' : ''}" data-act="nw-tab" data-id="${k}">${t('news.tab.' + k)}</button>`).join('')}</div>`,
   render(G) {
@@ -160,15 +160,16 @@ regWin({
   id: 'menu',
   icon: 'menu',
   color: 'var(--accent)',
-  size: 'sm',
+  size: 'md',
   title: () => t('menu.title2'),
   render(G) {
-    const b = (id, ic, key, cls = '') => {
-      const n = id === 'mn-news' ? unreadNews(G) : 0;
-      return `<button class="btn block lg ${cls}" data-act="${id}" style="justify-content:flex-start">${icon(ic)}${t(key)}${n ? `<span class="mn-n">${t('news.unread', { n })}</span>` : ''}</button>`;
-    };
-    return `<div class="col" style="gap:8px">
-      ${b('mn-resume', 'play', 'menu.resume', 'primary')}${b('mn-save', 'save', 'menu.save')}${b('mn-slots', 'folder', 'menu.slots')}${b('mn-news', 'mail', 'menu.news')}${b('mn-ach', 'award', 'menu.ach')}${b('mn-set', 'settings', 'menu.settings')}${b('mn-help', 'info', 'menu.help')}${b('mn-title', 'back', 'menu.title')}</div>`;
+    const un = unreadNews(G);
+    const c = (id, ic, key, col, extra = '') => `<button class="mcard" data-act="${id}" style="--c:${col}"><span class="mi">${icon(ic)}${extra}</span><span class="mt"><b>${t(key)}</b><i>${t(key + '.d')}</i></span></button>`;
+    const grp = (k, body) => `<div class="mgrp"><div class="lbl">${t('menu.g.' + k)}</div><div class="mgrid">${body}</div></div>`;
+    return `<button class="mresume" data-act="mn-resume">${icon('play')}<span>${t('menu.resume')}</span><kbd>Esc</kbd></button>
+      ${grp('game', c('mn-save', 'save', 'menu.save', 'var(--good)') + c('mn-slots', 'folder', 'menu.slots', 'var(--gold)'))}
+      ${grp('studio', c('mn-news', 'bell', 'menu.news', 'var(--design)', un ? `<i class="badge">${un > 9 ? '9+' : un}</i>` : '') + c('mn-ach', 'award', 'menu.ach', 'var(--fans)'))}
+      ${grp('system', c('mn-set', 'settings', 'menu.settings', 'var(--accent)') + c('mn-help', 'info', 'menu.help', 'var(--rp)') + c('mn-title', 'back', 'menu.title', 'var(--bug)'))}`;
   },
 });
 act('mn-resume', () => UI.close());
