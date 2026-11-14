@@ -2,7 +2,7 @@
 import * as S from '../src/sim/index.js';
 import { RESEARCH } from '../src/data/research.js';
 import { EVENTS } from '../src/data/events.js';
-import { exportCode, importCode } from '../src/core/store.js';
+import { exportCode, importCode, recordRun, loadHall } from '../src/core/store.js';
 import { PLATFORM, PLATFORMS } from '../src/data/platforms.js';
 import { STRINGS } from '../src/data/strings.js';
 import { ACHIEVEMENTS } from '../src/data/achievements.js';
@@ -1129,6 +1129,20 @@ ok(true, 'alla händelser körda');
   ok(open(hall2) === 'designer,coder,visionary,hustler,veteran', '50 poäng låser upp veteranen');
   ok(open(hall3) === S.FOUNDERS.join(), '75 poäng låser upp alla');
   ok(S.founderNew(hall0, hall1).join() === 'influencer' && S.founderNew(hall1, hall3).join() === 'veteran,tycoon' && S.founderNew(hall3, hall3).length === 0, 'en ny rad pekar ut bakgrunderna som blev upplåsta för första gången');
+  // recordRun: autosparningen skriver in raden före slutskärmen, så svaret ska vara detsamma första och andra gången
+  {
+    const mem = {};
+    globalThis.localStorage = { getItem: (k) => (k in mem ? mem[k] : null), setItem: (k, v) => { mem[k] = String(v); }, removeItem: (k) => { delete mem[k]; } };
+    const GR = S.newGame({ studio: 'Rad', seed: 77 });
+    GR.t = 48 * 12;
+    GR.games.push({ id: 1, title: 'Ett', t: 10, score: 8 });
+    GR.awards.push({ year: 1985, cat: 'goty', title: 'Ett' });
+    GR.over = { type: 'bankrupt', t: 48 * 12 };
+    const r1 = recordRun(GR);
+    const r2 = recordRun(GR);
+    ok(r1 && r1.unlocked.join() === 'influencer' && r2.unlocked.join() === 'influencer' && loadHall().length === 1, 'recordRun: bakgrunden som raden låste upp syns även när raden redan skrivits in');
+    delete globalThis.localStorage;
+  }
   const gi = S.newGame({ studio: 'I', seed: 5, archetype: 'influencer' });
   const gt = S.newGame({ studio: 'T', seed: 5, archetype: 'tycoon' });
   const gd = S.newGame({ studio: 'D', seed: 5 });

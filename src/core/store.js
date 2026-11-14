@@ -37,10 +37,11 @@ export function loadHall() {
 export function recordRun(G) {
   try {
     const e = hallEntry(G);
-    const before = loadHall();
-    const list = hallSort([...before.filter((x) => x.id !== e.id), e]).slice(0, HALL_MAX);
+    const others = loadHall().filter((x) => x.id !== e.id);
+    const list = hallSort([...others, e]).slice(0, HALL_MAX);
     localStorage.setItem(HKEY, JSON.stringify(list));
-    return { place: list.findIndex((x) => x.id === e.id) + 1, of: list.length, unlocked: founderNew(before, list) };
+    // jämförs med hallen utan den här studions rad, så att svaret blir detsamma även när autosparningen redan skrivit in raden
+    return { place: list.findIndex((x) => x.id === e.id) + 1, of: list.length, unlocked: founderNew(others, list) };
   } catch {
     return null;
   }
