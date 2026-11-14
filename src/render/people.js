@@ -47,6 +47,7 @@ function colors(look) {
   let hatC = HATS[hashLook(look, 1) % HATS.length];
   if (hatC === shirt) hatC = HATS[(HATS.indexOf(hatC) + 3) % HATS.length];
   if (legacy) hatC = acc === 3 ? '#e8504a' : '#f2c84a';
+  if (look.hatColor !== undefined) hatC = HATS[idx(look.hatColor, HATS.length)]; // vald i karaktärsbyggaren
   const beardBase = NATURAL_HAIR.includes(hairIdx) ? hair : '#3a2a1c';
   const light = lum(shirt) > 0.62;
   const shoe = SHOES[hashLook(look, 2) % SHOES.length];
@@ -631,16 +632,23 @@ export function personCanvas(look, scale = 4, pose = 'stand') {
 }
 
 const avCache = new Map();
+// charsprite.js registrerar sig här (den importerar den här filen): porträtt ritas som husets sprite när den finns
+let avSprite = null;
+let avVer = () => 0;
+export function setAvatarSprite(fn, ver) {
+  avSprite = fn;
+  avVer = ver;
+}
 // Dataadress för en avatar (för HTML). pose: 'stand' | 'cheer' | 'sit' | valfri annan pose; frame och opts (t.ex. { mood }) valfria
 export function avatarURL(look, scale = 3, pose = 'stand', frame = 0, opts = null) {
-  const key = JSON.stringify(look) + scale + pose + frame + (opts ? JSON.stringify(opts) : '');
+  const key = JSON.stringify(look) + scale + pose + frame + (opts ? JSON.stringify(opts) : '') + avVer();
   let u = avCache.get(key);
   if (!u) {
     const c = document.createElement('canvas');
     c.width = 24;
     c.height = 34;
     const g = c.getContext('2d');
-    drawPerson(g, 11, 32, look, pose, frame, 1, { ...opts, noShadow: true });
+    if (!(avSprite && avSprite(g, 12, 32, look, pose, frame))) drawPerson(g, 11, 32, look, pose, frame, 1, { ...opts, noShadow: true });
     const o = document.createElement('canvas');
     o.width = 24 * scale;
     o.height = 34 * scale;

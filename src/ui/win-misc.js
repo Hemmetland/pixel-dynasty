@@ -99,7 +99,7 @@ function storyTab(G) {
       const cert = m.key === 'hist.cert' ? CERTS[m.vars.i] : null;
       const vars = boldVars(cert ? { title: m.vars.title, cert: L(cert.name) } : m.vars);
       // en sparning från version 50–52 har talet som siffra: skriv det kort (100K fans, $10M) som de nya raderna
-      if ((m.key === 'hist.fans' || m.key === 'hist.cash') && typeof m.vars.n === 'number') vars.n = `<b>${(m.key === 'hist.cash' ? money(m.vars.n) : fmtNum(m.vars.n)).replace(/\.0+(?=[KMB])/, '')}</b>`;
+      if ((m.key === 'hist.fans' || m.key === 'hist.cash') && typeof m.vars.n === 'number') vars.n = `<b>${(m.key === 'hist.cash' ? money(m.vars.n) : fmtNum(m.vars.n)).replace(/[.,]0+(?=[KMB])/, '')}</b>`;
       const head = d.year !== year ? `<div class="st-y disp">${d.year}</div>` : '';
       year = d.year;
       return `${head}<div class="st-row" style="--c:${cert ? cert.color : col}"><span class="st-dot">${icon(ic)}</span><div style="flex:1;min-width:0"><div>${t(m.key, vars)}</div><div class="faint" style="font-size:11px">${MONTHS[lang][d.month]} ${d.year}</div></div></div>`;

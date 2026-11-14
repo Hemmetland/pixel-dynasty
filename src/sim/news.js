@@ -110,7 +110,7 @@ export function milestone(G, key, vars = {}, once = false) {
 
 // Mått som passeras: fansen och kassan. Varje steg firas med en nyhet och hamnar i historien. Nivån sparas i stats, så
 // en äldre sparning börjar tyst på sin nuvarande nivå i stället för att få alla steg på en gång.
-const round = (s) => s.replace(/\.0+(?=[KMB])/, ''); // jämna tal skrivs kort: 100K, $10M
+const round = (s) => s.replace(/[.,]0+(?=[KMB])/, ''); // jämna tal skrivs kort: 100K, $10M
 const MARKS = [
   { stat: 'fanMark', key: 'hist.fans', of: (G) => G.fans, steps: [1e4, 1e5, 1e6, 1e7, 1e8], fmt: (n) => round(fmtNum(n)) },
   { stat: 'cashMark', key: 'hist.cash', of: (G) => G.money, steps: [1e6, 1e7, 1e8, 1e9, 1e10], fmt: (n) => round(fmtMoney(n)) },
