@@ -5,6 +5,7 @@ import { avatarImg } from '../render/people.js';
 import { glyphImg } from '../render/glyphs.js';
 import { SKINS, HAIRS, SHIRTS } from '../render/pal.js';
 import { newGame } from '../sim/state.js';
+import { weeklyOf } from '../core/weekly.js';
 import { FOUNDER_UNLOCK, founderUnlocked } from '../sim/legacy.js';
 import { makeCompetitors } from '../sim/market.js';
 import { initWorld } from '../sim/clock.js';
@@ -17,7 +18,7 @@ import { lang } from '../core/i18n.js';
 import { money } from './core.js';
 import { L } from '../core/i18n.js';
 
-const N = { studio: '', founder: '', look: null, arch: 'designer', diff: 'normal', logo: 0 };
+const N = { studio: '', founder: '', look: null, arch: 'designer', diff: 'normal', logo: 0, weekly: null };
 const rnd = (a) => a[Math.floor(Math.random() * a.length)];
 
 function randomize() {
@@ -52,6 +53,14 @@ function swatches(list, key, cur) {
   return `<div class="swatches">${list.map((c, i) => `<button class="sw ${cur === i ? 'on' : ''}" data-act="ng-look" data-k="${key}" data-i="${i}" style="background:${c}" aria-label="${key} ${i + 1}"></button>`).join('')}</div>`;
 }
 
+const archSection = (hall) => `<div><div class="lbl" style="margin-bottom:6px">${t('ng.arch')}</div><div class="grid" style="grid-template-columns:repeat(auto-fit,minmax(150px,1fr));gap:8px">${ARCH.map((x) => archCard(x, hall)).join('')}</div></div>`;
+const diffSection = () => `<div><div class="lbl" style="margin-bottom:6px">${t('ng.diff')}</div><div class="seg">${DIFF.map((d) => `<button class="${N.diff === d ? 'on' : ''}" data-act="ng-diff" data-id="${d}">${t('diff.' + d)}</button>`).join('')}</div><div class="hint" style="margin-top:6px">${t('diff.' + N.diff + '.d')}</div></div>`;
+// Veckans utmaning: samma värld för alla den här veckan, med bakgrund och svårighet låsta så att poängen går att jämföra
+function weeklyBanner() {
+  return `<div class="card weekly"><div class="row" style="gap:8px"><span style="color:var(--gold)">${icon('calendar')}</span><b>${t('ng.weekly', { id: N.weekly.id })}</b></div><div class="hint" style="margin-top:6px">${t('ng.weekly.d')}</div>
+    <div class="row wrap" style="gap:6px;margin-top:8px"><span class="chip">${t('arch.designer')}</span><span class="chip">${t('diff.normal')}</span><span class="sp"></span><button class="btn sm" data-act="ng-weekly-off">${t('ng.weekly.off')}</button></div></div>`;
+}
+
 regWin({
   id: 'newgame',
   icon: 'sparkle',
@@ -73,8 +82,7 @@ regWin({
         <div><div class="lbl" style="margin-bottom:6px">${t('ng.studio')}</div><input class="input" id="ng-studio" maxlength="22" value="${esc(N.studio)}" autocomplete="off"></div>
         <div><div class="lbl" style="margin-bottom:6px">${t('ng.founder')}</div><input class="input" id="ng-founder" maxlength="24" value="${esc(N.founder)}" autocomplete="off"></div>
         <div><div class="lbl" style="margin-bottom:6px">${t('ng.logo')}</div><div class="row wrap" style="gap:6px">${LOGOS.map((g, i) => `<button class="logo-opt ${N.logo === i ? 'on' : ''}" data-act="ng-logo" data-i="${i}">${glyphImg(g, '#fff', 16, true)}</button>`).join('')}</div></div>
-        <div><div class="lbl" style="margin-bottom:6px">${t('ng.arch')}</div><div class="grid" style="grid-template-columns:repeat(auto-fit,minmax(150px,1fr));gap:8px">${ARCH.map((x) => archCard(x, hall)).join('')}</div></div>
-        <div><div class="lbl" style="margin-bottom:6px">${t('ng.diff')}</div><div class="seg">${DIFF.map((d) => `<button class="${N.diff === d ? 'on' : ''}" data-act="ng-diff" data-id="${d}">${t('diff.' + d)}</button>`).join('')}</div><div class="hint" style="margin-top:6px">${t('diff.' + N.diff + '.d')}</div></div>
+        ${N.weekly ? weeklyBanner() : archSection(hall) + diffSection()}
       </div></div>`;
   },
   foot() {
@@ -121,6 +129,10 @@ act('ng-diff', (el) => {
   N.diff = el.dataset.id;
   UI.refresh();
 });
+act('ng-weekly-off', () => {
+  N.weekly = null;
+  UI.refresh();
+});
 act('ng-cancel', () => {
   UI.close(true);
 });
@@ -129,7 +141,8 @@ function begin() {
   UI.close(true);
   hideTitle();
   intro(() => {
-    app.startNew({ studio: N.studio.trim() || 'Nordlys Games', founderName: N.founder.trim() || 'Founder', look: N.look, archetype: N.arch, difficulty: N.diff, logo: N.logo });
+    const w = N.weekly;
+    app.startNew({ studio: N.studio.trim() || 'Nordlys Games', founderName: N.founder.trim() || 'Founder', look: N.look, archetype: w ? 'designer' : N.arch, difficulty: w ? 'normal' : N.diff, logo: N.logo, seed: w ? w.seed : undefined, weekly: w ? w.id : null });
   });
 }
 // En sparplats: fråga innan en pågående studio skrivs över
@@ -173,10 +186,11 @@ function renderTitle() {
       ${meta && meta.over ? `<button class="btn lg" disabled><span>${icon('skull')}${t('over.title')}</span><small>${esc(meta.studio)} · ${d.year}</small></button>` : ''}
       ${meta && !meta.over ? `<button class="btn primary lg" data-act="tt-continue"><span>${icon('play')}${t('title.continue')}</span><small>${esc(meta.studio)} · ${d.year} · ${money(meta.money)}</small></button>` : ''}
       <button class="btn ${meta && !meta.over ? '' : 'primary'} lg" data-act="tt-new">${icon('plus')}${t('title.new')}</button>
+      <button class="btn lg" data-act="tt-weekly"><span>${icon('calendar')}${t('title.weekly')}</span><small>${weeklyOf().id}</small></button>
       ${loadHall().length ? `<button class="btn lg" data-act="tt-hall">${icon('crown')}${t('title.hall')}</button>` : ''}
-      <button class="btn lg" data-act="tt-lang">${icon('globe')}${lang === 'sv' ? 'English' : 'Svenska'}</button>
-      <button class="btn lg" data-act="tt-sound" style="min-width:150px">${icon(UI.app.settings.music ? 'volume' : 'mute')}${t(UI.app.settings.music ? 'title.soundOn' : 'title.soundOff')}</button>
-      <button class="btn lg" data-act="tt-help" style="min-width:56px">${icon('info')}</button>
+      <button class="btn lg tt-util" data-act="tt-lang">${icon('globe')}${lang === 'sv' ? 'English' : 'Svenska'}</button>
+      <button class="btn lg tt-util" data-act="tt-sound" style="min-width:150px">${icon(UI.app.settings.music ? 'volume' : 'mute')}${t(UI.app.settings.music ? 'title.soundOn' : 'title.soundOff')}</button>
+      <button class="btn lg tt-util" data-act="tt-help" style="min-width:56px">${icon('info')}</button>
     </div>
     <div class="tt-foot">${t('title.foot')}</div>`;
 }
@@ -227,6 +241,13 @@ export function titleResize() {
 }
 act('tt-new', () => {
   randomize();
+  N.weekly = null;
+  UI.open('newgame', null, { force: true });
+  sfx.play('open');
+});
+act('tt-weekly', () => {
+  randomize();
+  N.weekly = weeklyOf();
   UI.open('newgame', null, { force: true });
   sfx.play('open');
 });
@@ -262,7 +283,7 @@ regWin({
     const rows = loadHall()
       .map((e, i) => {
         const c = e.over ? 'var(--bug)' : i === 0 ? 'var(--gold)' : 'var(--accent)';
-        const bits = [t('hist.sum.games', { n: e.games }), money(e.revenue), e.awards ? t('hist.sum.awards', { n: e.awards }) : '', t('diff.' + (e.diff || 'normal'))].filter(Boolean).join(' · ');
+        const bits = [t('hist.sum.games', { n: e.games }), money(e.revenue), e.awards ? t('hist.sum.awards', { n: e.awards }) : '', t('diff.' + (e.diff || 'normal')), e.weekly ? t('hall.weekly', { id: e.weekly }) : ''].filter(Boolean).join(' · ');
         return `<div class="card row hall-row" style="gap:14px;--c:${c}"><div class="hall-n disp">${i + 1}</div><div style="flex:1;min-width:0"><div class="row" style="gap:4px 8px;flex-wrap:wrap"><b>${esc(e.studio)}</b><span class="tag" style="--c:${c}">${e.over ? t('hall.over', { y: e.year }) : t(HALL_RANK[e.rank] || HALL_RANK[0])}</span></div>
           <div class="faint" style="font-size:12px;margin-top:2px">${bits}</div>${e.best ? `<div class="faint" style="font-size:12px">${t('hall.best', { title: `<b>${esc(L(e.best.title))}</b>`, v: e.best.score.toFixed(1) })}</div>` : ''}</div>
           <div style="text-align:right"><div class="disp hall-p">${e.points}</div><div class="faint" style="font-size:11px">${t('hall.points')}</div></div></div>`;

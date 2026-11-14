@@ -44,6 +44,7 @@ export function hallEntry(G) {
     year: yearOf(G.over ? G.over.t : G.t),
     over: !!G.over,
     diff: G.difficulty,
+    weekly: G.weekly || null,
     points: lg.points,
     rank: lg.rank,
     revenue: Math.round(G.stats.revenue),

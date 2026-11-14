@@ -23,6 +23,7 @@ import { crowdNote } from './crowd.js';
 import { legacy, LEGACY_RANKS } from '../sim/legacy.js';
 import { rivalOf, rivalLast } from '../sim/rival.js';
 import { recordRun } from '../core/store.js';
+import { yearOf } from '../sim/const.js';
 
 let timers = [];
 const later = (fn, ms) => timers.push(setTimeout(fn, ms));
@@ -477,6 +478,33 @@ const hallLine = (h) => {
   return place + fresh;
 };
 
+// En rad att dela: studions namn, titel eller konkursår, poäng och intäkter, och veckans utmaning om den spelades
+function shareText(G) {
+  const lg = legacy(G);
+  const v = { studio: G.studio, points: lg.points, games: G.games.length, rev: money(G.stats.revenue), week: G.weekly ? ' ' + t('share.week', { id: G.weekly }) : '' };
+  return G.over ? t('share.over', { ...v, y: yearOf(G.over.t) }) : t('share.end', { ...v, rank: t(END_RANK[lg.rank]) });
+}
+function copyText(text) {
+  const done = () => toast(t('share.ok'), 'good');
+  const fallback = () => {
+    const ta = document.createElement('textarea');
+    ta.value = text;
+    ta.style.cssText = 'position:fixed;opacity:0';
+    document.body.appendChild(ta);
+    ta.select();
+    let ok = false;
+    try {
+      ok = document.execCommand('copy');
+    } catch { /* */ }
+    ta.remove();
+    if (ok) done();
+    else toast(text, 'info', 12000);
+  };
+  if (navigator.clipboard && navigator.clipboard.writeText) navigator.clipboard.writeText(text).then(done, fallback);
+  else fallback();
+}
+act('share-run', () => UI.app.G && copyText(shareText(UI.app.G)));
+
 // ── Konkurs ───────────────────────────────────────────────────────
 function gameoverPrompt(app, G) {
   const hall = recordRun(G);
@@ -488,7 +516,7 @@ function gameoverPrompt(app, G) {
         <div class="counter" style="--c:var(--gold)"><div class="v num">${G.stats.bestScore.toFixed(1)}</div><div class="k">${t('over.best')}</div></div>
         <div class="counter" style="--c:var(--money)"><div class="v num">${money(G.stats.revenue)}</div><div class="k">${t('over.total')}</div></div>
       </div>${hallLine(hall)}</div>
-    <div class="win-foot"><span class="sp"></span><button class="btn primary lg" data-act="over-title">${t('over.again')}</button></div>`,
+    <div class="win-foot"><button class="btn" data-act="share-run">${icon('copy')}${t('share.btn')}</button><span class="sp"></span><button class="btn primary lg" data-act="over-title">${t('over.again')}</button></div>`,
     () => act('over-title', () => {
       app.promptActive = false;
       app.toTitle();
@@ -515,7 +543,7 @@ function endingPrompt(app, G, p, finish) {
         <div class="counter" style="--c:var(--fans)"><div class="v num">${fmtNum(G.fans)}</div><div class="k">${t('hud.fans')}</div></div>
         <div class="counter" style="--c:var(--hot)"><div class="v num">${G.awards.length}</div><div class="k">${t('end.awards')}</div></div>
       </div>${hallLine(hall)}</div>
-    <div class="win-foot"><button class="btn" data-act="end-title">${t('menu.title')}</button><span class="sp"></span><button class="btn primary lg" data-act="end-go">${t('end.keep')}${icon('arrow')}</button></div>`,
+    <div class="win-foot"><button class="btn" data-act="end-title">${t('menu.title')}</button><button class="btn" data-act="share-run">${icon('copy')}${t('share.btn')}</button><span class="sp"></span><button class="btn primary lg" data-act="end-go">${t('end.keep')}${icon('arrow')}</button></div>`,
     () => {
       act('end-go', () => finish());
       act('end-title', () => {

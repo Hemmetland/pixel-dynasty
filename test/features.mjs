@@ -6,6 +6,7 @@ import { exportCode, importCode } from '../src/core/store.js';
 import { PLATFORM, PLATFORMS } from '../src/data/platforms.js';
 import { STRINGS } from '../src/data/strings.js';
 import { ACHIEVEMENTS } from '../src/data/achievements.js';
+import { weeklyOf } from '../src/core/weekly.js';
 let fails = 0;
 const ok = (c, m) => { if (!c) { fails++; console.log('FAIL', m); } else console.log('ok  ', m); };
 const G = S.newGame({ studio: 'T', seed: 7, difficulty: 'normal' });
@@ -1133,6 +1134,18 @@ ok(true, 'alla händelser körda');
   const gd = S.newGame({ studio: 'D', seed: 5 });
   ok(gi.fans === 250 && gd.fans === 0 && gt.money === gd.money + 15000 && gi.staff[0].design === 12 && gd.staff[0].design === 19, 'bakgrunderna ger sina startvärden');
   ok(Object.keys(S.FOUNDER_UNLOCK).every((id) => S.FOUNDERS.includes(id)) && S.FOUNDERS.every((id) => S.ARCHETYPES[id]), 'varje bakgrund har värden');
+}
+// veckans utmaning: samma vecka ger samma frö och därmed samma värld
+{
+  ok(weeklyOf(new Date(2026, 10, 14)).id === '2026-W46' && weeklyOf(new Date(2026, 10, 9)).id === '2026-W46' && weeklyOf(new Date(2026, 10, 15)).id === '2026-W46' && weeklyOf(new Date(2026, 10, 16)).id === '2026-W47', 'veckan går från måndag till söndag');
+  ok(weeklyOf(new Date(2027, 0, 1)).id === '2026-W53' && weeklyOf(new Date(2026, 0, 4)).id === '2026-W01' && weeklyOf(new Date(2026, 0, 5)).id === '2026-W02', 'veckan räknas enligt ISO över årsskiftet');
+  const w = weeklyOf(new Date(2026, 10, 12));
+  ok(w.seed === weeklyOf(new Date(2026, 10, 14)).seed && w.seed !== weeklyOf(new Date(2026, 10, 20)).seed && Number.isInteger(w.seed), 'samma vecka har samma frö, nästa vecka ett annat');
+  const mk = (o) => { const g = S.newGame({ studio: 'W', seed: w.seed, weekly: w.id, ...o }); S.makeCompetitors(g); S.initWorld(g); return g; };
+  const w1 = mk({}), w2 = mk({ studio: 'Annat namn' });
+  const names = (g) => g.comps.map((c) => c.name).join() + '|' + g.candidates.map((c) => c.name + c.design).join();
+  ok(w1.weekly === w.id && w1.seed === w.seed && names(w1) === names(w2) && S.newGame({ studio: 'X' }).weekly === null, 'två studior samma vecka får samma konkurrenter och kandidater');
+  ok(S.hallEntry(w1).weekly === w.id && S.hallEntry(S.newGame({ studio: 'Y', seed: 3 })).weekly === null, 'hallens rad minns veckans utmaning');
 }
 // prestationer för galan och onlinespel
 {

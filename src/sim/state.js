@@ -36,6 +36,7 @@ export function newGame(opts = {}) {
     studio: opts.studio || 'Nordlys Games',
     difficulty: diff,
     archetype: opts.archetype || 'designer',
+    weekly: opts.weekly || null,
     logo: opts.logo ?? 0,
     t: 0,
     tick: 0,
