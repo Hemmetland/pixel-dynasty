@@ -251,6 +251,7 @@ export function toast(text, kind = 'info', ms = 5200) {
   el.className = 'toast glass';
   el.dataset.txt = text;
   el.style.setProperty('--c', TOAST_COL[kind] || TOAST_COL.info);
+  el.style.setProperty('--ms', ms + 'ms');
   el.innerHTML = `<div class="ti">${icon(TOAST_ICON[kind] || 'info')}</div><div>${text}</div>`;
   el.addEventListener('click', () => dropToast(el)); // tryck bort
   box.appendChild(el);
