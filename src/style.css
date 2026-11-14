@@ -1244,3 +1244,5 @@ input[type='range']::-moz-range-thumb { width: 18px; height: 18px; border-radius
 #devcon .dc-row input { flex: 1; min-width: 0; background: transparent; border: 0; outline: 0; color: #fff; font: inherit; font-size: 16px; }
 #devcon .dc-x { border: 0; background: transparent; color: var(--muted); font-size: 20px; line-height: 1; cursor: pointer; padding: 0 6px; }
 @media (max-width: 760px), (max-height: 559px) { #devcon { height: min(40vh, 300px); } }
+.hw-spec { display: flex; flex-wrap: wrap; gap: 4px 6px; }
+.hw-spec span { font-size: 11.5px; line-height: 1.3; padding: 2px 8px; border-radius: 6px; background: rgba(150, 172, 255, 0.1); color: var(--muted); }

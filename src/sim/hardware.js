@@ -2,7 +2,7 @@ import { clamp, fmtNum, fmtMoney } from '../core/util.js';
 import { gauss, hashStr, seeded } from '../core/rng.js';
 import { emit } from '../core/bus.js';
 import { PLATFORM, PLATFORMS, setOwnPlatforms, potential, launchTime } from '../data/platforms.js';
-import { HW_TYPES, HW_IDS, HW_CLASSES, HW_QUALITY, HW_ARCH, HW_PARTNERS, HW_PARTNER, ARCH_TYPES, PC_PARTS, PLAT_TYPES, PLAT_FEES } from '../data/hardware.js';
+import { HW_TYPES, HW_IDS, HW_CLASSES, HW_QUALITY, HW_ARCH, HW_PARTNERS, HW_PARTNER, ARCH_TYPES, PC_PARTS, PLAT_TYPES, PLAT_FEES, HOST_TYPES, HW_REVS, revSuffix, curveAt } from '../data/hardware.js';
 import { yearOf, yfOf, moneyScale, wageIndex, tOf, WEEKS_PER_YEAR, WEEKS_PER_MONTH } from './const.js';
 import { unitRev, curveFor } from './sales.js';
 import { spend, earn, capacity } from './studio.js';
@@ -25,6 +25,8 @@ const GEN_COST = 0.6; // en ny generation på samma produktlinje kostar så myck
 const GEN_WEEKS = 0.75;
 const OWN_ARCH_COST = 1.4;
 export const REP0 = 30;
+export const NAME_MAX = 24;
+export const REV_MIN_AGE = 26; // veckor från lansering eller senaste revision innan nästa går att påbörja
 const SHARE_STEP = 0.08; // andelen närmar sig målet så mycket per vecka
 const BACKLOG_WEEKS = 6; // de första veckorna efter lanseringen väntar köparna (förbeställningar) när lagret är tomt
 const BACKLOG_KEEP = 0.6;
@@ -37,7 +39,7 @@ const OPT_PER = 0.25; // egna pc-spel på en optimerad motor säljer så mycket 
 const OPT_MAX = 0.1;
 const HIT_BOOST = 0.08; // ett eget hit (8+) på motorn höjer efterfrågan på produkten
 const HIT_MAX = 0.3;
-const PART_SAVE = 0.05; // en speldator med egen komponent: lägre enhetskostnad per egen komponenttyp
+export const PART_SAVE = 0.05; // en speldator med egen komponent: lägre enhetskostnad per egen komponenttyp
 export const CLEAR = 0.3; // osålt lager vid nedläggning säljs ut för den andelen av priset
 export const AUTO_COVER = 6; // autobeställning: veckor av efterfrågan utöver ledtiden som ska finnas i lager och på väg
 const AUTO_ORDER = 16; // autobeställning: veckor av efterfrågan per order
@@ -255,6 +257,31 @@ const archOf = (spec) => (hasArch(spec.type) ? ARCH[spec.arch || 'std'] : null);
 const madeBefore = (H, type) => H.products.some((p) => p.type === type);
 const nextGen = (H, type) => (H.lines[type] || 0) + 1;
 export const hwName = (H, type, cls) => HW_TYPES[type].name(nextGen(H, type)) + CLS[cls].suffix;
+// Spelaren döper sin hårdvara själv: några tecken, utan taggtecken
+export const cleanName = (s) => String(s ?? '').replace(/[<>&"`]/g, '').replace(/\s+/g, ' ').trim().slice(0, NAME_MAX);
+// Förslag på namn till nästa generation: har linjen ett eget namn räknas det upp (Nova 2, Nova 3), annars standardnamnet
+export function suggestName(G, type, cls) {
+  const H = G.hw;
+  const last = H ? [...H.products, ...H.projects].filter((p) => p.type === type).sort((a, b) => (a.gen || 0) - (b.gen || 0)).pop() : null;
+  if (last && last.custom) {
+    const base = cleanName(last.name.replace(/\s+(Pro|Slim|Ti|Rev B|LE)$/i, '').replace(/\s+(\d+|[IVX]+)$/, ''));
+    return { name: cleanName(`${base} ${nextGen(H, type)}`), custom: true };
+  }
+  return { name: H ? hwName(H, type, cls) : HW_TYPES[type].name(1) + CLS[cls].suffix, custom: false };
+}
+// Byt namn på en produkt eller ett projekt; en egen plattform får samma namn överallt i spelet
+export function renameHw(G, id, name) {
+  const H = G.hw;
+  const P = H && (projectOf(G, id) || productOf(G, id));
+  if (!P) return false;
+  const n = cleanName(name);
+  if (!n) return 'hw.name.empty';
+  P.name = n;
+  P.custom = true;
+  const pl = platOf(G, P);
+  if (pl) pl.name = n;
+  return true;
+}
 
 export function designCost(G, spec) {
   const ty = HW_TYPES[spec.type];
@@ -295,10 +322,12 @@ export function startDesign(G, spec) {
   if (ok !== true) return ok;
   const H = G.hw;
   const gen = nextGen(H, spec.type);
+  const given = cleanName(spec.name);
+  const nm = given ? { name: given, custom: true } : suggestName(G, spec.type, spec.cls);
   const engine = spec.opt != null ? G.engines.find((e) => e.id === spec.opt) : null;
   const P = {
     id: G.uid++, type: spec.type, cls: spec.cls, qual: spec.qual || 'normal', arch: hasArch(spec.type) ? spec.arch || 'std' : null, opt: engine ? engine.id : null,
-    name: HW_TYPES[spec.type].name(gen) + CLS[spec.cls].suffix, gen, t0: G.t, weeks: designWeeks(G, spec), done: 0, budget: designCost(G, spec), paid: 0,
+    name: nm.name, custom: nm.custom, gen, t0: G.t, weeks: designWeeks(G, spec), done: 0, budget: designCost(G, spec), paid: 0,
     proto: protoCost(G, spec), state: 'design', paused: false, redo: 0, bad: false, perf: 0,
     // en efterföljare med bakåtkompatibilitet spelar föregångarens spel
     bc: isPlat(spec.type) && !!G.u.flags.hw_backcompat && H.plats.some((p) => p.kind === spec.type),
@@ -357,8 +386,8 @@ function finishDesign(G, H, P) {
 
 // ── Kostnad, pris, betyg och efterfrågan ────────────────────────
 // egna komponenter på marknaden som en speldator byggs med
-const ownParts = (G) => PC_PARTS.filter((ty) => G.hw && G.hw.products.some((p) => p.type === ty && p.state === 'market'));
-function partsBoost(G, perf) {
+export const ownParts = (G) => PC_PARTS.filter((ty) => G.hw && G.hw.products.some((p) => p.type === ty && p.state === 'market'));
+export function partsBoost(G, perf) {
   let best = perf;
   for (const ty of ownParts(G)) {
     for (const p of G.hw.products) if (p.type === ty && p.state === 'market') best = Math.max(best, 0.5 * perf + 0.5 * relPerf(G, p));
@@ -370,10 +399,10 @@ export function unitCost(G, P, partner, t = G.t) {
   const ty = HW_TYPES[P.type];
   const S = G.hw ? partnerState(G.hw, partner) : { rel: REL0, fx: 1, fxUntil: 0 };
   const age = P.t != null ? Math.max(0, (t - P.t) / WEEKS_PER_YEAR) : 0;
-  const parts = P.type === 'pc' ? Math.pow(1 - PART_SAVE, P.parts ? P.parts.length : ownParts(G).length) : 1;
+  const parts = HOST_TYPES.has(P.type) ? Math.pow(1 - PART_SAVE, P.parts ? P.parts.length : ownParts(G).length) : 1;
   const fx = S.fxUntil > t ? S.fx : 1;
   const plat = (P.type === 'handheld' && G.u.flags.hw_lowpow ? LOWPOW : 1) * (P.bc ? BC_COST : 1);
-  return ty.price * ty.unit * CLS[P.cls].unit * QUAL[P.qual || 'normal'].unit * HW_PARTNER[partner].cost * Math.max(0.5, 1 - (G.perk.hwCost || 0)) * parts * plat
+  return ty.price * ty.unit * CLS[P.cls].unit * QUAL[P.qual || 'normal'].unit * HW_PARTNER[partner].cost * Math.max(0.5, 1 - (G.perk.hwCost || 0)) * parts * plat * (P.revUnit ?? 1)
     * Math.pow(1 - ty.fall, age) * (S.rel > 70 && partner !== FAB ? 0.97 : 1) * (exclOn(S, P.type, t) ? EXCL_COST : 1) * fx * (chipsOn(t) ? 1.15 : 1);
 }
 // priser slutar på 9 (tiotal, eller femtiotal över 600 $)
@@ -392,17 +421,20 @@ export function stepPrice(p, dir) {
   return Math.max(9, v !== p ? v : p + dir * (p >= 600 ? 50 : 10));
 }
 // konkurrenternas nya generationer av samma slag sedan din plattform kom ut (var och en åldrar den ett halvår extra)
-function rivalGens(P, t) {
-  if (!isPlat(P.type) || P.t == null) return 0;
-  const a = yfOf(P.t);
+function rivalGens(P, t, t0 = P.t) {
+  if (!isPlat(P.type) || t0 == null) return 0;
+  const a = yfOf(t0);
   const b = yfOf(t);
   let n = 0;
   for (const p of PLATFORMS) if (!p.own && p.kind === P.type && launchTime(p) > a && launchTime(p) <= b) n++;
   return n;
 }
 // prestanda mot marknaden just nu: den åldras från lanseringen
-export const relPerf = (G, P, t = G.t) =>
-  P.perf0 / (1 + HW_TYPES[P.type].decay * (Math.max(0, (t - (P.t ?? t)) / WEEKS_PER_YEAR) + RIVAL_AGE * rivalGens(P, t)));
+// En revision (Pro) startar om åldrandet från sin tid: P.pt är då tiden prestandan P.perf0 gällde
+export const relPerf = (G, P, t = G.t) => {
+  const t0 = P.pt ?? P.t ?? t;
+  return P.perf0 / (1 + HW_TYPES[P.type].decay * (Math.max(0, (t - t0) / WEEKS_PER_YEAR) + RIVAL_AGE * rivalGens(P, t, t0)));
+};
 export function scoreOf(G, P, t = G.t) {
   const cheat = P.cheat && P.cheat > t ? BENCH_SCORE : 0;
   const s = 5 + 8 * (relPerf(G, P, t) - 0.85) + 0.03 * (P.compat - 60) - 0.4 * Math.max(0, P.defect * 100 - 2) + cheat;
@@ -459,11 +491,11 @@ export const weeklyDemand = (G, P, price = P.price, t = G.t) => (marketSize(P.ty
 export function draftOf(G, J, partner = 'halden', price) {
   const pp = HW_PARTNER[partner];
   let perf = J.perf * (1 + pp.perf);
-  if (J.type === 'pc') perf = partsBoost(G, perf);
+  if (HOST_TYPES.has(J.type)) perf = partsBoost(G, perf);
   return {
-    id: J.id, type: J.type, cls: J.cls, qual: J.qual, arch: J.arch, opt: J.opt, name: J.name, gen: J.gen, t: null, perf0: perf,
+    id: J.id, type: J.type, cls: J.cls, qual: J.qual, arch: J.arch, opt: J.opt, name: J.name, custom: J.custom, gen: J.gen, t: null, perf0: perf,
     compat: baseCompat(G, J), defect: defectOf(J, partner, J.bad), bad: J.bad, price: price ?? suggestPrice(J.type, J.cls), partner, boost: 0,
-    parts: J.type === 'pc' ? ownParts(G) : undefined, bc: J.bc, fee: isPlat(J.type) ? 0.2 : undefined, leak: !!J.leak,
+    parts: HOST_TYPES.has(J.type) ? ownParts(G) : undefined, bc: J.bc, fee: isPlat(J.type) ? 0.2 : undefined, leak: !!J.leak,
   };
 }
 
@@ -773,6 +805,7 @@ export function hwWeek(G) {
   }
   H.orders = H.orders.filter((o) => o.left > 0);
   sell(G, H);
+  for (const P of H.products) if (P.up && P.state === 'market' && G.t >= P.up.due) finishRev(G, H, P);
   platWeek(G, H);
   yearlyEvents(G, H);
   // lab och chef en gång i månaden
@@ -875,7 +908,8 @@ function sell(G, H) {
     autoOrder(G, H, P);
     // livscykeln: utgången när lagret är tomt och inget är på väg, eller långt efter livscykeln
     const years = age / WEEKS_PER_YEAR;
-    if ((years > ty.life && P.stock < 1 && !pipelineOf(G, P)) || years > ty.life * 2.5) discontinue(G, P.id, true);
+    const life = ty.life + (P.lifeAdd || 0);
+    if ((years > life && P.stock < 1 && !pipelineOf(G, P)) || years > life * 2.5) discontinue(G, P.id, true);
   }
 }
 
@@ -884,7 +918,7 @@ function autoOrder(G, H, P) {
   if (!P.auto || P.state !== 'market') return;
   const ty = HW_TYPES[P.type];
   const pp = HW_PARTNER[P.partner];
-  const left = ty.life * WEEKS_PER_YEAR - (G.t - P.t);
+  const left = (ty.life + (P.lifeAdd || 0)) * WEEKS_PER_YEAR - (G.t - P.t);
   if (left <= pp.lead) return;
   const d = Math.max(P.dem, weeklyDemand(G, P) * 0.5);
   if (d <= 0) return;
@@ -926,6 +960,96 @@ export function hwReach(G) {
   if (!G.hw) return 0;
   const base = (G.hw.plats || []).reduce((a, pl) => a + (productOfPlat(G, pl.id)?.base || 0), 0);
   return Math.min(0.1, (0.02 * (G.hw.pcParts || 0)) / 10000) + PLAT_REACH * Math.min(1, base / PLAT_REACH_BASE);
+}
+
+// ── Revisioner: uppgraderingar av en produkt som redan säljs ────────────────
+// Pro lyfter prestandan mot marknaden just nu (och startar om åldrandet), Slim sänker enhetskostnaden. Kostnaden betalas när
+// arbetet börjar (P.up håller det som pågår), produkten säljer vidare under tiden; revisionen tar ingen designplats.
+export const revOf = (id) => HW_REVS.find((r) => r.id === id);
+export const revCount = (P, kind) => (P.revs || []).filter((r) => r.k === kind).length;
+export const revCost = (G, P, kind) => Math.round((designCost(G, P) * revOf(kind).cost) / 1000) * 1000;
+export const revWeeks = (G, P, kind) => Math.max(4, Math.round(designWeeks(G, P) * revOf(kind).weeks));
+// veckor kvar innan nästa revision går att påbörja
+export const revWait = (G, P) => Math.max(0, REV_MIN_AGE - (G.t - (P.revLast ?? P.t ?? G.t)));
+export function canRevise(G, P, kind) {
+  const R = revOf(kind);
+  if (!canHw(G) || !G.hw || !P || !R) return 'locked';
+  if (P.state !== 'market') return 'hw.rev.e.state';
+  if (P.up) return 'hw.rev.e.busy';
+  if (revCount(P, kind) >= R.max) return 'hw.rev.e.max';
+  if (G.t - (P.revLast ?? P.t) < REV_MIN_AGE) return 'hw.rev.e.age';
+  if (G.money < revCost(G, P, kind)) return 'money';
+  return true;
+}
+export function reviseProduct(G, id, kind) {
+  const P = productOf(G, id);
+  const ok = canRevise(G, P, kind);
+  if (ok !== true) return ok;
+  const H = G.hw;
+  const cost = revCost(G, P, kind);
+  pay(G, H, 'design', cost, 'hwDev');
+  P.dev += cost;
+  P.up = { k: kind, t0: G.t, due: G.t + revWeeks(G, P, kind), cost };
+  emit('hwRevStart', P);
+  return true;
+}
+function finishRev(G, H, P) {
+  const k = P.up.k;
+  const R = revOf(k);
+  if (R.perf) {
+    P.perf0 = relPerf(G, P) * (1 + R.perf);
+    P.pt = G.t;
+  }
+  P.revUnit = (P.revUnit ?? 1) * R.unit;
+  P.lifeAdd = (P.lifeAdd || 0) + R.life;
+  if (R.hype) P.boost = Math.min(HIT_MAX, (P.boost || 0) + R.hype);
+  (P.revs ||= []).push({ k, t: G.t });
+  P.revLast = G.t;
+  const tail = revSuffix(P.type, k);
+  if (!P.name.endsWith(tail)) P.name = cleanName(P.name + tail);
+  const pl = platOf(G, P);
+  if (pl) pl.name = P.name;
+  delete P.up;
+  note(G, 'news.hwRev' + (k === 'pro' ? 'Pro' : 'Slim'), { name: P.name }, 'good');
+  emit('hwRev', P);
+}
+
+// ── Vad som sitter inuti: processor, grafik, minne och annat som följer sin tid ──
+// y = året produkten kom (eller kommer); prestandamålet skalar klockan och grafikkraften. Har produkten dina egna komponenter
+// visas deras namn.
+const snapCores = (n) => (n < 1.5 ? 1 : n < 3 ? 2 : n < 6 ? 4 : n < 12 ? 8 : n < 20 ? 16 : n < 28 ? 24 : 32);
+export function specsOf(G, P, y = yfOf(P.t ?? G.t)) {
+  const f = Math.max(0.6, P.perf0 ?? P.perf ?? 1);
+  const scaled = (k, p) => curveAt(k, y) * Math.pow(f, p);
+  const cpu = (name) => ({ k: 'cpu', cores: snapCores(curveAt('cores', y)), ghz: scaled('ghz', 0.5), nm: Math.round(curveAt('nm', y)), name });
+  const gpu = (name) => ({ k: 'gpu', tflops: scaled('tflops', 2), vram: curveAt('vram', y), name });
+  const own = (ty) => (G.hw ? G.hw.products.filter((p) => p.type === ty && p.state === 'market').sort((a, b) => relPerf(G, b) - relPerf(G, a))[0] : null);
+  const parts = P.parts || (HOST_TYPES.has(P.type) && !P.t ? ownParts(G) : []);
+  const oc = parts.includes('cpu') ? own('cpu') : null;
+  const og = parts.includes('gpu') ? own('gpu') : null;
+  const C = () => (oc ? { ...specsOf(G, oc)[0], name: oc.name } : cpu());
+  const Gp = () => (og ? { ...specsOf(G, og)[0], name: og.name } : gpu());
+  switch (P.type) {
+    case 'cpu': return [cpu()];
+    case 'gpu': return [gpu()];
+    case 'sound': return [{ k: 'sound', bits: y < 1994 ? 8 : y < 2000 ? 16 : 24, khz: Math.round(curveAt('khz', y)) }];
+    case 'pc':
+    case 'console': return [C(), Gp(), { k: 'ram', gb: curveAt('ram', y) }, { k: 'disk', gb: curveAt('disk', y) }];
+    case 'handheld': return [C(), Gp(), { k: 'ram', gb: curveAt('ram', y) * 0.5 }, { k: 'screen', w: Math.round(curveAt('screenW', y)) }, { k: 'battery', h: curveAt('battery', y) }];
+    case 'vr': return [Gp(), { k: 'eye', w: Math.round(curveAt('eyeW', y)) }, { k: 'hz', hz: Math.round(curveAt('hz', y)) }];
+    default: return [];
+  }
+}
+
+// Plattformens plats bland de som är i omlopp (efter vikt i spelet, som Marknadsfönstret): andel och rang inom samma slag
+export function platPosition(G, P) {
+  const pl = platOf(G, P);
+  if (!pl) return null;
+  const yf = yfOf(G.t);
+  const same = PLATFORMS.filter((p) => p.kind === pl.kind && potential(p, yf) > 0).sort((a, b) => potential(b, yf) - potential(a, yf));
+  const tot = same.reduce((a, p) => a + potential(p, yf), 0);
+  const i = same.indexOf(pl);
+  return i < 0 || tot <= 0 ? null : { rank: i + 1, of: same.length, share: potential(pl, yf) / tot };
 }
 
 // Samlat för fönstret, botten och testerna

@@ -1,4 +1,4 @@
-import { esc, icon, t, tn, L, UI, act, regWin, bar, money, errToast } from './core.js';
+import { $, esc, icon, t, tn, L, UI, act, regWin, bar, money, errToast } from './core.js';
 import { GENRE } from '../data/genres.js';
 import { TOPIC } from '../data/topics.js';
 import { pixIcon } from './icons.js';
@@ -6,20 +6,21 @@ import { sfx } from '../audio/sfx.js';
 import { fmtNum } from '../core/util.js';
 import { lang } from '../core/i18n.js';
 import { yearOf, yfOf, WEEKS_PER_YEAR } from '../sim/const.js';
-import { HW_TYPES, HW_CLASSES, HW_QUALITY, HW_ARCH, HW_PARTNERS, HW_PARTNER, PLAT_FEES } from '../data/hardware.js';
+import { HW_TYPES, HW_CLASSES, HW_QUALITY, HW_ARCH, HW_PARTNERS, HW_PARTNER, PLAT_FEES, HOST_TYPES, HW_REVS } from '../data/hardware.js';
 import {
   canHw, LAB_MAX, labSlots, labCost, labRent, upgradeLab, chiefPerf, chiefRisk, chiefRating, chiefCandidates, setChief, recallChief,
   openTypes, partnerOpen, relOf, partnerCap, cryptoOn, chipsOn, hasArch, designCost, protoCost, designWeeks, protoRisk, designPerf, baseCompat,
-  defectOf, canDesign, startDesign, pauseDesign, cancelDesign, resolveProto, hwName, draftOf, scoreOf, unitCost, suggestPrice, priceSteps,
+  defectOf, canDesign, startDesign, pauseDesign, cancelDesign, resolveProto, draftOf, scoreOf, unitCost, suggestPrice, priceSteps,
   stepPrice, weeklyDemand, suggestPartner, orderOptions, orderCost, orderMore, marketSize, launch, setPrice, setAuto, setPartner, setDriver, driverCost, discontinue, resolveIssue,
   resolveBench, pipelineOf, productProfit, hwNet, brandOf, RECALL, CLEAR, isPlat, archOpen, partnerFits, minOrder, platOf, supportOf, platRoyalty, setPlatFee,
   ownGames, PER_WEIGHT, drvMax, exclOffers, boughtFor, exclPrice, exclWeeks, canBuyExcl, buyExclusive, BUY_MIN, BUY_GAP, partnerAllowed, exclPartner, exclOf, resolveOffer, resolvePatent, ISSUE_WEEKS, digitalOf, platDigital, PLAT_CUT,
   FAB, FAB_MAX, FAB_WEEKS, FAB_CAP, fabLvl, fabCost, fabUpkeep, canBuildFab, buildFab, fabLoad,
+  NAME_MAX, PART_SAVE, cleanName, suggestName, renameHw, revCost, revWeeks, revWait, revCount, canRevise, reviseProduct, specsOf, platPosition, ownParts, partsBoost,
 } from '../sim/hardware.js';
 
 // Fönstret Hårdvara: Utveckling (labbet, chefen, designprojekt och nya designer), Produkter (det som tillverkas och
 // säljs, med pris, partner, order och beslut) och Partners (tillverkarna och deras läge).
-const HS = { tab: 'dev', type: null, cls: 'mid', qual: 'normal', arch: 'std', opt: undefined, pick: false, confirm: null, launch: {}, old: false };
+const HS = { tab: 'dev', type: null, cls: 'mid', qual: 'normal', arch: 'std', opt: undefined, pick: false, confirm: null, launch: {}, old: false, name: '', rename: null, rnv: '' };
 const COL = '#d99a5b';
 const pct = (v) => Math.round(v * 100);
 const dec = (v, d = 1) => v.toFixed(d).replace('.', lang === 'sv' ? ',' : '.');
@@ -59,8 +60,41 @@ function specTags(P) {
   }
   return tags.join('');
 }
-const head = (P, right = '') =>
-  `<div class="row" style="gap:10px;min-width:0"><span class="hw-ic" style="--c:${HW_TYPES[P.type].color}">${tyPix(P.type)}</span><div style="flex:1;min-width:0"><b class="h3 ell">${esc(P.name)}</b><div class="row wrap" style="gap:5px;margin-top:3px"><span class="faint" style="font-size:12px">${t('hw.type.' + P.type)}</span>${specTags(P)}</div></div>${right}</div>`;
+// Namnet kan bytas: en egen plattform får det nya namnet överallt i spelet
+const head = (P, right = '') => {
+  const editing = HS.rename === P.id;
+  const btn = editing ? '' : `<button class="btn sm ghost" data-act="hw-rn" data-id="${P.id}" data-tip="${esc(t(isPlat(P.type) ? 'hw.renameTip' : 'hw.rename'))}" style="margin-left:auto;padding:1px 8px">${t('hw.rename')}</button>`;
+  const edit = editing
+    ? `<div class="row" style="gap:6px;margin-top:6px"><input class="input" id="hw-rn" maxlength="${NAME_MAX}" value="${esc(HS.rnv)}" aria-label="${t('hw.name')}" style="flex:1;min-width:0;height:32px"><button class="btn sm primary" data-act="hw-rns">${t('hw.renameSave')}</button><button class="btn sm ghost" data-act="hw-rnx" aria-label="${t('ui.close')}">${icon('x')}</button></div>`
+    : '';
+  return `<div class="row" style="gap:10px;min-width:0"><span class="hw-ic" style="--c:${HW_TYPES[P.type].color}">${tyPix(P.type)}</span><div style="flex:1;min-width:0"><b class="h3 ell">${esc(P.name)}</b><div class="row wrap" style="gap:5px;margin-top:3px"><span class="faint" style="font-size:12px">${t('hw.type.' + P.type)}</span>${specTags(P)}${btn}</div>${edit}</div>${right}</div>`;
+};
+
+// ── Inuti: processor, grafik, minne och annat som följer sin tid ──
+const snapTo = (list, v) => list.reduce((a, b) => (Math.abs(Math.log(b / v)) < Math.abs(Math.log(a / v)) ? b : a));
+const RAM = [1, 2, 4, 8, 16, 32, 64, 128, 256, 512].map((m) => m / 1024).concat([1, 2, 4, 8, 12, 16, 24, 32, 48, 64]);
+const DISK = [0.1, 0.5, 1, 2, 4, 8, 16, 32, 40, 80, 120, 250, 320, 500, 1000, 2000, 4000];
+const fmtSize = (gb) => (gb >= 1000 ? `${Math.round(gb / 1000)} TB` : gb >= 1 ? `${Math.round(gb)} GB` : gb >= 0.001 ? `${Math.round(gb * 1024)} MB` : `${Math.max(1, Math.round(gb * 1024 * 1024))} KB`);
+const fmtClock = (g) => (g >= 1 ? `${dec(g, 1)} GHz` : `${Math.round(g * 1000)} MHz`);
+const fmtFlops = (tf) => (tf >= 1 ? `${dec(tf, tf < 10 ? 1 : 0)} TFLOPS` : tf >= 0.001 ? `${Math.round(tf * 1000)} GFLOPS` : `${Math.max(1, Math.round(tf * 1e6))} MFLOPS`);
+function specText(r, solo) {
+  const nm = r.name ? `${esc(r.name)}: ` : '';
+  switch (r.k) {
+    case 'cpu': return nm + t('hw.spec.cpu', { cores: r.cores, clock: fmtClock(r.ghz) }) + (solo ? ` · ${t('hw.spec.proc', { nm: r.nm })}` : '');
+    case 'gpu': return nm + t('hw.spec.gpu', { flops: fmtFlops(r.tflops), mem: fmtSize(snapTo(RAM, r.vram)) });
+    case 'ram': return t('hw.spec.ram', { v: fmtSize(snapTo(RAM, r.gb)) });
+    case 'disk': return t('hw.spec.disk', { v: fmtSize(snapTo(DISK, r.gb)) });
+    case 'sound': return t('hw.spec.sound', { bits: r.bits, khz: r.khz });
+    case 'screen': return t('hw.spec.screen', { w: r.w, h: Math.round((r.w * 9) / 32) * 2 });
+    case 'battery': return t('hw.spec.battery', { h: Math.round(r.h) });
+    case 'eye': return t('hw.spec.eye', { w: r.w, h: Math.round((r.w * 1.1) / 2) * 2 });
+    default: return t('hw.spec.hz', { hz: r.hz });
+  }
+}
+const specLine = (G, P) => {
+  const rows = specsOf(G, P);
+  return `<div class="hw-spec" data-tip="${esc(t('hw.spec.t'))}">${rows.map((r) => `<span>${specText(r, rows.length === 1)}</span>`).join('')}</div>`;
+};
 
 // ── Utveckling ──────────────────────────────────────────────────
 function labCtl(G, H) {
@@ -125,6 +159,7 @@ function launchCard(G, J) {
   const right = `<div style="text-align:right;flex:none"><div class="disp" style="font-size:26px;color:${scoreTone(s)}">${dec(s)}</div><div class="faint" style="font-size:11px">${t('hw.expScore')}</div></div>`;
   return `<div class="card hw-card hw-ready" style="--c:var(--good)">${head(J, right)}
     <p class="hint" style="margin:8px 0 10px">${icon('check')} ${t(J.bad ? 'hw.readyBad' : 'hw.ready')}${isPlat(J.type) ? ' ' + t('hw.platReady') : ''}${J.leak ? ' ' + t('hw.leakReady') : ''}</p>
+    <div style="margin-bottom:10px">${specLine(G, D)}</div>
     <div class="hw-ctl">
       <div class="hw-wide"><div class="lbl" style="margin-bottom:6px">${t('hw.partner')}</div>${seg(partners, L.partner, 'hw-lp', `data-id="${J.id}"`, (it) => lockTip(G, J.type, it.v), offP)}</div>
       <div class="hw-wide"><div class="lbl" style="margin-bottom:6px">${t('hw.price')}</div>${seg(prices, L.price, 'hw-lpr', `data-id="${J.id}"`)}<p class="hint" style="margin-top:6px">${t('hw.priceHelp', { v: '$' + suggestPrice(J.type, J.cls) })}</p></div>
@@ -151,7 +186,10 @@ function designForm(G, H) {
   const weeks = designWeeks(G, spec);
   const ok = canDesign(G, spec);
   const best = fitPartners(G, spec.type).pop()?.v || 'halden';
-  const D = { type: spec.type, cls: spec.cls, qual: spec.qual, perf0: designPerf(G, spec), compat: baseCompat(G, spec), defect: defectOf(spec, best), t: null };
+  const host = HOST_TYPES.has(spec.type);
+  const D = { type: spec.type, cls: spec.cls, qual: spec.qual, perf0: host ? partsBoost(G, designPerf(G, spec)) : designPerf(G, spec), compat: baseCompat(G, spec), defect: defectOf(spec, best), t: null, parts: host ? ownParts(G) : undefined };
+  const sug = suggestName(G, spec.type, spec.cls);
+  const partNames = host ? ownParts(G).map((ty) => H.products.find((p) => p.type === ty && p.state === 'market')?.name).filter(Boolean) : [];
   const s = scoreOf(G, D);
   const tyItems = types.map((id) => ({ v: id, label: `${tyIcon(id)}${t('hw.type.' + id)}` }));
   const clsItems = HW_CLASSES.map((c) => ({ v: c.id, label: t('hw.cls.' + c.id) }));
@@ -159,14 +197,17 @@ function designForm(G, H) {
   const aItems = HW_ARCH.map((a) => ({ v: a.id, label: t('hw.arch.' + a.id) }));
   const oItems = [{ v: 'none', label: t('hw.optNone') }, ...engines.map((e) => ({ v: e.id, label: esc(e.name) }))];
   const ty = HW_TYPES[HS.type];
-  return `<div class="card" style="margin-top:14px"><div class="row wrap" style="gap:8px;margin-bottom:10px"><div class="lbl">${t('hw.new')}</div><span class="sp"></span><b class="ell">${esc(hwName(H, HS.type, HS.cls))}</b></div>
+  return `<div class="card" style="margin-top:14px"><div class="row wrap" style="gap:8px;margin-bottom:10px"><div class="lbl">${t('hw.new')}</div><span class="sp"></span><b class="ell">${esc(cleanName(HS.name) || sug.name)}</b></div>
     <div class="hw-ctl">
       <div class="hw-wide"><div class="lbl" style="margin-bottom:6px">${t('hw.type')}</div>${seg(tyItems, HS.type, 'hw-ft')}<p class="hint" style="margin-top:6px">${t('hw.typeD.' + HS.type)} ${t('hw.market', { n: fmtNum(Math.round(marketSize(HS.type, yfOf(G.t), G.t) / WEEKS_PER_YEAR)) })}</p></div>
+      <div class="hw-wide"><div class="lbl" style="margin-bottom:6px">${t('hw.name')}</div><input class="input" id="hw-name" maxlength="${NAME_MAX}" placeholder="${esc(sug.name)}" value="${esc(HS.name)}" autocomplete="off"><p class="hint" style="margin-top:6px">${t('hw.nameHelp')}</p></div>
       <div><div class="lbl" style="margin-bottom:6px">${t('hw.cls')}</div>${seg(clsItems, HS.cls, 'hw-fc', '', (it) => t('hw.clsTip.' + it.v))}</div>
       <div><div class="lbl" style="margin-bottom:6px">${t('hw.q')}</div>${seg(qItems, HS.qual, 'hw-fq', '', (it) => t('hw.qTip.' + it.v))}</div>
       ${hasArch(HS.type) ? `<div><div class="lbl" style="margin-bottom:6px">${t('hw.arch')}</div>${seg(aItems, HS.arch, 'hw-fa', '', (it) => t(archOpen(G, HS.type, it.v) ? 'hw.archTip.' + it.v : 'hw.archSoc'), (it) => !archOpen(G, HS.type, it.v))}</div>` : ''}
       <div><div class="lbl" style="margin-bottom:6px">${t('hw.opt')}</div>${engines.length ? seg(oItems, HS.opt == null ? 'none' : HS.opt, 'hw-fo') : `<p class="hint">${t('hw.optNoEngine')}</p>`}<p class="hint" style="margin-top:6px">${t('hw.optHelp')}</p></div>
     </div>
+    ${partNames.length ? `<p class="hint" style="margin-top:10px">${icon('gpu')} ${t('hw.partsIn', { names: esc(partNames.join(', ')), pct: pct(PART_SAVE) })}</p>` : ''}
+    <div style="margin-top:10px">${specLine(G, D)}</div>
     <div class="hw-stats" style="margin-top:12px">${stat('hw.s.design', money(cost))}${stat('hw.s.weeks', tn('hw.weeksN', weeks))}${stat('hw.s.proto', money(protoCost(G, spec)))}${stat('hw.s.risk', t('dist.pct', { n: Math.round(protoRisk(G, spec) * 100) }), t('hw.s.riskTip'))}${stat('hw.s.score', '~' + dec(s), t('hw.s.scoreTip'))}${stat('hw.s.price', '$' + suggestPrice(HS.type, HS.cls))}</div>
     <div class="row wrap" style="gap:8px;margin-top:12px"><span class="hint" style="flex:1 1 220px">${t('hw.startHelp', { v: money(cost / weeks) })} ${t('hw.life', { n: String(ty.life).replace('.', lang === 'sv' ? ',' : '.') })}</span><button class="btn primary" data-act="hw-start" ${ok === true ? '' : 'disabled'}>${icon('flask')}${t('hw.start')}</button></div></div>`;
 }
@@ -217,10 +258,12 @@ function platBlock(G, P) {
   const base = pl ? P.base || 0 : 0;
   const fees = PLAT_FEES.map((f) => ({ v: f, label: t('dist.pct', { n: pct(f) }) }));
   const roy = platRoyalty(G, P);
+  const pos = platPosition(G, P);
   return `<div class="divider" style="margin:12px 0"></div><div class="row wrap" style="gap:8px;margin-bottom:8px"><div class="lbl">${t('hw.platT')}</div>${pl ? tag(esc(pl.name), HW_TYPES[P.type].color) : ''}<span class="sp"></span><span class="faint" style="font-size:12px">${t('hw.platGen', { n: pl ? pl.tier : '–' })}</span></div>
     <div class="hw-stats">
       ${stat('hw.s.base', fmtNum(Math.round(base)), t('hw.s.baseTip', { n: fmtNum(PER_WEIGHT) }))}
       ${stat('hw.s.weight', pl ? dec(pl.weight) : '–', t('hw.s.weightTip'))}
+      ${pos ? stat('hw.s.mkt', `#${pos.rank}/${pos.of} · ${t('dist.pct', { n: dec(pos.share * 100, pos.share < 0.1 ? 1 : 0) })}`, t('hw.s.mktTip')) : ''}
       ${stat('hw.s.support', t('dist.pct', { n: pct(supportOf(G, P)) }), t('hw.s.supportTip'))}
       ${stat('hw.s.lic', `${money(roy)}${t('ui.perWeek')}`, t('hw.s.licTip'))}
       ${stat('hw.s.ownGames', String(ownGames(G, P)), t('hw.s.ownGamesTip'))}
@@ -244,6 +287,29 @@ function exBlock(G, P, pl) {
   return `<div class="lbl" style="margin:14px 0 6px">${t('hw.exT')}</div><p class="hint" style="margin-bottom:8px">${t('hw.exHelp')}</p><div class="col" style="gap:6px">${bought.join('')}${offers.join('')}</div>`;
 }
 
+// Uppgradera en produkt som säljer: Pro lyfter prestandan, Slim sänker kostnaden
+function revBlock(G, P) {
+  if (P.state !== 'market') return '';
+  const hist = (P.revs || []).map((r) => tag(t('hw.rev.hist', { name: t('hw.rev.' + r.k), y: yearOf(r.t) }), 'var(--accent)')).join('');
+  const histRow = hist ? `<div class="row wrap" style="gap:5px;margin-top:8px">${hist}</div>` : '';
+  const head = `<div class="divider" style="margin:12px 0"></div><div class="lbl" style="margin-bottom:6px">${t('hw.rev.t')}</div>`;
+  if (P.up) {
+    const left = Math.max(0, P.up.due - G.t);
+    const done = ((G.t - P.up.t0) / Math.max(1, P.up.due - P.up.t0)) * 100;
+    return `${head}<div style="margin:6px 0">${bar(done, COL)}</div><p class="hint">${icon('wrench')} ${t('hw.rev.running', { name: t('hw.rev.' + P.up.k), n: left })}</p>${histRow}`;
+  }
+  const wait = revWait(G, P);
+  const btns = HW_REVS.map((R) => {
+    const ok = canRevise(G, P, R.id);
+    const cost = revCost(G, P, R.id);
+    const base = t('hw.rev.' + R.id + 'Tip', { pct: pct(R.perf || 1 - R.unit), unit: pct(Math.abs(R.unit - 1)), y: String(R.life).replace('.', lang === 'sv' ? ',' : '.'), v: money(cost), w: revWeeks(G, P, R.id) });
+    const tip = ok === true || ok === 'money' ? base : t(ok);
+    return `<button class="btn sm" data-act="hw-rev" data-id="${P.id}" data-v="${R.id}" ${ok === true ? '' : 'disabled'} data-tip="${esc(tip)}">${icon('wrench')}${t('hw.rev.' + R.id)} · ${money(cost)}</button>`;
+  }).join('');
+  const full = HW_REVS.every((R) => revCount(P, R.id) >= R.max);
+  return `${head}<div class="row wrap" style="gap:8px">${btns}</div><p class="hint" style="margin-top:6px">${full ? t('hw.rev.max') : wait > 0 ? t('hw.rev.wait', { n: wait }) : t('hw.rev.help')}</p>${histRow}`;
+}
+
 function productCard(G, P) {
   const plat = isPlat(P.type);
   const market = P.state === 'market';
@@ -264,6 +330,7 @@ function productCard(G, P) {
   return `<div class="card hw-card" style="--c:${HW_TYPES[P.type].color}">${head(P, right)}
     <div class="row wrap" style="gap:6px;margin-top:8px">${state}${so ? tag(t('hw.soldOut'), 'var(--bug)') : ''}${P.cheat > G.t ? tag(t('hw.cheating'), 'var(--warn)') : ''}${P.leakT > G.t ? tag(t('hw.leakTag'), 'var(--warn)') : ''}<span class="sp"></span>${market ? spark(P.hist, HW_TYPES[P.type].color) : ''}</div>
     ${issueRow(G, P)}
+    <div style="margin-top:10px">${specLine(G, P)}</div>
     <div class="hw-stats" style="margin-top:10px">
       ${stat('hw.s.share', t('dist.pct', { n: dec(P.share * 100, P.share < 0.1 ? 1 : 0) }), t('hw.s.shareTip'))}
       ${stat('hw.s.sold', `${fmtNum(sold)}${t('ui.perWeek')}`)}
@@ -281,8 +348,9 @@ function productCard(G, P) {
       <div class="hw-wide"><div class="lbl" style="margin-bottom:6px">${t('hw.partner')}</div>${seg(partners, P.partner, 'hw-pp', `data-id="${P.id}"`, (it) => lockTip(G, P.type, it.v), (it) => it.off && it.v !== P.partner)}<p class="hint" style="margin-top:6px">${t('hw.switchWarn')}</p></div>
       ${G.u.flags[plat ? 'hw_devkit' : 'hw_driver'] ? `<div class="hw-wide"><div class="lbl" style="margin-bottom:6px">${t(plat ? 'hw.devkit' : 'hw.driver')}</div><div class="row wrap" style="gap:8px"><div class="seg"><button class="${P.drv ? '' : 'on'}" data-act="hw-drv" data-id="${P.id}" data-v="0">${t('hw.drvOff')}</button><button class="${P.drv ? 'on' : ''}" data-act="hw-drv" data-id="${P.id}" data-v="1" ${!P.drv && P.compat >= drvMax(P) ? 'disabled' : ''}>${t('hw.drvOn', { v: money(driverCost(G, P)) })}</button></div></div><p class="hint" style="margin-top:6px">${t(P.compat >= drvMax(P) ? 'hw.drvDone' : plat ? 'hw.dkHelp' : 'hw.drvHelp')}</p></div>` : ''}
     </div>
+    ${revBlock(G, P)}
     ${plat ? platBlock(G, P) : ''}
-    <div class="row wrap" style="gap:8px;margin-top:10px"><span class="sp"></span><button class="btn sm ghost" data-act="hw-end" data-id="${P.id}">${t('hw.end')}</button></div>
+    <div class="row wrap" style="gap:8px;margin-top:10px"><span class="sp"></span><button class="btn sm" data-act="hw-succ" data-id="${P.id}" data-tip="${esc(t('hw.nextTip'))}">${icon('plus')}${t('hw.next')}</button><button class="btn sm ghost" data-act="hw-end" data-id="${P.id}">${t('hw.end')}</button></div>
     ${stop ? confirmRow('end', P.id, t('hw.endYes'), t('hw.endWarn', { pct: pct(CLEAR) })) : ''}</div>`;
 }
 
@@ -417,6 +485,23 @@ regWin({
     const H = G.hw;
     return HS.tab === 'prod' ? prodTab(G, H) : HS.tab === 'partners' ? partnersTab(G, H) : devTab(G, H);
   },
+  bind(el) {
+    const n = $('#hw-name', el);
+    if (n) n.addEventListener('input', () => (HS.name = n.value));
+    const r = $('#hw-rn', el);
+    if (r) {
+      r.addEventListener('input', () => (HS.rnv = r.value));
+      r.addEventListener('keydown', (e) => {
+        if (e.key === 'Enter') saveRename();
+        else if (e.key === 'Escape') {
+          e.stopPropagation();
+          HS.rename = null;
+          UI.refresh();
+        }
+      });
+      if (document.activeElement !== r) r.focus();
+    }
+  },
   onOpen(G) {
     // ett beslut väntar: öppna fliken där det finns
     if (G.hw && (G.hw.suit || G.hw.products.some((p) => p.issue || p.bench === 'offer'))) HS.tab = 'prod';
@@ -467,7 +552,42 @@ act('hw-fo', (el) => {
   HS.opt = el.dataset.v === 'none' ? null : +el.dataset.v;
   UI.refresh();
 });
-act('hw-start', () => refresh(startDesign(G_(), { type: HS.type, cls: HS.cls, qual: HS.qual, arch: HS.arch, opt: HS.opt }), 'research'));
+act('hw-start', () => {
+  const r = startDesign(G_(), { type: HS.type, cls: HS.cls, qual: HS.qual, arch: HS.arch, opt: HS.opt, name: HS.name });
+  if (r === true) HS.name = '';
+  refresh(r, 'research');
+});
+function saveRename() {
+  const r = renameHw(G_(), HS.rename, HS.rnv);
+  if (r === true) HS.rename = null;
+  refresh(r, 'good');
+}
+act('hw-rn', (el) => {
+  const H = G_().hw;
+  const P = [...H.products, ...H.projects].find((x) => x.id === +el.dataset.id);
+  HS.rename = +el.dataset.id;
+  HS.rnv = P ? P.name : '';
+  UI.refresh();
+});
+act('hw-rns', saveRename);
+act('hw-rnx', () => {
+  HS.rename = null;
+  UI.refresh();
+});
+act('hw-rev', (el) => refresh(reviseProduct(G_(), +el.dataset.id, el.dataset.v), 'research'));
+// Efterföljare: formuläret för en ny design fylls med produktens val (namnet föreslås med nästa nummer)
+act('hw-succ', (el) => {
+  const P = G_().hw.products.find((x) => x.id === +el.dataset.id);
+  if (!P) return;
+  HS.type = P.type;
+  HS.cls = P.cls;
+  HS.qual = P.qual || 'normal';
+  HS.arch = P.arch || 'std';
+  HS.opt = P.opt != null && G_().engines.some((e) => e.id === P.opt) ? P.opt : undefined;
+  HS.name = '';
+  HS.tab = 'dev';
+  UI.refresh();
+});
 act('hw-pause', (el) => refresh(pauseDesign(G_(), +el.dataset.id, el.dataset.v === '1')));
 act('hw-cancel', (el) => {
   HS.confirm = `cancel:${el.dataset.id}`;

@@ -332,3 +332,22 @@ Kalibrera i den här ordningen: MARKNAD-tabellen (storleken), sedan THIRD (royal
 - Botar `--hw --fab` (24 seeds, botten bygger när kassan räcker två gånger om och bygger ut vid 95 % beläggning):
   kassa 2020 370 M$ som utan fabrik, 2026 904 mot 893 M$. Fabriken binder pengar tidigt (2010: 54 mot 79 M$) och lönar
   sig långsamt, ett strategiskt val.
+
+## 14. Tillägg v98: namn, revisioner, komponenter inuti
+
+- **Egna namn.** Designformuläret har ett namnfält (högst 24 tecken, taggtecken rensas); tomt fält ger förslaget, och en
+  produkt med eget namn får en efterföljare som föreslås med nästa nummer (Nova, Nova 2). `renameHw` byter namn på ett
+  projekt eller en produkt när som helst, och en egen plattform byter namn i hela spelet (`PLATFORM[id].name`).
+- **Revisioner** (`HW_REVS` i data/hardware.js, `reviseProduct` i sim/hardware.js) för produkter som säljer. Pro: kostar 30 %
+  av en ny generation, tar 40 % av designtiden, lyfter prestandan mot marknaden just nu med 12 % och startar om åldrandet
+  (`P.pt`), enhetskostnad +6 %, ett litet efterfrågelyft, livscykeln +1 år, högst tre. Slim: 15 %, 30 % av tiden,
+  enhetskostnad −12 %, livscykeln +½ år, högst två. Ingen designplats upptas, det måste gå ett halvår (`REV_MIN_AGE`) från
+  lansering eller förra revisionen, pågående arbete ligger i `P.up`. Namnet får Pro eller Slim (Ti och Rev B på komponenter).
+  En ny generation (60 % av första designen) återställer prestandan helt; revisionen är det billiga mellansteget.
+- **Komponenter inuti.** Egna grafikkretsar och processorer på marknaden byggs nu in i alla värdtyper (`HOST_TYPES`: speldator,
+  konsol, bärbar enhet, VR), inte bara i speldatorn: −5 % enhetskostnad per komponent och prestanda mot komponentens nivå.
+  `specsOf` ger en specifikation som följer året (processor, grafik, minne, lagring, skärm, batteri), skalad av prestandamålet,
+  och visar de egna komponenternas namn. Kurvorna ligger i `CURVES` (data/hardware.js).
+- **Marknadsplats.** `platPosition` ger plattformens andel och rang bland plattformar av samma slag, som Marknadsfönstret.
+- Speldatorn är fortfarande ingen plattform (pc är öppen): dina pc-spel på en optimerad motor säljer mer ju större andel din
+  speldator har.

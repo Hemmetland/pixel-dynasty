@@ -38,6 +38,50 @@ export const ARCH_TYPES = new Set(['cpu', 'handheld', 'console', 'vr']);
 export const PLAT_FEES = [0.1, 0.15, 0.2, 0.25, 0.3];
 // Komponenter som en speldator kan byggas med
 export const PC_PARTS = ['gpu', 'cpu'];
+// Produkter som kan byggas med dina egna komponenter (grafikkretsen och processorn som säljs): lägre enhetskostnad och
+// prestanda mot komponentens nivå
+export const HOST_TYPES = new Set(['pc', 'console', 'handheld', 'vr']);
+
+// Revisioner: en uppgradering av en produkt som redan säljs (sim/hardware.js, reviseProduct). cost = andel av kostnaden för
+// en ny generation, weeks = andel av designtiden, perf = lyft av prestandan mot marknaden just nu, unit = ändring av
+// enhetskostnaden, life = extra år på livscykeln, hype = tillfälligt lyft av efterfrågan, max = högsta antal per produkt.
+export const HW_REVS = [
+  { id: 'pro', cost: 0.3, weeks: 0.4, perf: 0.12, unit: 1.06, life: 1, hype: 0.05, max: 3 },
+  { id: 'slim', cost: 0.15, weeks: 0.3, perf: 0, unit: 0.88, life: 0.5, hype: 0, max: 2 },
+];
+// Namnet får ett tillägg efter slag: Pro och Slim på plattformar och speldatorer, Ti och Rev B på komponenter
+const REV_TAIL = { pro: [' Pro', ' Ti'], slim: [' Slim', ' Rev B'] };
+export const revSuffix = (type, id) => REV_TAIL[id][['sound', 'gpu', 'cpu'].includes(type) ? 1 : 0];
+
+// Vad som sitter inuti: kurvor över året (logaritmisk interpolation mellan punkterna) för det som en produkt av sin tid har.
+// Siffrorna är för en produkt på Mellan; prestandamålet skalar dem (sim/hardware.js, specsOf).
+const CURVES = {
+  ghz: [[1990, 0.03], [1999, 0.4], [2005, 3], [2012, 3.6], [2020, 4.2], [2030, 5]],
+  cores: [[1995, 1], [2005, 1.5], [2010, 4], [2015, 8], [2020, 12], [2030, 24]],
+  nm: [[1995, 500], [2000, 180], [2005, 65], [2010, 32], [2015, 14], [2020, 5], [2030, 2]],
+  tflops: [[1995, 0.0001], [1996, 0.0005], [2006, 0.2], [2013, 1.8], [2020, 10], [2030, 60]],
+  vram: [[1996, 0.004], [2000, 0.032], [2006, 0.5], [2013, 4], [2020, 12], [2030, 32]],
+  ram: [[1990, 0.001], [1998, 0.032], [2006, 0.5], [2013, 8], [2020, 16], [2030, 32]],
+  disk: [[1990, 0.1], [1999, 8], [2006, 80], [2013, 500], [2020, 1000], [2030, 4000]],
+  khz: [[1989, 22], [1995, 44], [2000, 48], [2010, 96], [2030, 192]],
+  screenW: [[2003, 480], [2012, 960], [2020, 1280], [2030, 1920]],
+  eyeW: [[2015, 1080], [2020, 1832], [2030, 3000]],
+  hz: [[2015, 90], [2025, 120], [2035, 144]],
+  battery: [[2003, 3], [2012, 6], [2020, 8], [2030, 12]],
+};
+export function curveAt(key, y) {
+  const pts = CURVES[key];
+  if (y <= pts[0][0]) return pts[0][1];
+  if (y >= pts[pts.length - 1][0]) return pts[pts.length - 1][1];
+  for (let i = 1; i < pts.length; i++) {
+    if (y < pts[i][0]) {
+      const [y0, a] = pts[i - 1];
+      const [y1, b] = pts[i];
+      return Math.exp(Math.log(a) + ((Math.log(b) - Math.log(a)) * (y - y0)) / (y1 - y0));
+    }
+  }
+  return pts[pts.length - 1][1];
+}
 
 // Prestandamål: prestanda, designtid, designkostnad, enhetskostnad, prototyprisk och förslagspris mot marknaden
 export const HW_CLASSES = [

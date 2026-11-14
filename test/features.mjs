@@ -1831,5 +1831,93 @@ ok(!bad.length, `äldre sparning utan ett av ${paths.length} fält går att spel
   // flaggan ändrar inget i spelet: samma sparning laddar och loggen får bara ett extra fält
   ok(JSON.parse(JSON.stringify(GB.news)).length === GB.news.length, 'nyhetsloggen kan sparas som JSON');
 }
+// hårdvarans namn, revisioner (Pro och Slim), egna komponenter i konsolen och specifikationer som följer tiden
+{
+  const GR = S.newGame({ studio: 'R', seed: 31 }); S.makeCompetitors(GR); S.initWorld(GR);
+  GR.t = 48 * 30; GR.money = 5e9; GR.fans = 300000;
+  Object.assign(GR.u.flags, { hw: true, hw_gpu: true, hw_cpu: true, hw_pc: true, hw_lowpow: true, hw_handheld: true, hw_console: true });
+  GR.t++; S.hwWeek(GR);
+  const H = GR.hw;
+  S.upgradeLab(GR); S.upgradeLab(GR);
+  const week = (n = 1) => { for (let i = 0; i < n; i++) { GR.t++; S.hwWeek(GR); } };
+  const make = (spec, partner, units) => {
+    if (S.startDesign(GR, spec) !== true) return null;
+    const J = H.projects[H.projects.length - 1];
+    J.done = J.weeks - 1;
+    for (let i = 0; i < 4 && J.state === 'design'; i++) week();
+    if (J.state === 'fail') S.resolveProto(GR, J.id, 'ship');
+    if (S.launch(GR, J.id, { partner, units }) !== true) return null;
+    const P = H.products.find((x) => x.id === J.id);
+    for (let i = 0; i < 40 && P.state === 'prod'; i++) week();
+    return P;
+  };
+  // namn
+  ok(S.cleanName('  Nova   <b>Prime  ') === 'Nova bPrime' && S.cleanName('x'.repeat(40)).length === S.NAME_MAX, 'namnet rensas: taggtecken bort, mellanslag hopdragna, högst 24 tecken');
+  const gpu = make({ type: 'gpu', cls: 'mid', name: 'Nova  Prime' }, 'meridian', 20000);
+  ok(gpu && gpu.name === 'Nova Prime' && gpu.custom && gpu.state === 'market', 'ett eget namn följer med från designen till produkten');
+  ok(S.suggestName(GR, 'gpu', 'mid').name === 'Nova Prime 2' && S.suggestName(GR, 'cpu', 'mid').name === 'Quark 1', 'efterföljaren till en produkt med eget namn föreslås med nästa nummer, andra linjer behåller standardnamnet');
+  ok(S.renameHw(GR, gpu.id, '   ') === 'hw.name.empty' && gpu.name === 'Nova Prime', 'ett tomt namn nekas');
+  // specifikationer följer året, och prestandamålet skalar dem
+  {
+    const a = S.specsOf(GR, gpu, 2000)[0].tflops, b = S.specsOf(GR, gpu, 2020)[0].tflops;
+    ok(a > 0 && b > a * 100, 'grafikkraften växer med åren (' + a.toFixed(3) + ' till ' + b.toFixed(1) + ' TFLOPS)');
+  }
+  // revisioner
+  ok(S.canRevise(GR, gpu, 'pro') === 'hw.rev.e.age' && S.revWait(GR, gpu) > 0, 'en revision väntar ett halvår efter lanseringen');
+  week(S.REV_MIN_AGE);
+  const cost = S.revCost(GR, gpu, 'pro');
+  ok(cost > 0 && S.canRevise(GR, gpu, 'pro') === true, 'efter ett halvår går en revision att påbörja');
+  const before = S.relPerf(GR, gpu);
+  const m1 = GR.money;
+  ok(S.reviseProduct(GR, gpu.id, 'pro') === true && Math.abs(m1 - GR.money - cost) < 1 && gpu.up, 'en revision betalas när den börjar');
+  ok(S.canRevise(GR, gpu, 'slim') === 'hw.rev.e.busy' && S.reviseProduct(GR, gpu.id, 'slim') === 'hw.rev.e.busy', 'bara en revision åt gången');
+  week(S.revWeeks(GR, { ...gpu }, 'pro') + 1);
+  ok(!gpu.up && gpu.revs.length === 1 && gpu.name === 'Nova Prime Ti', 'revisionen blir klar och namnet får sitt tillägg');
+  const after = S.relPerf(GR, gpu);
+  ok(after > before * 1.05, 'Pro lyfter prestandan mot marknaden (' + before.toFixed(2) + ' till ' + after.toFixed(2) + ')');
+  {
+    const u = S.unitCost(GR, gpu, gpu.partner), rv = gpu.revUnit;
+    delete gpu.revUnit;
+    const u0 = S.unitCost(GR, gpu, gpu.partner);
+    gpu.revUnit = rv;
+    ok(Math.abs(u / u0 - 1.06) < 1e-9, 'Pro gör enheten 6 % dyrare');
+  }
+  ok(S.canRevise(GR, gpu, 'slim') === 'hw.rev.e.age', 'det går ett halvår till nästa revision');
+  week(S.REV_MIN_AGE);
+  ok(S.reviseProduct(GR, gpu.id, 'slim') === true, 'en kostnadsrevision går att göra efteråt');
+  week(30);
+  {
+    const u = S.unitCost(GR, gpu, gpu.partner), rv = gpu.revUnit;
+    delete gpu.revUnit;
+    const u0 = S.unitCost(GR, gpu, gpu.partner);
+    gpu.revUnit = rv;
+    ok(gpu.revs.length === 2 && Math.abs(u / u0 - 1.06 * 0.88) < 1e-9 && gpu.lifeAdd === 1.5, 'Slim sänker kostnaden 12 % och förlänger livscykeln');
+  }
+  ok(S.revCount(gpu, 'pro') === 1 && S.canRevise(GR, { ...gpu, state: 'prod' }, 'pro') === 'hw.rev.e.state', 'bara produkter som säljer går att uppgradera');
+  // egna komponenter i en konsol: namn i specifikationen och lägre enhetskostnad
+  const con = make({ type: 'console', cls: 'mid', name: 'Orion' }, 'meridian', 60000);
+  ok(con && con.name === 'Orion' && con.parts && con.parts.includes('gpu'), 'konsolen byggs med din egen grafikkrets');
+  {
+    const rows = S.specsOf(GR, con);
+    ok(rows[0].k === 'cpu' && rows[1].k === 'gpu' && rows[1].name === gpu.name && rows.length === 4, 'specifikationen visar komponenternas namn');
+    const a = S.unitCost(GR, con, 'meridian'), b = S.unitCost(GR, { ...con, parts: [] }, 'meridian');
+    ok(Math.abs(a / b - 0.95) < 1e-9, 'varje egen komponent sänker enhetskostnaden 5 %');
+  }
+  // plattformen: namnbyte slår igenom i spelet, och marknadsplatsen räknas bland de andra
+  ok(S.renameHw(GR, con.id, 'Orion Max') === true && PLATFORM[con.plat].name === 'Orion Max' && S.platOf(GR, con).name === 'Orion Max', 'en plattform som byter namn byter det överallt');
+  const pos = S.platPosition(GR, con);
+  ok(pos && pos.rank >= 1 && pos.rank <= pos.of && pos.share > 0 && pos.share <= 1, 'plattformens marknadsplats (#' + (pos && pos.rank) + ' av ' + (pos && pos.of) + ')');
+  // revisionen tar med sig en plattform: namnet följer
+  week(S.REV_MIN_AGE);
+  ok(S.reviseProduct(GR, con.id, 'pro') === true, 'även en konsol kan få en Pro-revision');
+  week(40);
+  ok(con.revs.length === 1 && con.name === 'Orion Max Pro' && PLATFORM[con.plat].name === 'Orion Max Pro', 'plattformens namn följer revisionen');
+  // fuskade spel räknas inte i studiohallen
+  GR.flags.cheat = 1;
+  ok(recordRun(GR) === null, 'ett fuskat spel kommer inte in i studiohallen');
+  // och allt går att spara
+  const back = JSON.parse(JSON.stringify(GR.hw));
+  ok(back.products.find((x) => x.id === gpu.id).revs.length === 2, 'revisionerna följer med sparningen');
+}
 console.log(fails ? `\n${fails} FEL` : '\nAlla tester gick bra');
 process.exit(fails ? 1 : 0);
