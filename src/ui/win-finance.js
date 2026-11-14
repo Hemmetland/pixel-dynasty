@@ -11,7 +11,7 @@ import { hwCostMonth } from '../sim/hardware.js';
 import { plot, gridLines } from './chart.js';
 
 function lineChart(pts, color, w = 560, h = 190) {
-  if (pts.length < 2) return `<div class="empty" style="padding:30px">${t('fin.noData')}</div>`;
+  if (pts.length < 2) return `<div class="fin-ghost"><svg viewBox="0 0 ${w} ${h}" preserveAspectRatio="none" aria-hidden="true">${gridLines(8, w - 8, [0.25, 0.5, 0.75].map((f) => 12 + f * (h - 32)))}<path d="M8 ${h - 40} C ${w * 0.25} ${h - 40}, ${w * 0.3} ${h * 0.35}, ${w * 0.55} ${h * 0.45} S ${w * 0.8} ${h * 0.2}, ${w - 8} ${h * 0.25}" fill="none" stroke="${color}" stroke-width="2.5" stroke-dasharray="7 7" stroke-linecap="round" opacity=".35" vector-effect="non-scaling-stroke"/></svg><div class="fin-ghost-t">${icon('chart')}<b>${t('fin.chartWait')}</b><span>${t('fin.chartWait.d')}</span></div></div>`;
   const vals = pts.map((p) => p.v);
   let lo = Math.min(0, ...vals);
   let hi = Math.max(...vals, 1);
@@ -85,7 +85,7 @@ regWin({
           </div>
         </div>
         <div class="col">
-          <div class="card"><div class="row" style="margin-bottom:6px;gap:8px"><div class="lbl">${year ? t('fin.lastYear', { y: ly.year }) : t('fin.lastMonth')}</div><span class="sp"></span>${per}</div>${year && ly.part ? `<p class="hint" style="margin:0 0 6px">${t('fin.partYear')}</p>` : ''}${rows || `<div class="muted">${t('fin.noData')}</div>`}
+          <div class="card"><div class="row" style="margin-bottom:6px;gap:8px"><div class="lbl">${year ? t('fin.lastYear', { y: ly.year }) : t('fin.lastMonth')}</div><span class="sp"></span>${per}</div>${year && ly.part ? `<p class="hint" style="margin:0 0 6px">${t('fin.partYear')}</p>` : ''}${rows || `<div class="fin-none">${icon('calendar')}<span>${t('fin.noMonth')}</span></div>`}
             <div class="divider"></div><div class="kv"><span><b>${t('fin.net')}</b></span><b class="${net >= 0 ? 'up' : 'down'}">${net >= 0 ? '+' : ''}${money(net)}</b></div></div>
           <div class="card"><div class="row"><div class="lbl">${t('fin.loans')}</div><span class="sp"></span><span class="muted num" style="font-size:12px">${money(loanTotal(G))} / ${money(loanLimit(G))}</span></div>
             ${bar((loanTotal(G) / Math.max(1, loanLimit(G))) * 100, 'var(--warn)', 'thin')}
