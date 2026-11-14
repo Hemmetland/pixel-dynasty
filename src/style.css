@@ -1087,3 +1087,14 @@ input[type='range']::-moz-range-thumb { width: 18px; height: 18px; border-radius
 .exr-row.viral { border-color: color-mix(in srgb, var(--gold) 60%, transparent); box-shadow: 0 0 22px -10px var(--gold); }
 .exr-star { flex: none; width: 26px; height: 26px; border-radius: 8px; display: grid; place-items: center; color: var(--gold); background: color-mix(in srgb, var(--gold) 16%, transparent); }
 .exr-star .ic { width: 15px; height: 15px; }
+
+/* Nyhetsfliken: månadsrubriker och färgade ikonbrickor per typ */
+.nws-h { display: flex; align-items: baseline; gap: 8px; margin: 12px 0 2px; color: var(--muted); }
+.nws-h:first-child { margin-top: 2px; }
+.nws-h b { font-size: 14px; color: var(--text); text-transform: capitalize; letter-spacing: 0.04em; }
+.nws-h span { font-size: 12px; }
+.nws-h i { flex: 1; height: 1px; background: linear-gradient(90deg, var(--line2), transparent); }
+.nws-r { align-items: center; border-left: 3px solid var(--c); background: linear-gradient(90deg, color-mix(in srgb, var(--c) 9%, transparent), rgba(150, 172, 255, 0.03)); transition: transform 0.12s var(--ease); }
+.nws-r:hover { transform: translateX(2px); }
+.nws-r .ii, .nws-r.good .ii, .nws-r.bad .ii { width: 28px; height: 28px; border-radius: 9px; color: var(--c); background: color-mix(in srgb, var(--c) 16%, transparent); box-shadow: inset 0 0 0 1px color-mix(in srgb, var(--c) 30%, transparent); }
+.nws-r .ii .ic { width: 15px; height: 15px; }
