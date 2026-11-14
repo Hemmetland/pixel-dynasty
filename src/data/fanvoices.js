@@ -95,7 +95,7 @@ export const FAN_FLAGS = {
 
 // Särskilda lägen: reklamen, studions form, krockar på marknaden, storleken, expansioner, onlinespelets skick och eftermälet
 export const FAN_SPECIAL = {
-  hyped: { mood: -1, sv: ['All den reklamen för det här?', 'Hypen var större än spelet.', 'Reklamen var bättre än spelet.'],
+  hyped: { mood: -1, sv: ['All den reklamen för det här?', 'Snacket var större än spelet.', 'Reklamen var bättre än spelet.'],
     en: ['All that advertising for this?', 'The hype was bigger than the game.', 'The ads were better than the game.'] },
   gem: { mood: 1, sv: ['Varför pratar ingen om {title}?', 'Årets bäst bevarade hemlighet.', 'Jag hittade det av en slump. Vilket fynd.'],
     en: ['Why is nobody talking about {title}?', 'The best-kept secret of the year.', 'I found it by accident. What a find.'] },
