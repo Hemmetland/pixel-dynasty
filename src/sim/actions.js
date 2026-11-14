@@ -3,7 +3,7 @@ import { t } from '../core/i18n.js';
 import { PLATFORM } from '../data/platforms.js';
 import { yfOf } from './const.js';
 import { spend, earn } from './studio.js';
-import { platformOpen, promoPrice, hypeGain } from './dev.js';
+import { platformOpen } from './dev.js';
 import { patchCost } from './sales.js';
 import { note } from './news.js';
 
@@ -39,28 +39,6 @@ export function patchGame(G, id) {
   g.fansGained += 0;
   G.fans += Math.round(g.bugs * 3 + 20);
   note(G, 'news.patch', { title: g.title }, 'good');
-  return true;
-}
-// Mässan
-export function expoCost(G, level) {
-  return level ? Math.round(promoPrice(G, [0, 1500, 6000][level], [0, 0.0075, 0.02][level]) / 50) * 50 : 0;
-}
-export function resolveExpo(G, promptId, level) {
-  const i = G.pending.findIndex((p) => p.id === promptId && p.type === 'expo');
-  if (i < 0) return false;
-  const J = G.job;
-  const go = level > 0 && J && J.kind === 'game';
-  const c = go ? expoCost(G, level) : 0;
-  if (go && G.money < c) return t('err.money'); // prompten ligger kvar så att ett annat val går att göra
-  G.pending.splice(i, 1);
-  if (go) {
-    spend(G, c, 'marketing');
-    J.cost += c;
-    const add = hypeGain(J.hype, level === 1 ? 9 : 20);
-    J.hype = Math.min(100, J.hype + add);
-    G.fans += level === 1 ? 20 : 90;
-    emit('expoDone', { level, add });
-  }
   return true;
 }
 export function ackPending(G, promptId) {

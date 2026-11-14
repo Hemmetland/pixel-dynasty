@@ -110,6 +110,60 @@ for (const ev of EVENTS) {
   S.cancelProject(G);
 }
 ok(true, 'alla händelser körda');
+// spelmässan: monter, utställda saker, besökare och effekter
+{
+  const mk = () => {
+    const g = S.newGame({ studio: 'Mässa', seed: 31 });
+    g.t = 48 * 14 + 18;
+    g.money = 5e6; g.fans = 3000;
+    g.u.flags.expo = true;
+    for (let i = 0; i < 3; i++) g.games.push({ id: 80 + i, title: 'S' + i, t: g.t - 6 - 9 * i, score: 6.5 + 0.9 * i, genre: 'rpg', topic: 'space', platform: 'pc', scope: 'small', total: 5e5, priceAt: 30, tail: 1, weekly: [], revenue: 0, units: 0, fansGained: 0 });
+    return g;
+  };
+  const GE = mk();
+  const GN = mk();
+  GN.u.flags.expo = false;
+  ok(S.expoOffer(GN) === false && GN.pending.length === 0 && S.expoOffer(GE) === true && GE.pending[0].type === 'expo', 'mässan erbjuds bara efter forskningen');
+  const items = S.expoItems(GE);
+  ok(items.length === 3 && items.every((x) => x.k === 'game' && x.q >= 0 && x.q <= 1), 'de tre släppta spelen går att visa');
+  const picks = S.defaultPicks(items, 2);
+  ok(picks.length === 2 && picks[0].q >= picks[1].q && picks[0].id === 82, 'förslaget är de starkaste sakerna');
+  const f1 = S.expoForecast(GE, 1, picks.slice(0, 1)), f2 = S.expoForecast(GE, 2, picks), f3 = S.expoForecast(GE, 3, items);
+  ok(f1.visitors < f2.visitors && f2.visitors < f3.visitors && f1.cost < f2.cost && f2.cost < f3.cost, 'större monter ger fler besökare och kostar mer');
+  ok(S.expoForecast(GE, 2, [{ k: 'game', id: 1, q: 0.9 }]).visitors > S.expoForecast(GE, 2, [{ k: 'game', id: 1, q: 0.1 }]).visitors, 'starkare saker lockar fler besökare');
+  ok(S.expoAttendance(1990) < S.expoAttendance(2010), 'mässan växer med åren');
+  // hoppa över rör ingenting
+  const GS = JSON.parse(JSON.stringify(GE));
+  const m0 = GS.money, fa0 = GS.fans;
+  ok(S.resolveExpo(GS, GS.pending[0].id, 0) === true && GS.pending.length === 0 && GS.money === m0 && GS.fans === fa0 && !GS.expoLast, 'att hoppa över mässan ändrar ingenting');
+  // för lite pengar: prompten ligger kvar
+  const GB = JSON.parse(JSON.stringify(GE));
+  GB.money = 10;
+  ok(typeof S.resolveExpo(GB, GB.pending[0].id, 3) === 'string' && GB.pending.length === 1, 'utan pengar ligger mässan kvar');
+  // en riktig mässa
+  const GA = JSON.parse(JSON.stringify(GE)), GB2 = JSON.parse(JSON.stringify(GE));
+  const money0 = GA.money, fans0 = GA.fans;
+  ok(S.resolveExpo(GA, GA.pending[0].id, 3, items.map(S.itemKey)) === true, 'mässan genomförs');
+  const r = GA.expoLast;
+  ok(r.visitors > 100 && r.fans > 0 && r.revenue > 0 && r.items.length === 3 && r.lines[0].k === 'open' && r.lines[r.lines.length - 1].k === 'close', 'resultatet har besökare, fans, intäkter, rader och nyhetsrad');
+  ok(Math.abs(GA.money - (money0 - r.cost + r.revenue)) < 1 && GA.fans === fans0 + r.fans, 'pengar och fans stämmer med resultatet');
+  ok(GA.games.every((g) => g.expo && g.expo.mult > 1 && g.expo.until === GA.t + S.EXPO_LIFT_WEEKS), 'de visade spelen får ett försäljningslyft');
+  ok(GA.news[0].key === 'news.expo', 'mässan blir en nyhet');
+  S.resolveExpo(GB2, GB2.pending[0].id, 3, items.map(S.itemKey));
+  ok(JSON.stringify(GB2.expoLast) === JSON.stringify(r), 'samma frö och år ger samma mässa');
+  // lyftet syns i veckans intäkter
+  const GR = JSON.parse(JSON.stringify(GE)), GQ = JSON.parse(JSON.stringify(GA));
+  GR.t++; GQ.t++;
+  S.salesWeek(GR); S.salesWeek(GQ);
+  const g0 = GR.games[2], g1 = GQ.games[2];
+  ok(g0.weekly.length === 1 && Math.abs(g1.weekly[0] / g0.weekly[0] - g1.expo.mult) < 1e-6, 'veckans försäljning växer med lyftet');
+  GQ.t += S.EXPO_LIFT_WEEKS + 1;
+  const w0 = GQ.games[2].revenue;
+  S.salesWeek(GQ);
+  GR.t = GQ.t; S.salesWeek(GR);
+  ok(Math.abs((GQ.games[2].weekly.at(-1) / GR.games[2].weekly.at(-1)) - 1) < 1e-6 || GQ.games[2].ended, 'efter åtta veckor är lyftet slut');
+  ok(w0 >= 0, 'sanity');
+}
 // studiojubileet kommer vart tionde år och bara en gång per decennium; arbetsmiljögranskningen kräver låg stämning och sen tid
 {
   const EV = Object.fromEntries(EVENTS.map((e) => [e.id, e]));
@@ -612,6 +666,17 @@ ok(true, 'alla händelser körda');
   const lo = S.targetShare(GH, P, P.price * 0.8), hi = S.targetShare(GH, P, P.price * 1.25);
   ok(lo > S.targetShare(GH, P) && hi < S.targetShare(GH, P), 'ett lägre pris tar större andel');
   ok(S.scoreOf(GH, P, GH.t + 96) < S.scoreOf(GH, P) - 0.5, 'betyget faller när produkten åldras');
+  // mässan: visad hårdvara får större efterfrågan
+  {
+    const GE = JSON.parse(JSON.stringify(GH));
+    GE.u.flags.expo = true;
+    GE.money = 5e7;
+    const PE = GE.hw.products.find((x) => x.id === P.id);
+    ok(S.expoItems(GE).some((x) => x.k === 'hw' && x.id === P.id), 'hårdvara på marknaden går att visa på mässan');
+    const b0 = PE.boost || 0;
+    GE.pending.push({ type: 'expo', id: 7001 });
+    ok(S.resolveExpo(GE, 7001, 3, ['hw:' + P.id]) === true && PE.boost > b0 && GE.expoLast.items[0].k === 'hw' && GE.expoLast.lines.some((l) => l.k === 'hw'), 'visad hårdvara får större efterfrågan');
+  }
   // en speldator med eget grafikkort på marknaden blir billigare
   ok(S.unitCost(GH, { type: 'pc', cls: 'mid', qual: 'normal', t: null }, 'halden') < S.unitCost(GH, { type: 'pc', cls: 'mid', qual: 'normal', t: null, parts: [] }, 'halden'), 'egna komponenter gör speldatorn billigare');
   GH.engines.push({ id: 999, name: 'E', feats: ['poly'], tech: 10, built: 1997 });

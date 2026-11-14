@@ -1,4 +1,4 @@
-import { $, $$, esc, icon, t, L, UI, act, money, toast, errToast, bar, pctShare } from './core.js';
+import { $, $$, esc, icon, t, L, UI, act, money, toast, bar, pctShare } from './core.js';
 import { sfx } from '../audio/sfx.js';
 import { glyphImg } from '../render/glyphs.js';
 import { coverImg } from '../render/covers.js';
@@ -12,7 +12,7 @@ import { reviewTexts, phaseCats, idealFocus, SCOPE_CAP, softCap } from '../sim/s
 import { setPhaseFocus } from '../sim/dev.js';
 import { resolveEvent, previewFx } from '../sim/events.js';
 import { AWARD_CATS } from '../sim/awards.js';
-import { resolveExpo, expoCost } from '../sim/actions.js';
+import { expoPrompt } from './expo.js';
 import { lang, Lf } from '../core/i18n.js';
 import { fmtNum, clamp } from '../core/util.js';
 import { focusHTML, bindFocus } from './focus.js';
@@ -389,31 +389,6 @@ function awardPrompt(app, G, p, finish) {
   );
   music.setMood?.('award');
   sfx.play('fanfare');
-}
-
-// ── Mässa ─────────────────────────────────────────────────────────
-function expoPrompt(app, G, p, finish) {
-  const J = G.job;
-  const opt = (lv, ic, col) => `<button class="choice" data-act="ex-pick" data-lv="${lv}" ${G.money < expoCost(G, lv) ? 'disabled' : ''}><b>${icon(ic)} ${t('expo.o' + lv)}</b><span class="muted">${t('expo.d' + lv)}</span>${lv ? `<span class="tag" style="--c:${col}">${money(expoCost(G, lv))}</span>` : ''}</button>`;
-  UI.modal(`
-    <div class="win-head"><div class="wi" style="--wc:var(--hot)">${icon('megaphone')}</div><h2>${t('expo.title')}<div class="sub">${esc(J ? J.title : '')}</div></h2></div>
-    <div class="win-body"><p class="evtext">${t('expo.text')}</p><div class="choices">${opt(0, 'x', 'var(--faint)')}${opt(1, 'flag', 'var(--accent)')}${opt(2, 'star', 'var(--gold)')}</div></div>`,
-    () => {
-      act('ex-pick', (b) => {
-        const r = resolveExpo(G, p.id, +b.dataset.lv);
-        if (r === true) {
-          if (+b.dataset.lv > 0) {
-            sfx.play('fanfare');
-            toast(t('expo.done'), 'good');
-          }
-          app.promptActive = false;
-          UI.closeModal();
-          app.menuChanged();
-        } else errToast(r);
-      });
-    },
-    'md',
-  );
 }
 
 // ── Årsrapport ────────────────────────────────────────────────────

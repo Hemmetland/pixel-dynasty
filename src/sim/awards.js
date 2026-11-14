@@ -121,11 +121,3 @@ export function runAwards(G) {
     note(G, 'news.awards', { year, title: w.title, studio: w.studio }, 'info');
   }
 }
-
-// Mässa
-export function expoOffer(G) {
-  const J = G.job;
-  if (!G.u.flags.expo || !J || J.kind !== 'game' || J.state !== 'dev' || J.phase < 1 || J.phase > 2) return false;
-  G.pending.push({ type: 'expo', id: G.uid++ });
-  return true;
-}
