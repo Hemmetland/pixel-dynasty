@@ -531,6 +531,7 @@ export const STRINGS = {
   'mkt.tab.group': ['Koncern', 'Group'],
   'mkt.ended': ['Utgången', 'Discontinued'],
   'mkt.soon': ['På väg', 'Coming soon'],
+  'mkt.inYears': ['om {n} år', 'in {n} yr'],
   'mkt.launch': ['lanseras', 'launches'],
   'mkt.gala.head': ['Inför galan {year}', 'Road to the {year} awards'],
   'mkt.gala.in': ['om {n} veckor', 'in {n} weeks'],
