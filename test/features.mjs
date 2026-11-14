@@ -1192,7 +1192,7 @@ ok(true, 'alla händelser körda');
   ok(S.identity(GI).id === 'online', 'två onlinespel går först av allt');
   GI.games = mk(8, (i) => ({ genre: ['action', 'rpg', 'puzzle', 'sim', 'strategy', 'racing', 'adventure', 'shooter'][i], score: 7.4, scope: i % 2 ? 'medium' : 'small' }));
   ok(S.identity(GI).id === 'indie', 'åtta små och medelstora spel med bra betyg ger indieälskling');
-  ok(identityName({ id: 'genre', genre: 'rpg' }).sv.startsWith('Specialist på ') && identityName({ id: 'hits' }).en === 'The hit factory', 'namnen finns på båda språken');
+  ok(identityName({ id: 'genre', genre: 'rpg' }).sv.startsWith('Specialist på ') && identityName({ id: 'hits' }).en === 'Hit Factory' && identityName({ id: 'genre', genre: 'rpg' }).en.endsWith(' Specialist'), 'namnen finns på båda språken');
   const GW = S.newGame({ studio: 'Rykte2', seed: 22 });
   GW.games = mk(6, () => ({ score: 8.5, genre: 'rpg' }));
   GW.t = 1000;
