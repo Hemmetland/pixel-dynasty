@@ -410,8 +410,8 @@ function eraCard(year) {
   if (!ERA_YEARS.includes(year)) return '';
   const inDecade = (y) => y >= year && y < year + 10;
   const real = PLATFORMS.filter((x) => !x.own && x.id !== 'pc');
-  const fresh = real.filter((x) => inDecade(x.y0)).sort((a, b) => a.y0 - b.y0 || a.m0 - b.m0).slice(0, 6);
-  const gone = real.filter((x) => x.y1 < 2100 && inDecade(x.y1)).sort((a, b) => b.weight - a.weight).slice(0, 4).sort((a, b) => a.y1 - b.y1);
+  const fresh = real.filter((x) => inDecade(x.y0)).sort((a, b) => a.y0 - b.y0 || a.m0 - b.m0).slice(0, 10);
+  const gone = real.filter((x) => x.y1 < 2100 && inDecade(x.y1)).sort((a, b) => b.weight - a.weight).slice(0, 10).sort((a, b) => a.y1 - b.y1);
   const list = (arr, k) => arr.map((x) => `<b>${esc(x.name)}</b> <span class="faint">(${k === 'y0' ? x.y0 : x.y1})</span>`).join(' · ');
   return `<div class="card" style="margin-bottom:16px;border-color:color-mix(in srgb, var(--gold) 45%, transparent);background:color-mix(in srgb, var(--gold) 6%, transparent)">
     <div class="lbl" style="color:var(--gold)">${icon('sparkle')} ${t('era.lbl')}</div>
