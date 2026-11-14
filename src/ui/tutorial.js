@@ -6,7 +6,7 @@ const STEPS = [
   { id: 'welcome', icon: 'star', target: null, when: (G) => !G.job && G.games.length === 0, done: (G) => !!G.job || G.games.length > 0 },
   { id: 'create', icon: 'plus', target: 'wizard', when: (G) => !G.job && G.games.length === 0, done: (G) => !!G.job || G.games.length > 0 },
   { id: 'dev', icon: 'gamepad', target: null, when: (G) => G.job && G.job.kind === 'game' && G.games.length === 0, done: (G) => G.games.length > 0 || (G.job && G.job.phase >= 1) },
-  { id: 'goals', icon: 'target', target: 'achievements', when: (G) => G.games.length >= 1 && !!G.goals && G.goals.done.length >= 1, done: (G) => !!G.flags.goalsSeen },
+  { id: 'goals', icon: 'target', target: 'achievements', sel: '#pc-goal', when: (G) => G.games.length >= 1 && !!G.goals && G.goals.done.length >= 1, done: (G) => !!G.flags.goalsSeen },
   { id: 'research', icon: 'flask', target: 'research', when: (G) => G.games.length >= 1 && G.research.done.length === 0 && !G.research.active.length, done: (G) => G.research.done.length > 0 || G.research.active.length > 0 },
   { id: 'again', icon: 'rocket', target: 'wizard', when: (G) => G.games.length >= 1 && !G.job && G.research.active.length > 0, done: (G) => !!G.job },
   { id: 'team', icon: 'team', target: 'staff', when: (G) => G.games.length >= 2 && G.staff.length < 3 && G.money > 9000, done: (G) => G.staff.length >= 3 },
@@ -116,7 +116,7 @@ function show(s) {
   el.classList.add('on');
   place();
   if (s.target) {
-    const b = $(`.dk[data-key="${s.target}"]`);
+    const b = s.sel ? $(s.sel) : $(`.dk[data-key="${s.target}"]`);
     if (b) b.classList.add('coach-target');
   }
 }
