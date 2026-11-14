@@ -1117,3 +1117,12 @@ input[type='range']::-moz-range-thumb { width: 18px; height: 18px; border-radius
 /* Marknad: kommande plattformar med nedräkning */
 .card.soon { align-items: center; border-left: 3px solid var(--c); background: linear-gradient(90deg, color-mix(in srgb, var(--c) 8%, transparent), transparent 70%), var(--glass, rgba(22, 28, 60, 0.6)); }
 .card.soon .plat-g { box-shadow: 0 0 16px -6px var(--c); }
+
+/* Fördelar per nivå och automatiska säsonger: tydligt vad som är påslaget */
+.scard.on { border-left: 3px solid var(--good); box-shadow: 0 0 24px -12px var(--good); }
+.scard.on::after { content: ''; position: absolute; right: 10px; top: 10px; width: 8px; height: 8px; border-radius: 50%; background: var(--good); box-shadow: 0 0 10px var(--good); }
+.scard.on .rn-i { box-shadow: 0 0 14px -4px var(--gold), inset 0 0 0 1px color-mix(in srgb, var(--gold) 45%, transparent); }
+.scard:not(.on) .sbig { filter: saturate(0.6); }
+.ltier.autoseason { gap: 10px; }
+.ltier.autoseason .rn-i { width: 30px; height: 30px; flex: none; }
+.ltier.autoseason.on { border-color: color-mix(in srgb, var(--good) 40%, transparent); background: linear-gradient(90deg, rgba(124, 242, 154, 0.09), rgba(150, 172, 255, 0.04)); }

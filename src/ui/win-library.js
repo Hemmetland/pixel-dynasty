@@ -202,7 +202,7 @@ function perkPanel(G, g) {
 }
 function autoSeasonRow(G, g) {
   const on = !!g.live.autoSeason;
-  return `<div class="ltier" style="margin-top:8px"><div style="flex:1;min-width:0"><b>${t('live.autoSeason')}</b><div class="faint" style="font-size:11.5px">${t('live.autoSeasonHelp', { p: Math.round(AUTO_SEASON_BELOW * 100), m: AUTO_BUFFER })}</div></div>
+  return `<div class="ltier autoseason ${on ? 'on' : ''}" style="margin-top:8px"><span class="rn-i" style="--c:${on ? 'var(--good)' : 'var(--muted)'}">${icon('refresh')}</span><div style="flex:1;min-width:0"><b>${t('live.autoSeason')}</b><div class="faint" style="font-size:11.5px">${t('live.autoSeasonHelp', { p: Math.round(AUTO_SEASON_BELOW * 100), m: AUTO_BUFFER })}</div></div>
     <button class="switch ${on ? 'on' : ''}" data-act="lv-autoseason" data-id="${g.id}" role="switch" aria-checked="${on ? 'true' : 'false'}" aria-label="${esc(t('live.autoSeason'))}"><i></i></button></div>`;
 }
 function seasonPanel(G, g) {
