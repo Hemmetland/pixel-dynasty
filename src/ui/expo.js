@@ -227,6 +227,79 @@ function scene(app, G, r) {
     { skin: SKINS[3], hair: HAIRS[0], shirt: '#ff7a9a', pants: '#233058' },
     { skin: SKINS[0], hair: HAIRS[4], shirt: '#ffe08a', pants: '#233058' },
   ];
+  const HW_KIND = (x) => G.hw?.products?.find((p) => p.id === x.id)?.type || x.type || 'pc';
+  // enheten står med nederkanten på y och är ungefär 20 × 16 px stor
+  const hwDevice = (kind, cx0, y, col, time) => {
+    const dark = '#0a0e22';
+    const hi = 'rgba(255,255,255,.4)';
+    const glow = 0.55 + 0.35 * Math.sin(time * 4);
+    if (kind === 'gpu') {
+      px(cx0 - 10, y - 9, 20, 8, '#1b2a3a');
+      px(cx0 - 10, y - 9, 20, 1, hi);
+      px(cx0 - 11, y - 10, 2, 11, '#cfd6ff');
+      for (const fx of [-6, 3]) {
+        px(cx0 + fx, y - 8, 6, 6, dark);
+        const a = time * 9 + fx;
+        px(cx0 + fx + 2 + Math.round(Math.cos(a) * 2), y - 6 + Math.round(Math.sin(a) * 2), 2, 2, col);
+        px(cx0 + fx + 2, y - 6, 2, 2, mix(col, 0.8));
+      }
+      px(cx0 - 8, y - 1, 12, 2, '#e0b04a');
+    } else if (kind === 'cpu') {
+      px(cx0 - 7, y - 15, 14, 14, '#2b3358');
+      px(cx0 - 7, y - 15, 14, 1, hi);
+      for (let k = -5; k <= 4; k += 3) {
+        px(cx0 + k, y - 17, 1, 2, '#cfd6ff');
+        px(cx0 + k, y - 1, 1, 2, '#cfd6ff');
+        px(cx0 - 9, y - 13 - k, 2, 1, '#cfd6ff');
+        px(cx0 + 7, y - 13 - k, 2, 1, '#cfd6ff');
+      }
+      px(cx0 - 4, y - 12, 8, 8, col);
+      px(cx0 - 4, y - 12, 8, 8, mix('#ffffff', 0.12 + 0.2 * glow));
+    } else if (kind === 'sound') {
+      px(cx0 - 10, y - 10, 18, 9, '#1c5a4a');
+      px(cx0 - 10, y - 10, 18, 1, hi);
+      px(cx0 - 4, y - 8, 6, 6, dark);
+      px(cx0 - 3, y - 7, 4, 4, col);
+      px(cx0 - 11, y - 11, 2, 11, '#cfd6ff');
+      px(cx0 + 4, y - 7, 3, 1, '#e0b04a');
+      px(cx0 + 4, y - 5, 3, 1, '#e0b04a');
+      for (let k = 0; k < 3; k++) px(cx0 + 9 + k * 2, y - 9 - k, 1, 4 + k * 2, mix(col, glow * (1 - k * 0.25)));
+    } else if (kind === 'handheld') {
+      px(cx0 - 9, y - 14, 18, 12, '#2a3050');
+      px(cx0 - 9, y - 14, 18, 1, hi);
+      px(cx0 - 5, y - 12, 10, 8, dark);
+      px(cx0 - 4, y - 11, 8, 6, mix(col, 0.55 + 0.25 * glow));
+      px(cx0 - 8, y - 9, 2, 1, '#cfd6ff');
+      px(cx0 - 8, y - 10, 1, 3, '#cfd6ff');
+      px(cx0 + 6, y - 10, 1, 1, '#ff6b8a');
+      px(cx0 + 7, y - 8, 1, 1, '#ffe08a');
+    } else if (kind === 'console') {
+      px(cx0 - 10, y - 11, 20, 9, '#2b2f4a');
+      px(cx0 - 10, y - 11, 20, 1, hi);
+      px(cx0 - 10, y - 8, 20, 1, dark);
+      px(cx0 - 7, y - 6, 8, 1, dark);
+      px(cx0 + 5, y - 6, 3, 1, mix(col, glow));
+      px(cx0 - 6, y - 2, 12, 3, '#3a4268');
+      px(cx0 - 3, y, 6, 1, '#cfd6ff');
+    } else if (kind === 'vr') {
+      px(cx0 - 10, y - 12, 20, 9, '#262b46');
+      px(cx0 - 10, y - 12, 20, 1, hi);
+      px(cx0 - 7, y - 10, 6, 5, mix(col, 0.7 + 0.2 * glow));
+      px(cx0 + 1, y - 10, 6, 5, mix(col, 0.7 + 0.2 * glow));
+      px(cx0 - 12, y - 11, 2, 7, '#3a4268');
+      px(cx0 + 10, y - 11, 2, 7, '#3a4268');
+      px(cx0 - 3, y - 4, 6, 2, '#1a1e34');
+    } else {
+      px(cx0 - 5, y - 16, 10, 15, '#2b3358');
+      px(cx0 - 5, y - 16, 10, 1, hi);
+      px(cx0 - 3, y - 14, 6, 2, dark);
+      px(cx0 - 3, y - 11, 6, 2, dark);
+      px(cx0 - 3, y - 6, 2, 2, mix(col, glow));
+      px(cx0 + 1, y - 5, 2, 1, '#cfd6ff');
+      px(cx0 + 7, y - 9, 6, 8, '#1a1e34');
+      px(cx0 + 8, y - 8, 4, 5, mix(col, 0.5 + 0.2 * glow));
+    }
+  };
   const draw = (time) => {
     ctx.clearRect(0, 0, W, H);
     // bakvägg med panelfogar och mjuk ljusning mot golvet
@@ -305,12 +378,12 @@ function scene(app, G, r) {
       px(sx - 1, by + 1, 26, 31, '#05081a');
       px(sx, by + 2, 24, 29, '#0d1330');
       if (x.k === 'hw') {
-        px(sx + 3, by + 8, 18, 13, hwCol(x));
-        px(sx + 3, by + 8, 18, 2, 'rgba(255,255,255,.35)');
-        px(sx + 5, by + 12, 14, 4, 'rgba(0,0,0,.35)');
-        px(sx + 8, by + 21, 8, 2, '#cfd6ff');
-        px(sx + 4, by + 25, 16, 4, '#2c3566');
-        px(sx + 4, by + 25, 16, 1, '#8a96d8');
+        // piedestal med glödande topp och själva enheten ritad efter sin typ
+        const col = hwCol(x);
+        px(sx + 2, by + 25, 20, 6, '#1a2250');
+        px(sx + 2, by + 25, 20, 1, '#8a96d8');
+        px(sx + 4, by + 26, 16, 1, mix(col, 0.5));
+        hwDevice(HW_KIND(x), sx + 12, by + 23, col, time);
       } else if (imgs[i] && imgs[i].complete) {
         ctx.drawImage(imgs[i], sx + 2, by + 3, 20, 27);
         for (let y = by + 3; y < by + 30; y += 2) px(sx + 2, y, 20, 1, 'rgba(0,0,0,.14)');
