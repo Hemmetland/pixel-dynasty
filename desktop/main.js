@@ -5,8 +5,12 @@ const { app, BrowserWindow, Menu, protocol, shell, net } = require('electron');
 const path = require('path');
 const { pathToFileURL } = require('url');
 
-const FEEDBACK_URL = process.env.PD_FEEDBACK_URL ||
-  'https://github.com/Hemmetland/pixel-dynasty/issues/new?template=testfeedback.yml'; // GitHub-issue med mall
+// Länk till Google-formuläret: sätt PD_FEEDBACK_URL eller skriv länken i desktop/feedback-url.txt (följer med i bygget).
+function readFeedbackUrl() {
+  if (process.env.PD_FEEDBACK_URL) return process.env.PD_FEEDBACK_URL;
+  try { return require('fs').readFileSync(path.join(__dirname, 'feedback-url.txt'), 'utf8').trim(); } catch { return ''; }
+}
+const FEEDBACK_URL = readFeedbackUrl();
 app.commandLine.appendSwitch('autoplay-policy', 'no-user-gesture-required');
 
 protocol.registerSchemesAsPrivileged([

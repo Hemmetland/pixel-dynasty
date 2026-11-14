@@ -16,7 +16,7 @@
     "appId": "se.pixeldynasty.game",
     "productName": "Pixel Dynasty",
     "directories": { "output": "release" },
-    "files": ["main.js", "preload.js", { "from": "../dist", "to": "game", "filter": ["index.html"] }],
+    "files": ["main.js", "preload.js", "feedback-url.txt", { "from": "../dist", "to": "game", "filter": ["index.html"] }],
     "win": { "target": ["nsis", "zip"] },
     "mac": { "target": ["dmg", "zip"], "category": "public.app-category.games", "identity": null },
     "linux": { "target": ["AppImage"], "category": "Game" },

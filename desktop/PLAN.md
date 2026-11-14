@@ -22,3 +22,8 @@ Tips: ladda även upp samma HTML-build på itch.io (lösenordsskyddad) som reser
 - **Feedback:** menyval "Skicka feedback…" som öppnar ett formulär (Google Forms eller GitHub-issue) när `PD_FEEDBACK_URL` är satt vid bygget. Rekommenderat nästa steg: en knapp i spelmenyn som kopierar en diagnosrad (version, språk, år i spelet, sparkod) till urklipp. Det kräver ändring i `src/ui` och bör gå via spelutvecklingstråden.
 - **Offline:** teckensnitten hämtas från Google Fonts och faller tillbaka på systemfont offline. Bundla dem (base64 i bygget) om det spelar roll.
 - **Ikon:** saknas, standardikon används. Kan genereras från loggan i `assets/`.
+
+## Feedbackformulär (Google Forms)
+Menyn Spel › "Skicka feedback…" öppnar länken i `desktop/feedback-url.txt` (eller `PD_FEEDBACK_URL`). Är filen tom visas inget menyval.
+Föreslagna frågor: Typ (bugg / förvirrande / känsla / idé / beröm), Vad hände eller vad tyckte du?, Var i spelet (år, vad du gjorde),
+Dator + version, Hur stressigt kändes tempot (1–5), Hur trevlig var musiken (1–5), Exportkod (valfritt).
