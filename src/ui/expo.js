@@ -114,7 +114,7 @@ const DURATION = 7;
 function itemLine(r, x) {
   const name = `<b>${esc(L(x.name))}</b>`;
   const bits = [];
-  if (x.hype != null) bits.push(t('expo.r.hype', { n: x.hype }));
+  if (x.hype != null) bits.push(t('expo.r.hype', { n: Math.round(x.hype * 10) / 10 }));
   if (x.crash) bits.push(`<span style="color:var(--bug)">${t('expo.r.crash')}</span>`);
   if (x.k === 'game' && x.lift != null) bits.push(t('expo.r.lift', { v: Math.round(x.lift * 100), n: EXPO_LIFT_WEEKS }));
   if (x.k === 'hw' && x.lift != null) bits.push(t('expo.r.liftHw', { v: Math.round(x.lift * 100) }));

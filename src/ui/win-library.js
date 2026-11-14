@@ -208,8 +208,8 @@ function seasonPanel(G, g) {
     const blocked = seasonBlock(G, g, th.id);
     const pills = [
       `<span class="spill" style="--c:var(--accent)">${icon('refresh')}${t('live.seasonRenew', { n: Math.round(seasonShare(g, th.id) * 100) })}</span>`,
-      `<span class="spill" style="--c:var(--good)">${icon('chart')}+${Math.round((th.lift - 1) * 100)} %</span>`,
-      `<span class="spill" style="--c:var(--money)">${icon('money')}${t('live.seasonPass', { v: '+' + Math.round(th.pass * 100) + ' %' })}</span>`,
+      `<span class="spill" style="--c:var(--good)">${icon('chart')}+${Math.round((th.lift - 1) * 100)}&nbsp;%</span>`,
+      `<span class="spill" style="--c:var(--money)">${icon('money')}${t('live.seasonPass', { v: '+' + Math.round(th.pass * 100) + '\u00a0%' })}</span>`,
     ];
     if (lv.lastSeason === th.id && seasonQuality(g, th.id) < 1) pills.push(`<span class="spill" style="--c:var(--warn)">${icon('info')}${t('live.seasonRepeat')}</span>`);
     const foot = blocked

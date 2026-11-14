@@ -130,7 +130,7 @@ function runExpo(G, B, picks, cost) {
     } else if (x.k === 'game') {
       const g = G.games.find((y) => y.id === x.id);
       if (g) {
-        let lift = (0.04 + 0.1 * x.q) * B.show * clamp(buzz, 0.7, 1.5);
+        let lift = (0.05 + 0.12 * x.q) * B.show * clamp(buzz, 0.7, 1.5);
         if (rng() < 0.12 + 0.2 * x.q) {
           row.viral = true;
           lift *= 2;
@@ -167,7 +167,7 @@ function runExpo(G, B, picks, cost) {
   if (buzz > 1.5) lines.push({ k: 'press' });
   lines.push({ k: 'close', n: fmtNum(visitors) });
   const fans = Math.round(visitors * 0.1 * (0.6 + 0.8 * q) * (1 + fanBonus) * (1 - Math.min(0.6, fanLoss)));
-  const revenue = Math.round(visitors * priceOf(year) * 0.12 * (0.5 + q));
+  const revenue = Math.round(visitors * priceOf(year) * 0.2 * (0.5 + q));
   G.fans += fans;
   earn(G, revenue, 'events');
   return { year, level: B.id, cost, attendance: att, visitors, fans, revenue, buzz, items, lines, rivals: comps.slice(0, 6).map((c) => ({ name: c.name, color: c.color })), t: G.t };

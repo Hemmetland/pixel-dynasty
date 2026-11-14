@@ -7,7 +7,7 @@ import { SCOPE_TEMPO } from './tempo.js';
 import { earn, spend } from './studio.js';
 import { parPerTick } from './score.js';
 import { note } from './news.js';
-import { subPrices, payBase, SEASON, liveSeasonCost, startLiveSeason } from './live.js';
+import { subPrices, payBase, SEASON, liveSeasonCost, startLiveSeason, seasonReadyIn } from './live.js';
 
 // Det största onlinespelet som är igång, eller null
 const liveTop = (G) => G.games.reduce((a, g) => (g.live && !g.live.closed && (!a || g.live.subs > a.live.subs) ? g : a), null);
@@ -213,3 +213,13 @@ export function resolveEvent(G, promptId, idx) {
 
 // Säkra effekter av ett val, utan att något ändras (för knapparna i händelserutan)
 export const previewFx = (G, fx, ctx) => applyFx(G, fx, [], ctx, true);
+// Går valet inte att göra just nu? En säsong som händelsen erbjuder kräver pengar till det rabatterade priset och att
+// onlinespelet kan starta en säsong (annars hade valet inte gjort något alls).
+export function fxBlocked(G, fx, ctx = {}) {
+  if (!fx.season || !SEASON[fx.season]) return false;
+  const own = G.games.find((g) => g.id === ctx.game);
+  const lg = own && own.live && !own.live.closed ? own : liveTop(G);
+  if (!lg) return true;
+  const cost = Math.round((liveSeasonCost(G, lg, fx.season) * (1 - (fx.seasonOff || 0))) / 100) * 100;
+  return G.money < cost || !!lg.live.season || seasonReadyIn(G, lg.live) > 0;
+}

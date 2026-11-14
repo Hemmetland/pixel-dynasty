@@ -10,7 +10,7 @@ import { REVIEWERS } from '../data/reviews.js';
 import { EV } from '../data/events.js';
 import { reviewTexts, phaseCats, idealFocus, SCOPE_CAP, softCap } from '../sim/score.js';
 import { setPhaseFocus } from '../sim/dev.js';
-import { resolveEvent, previewFx } from '../sim/events.js';
+import { resolveEvent, previewFx, fxBlocked } from '../sim/events.js';
 import { AWARD_CATS } from '../sim/awards.js';
 import { expoPrompt } from './expo.js';
 import { lang, Lf } from '../core/i18n.js';
@@ -283,7 +283,8 @@ function eventPrompt(app, G, p, finish) {
   const choices = ev.choices
     .map((c, i) => {
       const chips = previewChips(G, c.fx, p);
-      return `<button class="choice" data-act="ev-pick" data-i="${i}"><b>${L(c.label)}</b>${c.hint ? `<span class="muted">${L(c.hint)}</span>` : ''}${chips ? `<span class="fxrow">${chips}</span>` : ''}</button>`;
+      const off = fxBlocked(G, c.fx, p);
+      return `<button class="choice" data-act="ev-pick" data-i="${i}" ${off ? 'disabled' : ''}><b>${L(c.label)}</b>${off ? `<span class="muted">${t('err.money')}</span>` : c.hint ? `<span class="muted">${L(c.hint)}</span>` : ''}${chips ? `<span class="fxrow">${chips}</span>` : ''}</button>`;
     })
     .join('');
   UI.modal(`

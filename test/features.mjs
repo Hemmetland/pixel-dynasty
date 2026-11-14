@@ -358,6 +358,12 @@ ok(true, 'alla händelser körda');
     P.GS.pending = [{ type: 'event', id: 9104, ev: 'live_veterans', game: 7800 }];
     S.resolveEvent(P.GS, 9104, 0);
     ok(!P.g0.live.season && Number.isFinite(P.GS.money), 'utan pengar startar ingen säsong av en händelse');
+    ok(S.fxBlocked(P.GS, EV.live_veterans.choices[0].fx, { game: 7800 }) === true && S.fxBlocked(P.GS, EV.live_veterans.choices[1].fx, { game: 7800 }) === false, 'ett säsongsval utan pengar är spärrat, de andra valen inte');
+    const Q = mkOld(60);
+    Q.g0.live.peak = Q.g0.live.subs * 2;
+    ok(S.fxBlocked(Q.GS, EV.live_vote.choices[0].fx, { game: 7800 }) === false, 'med pengar är säsongsvalet öppet');
+    S.startLiveSeason(Q.GS, 7800, 'story');
+    ok(S.fxBlocked(Q.GS, EV.live_vote.choices[1].fx, { game: 7800 }) === true, 'och spärrat när en säsong redan pågår');
   }
 }
 // händelser för onlinespel: gäller det största spelet som är igång och ändrar dess spelare och innehåll
