@@ -176,6 +176,8 @@ export function updateTrends(G) {
   const year = yearOf(G.t);
   const topicsAvail = TOPICS.filter((t) => t.start || RESEARCH.some((r) => (r.unlock.topics || []).includes(t.id) && r.year <= year));
   const prev = G.market.trend || {};
+  const hotOf = (tr) => (tr && tr.genre && tr.genre[0] && tr.topic && tr.topic[0] ? tr.genre[0].id + ':' + tr.topic[0].id : '');
+  const prevHot = hotOf(prev);
   const roll = (kind, pool) => {
     const keep = TREND_MULT[kind].map((_, i) => ((prev[kind] || [])[i]?.until > G.t ? prev[kind][i] : null));
     const used = new Set(keep.filter(Boolean).map((x) => x.id));
@@ -187,6 +189,11 @@ export function updateTrends(G) {
     });
   };
   G.market.trend = { genre: roll('genre', GENRES.map((g) => g.id)), topic: roll('topic', topicsAvail.map((t) => t.id)) };
+  // en ny hetast genre eller ett nytt hetaste ämne blir en nyhet (bara uppvisning, ingen slump)
+  const nowHot = hotOf(G.market.trend);
+  if (prevHot && nowHot !== prevHot && GENRE[G.market.trend.genre[0].id] && TOPIC[G.market.trend.topic[0].id]) {
+    note(G, 'news.trend', { genre: GENRE[G.market.trend.genre[0].id].name, topic: TOPIC[G.market.trend.topic[0].id].name }, 'info');
+  }
   emit('trends', G.market.trend);
 }
 // Veckor kvar tills trenden byts (gamla sparfiler: nästa halvår).

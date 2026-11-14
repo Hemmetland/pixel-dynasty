@@ -188,6 +188,64 @@ ok(true, 'alla händelser körda');
   for (const s2 of GP.staff) s2.mood = 40;
   ok(!EV.labor_press.when(GP) && !EV.ai_tools.when(GP) && !EV.catalog_deal.when(GP), 'och inte före sin tid');
 }
+// branschnyheter: rubriker efter era och läge, med paus och karens, och utan att röra slumpföljden
+{
+  const GH = JSON.parse(JSON.stringify(G));
+  GH.news = [];
+  GH.flags = {};
+  GH.fans = 800;
+  GH.t = 48 * 3; // 1983
+  const ids = (x) => S.headlinesNow(x).map((h) => h.id);
+  ok(ids(GH).includes('arcade') && !ids(GH).includes('mobile') && !ids(GH).includes('ai'), 'rubrikerna passar eran');
+  GH.t = 48 * 45; // 2025
+  ok(ids(GH).includes('ai') && ids(GH).includes('stream') && !ids(GH).includes('arcade'), 'och senare eror får andra rubriker');
+  ok(ids(GH).includes('press') && ids(GH).includes('fanthread'), 'rubriker om studion kräver fans');
+  GH.fans = 10;
+  ok(!ids(GH).includes('press') && !ids(GH).includes('fanthread'), 'utan fans inga rubriker om studion');
+  const bad = S.headlinesNow({ ...GH, comps: [], games: [], market: {}, flags: {}, fans: 0, studio: 'X' });
+  ok(bad.every((h) => !h.need), 'utan konkurrenter, trend eller spel återstår bara de allmänna rubrikerna');
+  // veckor över många år: aldrig två inom pausen, inget upprepas inom karenstiden, slumpföljden är orörd
+  const rng0 = GH.rng;
+  GH.fans = 800;
+  const seen = [];
+  for (let t = 48 * 5; t < 48 * 40; t++) {
+    GH.t = t;
+    GH.seed = 77;
+    if (S.headlineWatch(GH)) seen.push({ t, id: GH.news[0].key });
+  }
+  ok(GH.rng === rng0, 'rubrikerna rör inte spelets slumpföljd');
+  ok(seen.length >= 20 && seen.length <= 200, 'rubriker dyker upp med jämna mellanrum (' + seen.length + ' på 35 år)');
+  ok(seen.every((x, i) => i === 0 || x.t - seen[i - 1].t >= S.HL_GAP), 'minst ' + S.HL_GAP + ' veckor mellan två rubriker');
+  const lastBy = {};
+  let rep = 0;
+  for (const x of seen) { if (lastBy[x.id] != null && x.t - lastBy[x.id] < S.HL_REPEAT) rep++; lastBy[x.id] = x.t; }
+  ok(rep === 0, 'samma rubrik kommer inte igen inom karenstiden');
+  const GH2 = JSON.parse(JSON.stringify(G));
+  GH2.news = []; GH2.flags = {}; GH2.fans = 800; GH2.seed = 77;
+  const seen2 = [];
+  for (let t = 48 * 5; t < 48 * 40; t++) { GH2.t = t; if (S.headlineWatch(GH2)) seen2.push(t + GH2.news[0].key); }
+  ok(JSON.stringify(seen.map((x) => x.t + x.id)) === JSON.stringify(seen2), 'samma frö ger samma rubriker');
+  ok(seen.every((x) => STRINGS[x.id] && STRINGS[x.id][0] && STRINGS[x.id][1]), 'varje rubrik har text på båda språken');
+}
+// trendspaning: en ny hetast genre eller ett nytt hetaste ämne ger en nyhet, men inte vid första trendslagningen
+{
+  const GT = JSON.parse(JSON.stringify(G));
+  GT.news = [];
+  GT.t = 48 * 10;
+  GT.market.trend = null;
+  S.updateTrends(GT);
+  ok(!GT.news.some((n) => n.key === 'news.trend'), 'första trenden ger ingen nyhet');
+  let changed = 0;
+  let prev = GT.market.trend.genre[0].id + ':' + GT.market.trend.topic[0].id;
+  for (let i = 0; i < 60; i++) {
+    GT.t += 24 * 5;
+    S.updateTrends(GT);
+    const now = GT.market.trend.genre[0].id + ':' + GT.market.trend.topic[0].id;
+    if (now !== prev) changed++;
+    prev = now;
+  }
+  ok(changed >= 5 && GT.news.filter((n) => n.key === 'news.trend').length === changed, 'varje byte av hetaste trend blir en nyhet (' + changed + ' byten)');
+}
 // säsonger: ett gammalt, vanskött onlinespel kan komma tillbaka. Förnyelsen sänker åldern men aldrig under golvet, samma tema
 // två gånger i rad ger mindre, klassiska servrar kräver ett gammalt spel och att inte göra något ändrar ingenting.
 {
