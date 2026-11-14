@@ -2,7 +2,7 @@
 import * as S from '../src/sim/index.js';
 import { RESEARCH } from '../src/data/research.js';
 import { EVENTS, EV } from '../src/data/events.js';
-import { exportCode, importCode, recordRun, loadHall } from '../src/core/store.js';
+import { exportCode, importCode, recordRun, loadHall, saveGame, loadGame, deleteSave, slotList, latestSlot, freeSlot, activeSlot, useSlot, hasSave, saveMeta, SLOTS } from '../src/core/store.js';
 import { PLATFORM, PLATFORMS } from '../src/data/platforms.js';
 import { STRINGS } from '../src/data/strings.js';
 import { ACHIEVEMENTS } from '../src/data/achievements.js';
@@ -1504,6 +1504,32 @@ ok(true, 'alla händelser körda');
     const r1 = recordRun(GR);
     const r2 = recordRun(GR);
     ok(r1 && r1.unlocked.join() === 'influencer' && r2.unlocked.join() === 'influencer' && loadHall().length === 1, 'recordRun: bakgrunden som raden låste upp syns även när raden redan skrivits in');
+    delete globalThis.localStorage;
+  }
+  // sparplatser: fem platser, plats 1 under den gamla nyckeln, senast sparade platsen laddas, ta bort frigör en plats
+  {
+    const mem = {};
+    globalThis.localStorage = { getItem: (k) => (k in mem ? mem[k] : null), setItem: (k, v) => { mem[k] = String(v); }, removeItem: (k) => { delete mem[k]; } };
+    ok(SLOTS === 5 && !hasSave() && freeSlot() === 1 && latestSlot() === 0 && loadGame() === null && slotList().length === 5, 'inga sparningar: allt är tomt och första platsen är ledig');
+    const A = S.newGame({ studio: 'Alfa', seed: 11 });
+    const B = S.newGame({ studio: 'Beta', seed: 12 });
+    useSlot(1);
+    ok(saveGame(A) && 'pixel-dynasty-save-v1' in mem && !('pixel-dynasty-save-v1-s1' in mem), 'plats 1 ligger kvar under den gamla nyckeln, så äldre sparningar laddar');
+    ok(freeSlot() === 2 && hasSave(1) && !hasSave(2), 'andra platsen är nästa lediga');
+    mem['pixel-dynasty-save-v1'] = JSON.stringify({ ...JSON.parse(mem['pixel-dynasty-save-v1']), meta: { ...JSON.parse(mem['pixel-dynasty-save-v1']).meta, at: 1000 } });
+    ok(saveGame(B, 2) && activeSlot() === 1, 'att spara i en annan plats byter inte den aktiva');
+    ok(latestSlot() === 2 && saveMeta().studio === 'Beta' && saveMeta(1).studio === 'Alfa', 'senast sparade platsen väljs utan nummer, och varje plats har sina uppgifter');
+    const lb = loadGame();
+    ok(lb && lb.studio === 'Beta' && activeSlot() === 2, 'utan nummer laddas den senast sparade och blir aktiv');
+    const la = loadGame(1);
+    ok(la && la.studio === 'Alfa' && activeSlot() === 1, 'med nummer laddas just den platsen och blir aktiv');
+    saveGame(Object.assign(S.newGame({ studio: 'Alfa', seed: 11 }), { over: { type: 'bankrupt', t: 5 } }), 1);
+    ok(latestSlot(true) === 2 && slotList()[0].meta.over === true, 'en studio i konkurs räknas inte som spelbar');
+    deleteSave(2);
+    ok(!hasSave(2) && freeSlot() === 2 && loadGame(2) === null && loadGame().studio === 'Alfa', 'en borttagen plats blir ledig och går inte att ladda');
+    for (let n = 2; n <= SLOTS; n++) saveGame(B, n);
+    ok(freeSlot() === 0 && slotList().every((x) => x.meta), 'när alla är fulla finns ingen ledig plats');
+    ok(useSlot(9) === activeSlot() && useSlot(3) === 3, 'ett ogiltigt platsnummer ignoreras');
     delete globalThis.localStorage;
   }
   const gi = S.newGame({ studio: 'I', seed: 5, archetype: 'influencer' });

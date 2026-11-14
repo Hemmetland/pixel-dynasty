@@ -11,7 +11,7 @@ import { FOUNDER_UNLOCK, founderUnlocked } from '../sim/legacy.js';
 import { makeCompetitors } from '../sim/market.js';
 import { initWorld } from '../sim/clock.js';
 import { refreshCandidates, randomLook, extraLook, LOOK_N, EXTRA_N } from '../sim/people.js';
-import { hasSave, saveMeta, loadHall } from '../core/store.js';
+import { hasSave, saveMeta, loadHall, slotList, latestSlot, freeSlot } from '../core/store.js';
 import { STUDIO_NAMES, FIRST, LAST } from '../data/names.js';
 import { dateOf } from '../sim/const.js';
 import { LOGOS } from './hud.js';
@@ -19,7 +19,7 @@ import { lang } from '../core/i18n.js';
 import { money } from './core.js';
 import { L } from '../core/i18n.js';
 
-const N = { studio: '', founder: '', look: null, arch: 'designer', diff: 'normal', logo: 0, weekly: null };
+const N = { studio: '', founder: '', look: null, arch: 'designer', diff: 'normal', logo: 0, weekly: null, slot: 0 };
 const rnd = (a) => a[Math.floor(Math.random() * a.length)];
 
 function randomize() {
@@ -143,24 +143,36 @@ function begin() {
   hideTitle();
   intro(() => {
     const w = N.weekly;
-    app.startNew({ studio: N.studio.trim() || 'Nordlys Games', founderName: N.founder.trim() || 'Founder', look: N.look, archetype: w ? 'designer' : N.arch, difficulty: w ? 'normal' : N.diff, logo: N.logo, seed: w ? w.seed : undefined, weekly: w ? w.id : null });
+    const slot = N.slot;
+    N.slot = 0;
+    app.startNew({ slot, studio: N.studio.trim() || 'Nordlys Games', founderName: N.founder.trim() || 'Founder', look: N.look, archetype: w ? 'designer' : N.arch, difficulty: w ? 'normal' : N.diff, logo: N.logo, seed: w ? w.seed : undefined, weekly: w ? w.id : null });
   });
 }
-// En sparplats: fråga innan en pågående studio skrivs över
+// Ett nytt spel hamnar i den valda eller första lediga sparplatsen; är alla upptagna får spelaren välja en att skriva över
 act('ng-go', () => {
-  const meta = hasSave() ? saveMeta() : null;
-  if (!meta || meta.over) return begin();
-  const v = { studio: `<b>${esc(meta.studio)}</b>`, year: dateOf(meta.t).year, money: money(meta.money) };
-  UI.modal(`<div class="win-head"><div class="wi" style="--wc:var(--bug);color:var(--bug)">${icon('save')}</div><h2>${t('ng.replace')}</h2></div><div class="win-body"><p>${t('ng.replaceText', v)}</p></div><div class="win-foot"><span class="sp"></span><button class="btn" data-act="ng-keep">${t('ui.back')}</button><button class="btn danger" data-act="ng-replace">${t('ng.replaceYes')}</button></div>`, null, 'sm');
+  const slot = N.slot || freeSlot();
+  if (slot) {
+    N.slot = slot;
+    return begin();
+  }
+  UI.open('slots', { pick: true }, { force: true });
 });
-act('ng-keep', () => {
-  UI.closeModal();
-  UI.open('newgame', null, { force: true });
-});
-act('ng-replace', () => {
-  UI.closeModal();
+// Används av sparplatsfönstret
+export function beginIn(n) {
+  N.slot = n;
+  UI.close(true);
   begin();
-});
+}
+export function newGameIn(n) {
+  randomize();
+  N.weekly = null;
+  N.slot = n;
+  UI.open('newgame', null, { force: true });
+  sfx.play('open');
+}
+export function refreshTitle() {
+  if (titleEl && titleEl.classList.contains('on')) renderTitle();
+}
 
 // ── Titelskärm ──
 let titleEl = null;
@@ -175,8 +187,11 @@ export function buildTitle(root) {
   on('lang', () => titleEl && titleEl.classList.contains('on') && renderTitle());
 }
 function renderTitle() {
-  const meta = hasSave() ? saveMeta() : null;
-  const d = meta ? dateOf(meta.t) : null;
+  const pl = latestSlot(true);
+  const meta = pl ? saveMeta(pl) : null;
+  const dead = !pl && hasSave() ? saveMeta() : null; // bara studior i konkurs finns kvar
+  const d = meta ? dateOf(meta.t) : dead ? dateOf(dead.t) : null;
+  const saved = slotList().filter((x) => x.meta).length;
   titleEl.innerHTML = `
     <div class="tt-logo">
       <div class="tt-pre">${t('title.pre')}</div>
@@ -184,9 +199,10 @@ function renderTitle() {
       <div class="tt-tag">${t('title.tag')}</div>
     </div>
     <div class="tt-menu">
-      ${meta && meta.over ? `<button class="btn lg" disabled><span>${icon('skull')}${t('over.title')}</span><small>${esc(meta.studio)} · ${d.year}</small></button>` : ''}
-      ${meta && !meta.over ? `<button class="btn primary lg" data-act="tt-continue"><span>${icon('play')}${t('title.continue')}</span><small>${esc(meta.studio)} · ${d.year} · ${money(meta.money)}</small></button>` : ''}
-      <button class="btn ${meta && !meta.over ? '' : 'primary'} lg" data-act="tt-new">${icon('plus')}${t('title.new')}</button>
+      ${dead ? `<button class="btn lg" disabled><span>${icon('skull')}${t('over.title')}</span><small>${esc(dead.studio)} · ${d.year}</small></button>` : ''}
+      ${meta ? `<button class="btn primary lg" data-act="tt-continue"><span>${icon('play')}${t('title.continue')}</span><small>${esc(meta.studio)} · ${d.year} · ${money(meta.money)}</small></button>` : ''}
+      <button class="btn ${meta ? '' : 'primary'} lg" data-act="tt-new">${icon('plus')}${t('title.new')}</button>
+      ${saved ? `<button class="btn lg" data-act="tt-slots"><span>${icon('save')}${t('title.slots')}</span><small>${saved}/5</small></button>` : ''}
       <button class="btn lg" data-act="tt-weekly"><span>${icon('calendar')}${t('title.weekly')}</span><small>${weeklyOf().id}</small></button>
       ${loadHall().length ? `<button class="btn lg" data-act="tt-hall">${icon('crown')}${t('title.hall')}</button>` : ''}
       <button class="btn lg tt-util" data-act="tt-lang">${icon('globe')}${lang === 'sv' ? 'English' : 'Svenska'}</button>
@@ -243,11 +259,13 @@ export function titleResize() {
 act('tt-new', () => {
   randomize();
   N.weekly = null;
+  N.slot = 0;
   UI.open('newgame', null, { force: true });
   sfx.play('open');
 });
 act('tt-weekly', () => {
   randomize();
+  N.slot = 0;
   N.weekly = weeklyOf();
   UI.open('newgame', null, { force: true });
   sfx.play('open');
@@ -256,6 +274,10 @@ act('tt-continue', () => {
   const app = UI.app;
   hideTitle();
   if (!app.continueGame()) showTitle(app);
+});
+act('tt-slots', () => {
+  UI.open('slots', null, { force: true });
+  sfx.play('open');
 });
 act('tt-lang', () => UI.app.setLanguage(lang === 'sv' ? 'en' : 'sv'));
 act('tt-sound', () => {

@@ -10,7 +10,7 @@ import { music } from '../audio/sfx.js';
 import { ACHIEVEMENTS } from '../data/achievements.js';
 import { MKT } from '../data/research.js';
 import { marketingOptions, launchMarketing } from '../sim/dev.js';
-import { saveGame, exportCode, importCode } from '../core/store.js';
+import { saveGame, exportCode, importCode, freeSlot, useSlot, activeSlot } from '../core/store.js';
 
 const AIC = { a_game: 'gamepad', a_star: 'star', a_coin: 'money', a_house: 'building', a_team: 'team', a_heart: 'heart', a_flask: 'flask', a_aaa: 'rocket', a_trophy: 'trophy', a_brief: 'hammer', a_engine: 'cpu', a_clock: 'clock', a_globe: 'globe', a_bulb: 'bulb', a_crown: 'crown', a_disc: 'disc', a_chip: 'gpu' };
 const MIC = { press: 'mail', ads: 'book', tv: 'film', online: 'globe', influencer: 'heart' };
@@ -150,15 +150,16 @@ regWin({
   render(G) {
     const b = (id, ic, key, cls = '') => `<button class="btn block lg ${cls}" data-act="${id}" style="justify-content:flex-start">${icon(ic)}${t(key)}</button>`;
     return `<div class="col" style="gap:8px">
-      ${b('mn-resume', 'play', 'menu.resume', 'primary')}${b('mn-save', 'save', 'menu.save')}${b('mn-news', 'mail', 'menu.news')}${b('mn-ach', 'award', 'menu.ach')}${b('mn-set', 'settings', 'menu.settings')}${b('mn-help', 'info', 'menu.help')}${b('mn-title', 'back', 'menu.title')}</div>`;
+      ${b('mn-resume', 'play', 'menu.resume', 'primary')}${b('mn-save', 'save', 'menu.save')}${b('mn-slots', 'folder', 'menu.slots')}${b('mn-news', 'mail', 'menu.news')}${b('mn-ach', 'award', 'menu.ach')}${b('mn-set', 'settings', 'menu.settings')}${b('mn-help', 'info', 'menu.help')}${b('mn-title', 'back', 'menu.title')}</div>`;
   },
 });
 act('mn-resume', () => UI.close());
 act('mn-save', () => {
   const G = UI.app.G;
-  if (saveGame(G)) toast(t('menu.saved'), 'good');
+  if (saveGame(G)) toast(t('slot.savedTo', { n: activeSlot() }), 'good');
   else toast(t('menu.saveFail'), 'bad');
 });
+act('mn-slots', () => UI.open('slots', null, { force: true }));
 act('mn-news', () => UI.open('news', null, { force: true }));
 act('mn-ach', () => UI.open('achievements', null, { force: true }));
 act('mn-set', () => UI.open('settings', null, { force: true }));
@@ -230,7 +231,16 @@ act('set-import', () => {
     UI.refresh();
     return;
   }
+  // en importerad studio får en egen plats; det pågående spelet sparas först
+  const n = freeSlot();
+  if (!n) {
+    SET.msg = t('slot.full');
+    UI.refresh();
+    return;
+  }
+  if (UI.app.G && !UI.app.G.over) saveGame(UI.app.G);
   UI.close(true);
+  useSlot(n);
   UI.app.startGame(G, false);
   saveGame(G);
   SET.code = '';

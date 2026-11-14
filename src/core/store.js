@@ -47,45 +47,85 @@ export function recordRun(G) {
   }
 }
 
-export function hasSave() {
-  try {
-    return !!localStorage.getItem(KEY);
-  } catch {
-    return false;
-  }
+// Sparplatser: fem platser. Plats 1 ligger kvar under den gamla nyckeln, så äldre sparningar laddar som förut; plats 2 till 5
+// får egna nycklar. Autosparningen skriver i den aktiva platsen (den som valdes när spelet startades eller laddades).
+export const SLOTS = 5;
+const slotKey = (n) => (n === 1 ? KEY : `${KEY}-s${n}`);
+const validSlot = (n) => Number.isInteger(n) && n >= 1 && n <= SLOTS;
+let active = 1;
+export const activeSlot = () => active;
+export function useSlot(n) {
+  if (validSlot(n)) active = n;
+  return active;
 }
-export function saveMeta() {
+function readSlot(n) {
   try {
-    const raw = localStorage.getItem(KEY);
-    if (!raw) return null;
-    const d = JSON.parse(raw);
-    return d.meta ? { ...d.meta, over: d.meta.over ?? !!d.G?.over } : null;
+    const d = JSON.parse(localStorage.getItem(slotKey(n)) || 'null');
+    return d && d.G ? d : null;
   } catch {
     return null;
   }
 }
-export function saveGame(G) {
+// Alla platser med det som visas i listan: [{ slot, meta | null }]
+export function slotList() {
+  const out = [];
+  for (let n = 1; n <= SLOTS; n++) {
+    const d = readSlot(n);
+    out.push({ slot: n, meta: d && d.meta ? { ...d.meta, over: d.meta.over ?? !!d.G?.over } : d ? { studio: d.G.studio, t: d.G.t, money: d.G.money, games: (d.G.games || []).length, staff: (d.G.staff || []).length, over: !!d.G.over, at: 0 } : null });
+  }
+  return out;
+}
+// Platsen som senast sparades (och är spelbar om playable), annars 0
+export function latestSlot(playable = false) {
+  let best = 0;
+  let at = -1;
+  for (const x of slotList()) {
+    if (!x.meta || (playable && x.meta.over)) continue;
+    if ((x.meta.at || 0) > at) {
+      at = x.meta.at || 0;
+      best = x.slot;
+    }
+  }
+  return best;
+}
+// Första lediga platsen (en tom, annars 0). Platser där studion gått i konkurs räknas inte som lediga: de skrivs över bara med flit.
+export const freeSlot = () => (slotList().find((x) => !x.meta) || { slot: 0 }).slot;
+export function hasSave(n) {
+  if (n) return !!readSlot(n);
+  return slotList().some((x) => x.meta);
+}
+// Det som visas för en plats (utan platsnummer: den senast sparade)
+export function saveMeta(n) {
+  const list = slotList();
+  const x = n ? list.find((y) => y.slot === n) : list.find((y) => y.slot === latestSlot());
+  return x ? x.meta : null;
+}
+export function saveGame(G, n = active) {
   try {
     const meta = { studio: G.studio, t: G.t, money: G.money, games: G.games.length, staff: G.staff.length, over: !!G.over, at: Date.now() };
-    localStorage.setItem(KEY, JSON.stringify({ v: SAVE_VERSION, meta, G }));
+    localStorage.setItem(slotKey(n), JSON.stringify({ v: SAVE_VERSION, meta, G }));
     if (G.over || (G.flags && G.flags.ending)) recordRun(G);
     return true;
   } catch {
     return false;
   }
 }
-export function loadGame() {
+// Laddar en plats (utan platsnummer: den senast sparade spelbara) och gör den aktiv
+export function loadGame(n) {
   try {
-    const d = JSON.parse(localStorage.getItem(KEY) || 'null');
-    if (!d || !d.G) return null;
-    return migrate(d.G);
+    const slot = n || latestSlot(true) || latestSlot();
+    const d = slot ? readSlot(slot) : null;
+    if (!d) return null;
+    const G = migrate(d.G);
+    useSlot(slot);
+    return G;
   } catch {
     return null;
   }
 }
-export function deleteSave() {
+export function deleteSave(n = active) {
   try {
-    localStorage.removeItem(KEY);
+    localStorage.removeItem(slotKey(n));
   } catch { /* */ }
 }
 // Exportkod: base64 av JSON

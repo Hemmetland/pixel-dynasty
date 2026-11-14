@@ -1126,3 +1126,9 @@ input[type='range']::-moz-range-thumb { width: 18px; height: 18px; border-radius
 .ltier.autoseason { gap: 10px; }
 .ltier.autoseason .rn-i { width: 30px; height: 30px; flex: none; }
 .ltier.autoseason.on { border-color: color-mix(in srgb, var(--good) 40%, transparent); background: linear-gradient(90deg, rgba(124, 242, 154, 0.09), rgba(150, 172, 255, 0.04)); }
+
+/* Sparade spel: raden bryts så att knapparna hamnar under uppgifterna på smala skärmar */
+.ltier.slot { flex-wrap: wrap; gap: 10px; }
+.ltier.slot .slot-i { flex: 1 1 150px; min-width: 0; text-align: left; }
+.ltier.slot .slot-b { display: flex; gap: 6px; flex: none; margin-left: auto; }
+.ltier.slot .slot-b .btn { white-space: nowrap; }

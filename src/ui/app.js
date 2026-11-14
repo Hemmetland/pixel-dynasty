@@ -2,7 +2,7 @@ import { Scene } from '../render/scene.js';
 import { on, emit } from '../core/bus.js';
 import { fmtFull } from '../core/util.js';
 import { setLang, detectLang, t } from '../core/i18n.js';
-import { loadSettings, saveSettings, saveGame, loadGame } from '../core/store.js';
+import { loadSettings, saveSettings, saveGame, loadGame, useSlot, freeSlot } from '../core/store.js';
 import { newGame } from '../sim/state.js';
 import { stepTick, initWorld, checkAchievements } from '../sim/clock.js';
 import { makeCompetitors } from '../sim/market.js';
@@ -340,6 +340,7 @@ export const app = {
     emit('gameStart', G);
   },
   startNew(opts) {
+    useSlot(opts.slot || freeSlot() || undefined); // ett nytt spel hamnar i den valda eller första lediga platsen
     const G = newGame(opts);
     makeCompetitors(G);
     initWorld(G);
@@ -348,9 +349,12 @@ export const app = {
     G.flags.tut = { step: 0 };
     emit('newGame', G);
   },
-  continueGame() {
-    const G = loadGame();
+  // Ladda en sparplats (utan nummer: den senast sparade). Ett pågående spel sparas först i sin plats.
+  continueGame(slot) {
+    if (this.G && !this.G.over) saveGame(this.G);
+    const G = loadGame(slot);
     if (!G) return false;
+    UI.close(true);
     this.startGame(G, false);
     return true;
   },

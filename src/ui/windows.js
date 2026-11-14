@@ -9,3 +9,4 @@ import './win-library.js';
 import './win-work.js';
 import './win-misc.js';
 import './win-hardware.js';
+import './slots.js';
