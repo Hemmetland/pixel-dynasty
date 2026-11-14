@@ -3,6 +3,7 @@ import { coverImg } from '../render/covers.js';
 import { sfx } from '../audio/sfx.js';
 import { fmtNum } from '../core/util.js';
 import { yearOf } from '../sim/const.js';
+import { levelCard, eventBanner, spotCard, wishCard, rankTrend } from './store-fun.js';
 import {
   OTHER_CUT, PAY_FEE, FEES, SUPPORT, ADS, SALES, canStore, storeUsers, discOf, reachTarget, storeScale, featOf, switchLeft,
   saleSeason, saleIn, saleOf, storeChart, setPolicy, setFee, setSupport, setAds, setExclusive, setPaused, setSale,
@@ -40,7 +41,7 @@ function shelf(G, S) {
     const title = L(r.title);
     const c = KIND_TAG[r.kind][1];
     return `<div class="sh-card ${r.kind === 'own' ? 'yours' : ''}" style="--c:${c}">
-      ${i === 0 ? `<span class="sh-rk top" data-tip="${esc(t('dist.chart'))}">${icon('crown')}</span>` : `<span class="sh-rk disp">${i + 1}</span>`}${cut ? `<span class="sh-sale">−${cut} %</span>` : ''}
+      ${i === 0 ? `<span class="sh-rk top" data-tip="${esc(t('dist.chart'))}">${icon('crown')}</span>` : `<span class="sh-rk disp">${i + 1}</span>`}${rankTrend(r)}${r.spot ? `<span class="sh-spotb" data-tip="${esc(t('dist.spot.badge'))}">${icon('sparkle')}</span>` : ''}${cut ? `<span class="sh-sale">−${cut} %</span>` : ''}
       <div class="sh-cover">${coverImg({ id: r.id, title, topic: r.topic, genre: r.genre, platform: r.platform }, 72)}</div>
       <b class="ell sh-t">${esc(title)}</b>
       <span class="tag sh-k" style="--c:${c}">${t(KIND_TAG[r.kind][0])}</span>
@@ -134,8 +135,10 @@ export function storeTab(G) {
       <div class="card" style="margin-top:18px"><div class="lbl" style="margin-bottom:8px">${t('dist.econ')}</div>${econ(G, S)}</div>`;
   }
   return `${hero(G, S)}
+    <div class="sf-grid">${levelCard(G)}${eventBanner(G)}</div>
     <p class="hint" style="margin-top:10px">${icon('cart')} ${t('dist.help', { pct: Math.round(OTHER_CUT * 100) })}</p>
     ${shelf(G, S)}
+    <div class="sf-grid">${spotCard(G, S)}${wishCard(G)}</div>
     <div class="lbl" style="margin:18px 0 8px">${t('dist.policy')}</div>
     <div class="dist-pol">${policyCard(G, S, 'closed')}${policyCard(G, S, 'open')}</div>
     ${wait > 0 ? `<p class="hint" style="margin-top:8px">${icon('clock')} ${tn('dist.switchWait', wait)}</p>` : open ? `<p class="hint" style="margin-top:8px">${t('dist.closeWarn')}</p>` : ''}

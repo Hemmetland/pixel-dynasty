@@ -15,8 +15,26 @@ export const STORE_EVENTS = [
   { id: 'quest', weeks: [32, 33], lift: 0.6, ic: 'flag', fit: (g) => has(g, 'rpg', 'adventure', 'strategy'),
     name: { sv: 'Äventyrsveckan', en: 'Quest Week' },
     desc: { sv: 'Rollspel, äventyr och strategi säljer extra.', en: 'RPGs, adventures and strategy games sell extra.' } },
-  { id: 'fright', weeks: [40, 41], lift: 1, ic: 'skull', fit: (g) => topic(g, 'horror', 'zombies', 'survival', 'vikings'),
+  { id: 'fright', weeks: [40, 41], lift: 1, ic: 'skull', fit: (g) => topic(g, 'horror', 'zombies', 'survival'),
     name: { sv: 'Skräckveckan', en: 'Fright Week' },
     desc: { sv: 'Spel om skräck, zombier och överlevnad säljer extra.', en: 'Games about horror, zombies and survival sell extra.' } },
 ];
 export const EVENT_BY_ID = Object.fromEntries(STORE_EVENTS.map((e) => [e.id, e]));
+
+// Butikens nivåer (efter högsta antalet användare, se LEVELS i sim/store.js): namn och vad nästa nivå ger
+export const LEVEL_NAMES = [
+  { sv: 'Kiosk', en: 'Kiosk' },
+  { sv: 'Butik', en: 'Shop' },
+  { sv: 'Varuhus', en: 'Department store' },
+  { sv: 'Köpcentrum', en: 'Mall' },
+  { sv: 'Handelsstad', en: 'Trade city' },
+  { sv: 'Metropol', en: 'Metropolis' },
+];
+export const LEVEL_PERKS = [
+  { sv: 'En liten butik med få kunder.', en: 'A small store with few customers.' },
+  { sv: 'Du kan lyfta fram ett spel i skyltfönstret.', en: 'You can put a game in the shop window.' },
+  { sv: 'Temaveckorna säljer 50 % mer.', en: 'Theme weeks sell 50% more.' },
+  { sv: 'En andra plats i skyltfönstret.', en: 'A second spot in the shop window.' },
+  { sv: 'Skyltfönstret kostar hälften.', en: 'The shop window costs half.' },
+  { sv: 'Ett spel står kvar i sex veckor i skyltfönstret.', en: 'A game stays in the shop window for six weeks.' },
+];

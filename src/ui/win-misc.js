@@ -60,6 +60,7 @@ regWin({
   title: () => t('ach.title'),
   sub: (G) => `${t('goal.title')} ${goalsDone(G)}/${GOALS.length} · ${t('ach.sec')} ${G.ach.length}/${ACHIEVEMENTS.length}`,
   render(G) {
+    G.flags.goalsSeen = 1; // handledningen har visat var målen finns
     return `${goalsHTML(G)}<div class="bar" style="--c:var(--gold);margin-bottom:16px"><i style="width:${(G.ach.length / ACHIEVEMENTS.length) * 100}%"></i></div>
       <div class="grid" style="grid-template-columns:repeat(auto-fill,minmax(250px,1fr))">${ACHIEVEMENTS.map((a) => {
         const on = G.ach.includes(a.id);

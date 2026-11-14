@@ -9,6 +9,7 @@ import { curveFor, unitRev } from './sales.js';
 import { PUB_SHARE } from './publish.js';
 import { note } from './news.js';
 import { hwReach, digitalOf, platStore, PLAT_CUT } from './hardware.js';
+import { STORE_EVENTS, EVENT_BY_ID, LEVEL_NAMES } from '../data/storeevents.js';
 
 // Egen butik (distribution): med forskningen Digital butik bygger studion en butik och launcher för pc-spel. Den del av
 // pc-spelarna som använder butiken (räckvidden) köper dina pc-spel där, så du behåller avgiften som andra butiker annars
@@ -60,6 +61,7 @@ const SALE_WEEKS = { 22: 0, 23: 0, 46: 1, 47: 1 }; // vecka i året: sommarrea (
 const SALE_BASE = 0.006; // en reavecka säljer den andelen av ett äldre spels totala försäljning (före rabattens lyft)
 const SALE_AGE = 26;
 const WAIT_DECAY = 0.985;
+const WISH_LIFT = 0.25; // ett pc-spel som väntats på i butiken säljer så mycket mer per förväntan (0 till 1) och räckvidd
 const BOOST_DECAY = 0.99;
 
 export const canStore = (G) => !!G.u.flags.store;
@@ -72,7 +74,7 @@ const yscale = storeScale;
 
 // Butiken byggs första veckan efter forskningen: sluten, normal support och lite marknadsföring
 function openStore(G) {
-  G.store = { t0: G.t, reach: 0.01, trust: 50, dev: 0, policy: 'closed', fee: 0.2, support: 1, ads: 1, ex: false, sale: 1, wait: 0, sb: 0, polT: -1e9, ms: 0, m: blank(), lm: blank(), tot: blank() };
+  G.store = { t0: G.t, reach: 0.01, trust: 50, dev: 0, policy: 'closed', fee: 0.2, support: 1, ads: 1, ex: false, sale: 1, wait: 0, sb: 0, polT: -1e9, ms: 0, lvl: 1, spots: [], rk: {}, rkp: {}, ev: null, m: blank(), lm: blank(), tot: blank() };
   note(G, 'news.storeOpen', { studio: G.studio }, 'good');
   emit('storeOpen', G.store);
   return G.store;
@@ -164,6 +166,13 @@ export function storeRelease(G, g) {
   }
   // spelare som väntar på rean köper mindre till fullpris: mest i butiken, men de vet att spelet blir billigare överallt
   if (S.wait) g.total *= 1 - S.wait * (0.5 + 0.5 * via(S, g));
+  // önskelistan: spelet fanns i butiken innan det släpptes, och de som väntat köper direkt
+  const wish = wishOf(G, g.hype || 0);
+  if (wish > 0) {
+    g.total *= 1 + WISH_LIFT * (clamp(g.hype, 0, 100) / 100) * S.reach;
+    g.wish = wish;
+    if (wish >= 1000) note(G, 'news.storeWish', { title: g.title, n: fmtNum(Math.round(wish / 100) * 100) }, 'good');
+  }
   if (g.score >= 8) S.trust = clamp(S.trust + 3, 0, 100);
   else if (g.score < 5) S.trust = clamp(S.trust - 3, 0, 100);
 }
@@ -287,6 +296,10 @@ export function storeWeek(G) {
     group += v * OTHER_CUT;
     gross += v;
   }
+  // temaveckor och Veckans spel: extra försäljning av dina pc-spel
+  const ex = extraWeek(G, S);
+  own += ex.evt + ex.spot;
+  gross += ex.evt + ex.spot;
   const c = storeCosts(G, S);
   gross += sale;
   const pay = gross * PAY_FEE;
@@ -324,9 +337,184 @@ export function storeWeek(G) {
   // milstolpar i användarbasen
   const users = storeUsers(G, S);
   G.stats.storeUsers = Math.max(G.stats.storeUsers || 0, users);
+  levelWatch(G, S);
+  rankWatch(G, S);
   while (S.ms < MILESTONES.length && users >= MILESTONES[S.ms]) {
     note(G, 'news.storeUsers', { studio: G.studio, n: MILESTONES[S.ms] / 1e6 }, 'good');
     S.ms++;
+  }
+}
+
+// ── Butiksnivå ──
+// Butiken växer med användarna (högsta antalet hittills): varje nivå öppnar något nytt.
+export const LEVELS = [0, 3e5, 1e6, 3e6, 8e6, 20e6];
+export const levelOf = (G) => {
+  const u = G.stats.storeUsers || 0;
+  let l = 1;
+  LEVELS.forEach((v, i) => {
+    if (u >= v) l = i + 1;
+  });
+  return l;
+};
+export const levelNext = (G) => LEVELS[levelOf(G)] ?? null;
+// Veckans spel: en plats från nivå 2, en till från nivå 4; kostar hälften från nivå 5 och varar sex veckor från nivå 6
+export const spotSlots = (G) => (levelOf(G) >= 2 ? 1 : 0) + (levelOf(G) >= 4 ? 1 : 0);
+export const spotWeeks = (G) => (levelOf(G) >= 6 ? 6 : 4);
+const EVENT_BOOST = 1.5; // från nivå 3 lyfter temaveckorna så mycket mer
+export const eventBoost = (G) => (levelOf(G) >= 3 ? EVENT_BOOST : 1);
+function levelWatch(G, S) {
+  const l = levelOf(G);
+  if (S.lvl === undefined) S.lvl = l; // en butik från före nivåerna räknas som redan på sin nivå
+  if (l > S.lvl) {
+    S.lvl = l;
+    note(G, 'news.storeLevel', { n: l, name: LEVEL_NAMES[l - 1] }, 'good', false, true);
+    emit('storeLevel', { level: l });
+  }
+}
+
+// ── Veckans spel ──
+// Du lyfter fram ett av dina pc-spel i skyltfönstret i några veckor mot en avgift: spelet säljer extra (mer ju bättre det är) och
+// ett bra spel drar nya användare. Äldre spel får en bas som i rean, så att även en klassiker går att väcka.
+export const SPOT = { cost: 3000, share: 0.33, lift: 0.4, liftScore: 0.1, users: 0.0015, again: 12 };
+const spotLift = (g) => SPOT.lift + SPOT.liftScore * clamp(g.score - 5, 0, 4);
+// Vad en plats i skyltfönstret väntas ge i extra försäljning om spelet säljer som nu hela tiden (i verkligheten avtar det)
+export const spotValue = (G, g) => (baseOf(G, g) * spotLift(g) * via(G.store, g) * spotWeeks(G)) / (1 - OTHER_CUT);
+// Avgiften följer vad spelet säljer: en tredjedel av det väntade, aldrig under en grundavgift (från nivå 5 hälften)
+export const spotCost = (G, g) => Math.round((Math.max(SPOT.cost * yscale(G), SPOT.share * spotValue(G, g)) * (levelOf(G) >= 5 ? 0.5 : 1)) / 10) * 10;
+const pcGame = (g) => isPcPlat(g.platform) && !g.expansionOf;
+export const spotsOf = (S) => S.spots || (S.spots = []);
+export function spotGames(G) {
+  const S = G.store;
+  const on = new Set(spotsOf(S).map((x) => x.id));
+  return G.games.filter((g) => pcGame(g) && G.t - g.t >= 1 && !on.has(g.id)).sort((a, b) => b.score - a.score || b.t - a.t);
+}
+export function canSpot(G, id) {
+  const S = G.store;
+  if (!S || S.paused) return t('dist.err.paused');
+  if (spotSlots(G) < 1) return t('dist.err.spotLvl');
+  if (spotsOf(S).length >= spotSlots(G)) return t('dist.err.spotFull');
+  const g = G.games.find((x) => x.id === id);
+  if (!g || !pcGame(g) || G.t - g.t < 1) return t('dist.err.spotGame');
+  if (spotsOf(S).some((x) => x.id === id)) return t('dist.err.spotGame');
+  if (g.spotT !== undefined && G.t - g.spotT < SPOT.again) return t('dist.err.spotAgain', { n: SPOT.again - (G.t - g.spotT) });
+  if (G.money < spotCost(G, g)) return t('err.money');
+  return true;
+}
+export function startSpot(G, id) {
+  const r = canSpot(G, id);
+  if (r !== true) return r;
+  const S = G.store;
+  const g = G.games.find((x) => x.id === id);
+  spend(G, spotCost(G, g), 'storeOps');
+  g.spotT = G.t;
+  spotsOf(S).push({ id, t0: G.t, inc: 0 });
+  S.spotN = (S.spotN || 0) + 1;
+  note(G, 'news.storeSpotStart', { title: g.title }, 'info', true);
+  emit('storeSpot', { game: g });
+  return true;
+}
+
+// ── Temaveckor ──
+export const eventWeek = (t) => t % WEEKS_PER_YEAR;
+export function eventNow(G) {
+  const w = eventWeek(G.t);
+  return STORE_EVENTS.find((e) => w >= e.weeks[0] && w <= e.weeks[1]) || null;
+}
+// Veckor tills temaveckan börjar (0 = pågår nu)
+export function eventIn(G, ev) {
+  const w = eventWeek(G.t);
+  if (w >= ev.weeks[0] && w <= ev.weeks[1]) return 0;
+  return (ev.weeks[0] - w + WEEKS_PER_YEAR) % WEEKS_PER_YEAR;
+}
+// Nästa temavecka: { ev, in } där in är veckor kvar (0 = pågår nu)
+export function eventNext(G) {
+  for (let k = 0; k < WEEKS_PER_YEAR; k++) {
+    const w = eventWeek(G.t + k);
+    const ev = STORE_EVENTS.find((e) => w >= e.weeks[0] && w <= e.weeks[1]);
+    if (ev) return { ev, in: k };
+  }
+  return null;
+}
+// Dina pc-spel som passar temat just nu
+export function eventFits(G, ev = eventNow(G)) {
+  return ev ? G.games.filter((g) => isPcPlat(g.platform) && !g.expansionOf && ev.fit(g)) : [];
+}
+
+// Vad ett spel säljer en vanlig vecka nu (senaste veckan, eller en bas för äldre spel som i rean)
+function baseOf(G, g) {
+  const age = G.t - g.t;
+  const w = g.weekly && g.weekly.length === age && age > 0 ? g.weekly[age - 1] : 0;
+  const tail = age >= SALE_AGE && g.total > 0 ? (g.total * SALE_BASE) / (1 + age / (3 * WEEKS_PER_YEAR)) : 0;
+  return Math.max(w, tail);
+}
+
+// Veckans extra försäljning: temaveckans lyft för passande spel och Veckans spel. Båda går in i dina spels intäkter i butiken.
+function extraWeek(G, S) {
+  const out = { evt: 0, spot: 0 };
+  const ev = eventNow(G);
+  if (ev) {
+    if (!S.ev || S.ev.id !== ev.id || G.t - S.ev.t0 > 3) S.ev = { id: ev.id, t0: G.t, inc: 0, n: 0 };
+    const boost = eventBoost(G);
+    let v = 0;
+    for (const g of eventFits(G, ev)) v += (baseOf(G, g) * ev.lift * boost * via(S, g)) / (1 - OTHER_CUT);
+    out.evt = v;
+    S.ev.inc += v;
+    S.ev.n = Math.max(S.ev.n, eventFits(G, ev).length);
+    if (G.t === S.ev.t0) note(G, 'news.storeEvent', { name: ev.name }, 'info');
+  } else if (S.ev && !S.ev.done) {
+    S.ev.done = 1;
+    if (S.ev.n > 0 && S.ev.inc >= 1) note(G, 'news.storeEventEnd', { name: EVENT_BY_ID[S.ev.id].name, v: fmtMoney(S.ev.inc) }, 'good');
+  }
+  const keep = [];
+  for (const sp of spotsOf(S)) {
+    const g = G.games.find((x) => x.id === sp.id);
+    if (!g) continue;
+    const age = G.t - sp.t0;
+    if (age >= spotWeeks(G)) {
+      note(G, 'news.storeSpotEnd', { title: g.title, v: fmtMoney(sp.inc) }, 'good');
+      continue;
+    }
+    const v = (baseOf(G, g) * spotLift(g) * via(S, g)) / (1 - OTHER_CUT);
+    sp.inc += v;
+    out.spot += v;
+    S.sb = (S.sb || 0) + SPOT.users * clamp((g.score - 5) / 4, 0, 1.25);
+    keep.push(sp);
+  }
+  S.spots = keep;
+  return out;
+}
+
+// ── Önskelista ──
+// Ett pc-spel i utveckling syns i butiken som "kommer snart": förväntan (hype) och butikens användare ger en önskelista.
+export const wishOf = (G, hype) => {
+  const S = G.store;
+  if (!S || S.paused) return 0;
+  return Math.round(storeUsers(G, S) * Math.pow(clamp(hype, 0, 100) / 100, 1.5) * 0.06);
+};
+export function wishNow(G) {
+  const J = G.job;
+  if (!G.store || !J || J.kind !== 'game' || !isPcPlat(J.platform)) return null;
+  return { title: J.title, hype: J.hype, n: wishOf(G, J.hype) };
+}
+
+// ── Topplistan: plats och förra veckans plats ──
+const rankKey = (r) => r.kind + ':' + r.id + ':' + r.platform;
+function rankWatch(G, S) {
+  const rows = storeChart(G, 10);
+  S.rkp = S.rk || {};
+  S.rk = {};
+  rows.forEach((r, i) => {
+    S.rk[rankKey(r)] = i + 1;
+  });
+  const top = rows[0];
+  if (top && top.kind === 'own') {
+    const g = G.games.find((x) => x.id === top.id);
+    if (g && !g.storeTop) {
+      g.storeTop = G.t;
+      G.stats.storeTops = (G.stats.storeTops || 0) + 1;
+      note(G, 'news.storeTop', { title: g.title }, 'good', false, true);
+      emit('storeTop', { game: g });
+    }
   }
 }
 
@@ -417,6 +605,15 @@ export function storeChart(G, n = 5) {
     for (const [r, w] of ext) row(r, r.title, r.studio, 'ext', (all * w) / sum);
   }
   rows.sort((a, b) => b.v - a.v);
+  // förändring mot förra veckan: positivt = uppåt, null = ny på listan
+  const prev = S.rkp || {};
+  const known = Object.keys(prev).length > 0; // förra veckans lista saknas i en ny butik och i äldre sparningar
+  rows.forEach((r, i) => {
+    const p = prev[rankKey(r)];
+    r.rank = i + 1;
+    r.d = !known ? 0 : p ? p - (i + 1) : null;
+    r.spot = r.kind === 'own' && spotsOf(S).some((x) => x.id === r.id);
+  });
   return rows.slice(0, n);
 }
 

@@ -8,6 +8,7 @@ import { STRINGS } from '../src/data/strings.js';
 import { ACHIEVEMENTS } from '../src/data/achievements.js';
 import { weeklyOf } from '../src/core/weekly.js';
 import { identityName } from '../src/data/identity.js';
+import { STORE_EVENTS } from '../src/data/storeevents.js';
 let fails = 0;
 const ok = (c, m) => { if (!c) { fails++; console.log('FAIL', m); } else console.log('ok  ', m); };
 const G = S.newGame({ studio: 'T', seed: 7, difficulty: 'normal' });
@@ -865,6 +866,69 @@ ok(true, 'alla händelser körda');
   const GJ = JSON.parse(JSON.stringify(GS));
   for (let i = 0; i < 30; i++) { GJ.t++; S.storeWeek(GJ); }
   ok(Number.isFinite(GJ.money) && GJ.store.reach > 0, 'butiken fortsätter efter sparning');
+}
+// butikens nivåer, temaveckor, skyltfönstret, önskelistan och topplistans placeringar
+{
+  const GN = S.newGame({ studio: 'N', seed: 31 }); S.makeCompetitors(GN); S.initWorld(GN);
+  GN.t = 48 * 30 + 14; GN.money = 1e8; GN.fans = 2e5; GN.u.flags.store = true;
+  GN.games.length = 0;
+  const rng0 = GN.rng;
+  S.storeWeek(GN);
+  const B = GN.store;
+  const mk = (id, genre, scope = 'large') => ({ id, title: id, platform: 'pc', genre, topic: 'space', scope, score: 8, total: 2e6, t: GN.t - 40, tail: 1, priceAt: 30, weekly: [], revenue: 0, units: 0, fansGained: 0, ended: true });
+  ok(S.levelOf(GN) === 1 && S.spotSlots(GN) === 0 && B.lvl === 1, 'en ny butik är en kiosk utan skyltfönster');
+  const ag = mk('ag', 'action'), pg = mk('pg', 'puzzle'), sg = mk('sg', 'puzzle', 'small');
+  GN.games.push(ag, pg, sg);
+  // temavecka: Actionfestivalen (vecka 16 och 17) lyfter bara action-, skjut- och racingspel
+  GN.t = 48 * 30 + 15; S.storeWeek(GN);
+  ok(!S.eventNow(GN) && S.eventNext(GN).ev.id === 'action' && S.eventNext(GN).in === 1 && S.eventIn(GN, S.eventNext(GN).ev) === 1, 'nästa temavecka är en vecka bort');
+  GN.t++; S.storeWeek(GN);
+  ok(S.eventNow(GN).id === 'action' && S.eventFits(GN).map((g) => g.id).join() === 'ag', 'temaveckan passar bara action-spelet');
+  ok(B.ev && B.ev.id === 'action' && B.ev.inc > 0 && GN.news.some((n) => n.key === 'news.storeEvent'), 'temaveckan ger extra försäljning och en nyhet (' + Math.round(B.ev.inc) + ')');
+  const inc1 = B.ev.inc;
+  GN.t++; S.storeWeek(GN);
+  ok(B.ev.inc > inc1, 'och den fortsätter vecka två');
+  GN.t++; S.storeWeek(GN);
+  ok(B.ev.done && GN.news.some((n) => n.key === 'news.storeEventEnd'), 'efteråt kommer en nyhet om vad den gav');
+  ok(STORE_EVENTS.every((e) => Array.isArray(S.eventFits(GN, e))), 'passande spel räknas ut för varje temavecka');
+  // nivåer: följer högsta antalet användare
+  GN.stats.storeUsers = 4e5; GN.t++; S.storeWeek(GN);
+  ok(S.levelOf(GN) === 2 && S.spotSlots(GN) === 1 && B.lvl === 2 && GN.news.some((n) => n.key === 'news.storeLevel' && n.vars.n === 2), 'butiken växer till en butik med ett skyltfönster');
+  GN.stats.storeUsers = 3e6;
+  ok(S.levelOf(GN) === 4 && S.spotSlots(GN) === 2 && S.eventBoost(GN) === 1.5, 'nivå 4: två platser och starkare temaveckor');
+  GN.stats.storeUsers = 4e5;
+  // skyltfönstret
+  const m0 = GN.money, cost = S.spotCost(GN, ag);
+  ok(cost > 0 && S.startSpot(GN, 'ag') === true && Math.abs(m0 - GN.money - cost) < 1 && B.spots.length === 1, 'ett spel lyfts fram mot en avgift (' + cost + ')');
+  ok(typeof S.startSpot(GN, 'pg') === 'string' && typeof S.canSpot(GN, 'ag') === 'string', 'en plats rymmer ett spel och samma spel kan inte läggas in två gånger');
+  GN.t++; S.storeWeek(GN); GN.t++; S.storeWeek(GN);
+  ok(B.spots[0] && B.spots[0].inc > 0, 'spelet i fönstret ger extra försäljning');
+  GN.t++; S.storeWeek(GN); GN.t++; S.storeWeek(GN);
+  ok(B.spots.length === 0 && GN.news.some((n) => n.key === 'news.storeSpotEnd'), 'efter några veckor lämnar spelet fönstret med en nyhet');
+  ok(String(S.canSpot(GN, 'ag')).length > 5 && S.canSpot(GN, 'pg') === true, 'ett spel som nyss stått där får vila, ett annat går bra');
+  ok(S.setPaused(GN, true) && typeof S.canSpot(GN, 'pg') === 'string' && S.setPaused(GN, false), 'en pausad butik har inget skyltfönster');
+  // önskelistan
+  ok(S.wishOf(GN, 0) === 0 && S.wishOf(GN, 80) > S.wishOf(GN, 30) && S.wishOf(GN, 30) > 0, 'önskelistan växer med förväntan');
+  const wa = { platform: 'pc', total: 1e6, score: 7, hype: 80 }, wb = { platform: 'pc', total: 1e6, score: 7, hype: 0 };
+  S.storeRelease(GN, wa); S.storeRelease(GN, wb);
+  ok(wa.total > wb.total && wa.wish > 0 && !wb.wish, 'ett efterlängtat spel säljer mer vid släpp');
+  GN.job = { kind: 'game', platform: 'pc', title: 'Ny', hype: 60 };
+  ok(S.wishNow(GN).n > 0, 'ett pc-spel på gång syns på önskelistan');
+  GN.job = { kind: 'game', platform: 'console', title: 'Ny', hype: 60 };
+  ok(S.wishNow(GN) === null, 'ett konsolspel gör det inte');
+  GN.job = null;
+  // topplistan: etta och förändring mot förra veckan
+  GN.games = [{ ...mk('big', 'puzzle'), t: GN.t - 3, weekly: [1e5, 1e5, 1e5], ended: false }];
+  S.storeWeek(GN);
+  ok(GN.stats.storeTops === 1 && GN.news.some((n) => n.key === 'news.storeTop'), 'ett eget spel som blir etta ger en nyhet');
+  GN.t++; GN.games[0].weekly.push(1e5); S.storeWeek(GN);
+  const rows = S.storeChart(GN, 3);
+  ok(rows[0].rank === 1 && rows[0].d === 0 && GN.stats.storeTops === 1, 'placeringen jämförs med förra veckan och nyheten kommer bara en gång');
+  ok(GN.rng === rng0, 'butikens nya delar rör inte spelets slumpföljd');
+  const GJ = JSON.parse(JSON.stringify(GN));
+  delete GJ.store.spots; delete GJ.store.rk; delete GJ.store.rkp; delete GJ.store.ev; delete GJ.store.lvl;
+  for (let i = 0; i < 60; i++) { GJ.t++; S.storeWeek(GJ); }
+  ok(Number.isFinite(GJ.money) && GJ.store.lvl >= 1 && Array.isArray(GJ.store.spots), 'en butik från före de nya delarna fortsätter som vanligt');
 }
 // förlag: pitchar kommer ur fröet, förskott vid underskrift, två avtal åt gången, spelet släpps med ett betyg i intervallet
 {
