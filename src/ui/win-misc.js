@@ -72,9 +72,9 @@ const STORY_IC = {
   'news.rankUp': ['chart', 'var(--accent)'], 'news.rankTop': ['crown', 'var(--gold)'], 'news.filmGood': ['film', 'var(--fans)'], 'news.acquired': ['bank', 'var(--money)'],
   'hist.firstPub': ['book', 'var(--design)'], 'hist.store': ['cart', 'var(--money)'], 'news.storeUsers': ['cart', 'var(--money)'], 'hist.hwLab': ['cpu', 'var(--tech)'],
   'hist.hwFab': ['factory', 'var(--tech)'], 'hist.firstHw': ['gpu', 'var(--tech)'], 'hist.hwPlat': ['console', 'var(--tech)'],
-  'hist.identity': ['crown', 'var(--gold)'], 'hist.games': ['gamepad', 'var(--accent)'], 'hist.fans': ['heart', 'var(--fans)'], 'hist.cash': ['money', 'var(--money)'],
+  'hist.comeback': ['trend', 'var(--good)'], 'hist.identity': ['crown', 'var(--gold)'], 'hist.games': ['gamepad', 'var(--accent)'], 'hist.fans': ['heart', 'var(--fans)'], 'hist.cash': ['money', 'var(--money)'],
 };
-const LIVE_HIST = new Set(['hist.f2p', 'hist.firstExp', 'hist.firstRegion']);
+const LIVE_HIST = new Set(['hist.f2p', 'hist.firstExp', 'hist.firstRegion', 'hist.comeback']);
 const boldVars = (o) => {
   const vars = {};
   // strängar och {sv,en}-titlar (konkurrenternas spel) i fetstil, citat i kursiv

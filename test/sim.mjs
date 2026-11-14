@@ -25,6 +25,8 @@ const events = mmo && !args.includes('--no-events');
 // --f2p: gör onlinespelen till gratisspel från 2010
 const f2p = mmo && args.includes('--f2p');
 const regions = mmo && !args.includes('--no-regions');
+// --seasons: startar en säsong när spelarbasen har fallit under 90 % av toppen (klassiska servrar för gamla spel, annars roterande tema)
+const seasons = mmo && args.includes('--seasons');
 // --ports: porterar spel med betyg 7+ till den licensierade plattform som väntas ge bäst betyg
 const ports = args.includes('--ports');
 // --publish: ger ut andra studiors spel när demons intervall har mitten 7 eller mer
@@ -350,6 +352,11 @@ function manage(G) {
     if (f2p && year >= 2010 && S.canGoF2P(G, g.live)) S.goF2P(G, g.id);
     // evenemang när en konkurrent drar spelare eller innehållet börjar bli gammalt (om --events)
     if (events && !S.eventReadyIn(G, g.live) && (S.rivalFactor(G, g) < 0.92) && G.money > S.liveEventCost(G, g) * 4) S.startLiveEvent(G, g.id);
+    if (seasons && !g.live.season && !S.seasonReadyIn(G, g.live) && g.live.subs < g.live.peak * 0.9) {
+      const order = S.liveAge(G, g.live) >= 5 ? ['classic', 'story', 'ranked', 'festival'] : ['story', 'ranked', 'festival'];
+      const th = order.find((id) => id !== g.live.lastSeason);
+      if (G.money > S.liveSeasonCost(G, g, th) * 4) S.startLiveSeason(G, g.id, th);
+    }
     if (S.liveLoad(G) > S.serverCap(G) * 0.85 && S.facLevel(G, 'server') < 3 && G.money > S.facCost(G, 'server') * 2) S.buildFacility(G, 'server');
     // regioner: öppna nästa när kassan räcker och servrarna har plats (inte med --no-regions)
     if (regions && !g.live.region && S.liveLoad(G) < S.serverCap(G) * 0.8) {
@@ -426,7 +433,8 @@ if (args.includes('--legacy')) {
 if (args.includes('--live')) {
   for (const g of G.games.filter((x) => x.live)) {
     const L = g.live;
-    console.log(`live ${S.yearOf(L.t0)}${L.closed ? '-' + S.yearOf(L.closed) : ''} ${g.title.en || g.title} score ${g.score}${L.model === 'f2p' ? ' f2p' : ''} peak ${Math.round(L.peak).toLocaleString()} subs ${Math.round(L.subs).toLocaleString()} exps ${L.exps.length} events ${L.events || 0} evcost $${Math.round((L.evCost || 0) / 1e6)}M rev $${Math.round(L.rev / 1e6)}M cost $${Math.round(L.cost / 1e6)}M regions ${L.regions ? L.regions.join('+') || 'home' : 'world'} regcost $${Math.round((L.regionCost || 0) / 1e5) / 10}M`);
+    if (args.includes('--curve')) console.log('   curve (k) ' + L.hist.filter((_, i) => i % 12 === 0).map((h) => Math.round(h.v / 1000)).join(' '));
+    console.log(`live ${S.yearOf(L.t0)}${L.closed ? '-' + S.yearOf(L.closed) : ''} ${g.title.en || g.title} score ${g.score}${L.model === 'f2p' ? ' f2p' : ''} peak ${Math.round(L.peak).toLocaleString()} subs ${Math.round(L.subs).toLocaleString()} exps ${L.exps.length} seasons ${L.seasons || 0} sscost $${Math.round((L.seasonCost || 0) / 1e6)}M pass $${Math.round((L.passRev || 0) / 1e6)}M reno ${Math.round((L.reno || 0) / 4.8) / 10}y comebacks ${L.cb || 0} events ${L.events || 0} evcost $${Math.round((L.evCost || 0) / 1e6)}M rev $${Math.round(L.rev / 1e6)}M cost $${Math.round(L.cost / 1e6)}M regions ${L.regions ? L.regions.join('+') || 'home' : 'world'} regcost $${Math.round((L.regionCost || 0) / 1e5) / 10}M`);
   }
   for (const m of (G.market.mmos || [])) console.log(`rival ${S.yearOf(m.t0)}${m.closed ? '-' + S.yearOf(m.closed) : ''} ${m.studio} ${m.title.en} ${m.genre} score ${m.score}`);
 }

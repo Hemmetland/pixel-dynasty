@@ -53,6 +53,31 @@ export const EVENT_GAP = 16;
 const EVENT_FRESH = 6;
 const EVENT_LIFT = 1.08;
 
+// Säsonger: ett onlinespel som tappat spelare efter många år kan få ny skjuts. En säsong (SEASON_WEEKS veckor) har ett
+// tema och gör tre saker: spelarna lockas lite mer medan den pågår (lift), spelet förnyas så att den effektiva åldern
+// sjunker (reno = andel av den återstående åldern som tas bort, jämnt över säsongen) och säsongspasset ger extra intäkt
+// (pass = andel av månadsintäkterna). Förnyelsen kan aldrig ta spelet längre ner än RENO_FLOOR av dess verkliga ålder, så
+// ett riktigt gammalt spel blir mycket piggare men aldrig nytt. Samma tema två gånger i rad ger bara SEASON_REPEAT av
+// effekten, och det går SEASON_GAP veckor mellan två säsongsstarter. festival lockar tillbaka en del av de spelare som
+// lämnat sedan toppen (back), story ger färskt innehåll och lite fler spelare i grunden (pot, högst SEASON_POT_MAX
+// sammanlagt) och classic (klassiska servrar) kräver ett spel som är minst minAge år gammalt men förnyar mest.
+export const SEASON_WEEKS = 12;
+export const SEASON_GAP = 30;
+const SEASON_REPEAT = 0.6;
+const SEASON_POT_MAX = 0.12;
+const RENO_FLOOR = 0.6;
+export const SEASONS = [
+  { id: 'story', ic: 'book', cost: 1.4, reno: 0.12, fresh: 25, pot: 0.02, pass: 0.08, lift: 1.06, back: 0, minAge: 0, name: { sv: 'Ny berättelse', en: 'New storyline' }, desc: { sv: 'Nytt kapitel med färskt innehåll och lite fler spelare i grunden.', en: 'A new chapter with fresh content and a few more players for good.' } },
+  { id: 'ranked', ic: 'trophy', cost: 1.2, reno: 0.08, fresh: 10, pot: 0, pass: 0.22, lift: 1.04, back: 0, minAge: 0, name: { sv: 'Tävlingssäsong', en: 'Ranked season' }, desc: { sv: 'Rankade matcher och belöningar. Säsongspasset ger mest extra intäkt.', en: 'Ranked matches and rewards. The season pass earns the most extra revenue.' } },
+  { id: 'festival', ic: 'sparkle', cost: 0.7, reno: 0.05, fresh: 8, pot: 0, pass: 0.1, lift: 1.08, back: 0.12, minAge: 0, name: { sv: 'Jubileumsfest', en: 'Anniversary festival' }, desc: { sv: 'Billig fest som lockar tillbaka spelare som lämnat sedan toppen.', en: 'A cheap party that lures back players who left since the peak.' } },
+  { id: 'classic', ic: 'hourglass', cost: 2.2, reno: 0.3, fresh: 0, pot: 0, pass: 0.12, lift: 1.05, back: 0, minAge: 5, name: { sv: 'Klassiska servrar', en: 'Classic servers' }, desc: { sv: 'Spelet som det var förr. Förnyar mest, men bara för ett spel som är minst fem år gammalt.', en: 'The game as it used to be. Renews the most, but only for a game at least five years old.' } },
+];
+export const SEASON = Object.fromEntries(SEASONS.map((s) => [s.id, s]));
+// En comeback: spelarbasen har fallit under COMEBACK_LOW av toppen och växer sedan COMEBACK_GROW gånger från bottennivån
+const COMEBACK_LOW = 0.6;
+const COMEBACK_GROW = 1.4;
+const COMEBACK_MAX = 3;
+
 // Regioner: ett nytt onlinespel öppnar på hemmamarknaden (HOME av hela världens spelare) och kan sedan öppna servrar i
 // fler delar av världen, en i taget. bonus = hur mycket regionen lägger till, räknat mot hemmamarknaden, och fit = vilka
 // genrer regionen tycker extra mycket (eller mindre) om. Med alla fyra regioner öppna når spelet ungefär lika många som
@@ -170,15 +195,19 @@ export function serverCap(G) {
 // Driftkostnad per spelare och månad
 export const costPerSub = (G, L) => 0.28 * subPrices(yearOf(G.t))[0] * OPS[L.ops].cost * (isF2P(L) ? F2P_LOAD : 1);
 
+// Spelets effektiva ålder i år: verklig ålder minus det säsongerna har förnyat (L.reno, i veckor)
+export const liveAge = (G, L) => Math.max(0, G.t - L.t0 - (L.reno || 0)) / WEEKS_PER_YEAR;
+export const seasonOn = (G, L) => !!(L.season && G.t <= L.season.until);
+const seasonLift = (G, L) => (seasonOn(G, L) ? SEASON[L.season.id].lift : 1);
+
 // Vilken spelarbas spelet drar mot just nu
 export function liveTarget(G, g) {
   const L = g.live;
-  const years = Math.max(0, G.t - L.t0) / WEEKS_PER_YEAR;
-  const age = Math.exp(-0.06 * years);
+  const age = Math.exp(-0.06 * liveAge(G, L));
   const fresh = 0.4 + (0.6 * L.fresh) / 100;
   const price = isF2P(L) ? F2P_POT * SHOP[L.shop | 0].mult : Math.exp(-PRICE_ELAST * (tierMix(G, L).k - 1)) * subEra(yearOf(G.t));
   const ev = eventOn(G, L) ? EVENT_LIFT : 1;
-  return L.pot * age * fresh * price * OPS[L.ops].mult * ev * rivalFactor(G, g) * regionMult(g);
+  return L.pot * age * fresh * price * OPS[L.ops].mult * ev * seasonLift(G, L) * rivalFactor(G, g) * regionMult(g);
 }
 // Samma målnivå del för del, för driftpanelen: varje del som multiplikator (1 = ingen påverkan) mot ett nytt spel med
 // färskt innehåll, normalpris och normal drift. full = servrarna är fulla och håller tillbaka spelarna.
@@ -187,12 +216,13 @@ export function liveFactors(G, g) {
   const f2p = isF2P(L);
   const cap = serverCap(G);
   return {
-    age: Math.exp((-0.06 * Math.max(0, G.t - L.t0)) / WEEKS_PER_YEAR),
+    age: Math.exp(-0.06 * liveAge(G, L)),
     fresh: 0.4 + (0.6 * L.fresh) / 100,
     price: f2p ? SHOP[L.shop | 0].mult : Math.exp(-PRICE_ELAST * (tierMix(G, L).k - 1)),
     era: f2p ? 1 : subEra(yearOf(G.t)),
     ops: OPS[L.ops].mult,
     event: eventOn(G, L) ? EVENT_LIFT : 1,
+    season: seasonLift(G, L),
     rivals: rivalFactor(G, g),
     regions: regionMult(g),
     full: cap > 0 ? liveLoad(G) > cap : true,
@@ -299,6 +329,51 @@ function rivalWeek(G) {
   while (M.mmos.length > 12 && M.mmos[0].closed) M.mmos.shift();
 }
 
+// En säsongsvecka: förnyelsen av spelets ålder, och halvvägs ett balanspatch med en nyhet
+function seasonWeek(G, g) {
+  const L = g.live;
+  const S = L.season;
+  const age = Math.max(0, G.t - L.t0);
+  const eff = Math.max(0, age - (L.reno || 0));
+  const step = 1 - Math.pow(1 - S.share, 1 / SEASON_WEEKS);
+  L.reno = Math.min((L.reno || 0) + eff * step, age * (1 - RENO_FLOOR));
+  if (!S.mid && G.t >= S.t + SEASON_WEEKS / 2) {
+    S.mid = 1;
+    L.fresh = Math.min(100, L.fresh + 8);
+    const n = Math.round(L.subs - S.subs0);
+    note(G, n >= 1 ? 'live.news.seasonMid' : 'live.news.seasonMid0', { title: g.title, name: SEASON[S.id].name, n: fmtN(n) }, 'info');
+  }
+}
+// Säsongen är slut: vad den gav i spelare, och en liten dos grundpotential för ett nytt kapitel
+function seasonEnd(G, g) {
+  const L = g.live;
+  const S = L.season;
+  const th = SEASON[S.id];
+  const add = Math.min(th.pot * S.q, SEASON_POT_MAX - (L.sPot || 0));
+  if (add > 0) {
+    L.sPot = (L.sPot || 0) + add;
+    L.pot *= 1 + add;
+  }
+  const back = Math.round(L.subs - S.subs0);
+  L.seasons = (L.seasons || 0) + 1;
+  L.lastSeason = S.id;
+  G.stats.liveSeasons = (G.stats.liveSeasons || 0) + 1;
+  note(G, back >= 1 ? 'live.news.seasonEnd' : 'live.news.seasonFlat', { title: g.title, name: th.name, n: fmtN(back) }, back >= 1 ? 'good' : 'info');
+  L.season = null;
+}
+// Bottennivån sedan toppen följs: växer spelet tillbaka efter en lång nedgång är det en comeback
+function comebackWatch(G, g) {
+  const L = g.live;
+  if (L.subs >= L.peak) L.low = L.subs;
+  else if (L.low == null || L.subs < L.low) L.low = L.subs;
+  if (L.low > L.peak * COMEBACK_LOW || L.subs < L.low * COMEBACK_GROW || (L.cb || 0) >= COMEBACK_MAX || G.t - L.t0 < 2 * WEEKS_PER_YEAR) return;
+  L.cb = (L.cb || 0) + 1;
+  G.stats.liveComeback = (G.stats.liveComeback || 0) + 1;
+  note(G, 'live.news.comeback', { title: g.title, n: fmtN(Math.round((L.subs / L.low - 1) * 100)), subs: fmtN(L.subs) }, 'good');
+  mark(G, L, 'cb');
+  L.low = L.subs;
+}
+
 // Varje vecka: spelarna rör sig mot målnivån, abonnemangen betalas, servrarna kostar och ibland går de ner.
 export function liveWeek(G) {
   rivalWeek(G);
@@ -326,6 +401,7 @@ export function liveWeek(G) {
       if (L.regions.length === REGIONS.length) G.stats.liveWorld = (G.stats.liveWorld || 0) + 1;
       L.region = null;
     }
+    if (L.season) seasonWeek(G, g);
     // löpande uppdateringar startar nästa av sig själva; räcker inte kassan sägs det till en gång
     if (L.auto && !L.patch && L.fresh <= AUTO_FRESH) {
       if (G.money >= livePatchCost(G, g) * AUTO_BUFFER) {
@@ -368,7 +444,16 @@ export function liveWeek(G) {
       else note(G, 'live.news.eventFlat', { title: g.title }, 'info');
       L.ev = null;
     }
-    const rev = (L.subs * liveArpu(G, L)) / WEEKS_PER_MONTH;
+    if (L.season && G.t >= L.season.until) seasonEnd(G, g);
+    comebackWatch(G, g);
+    // säsongspasset ger extra intäkt medan säsongen pågår
+    const base = (L.subs * liveArpu(G, L)) / WEEKS_PER_MONTH;
+    const pass = L.season ? base * SEASON[L.season.id].pass : 0;
+    if (pass > 0) {
+      L.passRev = (L.passRev || 0) + pass;
+      L.season.pass = (L.season.pass || 0) + pass;
+    }
+    const rev = base + pass;
     const cost = (L.subs * costPerSub(G, L)) / WEEKS_PER_MONTH;
     if (rev > 0) {
       earn(G, rev, isF2P(L) ? 'shop' : 'subs');
@@ -445,6 +530,43 @@ export function startLiveEvent(G, id) {
   L.evCost = (L.evCost || 0) + cost;
   L.fresh = Math.min(100, L.fresh + EVENT_FRESH);
   L.boost = Math.max(L.boost, G.t + EVENT_WEEKS + 1);
+  return true;
+}
+// Säsong: en månads standardintäkter ungefär, gånger temats kostnadsfaktor, plus en grundkostnad
+export function liveSeasonCost(G, g, id) {
+  const year = yearOf(G.t);
+  return Math.round(((payBase(g.live) * subPrices(year)[0] * 0.9 + 60000 * moneyScale(year)) * SEASON[id].cost) / 100) * 100;
+}
+// Veckor tills nästa säsong kan starta (0 = nu)
+export const seasonReadyIn = (G, L) => (L.ssT == null ? 0 : Math.max(0, L.ssT + SEASON_GAP - G.t));
+// Hur bra säsongen blir: spelets betyg, och bara SEASON_REPEAT av effekten om samma tema kördes sist
+export const seasonQuality = (g, id) => clamp(0.75 + 0.12 * (g.score - 7), 0.45, 1.15) * (g.live.lastSeason === id ? SEASON_REPEAT : 1);
+// Andelen av den återstående åldern som säsongen förnyar
+export const seasonShare = (g, id) => Math.min(0.5, SEASON[id].reno * seasonQuality(g, id));
+// Varför ett tema inte går att starta just nu ('' = går bra): för ungt för klassiska servrar
+export const seasonBlock = (G, g, id) => (liveAge(G, g.live) < SEASON[id].minAge ? 'age' : '');
+// off = rabatt (0–1) på kostnaden, till exempel när en händelse erbjuder säsongen
+export function startLiveSeason(G, id, theme, off = 0) {
+  const g = liveOf(G, id);
+  const th = SEASON[theme];
+  if (!g || !th) return false;
+  const L = g.live;
+  if (L.season || seasonReadyIn(G, L) > 0) return t('err.liveSeason');
+  if (seasonBlock(G, g, theme)) return t('err.liveSeasonAge', { n: th.minAge });
+  const cost = Math.round((liveSeasonCost(G, g, theme) * (1 - off)) / 100) * 100;
+  if (G.money < cost) return t('err.money');
+  spend(G, cost, 'liveEvents');
+  const q = seasonQuality(g, theme);
+  // jubileumsfesten lockar tillbaka en del av dem som lämnat sedan toppen
+  const lapsed = Math.max(0, L.peak - L.subs);
+  L.subs += lapsed * th.back * q;
+  L.season = { id: theme, t: G.t, until: G.t + SEASON_WEEKS, subs0: L.subs, q, share: seasonShare(g, theme), cost };
+  L.ssT = G.t;
+  L.seasonCost = (L.seasonCost || 0) + cost;
+  L.fresh = Math.min(100, L.fresh + th.fresh);
+  L.boost = Math.max(L.boost, G.t + 6);
+  mark(G, L, 'ss');
+  note(G, 'live.news.seasonStart', { title: g.title, name: th.name }, 'good');
   return true;
 }
 // Regioner som spelet kan öppna härnäst (inte redan öppna, och regionens marknad finns det året). Ett spel från före

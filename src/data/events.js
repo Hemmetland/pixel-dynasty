@@ -15,6 +15,11 @@ const lastGenre = (G) => (G.games.length ? G.games[G.games.length - 1].genre : n
 // Spelarna i det största onlinespelet som är igång (0 utan onlinespel)
 const liveTop = (G) => G.games.reduce((a, g) => (g.live && !g.live.closed && (!a || g.live.subs > a.live.subs) ? g : a), null);
 const liveSubs = (G) => (liveTop(G) ? liveTop(G).live.subs : 0);
+// Det största onlinespelets effektiva ålder i år (verklig ålder minus säsongernas förnyelse) och om en ny säsong kan starta
+// (SEASON_GAP i sim/live.js är 30 veckor mellan två starter)
+const liveOldYears = (G) => (liveTop(G) ? Math.max(0, G.t - liveTop(G).live.t0 - (liveTop(G).live.reno || 0)) / 48 : 0);
+const seasonReady = (G) => !!liveTop(G) && !liveTop(G).live.season && (liveTop(G).live.ssT == null || liveTop(G).live.ssT + 30 <= G.t);
+const liveBelow = (G, f) => !!liveTop(G) && liveTop(G).live.subs < liveTop(G).live.peak * f;
 
 export const EVENTS = [
   E('fan_mail', 'studio', 1, (G) => G.fans > 30,
@@ -219,6 +224,24 @@ export const EVENTS = [
     { sv: 'En tidning skriver att {title} är så beroendeframkallande att folk missar jobbet. Politiker vill ha regler.', en: 'A newspaper writes that {title} is so addictive that people skip work. Politicians want rules.' },
     [C('Inför pauspåminnelser', 'Add break reminders', { subs: -0.02, fansRel: 0.01, res: R('Debatten lugnar sig och föräldrar skriver tackbrev.', 'The debate calms down and parents write thank-you letters.') }),
       C('Försvara spelet', 'Defend the game', { rand: [[0.5, { res: R('Intervjun går bra och debatten dör ut.', 'The interview goes well and the debate fades.') }], [0.5, { subs: -0.03, fansRel: -0.01, res: R('Det låter defensivt och fler tidningar hakar på.', 'It sounds defensive and more papers pile on.') }]] }, 'Kan gå åt båda håll', 'Could go either way')], ['live']),
+
+  // Händelser som hör ihop med säsongerna: ett åldrande onlinespel som tappat spelare får chansen att komma tillbaka
+  E('live_veterans', 'studio', 0.7, (G) => liveSubs(G) > 20000 && liveOldYears(G) >= 5 && liveBelow(G, 0.75) && seasonReady(G),
+    { sv: 'Veteranerna vill ha klassiska servrar', en: 'Veterans want classic servers' },
+    { sv: 'Gamla spelare i {title} har startat en namninsamling: de vill spela som det var för många år sedan, före alla uppdateringar. Tusentals har skrivit under.', en: 'Old players in {title} have started a petition: they want to play like it was many years ago, before all the updates. Thousands have signed.' },
+    [C('Öppna klassiska servrar', 'Open classic servers', { season: 'classic', seasonOff: 0.4, res: R('Servrarna öppnar med de gamla kartorna och den gamla musiken. Veteranerna loggar in i skaror.', 'The servers open with the old maps and the old music. Veterans log in in droves.') }, 'En säsong med klassiska servrar till 40 % rabatt', 'A classic-servers season at 40 % off'),
+      C('Svara att det inte går', 'Reply that it is not possible', { subs: -0.01, fansRel: -0.005, res: R('Veteranerna suckar och loggar ut. Tråden stannar på fyratusen svar.', 'The veterans sigh and log out. The thread stops at four thousand replies.') })], ['live']),
+  E('live_streamer', 'studio', 0.6, (G) => Y(G) >= 2008 && liveSubs(G) > 10000 && liveOldYears(G) >= 3 && liveBelow(G, 0.85),
+    { sv: 'Streamern som kom tillbaka', en: 'The streamer who came back' },
+    { sv: 'En av de stora streamarna loggade in i {title} för första gången på åratal, och chatten kokar. "Det här är ju fortfarande ett av de bästa spelen som finns", säger streamern.', en: 'One of the big streamers logged into {title} for the first time in years, and the chat is boiling. "This is still one of the best games out there," the streamer says.' },
+    [C('Sponsra sändningen', 'Sponsor the stream', { subsMoney: -0.06, subs: 0.05, fresh: 3, fansRel: 0.01, res: R('Tusentals gamla spelare ser sändningen och installerar om spelet över en natt.', 'Thousands of old players watch the stream and reinstall the game overnight.') }, 'Dyrt, men många kommer tillbaka', 'Pricey, but many come back'),
+      C('Skicka ett tackmeddelande', 'Send a thank-you note', { rand: [[0.5, { subs: 0.025, res: R('Klippet sprids och några veteraner hör av sig.', 'The clip spreads and a few veterans get in touch.') }], [0.5, { res: R('Det blir en trevlig kväll i chatten, mer än så blev det inte.', 'It makes for a nice evening in the chat, but not much more.') }]] })], ['live']),
+  E('live_vote', 'studio', 0.6, (G) => Y(G) >= 2000 && liveSubs(G) > 10000 && liveOldYears(G) >= 1.5 && seasonReady(G),
+    { sv: 'Spelarna får rösta om nästa säsong', en: 'Players vote on the next season' },
+    { sv: 'På forumet i {title} pågår en het diskussion om vad nästa säsong ska handla om. Många vill ha en ny berättelse, andra föredrar tävlingar.', en: 'A heated discussion is going on in the {title} forum about what the next season should be. Many want a new storyline, others prefer competition.' },
+    [C('Ny berättelse', 'New storyline', { season: 'story', seasonOff: 0.25, res: R('Omröstningen går till berättelsen och trailern spelas upp tusentals gånger.', 'The vote goes to the storyline and the trailer is played thousands of times.') }, 'En säsong med ny berättelse till 25 % rabatt', 'A new-storyline season at 25 % off'),
+      C('Tävlingssäsong', 'Ranked season', { season: 'ranked', seasonOff: 0.25, res: R('Tävlingsspelarna vinner omröstningen och rankingen nollställs till nästa vecka.', 'The competitive players win the vote and the rankings reset next week.') }, 'En tävlingssäsong till 25 % rabatt', 'A ranked season at 25 % off'),
+      C('Hoppa över omröstningen', 'Skip the vote', { subs: -0.005, res: R('Forumet tycker att ni inte lyssnar, men det går över.', 'The forum thinks you are not listening, but it passes.') })], ['live']),
 
   // ── Under utveckling ─────────────────────────────────────────
   E('dev_idea', 'dev', 1.4, (G) => G.job && G.job.phase < 3,

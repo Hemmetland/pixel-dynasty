@@ -309,9 +309,9 @@ function eventPrompt(app, G, p, finish) {
   );
   sfx.play('notify');
 }
-const FX_TIP = { money: 'hud.money', rp: 'hud.rp', fans: 'hud.fans', hype: 'stat.hype', design: 'stat.design', tech: 'stat.tech', bugs: 'stat.bugs', mood: 'ev.fx.mood', sales: 'ev.fx.sales', staff: 'ev.fx.staff', raise: 'ev.fx.raiseTip', risk: 'ev.fx.riskTip', subs: 'ev.fx.subs', fresh: 'ev.fx.fresh' };
+const FX_TIP = { money: 'hud.money', rp: 'hud.rp', fans: 'hud.fans', hype: 'stat.hype', design: 'stat.design', tech: 'stat.tech', bugs: 'stat.bugs', mood: 'ev.fx.mood', sales: 'ev.fx.sales', staff: 'ev.fx.staff', raise: 'ev.fx.raiseTip', risk: 'ev.fx.riskTip', subs: 'ev.fx.subs', fresh: 'ev.fx.fresh', season: 'ev.fx.season' };
 function fxChip(o) {
-  const map = { money: ['money', 'var(--money)'], rp: ['flask', 'var(--rp)'], fans: ['heart', 'var(--fans)'], hype: ['fire', 'var(--hot)'], design: ['bulb', 'var(--design)'], tech: ['cpu', 'var(--tech)'], bugs: ['bug', 'var(--bug)'], mood: ['coffee', 'var(--warn)'], sales: ['chart', 'var(--accent)'], staff: ['team', 'var(--bug)'], raise: ['money', 'var(--warn)'], crunch: ['hourglass', 'var(--warn)'], risk: ['dice', 'var(--accent)'], subs: ['globe', 'var(--good)'], fresh: ['sparkle', 'var(--accent)'] };
+  const map = { money: ['money', 'var(--money)'], rp: ['flask', 'var(--rp)'], fans: ['heart', 'var(--fans)'], hype: ['fire', 'var(--hot)'], design: ['bulb', 'var(--design)'], tech: ['cpu', 'var(--tech)'], bugs: ['bug', 'var(--bug)'], mood: ['coffee', 'var(--warn)'], sales: ['chart', 'var(--accent)'], staff: ['team', 'var(--bug)'], raise: ['money', 'var(--warn)'], crunch: ['hourglass', 'var(--warn)'], season: ['calendar', 'var(--gold)'], risk: ['dice', 'var(--accent)'], subs: ['globe', 'var(--good)'], fresh: ['sparkle', 'var(--accent)'] };
   const [ic, col] = map[o.k] || ['info', 'var(--accent)'];
   let v = typeof o.v === 'number' ? (o.k === 'money' ? (o.v > 0 ? '+' : '') + money(o.v) : (o.v > 0 ? '+' : '') + fmtNum(o.v)) : o.v;
   let tip = FX_TIP[o.k] ? t(FX_TIP[o.k]) : '';
@@ -320,6 +320,7 @@ function fxChip(o) {
     v = t('ev.fx.crunch', { n: o.v });
     tip = t('ev.fx.crunchTip', { n: o.v });
   } else if (o.k === 'risk') v = t('ev.fx.risk');
+  else if (o.k === 'season') v = esc(L(o.v));
   const bad = (typeof o.v === 'number' && o.k !== 'crunch' && ((o.k === 'bugs' && o.v > 0) || (o.k !== 'bugs' && o.v < 0))) || (typeof o.v === 'string' && /^[-\u2212]/.test(o.v) && o.k !== 'bugs');
   return `<span class="chip c" style="--c:${bad ? 'var(--bug)' : col}"${tip ? ` data-tip="${esc(tip)}"` : ''}>${icon(ic)}<b class="num">${v}</b></span>`;
 }

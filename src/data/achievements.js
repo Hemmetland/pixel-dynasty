@@ -64,6 +64,8 @@ export const ACHIEVEMENTS = [
   A('known', 'a_bulb', 'Ett namn i branschen', 'A Name in the Industry', 'Få ett rykte: branschen börjar kalla studion något.', 'Earn a reputation: the industry starts calling the studio something.', (G) => !!G.flags.ident),
   A('hitfactory', 'a_star', 'Hitfabriken', 'The Hit Factory', 'Bli känd som Hitfabriken.', 'Become known as the hit factory.', (G) => G.flags.ident === 'hits'),
   A('outlast', 'a_globe', 'Sist kvar', 'Last One Standing', 'Ha ett onlinespel igång när en konkurrents MMO stänger.', 'Have an online game running when a rival MMO shuts down.', (G) => (G.stats.outlasted || 0) >= 1),
+  A('comeback', 'a_heart', 'Comeback', 'Comeback', 'Låt ett onlinespel växa tillbaka efter en lång nedgång.', 'Let an online game grow back after a long decline.', (G) => (G.stats.liveComeback || 0) >= 1),
+  A('seasons5', 'a_globe', 'Säsongskungen', 'Season King', 'Genomför fem säsonger i dina onlinespel.', 'Complete five seasons in your online games.', (G) => (G.stats.liveSeasons || 0) >= 5),
   A('ports3', 'a_globe', 'Överallt', 'Everywhere', 'Porta ett spel till tre andra plattformar.', 'Port one game to three other platforms.', (G) => G.games.some((g) => (g.ports || []).filter((p) => p.kind !== 'remaster').length >= 3)),
   A('timeless', 'a_star', 'Tidlös', 'Timeless', 'Släpp en remaster med betyg 8 eller mer.', 'Release a remaster scoring 8 or more.', (G) => G.games.some((g) => (g.ports || []).some((p) => p.kind === 'remaster' && p.score >= 8))),
   A('boxoffice', 'a_star', 'Kassasuccé', 'Box Office Hit', 'Få en film om en av dina spelserier som får betyg 8 eller mer.', 'Get a film of one of your game series that scores 8 or more.', (G) => (G.stats.bestFilm || 0) >= 8),

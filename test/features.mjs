@@ -1,7 +1,7 @@
 // Funktionstest av sim-API:t (ingen UI): varje åtgärd ska fungera utan fel.
 import * as S from '../src/sim/index.js';
 import { RESEARCH } from '../src/data/research.js';
-import { EVENTS } from '../src/data/events.js';
+import { EVENTS, EV } from '../src/data/events.js';
 import { exportCode, importCode, recordRun, loadHall } from '../src/core/store.js';
 import { PLATFORM, PLATFORMS } from '../src/data/platforms.js';
 import { STRINGS } from '../src/data/strings.js';
@@ -188,6 +188,120 @@ ok(true, 'alla händelser körda');
   for (const s2 of GP.staff) s2.mood = 40;
   ok(!EV.labor_press.when(GP) && !EV.ai_tools.when(GP) && !EV.catalog_deal.when(GP), 'och inte före sin tid');
 }
+// säsonger: ett gammalt, vanskött onlinespel kan komma tillbaka. Förnyelsen sänker åldern men aldrig under golvet, samma tema
+// två gånger i rad ger mindre, klassiska servrar kräver ett gammalt spel och att inte göra något ändrar ingenting.
+{
+  const mkOld = (fresh) => {
+    const GS = JSON.parse(JSON.stringify(G));
+    GS.pending = [];
+    GS.t = 48 * 30;
+    GS.money = 1e10;
+    GS.office.fac.server = { lvl: 3, slot: 0 };
+    GS.games.push({ id: 7800, title: 'Gammal', t: GS.t - 48 * 12, score: 8.4, weekly: [1], total: 1e6, priceAt: 50, topic: 'fantasy', genre: 'rpg', platform: 'pc', scope: 'aaa', audience: 'everyone', revenue: 0, units: 0, insights: [], reviews: [], flags: [] });
+    const g0 = GS.games[GS.games.length - 1];
+    const t1 = GS.t;
+    GS.t -= 48 * 12;
+    S.launchLive(GS, g0);
+    g0.live.pot = 800000; g0.live.subs = 30000;
+    while (GS.t < t1) { S.liveWeek(GS); GS.t++; }
+    g0.live.fresh = fresh;
+    return { GS, g0 };
+  };
+  const run = (GS, n) => { for (let i = 0; i < n; i++) { S.liveWeek(GS); GS.t++; } };
+  const A = mkOld(60);
+  const B = mkOld(60);
+  ok(A.g0.live.subs === B.g0.live.subs && !A.g0.live.reno && A.g0.live.season == null, 'säsonger: ett spel utan säsong är orört');
+  const age0 = S.liveAge(A.GS, A.g0.live);
+  ok(Math.abs(age0 - 12) < 0.02, 'effektiv ålder är verklig ålder utan förnyelse (' + age0.toFixed(2) + ')');
+  ok(S.seasonBlock(A.GS, A.g0, 'classic') === '' && S.startLiveSeason(A.GS, 7800, 'nonsense') === false, 'klassiska servrar går för ett gammalt spel, okänt tema avvisas');
+  const money0 = A.GS.money;
+  const cost = S.liveSeasonCost(A.GS, A.g0, 'classic');
+  ok(S.startLiveSeason(A.GS, 7800, 'classic') === true && A.GS.money === money0 - cost && A.g0.live.season && S.seasonOn(A.GS, A.g0.live), 'en säsong startar och kostar pengar (' + cost + ')');
+  ok(typeof S.startLiveSeason(A.GS, 7800, 'story') === 'string', 'bara en säsong åt gången');
+  const tgt0 = S.liveTarget(B.GS, B.g0);
+  ok(S.liveTarget(A.GS, A.g0) > tgt0 * 1.04, 'målnivån är högre medan säsongen pågår');
+  run(A.GS, 14); run(B.GS, 14);
+  const lA = A.g0.live;
+  ok(!lA.season && lA.seasons === 1 && lA.lastSeason === 'classic' && A.GS.stats.liveSeasons === 1, 'säsongen tar slut efter sina veckor och räknas');
+  ok(S.liveAge(A.GS, lA) < S.liveAge(B.GS, B.g0.live) - 2 && S.liveAge(A.GS, lA) > 0.6 * 12, 'förnyelsen sänker åldern men inte under golvet (' + S.liveAge(A.GS, lA).toFixed(2) + ')');
+  ok(lA.subs > B.g0.live.subs * 1.05 && lA.passRev > 0 && A.GS.news.some((n) => n.key === 'live.news.seasonStart') && A.GS.news.some((n) => n.key === 'live.news.seasonEnd' || n.key === 'live.news.seasonFlat') && A.GS.news.some((n) => n.key === 'live.news.seasonMid' || n.key === 'live.news.seasonMid0'), 'fler spelare än utan säsong, säsongspass och nyheter (' + Math.round(lA.subs) + ' mot ' + Math.round(B.g0.live.subs) + ')');
+  ok(lA.marks.some((m) => m.k === 'ss'), 'säsongen märks i diagrammet');
+  ok(S.seasonReadyIn(A.GS, lA) === S.SEASON_GAP - 14 && typeof S.startLiveSeason(A.GS, 7800, 'ranked') === 'string', 'det går en paus innan nästa säsong');
+  run(A.GS, S.SEASON_GAP);
+  ok(S.seasonQuality(A.g0, 'classic') < S.seasonQuality(A.g0, 'story') && S.seasonShare(A.g0, 'classic') < S.SEASON.classic.reno, 'samma tema två gånger i rad ger mindre');
+  // golvet: många säsonger i rad tar aldrig ner åldern under 60 % av den verkliga
+  for (let k = 0; k < 14; k++) {
+    const th = ['story', 'ranked', 'festival', 'classic'][k % 4];
+    if (S.startLiveSeason(A.GS, 7800, th) !== true) { run(A.GS, S.SEASON_GAP); S.startLiveSeason(A.GS, 7800, th); }
+    run(A.GS, S.SEASON_GAP);
+  }
+  const realAge = (A.GS.t - lA.t0) / 48;
+  ok(S.liveAge(A.GS, lA) >= 0.6 * realAge - 0.05 && S.liveAge(A.GS, lA) < realAge * 0.75 && Number.isFinite(lA.subs), 'förnyelsen stannar vid golvet (' + S.liveAge(A.GS, lA).toFixed(1) + ' av ' + realAge.toFixed(1) + ' år)');
+  ok((lA.sPot || 0) <= 0.1201, 'säsongernas extra grundpotential har ett tak');
+  // en jubileumsfest lockar tillbaka en del av dem som lämnat sedan toppen
+  const F = mkOld(80);
+  const gap = F.g0.live.peak - F.g0.live.subs;
+  const subsF = F.g0.live.subs;
+  S.startLiveSeason(F.GS, 7800, 'festival');
+  ok(gap > 1000 && F.g0.live.subs > subsF + gap * 0.05, 'jubileumsfesten lockar tillbaka spelare som lämnat');
+  // för litet och för ungt: klassiska servrar kräver ett spel som är minst fem år
+  const Y = mkOld(80);
+  Y.g0.live.t0 = Y.GS.t - 48 * 3;
+  ok(S.seasonBlock(Y.GS, Y.g0, 'classic') === 'age' && typeof S.startLiveSeason(Y.GS, 7800, 'classic') === 'string' && !Y.g0.live.season, 'klassiska servrar kräver ett gammalt spel');
+  const poor = mkOld(80);
+  poor.GS.money = 10;
+  ok(typeof S.startLiveSeason(poor.GS, 7800, 'story') === 'string' && !poor.g0.live.season, 'en säsong kräver pengar');
+  // en comeback: ett spel som fallit under 60 % av toppen och sedan växer 40 % från bottennivån
+  const C = mkOld(5);
+  const lc = C.g0.live;
+  lc.peak = lc.subs * 3; lc.low = lc.subs; lc.fresh = 5;
+  C.GS.news.length = 0;
+  S.startLivePatch(C.GS, 7800);
+  S.startLiveSeason(C.GS, 7800, 'classic');
+  run(C.GS, 52);
+  ok((lc.cb || 0) >= 1 && C.GS.stats.liveComeback >= 1 && C.GS.news.some((n) => n.key === 'live.news.comeback') && lc.marks.some((m) => m.k === 'cb'), 'en comeback efter en lång nedgång märks i nyheterna (' + Math.round(lc.subs) + ' spelare)');
+  ok(ACHIEVEMENTS.find((a) => a.id === 'comeback').check(C.GS) && !ACHIEVEMENTS.find((a) => a.id === 'seasons5').check(C.GS), 'prestationen Comeback, men inte Säsongskungen än');
+  // äldre sparningar utan säsongsfält fungerar
+  const OLD = mkOld(60);
+  for (const k of ['reno', 'season', 'ssT', 'seasons', 'lastSeason', 'low', 'cb', 'passRev', 'sPot']) delete OLD.g0.live[k];
+  delete OLD.GS.stats.liveSeasons;
+  run(OLD.GS, 30);
+  ok(Number.isFinite(OLD.g0.live.subs) && S.startLiveSeason(OLD.GS, 7800, 'story') === true, 'ett onlinespel från före säsongerna fortsätter och kan starta en säsong');
+  // händelser som leder till säsonger: bara för ett gammalt spel som tappat spelare, med rabatt på säsongen
+  {
+    const V = mkOld(60);
+    const lv = V.g0.live;
+    lv.peak = lv.subs * 2;
+    const young = mkOld(60);
+    young.g0.live.t0 = young.GS.t - 48 * 2;
+    young.g0.live.peak = young.g0.live.subs * 2;
+    ok(EV.live_veterans.when(V.GS) && EV.live_vote.when(V.GS) && EV.live_streamer.when(V.GS), 'säsongshändelserna kan dras för ett gammalt spel som tappat spelare');
+    ok(!EV.live_veterans.when(young.GS) && !EV.live_streamer.when(young.GS) && !EV.live_veterans.when(G), 'men inte för ett ungt spel eller utan onlinespel');
+    const prev = S.applyFx(V.GS, EV.live_veterans.choices[0].fx, [], { game: 7800 }, true);
+    ok(prev.some((x) => x.k === 'season') && prev.some((x) => x.k === 'money' && x.v < 0) && !lv.season, 'förhandsvisningen visar säsongen och kostnaden utan att starta något');
+    const m0 = V.GS.money;
+    const full = S.liveSeasonCost(V.GS, V.g0, 'classic');
+    V.GS.pending = [{ type: 'event', id: 9101, ev: 'live_veterans', game: 7800 }];
+    S.resolveEvent(V.GS, 9101, 0);
+    ok(lv.season && lv.season.id === 'classic' && Math.abs(m0 - V.GS.money - full * 0.6) < 200, 'veteranerna: klassiska servrar startar till 40 % rabatt');
+    ok(!EV.live_vote.when(V.GS) && !EV.live_veterans.when(V.GS), 'ingen ny säsongshändelse medan en säsong pågår');
+    const W = mkOld(60);
+    W.g0.live.peak = W.g0.live.subs * 2;
+    W.GS.pending = [{ type: 'event', id: 9102, ev: 'live_vote', game: 7800 }];
+    S.resolveEvent(W.GS, 9102, 1);
+    ok(W.g0.live.season && W.g0.live.season.id === 'ranked', 'omröstningen: en tävlingssäsong startar');
+    const X = mkOld(60);
+    X.GS.pending = [{ type: 'event', id: 9103, ev: 'live_vote', game: 7800 }];
+    const sx = X.g0.live.subs;
+    S.resolveEvent(X.GS, 9103, 2);
+    ok(!X.g0.live.season && X.g0.live.subs < sx, 'att hoppa över omröstningen startar ingen säsong');
+    const P = mkOld(60);
+    P.GS.money = 5;
+    P.GS.pending = [{ type: 'event', id: 9104, ev: 'live_veterans', game: 7800 }];
+    S.resolveEvent(P.GS, 9104, 0);
+    ok(!P.g0.live.season && Number.isFinite(P.GS.money), 'utan pengar startar ingen säsong av en händelse');
+  }
+}
 // händelser för onlinespel: gäller det största spelet som är igång och ändrar dess spelare och innehåll
 {
   const GL = JSON.parse(JSON.stringify(G));
@@ -197,7 +311,8 @@ ok(true, 'alla händelser körda');
   S.launchLive(GL, GL.games[GL.games.length - 1]);
   const lv = GL.games[GL.games.length - 1].live;
   lv.subs = 200000; lv.pot = 250000; lv.fresh = 50; lv.boost = GL.t + 4;
-  const liveEvs = EVENTS.filter((e) => (e.needs || []).includes('live'));
+  const LATE = ['live_veterans', 'live_streamer', 'live_vote']; // kräver ett gammalt spel som tappat spelare, testas bland säsongerna
+  const liveEvs = EVENTS.filter((e) => (e.needs || []).includes('live') && !LATE.includes(e.id));
   ok(liveEvs.length >= 6 && liveEvs.every((e) => e.when(GL)), 'onlinespelets händelser kan dras med ett stort onlinespel');
   ok(liveEvs.every((e) => !e.when(G)), 'onlinespelets händelser dras inte utan onlinespel');
   let moved = 0;
@@ -232,7 +347,7 @@ ok(true, 'alla händelser körda');
   const go = GO.games[GO.games.length - 1];
   go.live.price = [1.2, 1, 1]; go.live.ops = 2;
   const fx = S.liveFactors(GO, go);
-  ok(Math.abs(go.live.pot * fx.age * fx.fresh * fx.price * fx.era * fx.ops * fx.event * fx.rivals * fx.regions - S.liveTarget(GO, go)) < 1e-6 * fx.target && fx.regions === 1 && fx.price < 1 && fx.ops > 1 && fx.fresh < 1 && fx.full === false, 'utsikternas delar ger tillsammans målnivån');
+  ok(Math.abs(go.live.pot * fx.age * fx.fresh * fx.price * fx.era * fx.ops * fx.event * fx.season * fx.rivals * fx.regions - S.liveTarget(GO, go)) < 1e-6 * fx.target && fx.regions === 1 && fx.price < 1 && fx.ops > 1 && fx.fresh < 1 && fx.full === false, 'utsikternas delar ger tillsammans målnivån');
   // löpande uppdateringar: startar vid 70, betalas som en vanlig, väntar när kassan inte räcker och säger till en gång
   go.live.fresh = 71.5; go.live.patch = null; GO.money = 1e9;
   ok(S.setLiveAuto(GO, go.id, true) === true && go.live.auto === 1, 'löpande uppdateringar slås på');

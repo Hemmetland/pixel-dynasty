@@ -7,7 +7,7 @@ import { SCOPE_TEMPO } from './tempo.js';
 import { earn, spend } from './studio.js';
 import { parPerTick } from './score.js';
 import { note } from './news.js';
-import { subPrices, payBase } from './live.js';
+import { subPrices, payBase, SEASON, liveSeasonCost, startLiveSeason } from './live.js';
 
 // Det största onlinespelet som är igång, eller null
 const liveTop = (G) => G.games.reduce((a, g) => (g.live && !g.live.closed && (!a || g.live.subs > a.live.subs) ? g : a), null);
@@ -125,7 +125,7 @@ export function applyFx(G, fx, out = [], ctx = {}, dry = false) {
     out.push({ k: 'mood', v: fx.mood });
   }
   // onlinespelet händelsen gäller (ctx.game), annars det största som är igång; utan onlinespel händer ingenting
-  if (fx.subs || fx.fresh || fx.subsMoney) {
+  if (fx.subs || fx.fresh || fx.subsMoney || fx.season) {
     const own = G.games.find((g) => g.id === ctx.game);
     const lg = own && own.live && !own.live.closed ? own : liveTop(G);
     const lv = lg && lg.live;
@@ -148,6 +148,14 @@ export function applyFx(G, fx, out = [], ctx = {}, dry = false) {
     if (lv && fx.fresh) {
       if (!dry) lv.fresh = clamp(lv.fresh + fx.fresh, 0, 100);
       out.push({ k: 'fresh', v: fx.fresh });
+    }
+    // en säsong i onlinespelet till rabatterat pris (fx.season = tema, fx.seasonOff = rabatt); går den inte att starta händer inget
+    if (lv && fx.season && SEASON[fx.season]) {
+      const off = fx.seasonOff || 0;
+      if (dry || startLiveSeason(G, lg.id, fx.season, off) === true) {
+        out.push({ k: 'season', v: SEASON[fx.season].name });
+        out.push({ k: 'money', v: -Math.round((liveSeasonCost(G, lg, fx.season) * (1 - off)) / 100) * 100 });
+      }
     }
   }
   if (fx.salesMult) {

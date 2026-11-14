@@ -23,7 +23,7 @@ import { openExpansion } from './wizard.js';
 import { CERTS, certOf, certCounts, nextCert, totalUnits, records } from '../sim/charts.js';
 import { fanVoices, fanSource } from '../sim/fans.js';
 import { FAN_SOURCE } from '../data/fanvoices.js';
-import { SUB_TIERS, OPS, PRICE_MIN, PRICE_MAX, PATCH_WEEKS, EVENT_WEEKS, SURGE_WEEKS, tierMix, liveMonth, serverCap, livePatchCost, startLivePatch, setLivePrice, setLiveOps, closeLive, rivalMmos, rivalPull, rivalFactor, liveFactors, setLiveAuto, AUTO_FRESH, AUTO_BUFFER, eventOn, eventReadyIn, liveEventCost, startLiveEvent, SHOP, isF2P, canGoF2P, goF2P, setLiveShop, liveLoad, liveArpu, hikeShare, REGIONS, regionGain, REGION_NAME, REGION_WEEKS, regionBonus, regionsOpen, liveRegionCost, startLiveRegion } from '../sim/live.js';
+import { SUB_TIERS, OPS, PRICE_MIN, PRICE_MAX, PATCH_WEEKS, EVENT_WEEKS, SURGE_WEEKS, tierMix, liveMonth, serverCap, livePatchCost, startLivePatch, setLivePrice, setLiveOps, closeLive, rivalMmos, rivalPull, rivalFactor, liveFactors, setLiveAuto, AUTO_FRESH, AUTO_BUFFER, eventOn, eventReadyIn, liveEventCost, startLiveEvent, SHOP, isF2P, canGoF2P, goF2P, setLiveShop, liveLoad, liveArpu, hikeShare, REGIONS, regionGain, REGION_NAME, REGION_WEEKS, regionBonus, regionsOpen, liveRegionCost, startLiveRegion, SEASONS, SEASON_WEEKS, seasonOn, seasonReadyIn, seasonShare, seasonBlock, seasonQuality, liveSeasonCost, startLiveSeason, liveAge } from '../sim/live.js';
 
 // Stäng servrarna och gör till gratisspel kräver två tryck: första trycket "armerar" knappen för det spelet
 let closeArmed = null;
@@ -69,9 +69,11 @@ const MARK = {
   f2p: ['refresh', 'var(--warn)', 'live.mk.f2p'],
   region: ['globe', 'var(--good)', 'live.mk.region'],
   price: ['trend', 'var(--bug)', 'live.mk.price'],
+  ss: ['calendar', 'var(--gold)', 'live.mk.ss'],
+  cb: ['rocket', 'var(--good)', 'live.mk.cb'],
   rival: ['flag', '', 'live.mk.rival'],
 };
-const LEGEND = { exp: 'live.lg.exp', ev: 'live.lg.ev', patch: 'live.lg.patch', down: 'live.lg.down', f2p: 'live.lg.f2p', region: 'live.lg.region', price: 'live.lg.price', rival: 'live.lg.rival' };
+const LEGEND = { exp: 'live.lg.exp', ev: 'live.lg.ev', patch: 'live.lg.patch', down: 'live.lg.down', f2p: 'live.lg.f2p', region: 'live.lg.region', price: 'live.lg.price', ss: 'live.lg.ss', cb: 'live.lg.cb', rival: 'live.lg.rival' };
 const when = (tt) => {
   const d = dateOf(tt);
   return `${MONTHS[lang][d.month]} ${d.year}`;
@@ -152,13 +154,13 @@ function rivalList(G, g) {
 }
 
 // Utsikter: vart spelarbasen är på väg och vad som höjer eller sänker den just nu (bara delar som märks, minst 1 %)
-const FX_KEY = { regions: 'live.fx.regions', age: 'live.fx.age', fresh: 'live.fx.fresh', price: 'live.fx.price', shop: 'live.fx.shop', era: 'live.fx.era', ops: 'live.fx.ops', event: 'live.fx.event', rivals: 'live.fx.rivals' };
+const FX_KEY = { regions: 'live.fx.regions', age: 'live.fx.age', fresh: 'live.fx.fresh', price: 'live.fx.price', shop: 'live.fx.shop', era: 'live.fx.era', ops: 'live.fx.ops', event: 'live.fx.event', season: 'live.fx.season', rivals: 'live.fx.rivals' };
 function outlook(G, g) {
   const L = g.live;
   const f = liveFactors(G, g);
   const dir = f.target > L.subs * 1.02 ? 'up' : f.target < L.subs * 0.98 ? 'down' : 'flat';
   const col = dir === 'up' ? 'var(--good)' : dir === 'down' ? 'var(--bug)' : 'var(--text)';
-  const chips = ['fresh', 'price', 'ops', 'event', 'regions', 'rivals', 'era', 'age']
+  const chips = ['fresh', 'price', 'ops', 'event', 'season', 'regions', 'rivals', 'era', 'age']
     .map((k) => [k === 'price' && isF2P(L) ? 'shop' : k, Math.round((f[k] - 1) * 100)])
     .filter(([, p]) => p !== 0)
     .map(([k, p]) => {
@@ -179,6 +181,37 @@ function eventBtn(G, g) {
   const wait = eventReadyIn(G, L);
   const label = eventOn(G, L) ? tn('live.eventOn', L.ev.until - G.t) : wait > 0 ? tn('live.eventWait', wait) : t('live.event') + ' · ' + money(liveEventCost(G, g));
   return `<button class="btn" data-act="lv-event" data-id="${g.id}" ${wait > 0 ? 'disabled' : ''} data-tip="${esc(t('live.eventTip', { n: EVENT_WEEKS }))}">${icon('star')}${label}</button>`;
+}
+
+const dec1 = (x) => x.toFixed(1).replace('.', lang === 'sv' ? ',' : '.');
+// Säsonger: hur många spelare som lämnat sedan toppen, spelets effektiva ålder, säsongen som pågår eller de fyra temana
+function seasonPanel(G, g) {
+  const lv = g.live;
+  const lapsed = Math.max(0, lv.peak - lv.subs);
+  const real = Math.max(0, G.t - lv.t0) / WEEKS_PER_YEAR;
+  const head = `<div class="row" style="margin:16px 0 4px;gap:8px"><div class="lbl">${t('live.seasons')}</div><span class="sp"></span>${lv.seasons ? `<span class="faint" style="font-size:12px">${t('live.seasonDone', { n: lv.seasons })}</span>` : ''}</div>`;
+  const facts = `<div class="row wrap" style="gap:6px 10px;margin-bottom:8px">${lapsed >= 1 ? `<span class="chip c" style="--c:var(--bug)">${icon('user')}${t('live.lapsed', { n: fmtNum(lapsed), p: Math.round((lapsed / Math.max(1, lv.peak)) * 100) })}</span>` : ''}<span class="chip">${icon('hourglass')}${t('live.ageNow', { n: dec1(liveAge(G, lv)), m: dec1(real) })}</span></div>`;
+  if (lv.season && seasonOn(G, lv)) {
+    const S = lv.season;
+    const th = SEASONS.find((x) => x.id === S.id);
+    const left = Math.max(0, S.until - G.t);
+    const more = Math.round(lv.subs - S.subs0);
+    return `${head}<p class="hint" style="margin-bottom:8px">${t('live.seasonsHelp', { n: SEASON_WEEKS })}</p>${facts}
+      <div class="ltier season-on"><span class="rn-i" style="--c:var(--gold)">${icon(th.ic)}</span><div style="flex:1;min-width:0"><div class="row" style="font-size:13px"><b>${t('live.seasonOn', { name: L(th.name) })}</b><span class="sp"></span><span class="faint">${t('live.seasonLeft', { n: left })}</span></div>${bar(((SEASON_WEEKS - left) / SEASON_WEEKS) * 100, 'var(--gold)', 'thin')}
+        <div class="faint" style="font-size:11.5px;margin-top:4px">${t('live.seasonBack', { n: (more >= 0 ? '+' : '−') + fmtNum(Math.abs(more)) })} · ${t('live.seasonPass', { v: money(S.pass || 0) })}</div></div></div>`;
+  }
+  const wait = seasonReadyIn(G, lv);
+  const rows = SEASONS.map((th) => {
+    const cost = liveSeasonCost(G, g, th.id);
+    const blocked = seasonBlock(G, g, th.id);
+    const info = [t('live.seasonRenew', { n: Math.round(seasonShare(g, th.id) * 100) }), `+${Math.round((th.lift - 1) * 100)} %`, t('live.seasonPass', { v: '+' + Math.round(th.pass * 100) + ' %' })];
+    if (lv.lastSeason === th.id && seasonQuality(g, th.id) < 1) info.push(t('live.seasonRepeat'));
+    const right = blocked
+      ? `<span class="faint" style="font-size:12px;text-align:right">${icon('lock')} ${t('live.seasonLocked', { n: th.minAge })}</span>`
+      : `<button class="btn sm" data-act="lv-season" data-id="${g.id}" data-th="${th.id}" ${wait > 0 || G.money < cost ? 'disabled' : ''}>${icon('calendar')}${t('live.seasonGo')} · ${money(cost)}</button>`;
+    return `<div class="ltier"><span class="rn-i" style="--c:var(--gold)">${icon(th.ic)}</span><div style="flex:1;min-width:0"><b>${L(th.name)}</b><div class="faint" style="font-size:11.5px">${L(th.desc)}<br>${info.join(' · ')}</div></div>${right}</div>`;
+  }).join('');
+  return `${head}<p class="hint" style="margin-bottom:8px">${t('live.seasonsHelp', { n: SEASON_WEEKS })}${wait > 0 ? ' ' + t('live.seasonWait', { n: wait }) : ''}</p>${facts}<div class="col" style="gap:6px">${rows}</div>`;
 }
 
 // Regioner: hemmamarknaden och de delar av världen spelet kan öppna servrar i (en i taget). Ett spel från före regionerna
@@ -261,6 +294,7 @@ function livePanel(G, g) {
     </div>
     ${outlook(G, g)}
     <div class="lbl" style="margin:16px 0 4px">${t(f2p ? 'live.chartPlayers' : 'live.chart')}</div>${subsChart(G, g)}
+    ${seasonPanel(G, g)}
     ${rivalList(G, g)}
     ${regionPanel(G, g)}
     ${pay}
@@ -559,6 +593,12 @@ act('lv-region', (el) => {
 });
 act('lv-event', (el) => {
   const r = startLiveEvent(UI.app.G, +el.dataset.id);
+  if (r === true) sfx.play('coin');
+  else errToast(r);
+  UI.refresh();
+});
+act('lv-season', (el) => {
+  const r = startLiveSeason(UI.app.G, +el.dataset.id, el.dataset.th);
   if (r === true) sfx.play('coin');
   else errToast(r);
   UI.refresh();

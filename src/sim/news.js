@@ -60,6 +60,7 @@ const MILESTONES = {
   'live.news.subs': [{}],
   'live.news.players': [{}],
   'live.news.f2p': [{ as: 'hist.f2p' }],
+  'live.news.comeback': [{ as: 'hist.comeback' }],
   'live.news.closed': [{}],
 };
 const STORY_MAX = 300;
