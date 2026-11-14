@@ -9,7 +9,7 @@
     "watch": "node build.mjs --watch",
     "sim": "node test/sim.mjs",
     "lint": "eslint src test build.mjs",
-    "test": "node test/features.mjs",
+    "test": "node test/features.mjs && node test/music.mjs",
     "pacing": "node test/pacing.mjs --seeds=12"
   },
   "devDependencies": {

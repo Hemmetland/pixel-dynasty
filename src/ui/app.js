@@ -10,6 +10,7 @@ import { releaseGame, cancelProject, toggleCrunch, shipNow, extendPolish } from 
 import { cancelContract } from '../sim/contracts.js';
 import { refreshCandidates } from '../sim/people.js';
 import { sfx, music } from '../audio/sfx.js';
+import { newDirector, pickMood } from '../audio/director.js';
 import { UI, act, initUICore, toast, $, icon, L, money, esc } from './core.js';
 import { buildHUD, buildDock, updateHUD, updateDock, updateDev, setHUDVisible, flashStat, fitHUD } from './hud.js';
 import { showPrompt } from './prompts.js';
@@ -369,10 +370,31 @@ export const app = {
     emit('title');
   },
 
+  // Musikregin: en gång i sekunden, efter hur spelet går (paus, fart, övertid, ruta som visas)
+  directMusic(now) {
+    const G = this.G;
+    const D = this.musicDir || (this.musicDir = newDirector());
+    const mood = pickMood(D, {
+      now: now / 1000,
+      mode: this.mode === 'play' && G ? 'play' : 'title',
+      over: !!(G && G.over),
+      prompt: this.promptActive || !!(G && G.pending.length),
+      paused: this.speed === 0 || (this.settings.menuPause && this.menuOpen),
+      crunch: !!(G && G.job && G.job.crunch),
+      speed: this.speed,
+      style: this.settings.musicStyle,
+    });
+    if (mood && music.mood?.() !== mood) music.setMood?.(mood);
+  },
+
   // ── Loop ──
   frame(now) {
     const dt = Math.min(0.1, (now - this.last) / 1000);
     this.last = now;
+    if (now - (this.musicT || 0) >= 1000) {
+      this.musicT = now;
+      this.directMusic(now);
+    }
     const G = this.G;
     if (this.mode === 'play' && G) {
       const blocked = G.pending.length > 0 || (this.settings.menuPause && this.menuOpen) || this.speed === 0 || !!G.over || this.promptActive;
