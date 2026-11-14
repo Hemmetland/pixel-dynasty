@@ -5,6 +5,7 @@ import { EVENTS } from '../src/data/events.js';
 import { exportCode, importCode } from '../src/core/store.js';
 import { PLATFORM, PLATFORMS } from '../src/data/platforms.js';
 import { STRINGS } from '../src/data/strings.js';
+import { ACHIEVEMENTS } from '../src/data/achievements.js';
 let fails = 0;
 const ok = (c, m) => { if (!c) { fails++; console.log('FAIL', m); } else console.log('ok  ', m); };
 const G = S.newGame({ studio: 'T', seed: 7, difficulty: 'normal' });
@@ -1132,6 +1133,29 @@ ok(true, 'alla händelser körda');
   const gd = S.newGame({ studio: 'D', seed: 5 });
   ok(gi.fans === 250 && gd.fans === 0 && gt.money === gd.money + 15000 && gi.staff[0].design === 12 && gd.staff[0].design === 19, 'bakgrunderna ger sina startvärden');
   ok(Object.keys(S.FOUNDER_UNLOCK).every((id) => S.FOUNDERS.includes(id)) && S.FOUNDERS.every((id) => S.ARCHETYPES[id]), 'varje bakgrund har värden');
+}
+// prestationer för galan och onlinespel
+{
+  const GX = S.newGame({ studio: 'Ach', seed: 3 });
+  const has = (id) => ACHIEVEMENTS.find((a) => a.id === id).check(GX);
+  GX.awards.push({ year: 1984, cat: 'goty' }, { year: 1984, cat: 'design' }, { year: 1984, cat: 'tech' });
+  ok(!has('slam') && !has('regular'), 'tre priser på ett gala är varken storslam eller stammis');
+  GX.awards.push({ year: 1984, cat: 'fan' });
+  ok(has('slam') && !has('regular'), 'alla fyra priserna på samma gala är storslam');
+  GX.awards.push({ year: 1982, cat: 'goty' }, { year: 1983, cat: 'goty' }, { year: 1985, cat: 'goty' });
+  ok(!has('regular'), 'fyra olika år räcker inte till stammis');
+  GX.awards.push({ year: 1986, cat: 'fan' });
+  ok(has('regular'), 'priser fem olika år gör en till galans stammis');
+  const live = (o) => ({ live: { closed: false, model: 'subs', peak: 0, ...o } });
+  GX.games.push(live({}), live({}), live({ closed: true }));
+  ok(!has('three_live'), 'två pågående onlinespel är inte tre');
+  GX.games.push(live({}));
+  ok(has('three_live'), 'tre onlinespel igång samtidigt');
+  ok(!has('f2p1m'), 'ingen miljon spelare i ett gratisspel än');
+  GX.games.push(live({ model: 'subs', peak: 2e6 }), live({ model: 'f2p', peak: 9e5 }));
+  ok(!has('f2p1m'), 'ett abonnemangsspel eller under en miljon räknas inte');
+  GX.games.push(live({ model: 'f2p', peak: 1.2e6, closed: true }));
+  ok(has('f2p1m'), 'en miljon spelare i ett gratisspel');
 }
 // ärkerivalen: studion närmast framför blir rival, årets duell avgörs vid årsskiftet, raka segrar avgör den och en ny
 // rival utses. Duellen rör varken pengar, fans eller slumpföljden.

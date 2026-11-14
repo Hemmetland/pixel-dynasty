@@ -13,6 +13,12 @@ function seriesLen(G, g) {
 }
 // spel med minst skiva nummer min (0 silver, 1 guld, 2 platina, 3 diamant); räknat ur sålda exemplar så att gamla sparningar får sina
 const discs = (G, min) => G.games.filter((g) => certIndex(totalUnits(g)) >= min).length;
+// priser vunna på samma gala (ett år), och hur många olika år studion vunnit något
+const galaWins = (G) => {
+  const by = {};
+  for (const a of G.awards) (by[a.year] || (by[a.year] = new Set())).add(a.cat);
+  return by;
+};
 const liveEvents = (G) => G.games.reduce((a, g) => a + ((g.live && g.live.events) || 0), 0);
 export const ACHIEVEMENTS = [
   A('first_game', 'a_game', 'Första spelet', 'First Release', 'Släpp ditt första spel.', 'Release your first game.', (G) => G.games.length >= 1),
@@ -43,6 +49,8 @@ export const ACHIEVEMENTS = [
   A('live1', 'a_game', 'Världen är online', 'World Online', 'Släpp ditt första onlinespel.', 'Launch your first online game.', (G) => (G.stats.liveLaunched || 0) >= 1),
   A('subs1m', 'a_heart', 'En miljon äventyrare', 'A Million Adventurers', 'Ha en miljon prenumeranter samtidigt.', 'Have a million subscribers at once.', (G) => G.games.some((g) => g.live && g.live.peak >= 1e6)),
   A('goty', 'a_trophy', 'Årets spel', 'Game of the Year', 'Vinn priset Årets spel på Golden Pixel Awards.', 'Win Game of the Year at the Golden Pixel Awards.', (G) => G.awards.some((a) => a.cat === 'goty')),
+  A('slam', 'a_trophy', 'Storslam', 'Grand Slam', 'Vinn alla fyra priserna på samma gala.', 'Win all four awards at the same gala.', (G) => Object.values(galaWins(G)).some((c) => c.size >= 4)),
+  A('regular', 'a_star', 'Galans stammis', 'Gala Regular', 'Vinn ett pris fem olika år.', 'Win an award in five different years.', (G) => Object.keys(galaWins(G)).length >= 5),
   A('trilogy', 'a_game', 'Trilogi', 'Trilogy', 'Släpp det tredje spelet i en serie.', 'Release the third game in a series.', (G) => G.games.some((g) => g.sequelOf && seriesLen(G, g) >= 3)),
   A('novel', 'a_bulb', 'Nytänkare', 'Trailblazer', 'Efter tio spel: släpp ett med ett tema och en genre du aldrig kombinerat.', 'After ten games, release one with a topic and genre you have never combined.', (G) => G.games.some((g) => g.novel)),
   A('blend8', 'a_star', 'Genreblandare', 'Genre Blender', 'Få betyg 8 eller mer med ett spel som blandar två genrer.', 'Score 8 or more with a game that blends two genres.', (G) => G.games.some((g) => g.genre2 && g.score >= 8)),
@@ -50,6 +58,8 @@ export const ACHIEVEMENTS = [
   A('exp3', 'a_globe', 'Levande värld', 'Living World', 'Släpp tre expansioner till samma onlinespel.', 'Release three expansions for the same online game.', (G) => G.games.some((g) => g.live && g.live.exps.length >= 3)),
   A('live_world', 'a_globe', 'Världen runt', 'Around the World', 'Öppna ett onlinespel i alla regioner.', 'Open an online game in every region.', (G) => (G.stats.liveWorld || 0) >= 1),
   A('events10', 'a_globe', 'Festfixare', 'Party Planner', 'Ordna tio evenemang i dina onlinespel.', 'Run ten events in your online games.', (G) => liveEvents(G) >= 10),
+  A('three_live', 'a_globe', 'Flera världar', 'Many Worlds', 'Ha tre onlinespel igång samtidigt.', 'Run three online games at once.', (G) => G.games.filter((g) => g.live && !g.live.closed).length >= 3),
+  A('f2p1m', 'a_heart', 'Gratis för alla', 'Free for All', 'Få en miljon spelare i ett gratisspel.', 'Reach a million players in a free-to-play game.', (G) => G.games.some((g) => g.live && g.live.model === 'f2p' && g.live.peak >= 1e6)),
   A('outlast', 'a_globe', 'Sist kvar', 'Last One Standing', 'Ha ett onlinespel igång när en konkurrents MMO stänger.', 'Have an online game running when a rival MMO shuts down.', (G) => (G.stats.outlasted || 0) >= 1),
   A('ports3', 'a_globe', 'Överallt', 'Everywhere', 'Porta ett spel till tre andra plattformar.', 'Port one game to three other platforms.', (G) => G.games.some((g) => (g.ports || []).filter((p) => p.kind !== 'remaster').length >= 3)),
   A('timeless', 'a_star', 'Tidlös', 'Timeless', 'Släpp en remaster med betyg 8 eller mer.', 'Release a remaster scoring 8 or more.', (G) => G.games.some((g) => (g.ports || []).some((p) => p.kind === 'remaster' && p.score >= 8))),
