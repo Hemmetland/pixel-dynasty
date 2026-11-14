@@ -1063,6 +1063,43 @@ ok(true, 'alla händelser körda');
   const p2 = GW.pending[0];
   const exp = [1, 0.5, 0.5, 1].reduce((f, k) => f + Math.round((300 + f * 0.06) * k * S.NOM_SHARE), f1);
   ok(GW.awards.length === 3 && p2.gain.noms === 4 && GW.fans === exp && GW.news[0].key === 'news.awardNom' && GW.news[0].vars.n === 4, 'nomineringar utan vinst ger en tredjedel av belöningen och en rad i krönikan');
+  // ställningen inför galan: samma ordning som galan får, en nyhet tolv veckor innan, och ingenting annat ändras
+  GW.pending.length = 0;
+  GW.t = 20;
+  ok(S.awardStandings(GW) === null, 'ingen ställning före första galan');
+  GW.t = 144 + 35; // 1983, tolv veckor före galan
+  for (const sc of [8, 7, 6, 5]) rel(144 + 5, sc, 1e5);
+  mine(144 + 10, 7.5, 100);
+  const st = S.awardStandings(GW);
+  ok(st.year === 1983 && st.weeks === S.GALA_WATCH && st.field === 5 && st.cats[0].place === 2 && st.cats[0].top[0].score === 8 && st.cats[0].mine.title === 'M7.5' && st.cats[3].place === 5 && st.cats[3].top.length === 4 && st.cats[0].cut === 6 && st.cats[0].top[0].v === 8 && st.cats[3].top[0].v === st.cats[3].top[0].units && st.cats[3].cut > st.cats[3].mine.v, 'ställningen: tvåa i Årets spel, sist i publikpriset, med gränsen för en nominering');
+  const snap = () => JSON.stringify([GW.money, GW.fans, GW.rng, GW.awards.length, GW.pending.length]);
+  const s0 = snap();
+  const n0 = GW.news.length;
+  S.galaWatch(GW);
+  ok(GW.news.length === n0 + 1 && GW.news[0].key === 'news.galaNom' && GW.news[0].vars.n === 2 && GW.news[0].vars.v === '8.0' && GW.news[0].vars.title === 'M7.5' && snap() === s0, 'tolv veckor före galan: en nyhet om läget, inget annat ändras');
+  GW.t++;
+  S.galaWatch(GW);
+  ok(GW.news.length === n0 + 1, 'nyheten kommer bara den veckan');
+  mine(144 + 36, 9, 100);
+  GW.t = 144 + 35;
+  S.galaWatch(GW);
+  ok(S.awardStandings(GW).cats[0].place === 1 && GW.news[0].key === 'news.galaLead' && GW.news[0].vars.title === 'M9', 'ett bättre spel tar ledningen');
+  GW.t = 144 + 47;
+  const stG = S.awardStandings(GW);
+  S.runAwards(GW);
+  const p3 = GW.pending[0];
+  const names = (a) => a.map((e) => e.title.sv || e.title).join();
+  ok(stG.weeks === 0 && ['goty', 'design', 'tech'].every((id) => names(stG.cats.find((c) => c.id === id).top) === names(p3.cats.find((c) => c.id === id).nominees)), 'galaveckan är ställningen densamma som galans nomineringar');
+  // ett år med för få spel: ingen gala, ingen nyhet, och ställningen säger hur många som finns
+  GW.t = 192 + 35;
+  rel(192 + 5, 6, 1e5);
+  const n1 = GW.news.length;
+  S.galaWatch(GW);
+  ok(S.awardStandings(GW).field === 1 && S.awardStandings(GW).field < S.GALA_FIELD && GW.news.length === n1, 'för få spel: ingen nyhet om galan');
+  // utan eget spel i år: en tyst rad om vem som leder
+  for (const sc of [7, 6.5, 5]) rel(192 + 6, sc, 1e5);
+  S.galaWatch(GW);
+  ok(GW.news[0].key === 'news.galaOut' && GW.news[0].vars.v === '7.0' && S.awardStandings(GW).cats[0].place === 0 && S.awardStandings(GW).cats[0].mine === null, 'utan eget spel: nyheten säger vem som leder');
 }
 // studiohallen: studions rad och hallens ordning (själva lagringen ligger i webbläsaren)
 {

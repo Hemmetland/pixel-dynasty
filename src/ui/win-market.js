@@ -16,6 +16,7 @@ import { idealFocus } from '../sim/score.js';
 import { canStore } from '../sim/store.js';
 import { studioRanking } from '../sim/charts.js';
 import { rivalOf, rivalLog } from '../sim/rival.js';
+import { awardStandings, GALA_FIELD, AWARD_CATS } from '../sim/awards.js';
 import { storeTab } from './store-tab.js';
 import { groupTab } from './group-tab.js';
 import { STABLE_MIN, stability } from '../sim/group.js';
@@ -48,10 +49,41 @@ function platformsTab(G) {
     ${soon.length ? `<div class="lbl" style="margin:18px 0 8px">${t('mkt.soon')}</div><div class="grid" style="grid-template-columns:repeat(auto-fit,minmax(240px,1fr))">${soon.map((p) => `<div class="card row" style="gap:12px;opacity:.75"><div class="plat-g" style="--c:${p.color};width:44px;height:38px">${glyphImg('gp_' + p.kind, p.color, 16, true)}</div><div><b>${esc(p.name)}</b><div class="faint" style="font-size:11.5px">${esc(p.maker)} · ${t('mkt.launch')} ${p.y0}</div></div></div>`).join('')}</div>` : ''}`;
 }
 
+// Inför galan: läget i de fyra priserna just nu, med ledaren och din bästa plats. Visas från 1981 tills galan hållits.
+const GALA_ICON = { goty: 'trophy', design: 'bulb', tech: 'cpu', fan: 'heart' };
+function galaCard(G) {
+  const s = awardStandings(G);
+  if (!s) return '';
+  const when = s.weeks === 0 ? t('mkt.gala.now') : t('mkt.gala.in', { n: s.weeks });
+  const head = `<div class="row" style="gap:8px;margin-bottom:6px">${icon('award')}<div class="lbl" style="flex:1">${t('mkt.gala.head', { year: s.year })}</div><span class="faint" style="font-size:12px">${when}</span></div>`;
+  if (s.field < GALA_FIELD) return `<div class="card gala-card">${head}<p class="hint">${t('mkt.gala.few', { n: s.field })}</p></div>`;
+  const num = (c, v) => (c.id === 'fan' ? `${fmtNum(v)} ${t('mkt.units')}` : v.toFixed(1));
+  const val = (c, e) => num(c, e.v);
+  const rows = s.cats
+    .map((c) => {
+      const lead = c.top[0];
+      const col = c.place === 1 ? 'var(--gold)' : c.place >= 2 && c.place <= 4 ? 'var(--accent)' : 'var(--muted)';
+      const tag = c.place === 1 ? t('mkt.gala.lead') : c.place >= 2 && c.place <= 4 ? t('mkt.gala.nom', { n: c.place }) : c.place ? t('mkt.gala.place', { n: c.place }) : t('mkt.gala.none');
+      // utanför de fyra nominerade: vad som krävs för att komma med
+      const cut = (c.place === 0 || c.place > 4) && c.cut != null ? ` · ${t('mkt.gala.cut', { v: num(c, c.cut) })}` : '';
+      const mine =
+        c.mine && c.place !== 1
+          ? `<div class="faint" style="font-size:11.5px">${t('mkt.gala.mine', { title: `<b>${esc(L(c.mine.title))}</b>`, v: val(c, c.mine) })}${cut}</div>`
+          : cut
+            ? `<div class="faint" style="font-size:11.5px">${cut.slice(3)}</div>`
+            : '';
+      return `<div class="ltier gala-row" style="--c:${col}">${icon(GALA_ICON[c.id])}<div style="flex:1;min-width:0">
+        <div class="row" style="gap:8px;margin-bottom:2px"><b style="flex:1;min-width:0">${L(AWARD_CATS.find((a) => a.id === c.id).name)}</b><span class="tag" style="--c:${col}">${tag}</span></div>
+        <div class="faint" style="font-size:11.5px">${t('mkt.gala.leader', { title: `<b>${esc(L(lead.title))}</b>`, studio: esc(lead.studio), v: val(c, lead) })}</div>${mine}</div></div>`;
+    })
+    .join('');
+  return `<div class="card gala-card">${head}<p class="hint" style="margin-bottom:8px">${t('mkt.gala.help')}</p><div class="gala-grid">${rows}</div></div>`;
+}
+
 function chartsTab(G) {
   const rows = topSellers(G, 12, 10);
-  if (!rows.length) return `<div class="empty">${icon('chart')}<div>${t('mkt.noCharts')}</div></div>`;
-  return `<div class="col" style="gap:8px">${rows
+  if (!rows.length) return `${galaCard(G)}<div class="empty">${icon('chart')}<div>${t('mkt.noCharts')}</div></div>`;
+  return `${galaCard(G)}<div class="col" style="gap:8px">${rows
     .map((r, i) => {
       const title = L(r.title);
       const tp = TOPIC[r.topic];

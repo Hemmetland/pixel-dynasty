@@ -18,14 +18,16 @@ export const FIRST_GALA = 1981;
 // nomineringarna håller studions tidiga tillväxt i samma takt.
 export const NOM_SHARE = 1 / 3;
 
-// Samlar årets spel (konkurrenter + dina) med mätvärden.
-function yearEntries(G, year) {
+// Samlar årets spel (konkurrenter + dina) med mätvärden. now = tidpunkten som konkurrenternas försäljning räknas till
+// (galan räknar hela året, ställningen under året räknar fram till i dag).
+function yearEntries(G, year, now) {
   const lo = tOf(year);
   const hi = tOf(year + 1);
+  if (now == null) now = hi;
   const out = [];
   for (const r of G.market.releases) {
     if (r.t >= lo && r.t < hi) {
-      out.push({ title: r.title, studio: r.studio, yours: false, score: r.score, design: r.score + (r.id % 7) * 0.08 - 0.2, tech: r.score + (r.id % 5) * 0.1 - 0.2, units: relUnitsTotal(r, hi) * CHART_REACH, topic: r.topic, color: r.color });
+      out.push({ title: r.title, studio: r.studio, yours: false, score: r.score, design: r.score + (r.id % 7) * 0.08 - 0.2, tech: r.score + (r.id % 5) * 0.1 - 0.2, units: relUnitsTotal(r, now) * CHART_REACH, topic: r.topic, color: r.color });
     }
   }
   // Galan hålls när årets sista vecka börjar (t = hi - 1), så ett spel som släpps den veckan tävlar nästa år
@@ -37,15 +39,50 @@ function yearEntries(G, year) {
   return out;
 }
 
+const keyOf = (c) => (c.id === 'goty' ? 'score' : c.id === 'fan' ? 'units' : c.id);
+
+// Ställningen inför galan, så som den ser ut i dag: för varje pris de fyra som leder, din bästa plats och spelet som har
+// den. Bara uppvisning (marknadsfönstret och en nyhet tolv veckor före galan): galan räknar själv när den hålls.
+// weeks = veckor kvar till galan, field = antal spel i fältet (galan hålls bara med minst fyra), v = värdet priset rangordnar
+// efter (betyg, juryns design- eller teknikvärde, sålda exemplar), cut = fjärde platsens värde (gränsen för en nominering,
+// null när färre än fyra spel finns). null före första galan.
+export const GALA_FIELD = 4;
+export function awardStandings(G) {
+  const year = yearOf(G.t);
+  if (year < FIRST_GALA) return null;
+  const gala = tOf(year + 1) - 1; // galan hålls årets sista vecka
+  const entries = yearEntries(G, year, G.t);
+  const cats = AWARD_CATS.map((c) => {
+    const key = keyOf(c);
+    const sorted = entries.slice().sort((a, b) => b[key] - a[key]);
+    const i = sorted.findIndex((e) => e.yours);
+    const pick = (e) => ({ title: e.title, studio: e.studio, yours: e.yours, score: e.score, units: e.units, v: e[key], gid: e.gid });
+    return { id: c.id, top: sorted.slice(0, 4).map(pick), place: i + 1, mine: i >= 0 ? pick(sorted[i]) : null, cut: sorted[3] ? sorted[3][key] : null };
+  });
+  return { year, weeks: gala - G.t, field: entries.length, cats };
+}
+// Tolv veckor före galan: en nyhet om läget i Årets spel, så att det finns något att sikta på under hösten.
+export const GALA_WATCH = 12;
+export function galaWatch(G) {
+  const s = awardStandings(G);
+  if (!s || s.weeks !== GALA_WATCH || s.field < GALA_FIELD) return;
+  const c = s.cats[0];
+  const cat = AWARD_CATS[0].name;
+  const lead = c.top[0];
+  if (c.place === 1) note(G, 'news.galaLead', { title: lead.title, cat }, 'award');
+  else if (c.place >= 2 && c.place <= 4) note(G, 'news.galaNom', { title: c.mine.title, n: c.place, cat, lead: lead.title, v: lead.score.toFixed(1) }, 'info');
+  else note(G, 'news.galaOut', { lead: lead.title, studio: lead.studio, cat, v: lead.score.toFixed(1) }, 'info', true);
+}
+
 export function runAwards(G) {
   const year = yearOf(G.t);
   if (year < FIRST_GALA) return;
   const entries = yearEntries(G, year);
-  if (entries.length < 4) return;
+  if (entries.length < GALA_FIELD) return;
   const cats = [];
   let yoursNominated = false;
   for (const c of AWARD_CATS) {
-    const key = c.id === 'goty' ? 'score' : c.id === 'fan' ? 'units' : c.id;
+    const key = keyOf(c);
     const sorted = entries.slice().sort((a, b) => b[key] - a[key]).slice(0, 4);
     const nominees = sorted.map((e) => ({ title: e.title, studio: e.studio, yours: e.yours, score: e.score, topic: e.topic, gid: e.gid }));
     const winner = 0;

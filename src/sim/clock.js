@@ -20,7 +20,7 @@ import { fanWeek } from './fans.js';
 import { storyWeek } from './news.js';
 import { monthlyMarket, updateTrends } from './market.js';
 import { rollDevEvent, rollStudioEvent } from './events.js';
-import { runAwards, expoOffer } from './awards.js';
+import { runAwards, expoOffer, galaWatch } from './awards.js';
 import { finishTraining, refreshCandidates, payroll, updateMood, burnoutQuits } from './people.js';
 import { rentOf, facUpkeep, loanInterest, spend } from './studio.js';
 import { note } from './news.js';
@@ -68,6 +68,7 @@ function weekly(G) {
     if (p.id !== 'pc' && !p.own && G.t === Math.round((launchTime(p) - START_YEAR) * WEEKS_PER_YEAR)) note(G, 'news.platform', { name: p.name, maker: p.maker }, 'platform');
   }
   if (d.month === 5 && d.week === 1) expoOffer(G);
+  if (d.month === 8 && d.week === 3) galaWatch(G);
   if (d.month === 11 && d.week === 3) runAwards(G);
   if (G.t % WEEKS_PER_MONTH === 0) monthly(G, d);
 }
