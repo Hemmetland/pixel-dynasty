@@ -10,7 +10,7 @@ const SK = { design: ['bulb', 'var(--design)'], tech: ['cpu', 'var(--tech)'], sp
 
 const skills = (G, s) => {
   const cap = skillCap(G);
-  return `<div class="skills">${SKILLS.map((k) => `<div class="sk" style="--c:${SK[k][1]}" data-tip="${t('skill.' + k + '.tip')}"><span class="si">${icon(SK[k][0])}</span><div style="flex:1">${bar((s[k] / cap) * 100, SK[k][1], 'thin')}</div><b class="num">${s[k]}</b></div>`).join('')}</div>`;
+  return `<div class="skills">${SKILLS.map((k) => `<div class="sk" style="--c:${SK[k][1]}" data-tip="${t('skill.' + k + '.tip')}"><span class="si">${icon(SK[k][0])}</span><div style="flex:1;min-width:0"><span class="sk-n">${t('skill.' + k)}</span>${bar((s[k] / cap) * 100, SK[k][1], 'thin')}</div><b class="num">${s[k]}</b></div>`).join('')}</div>`;
 };
 const moodInfo = (m) => (m >= 62 ? ['var(--good)', 'staff.moodHigh'] : m >= 38 ? ['var(--warn)', 'staff.moodMid'] : ['var(--bug)', 'staff.moodLow']);
 
