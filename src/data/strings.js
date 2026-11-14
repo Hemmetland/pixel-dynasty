@@ -701,6 +701,7 @@ export const STRINGS = {
   'live.perkUpkeep': ['Drift {n} % av priset', 'Upkeep {n} % of the price'],
   'live.perkAdd': ['Inför', 'Add'],
   'live.perkEnd': ['Införd', 'Added'],
+  'live.perkEndSure': ['Avsluta? Ingen återbetalning', 'End it? No refund'],
   'live.perkEndTip': ['Klicka för att avsluta fördelen. Ingen återbetalning, och spelarna märker att den saknas.', 'Click to end the perk. No refund, and players notice it is gone.'],
   'live.autoSeason': ['Automatiska säsonger', 'Automatic seasons'],
   'live.autoSeasonHelp': ['Startar nästa säsong av sig själv när spelarna fallit under {p} % av toppen och en säsong får starta, om kassan räcker till {m} säsonger. Klassiska servrar för ett gammalt spel, annars växlar temat.', 'Starts the next season by itself once players have dropped below {p} % of the peak and a season may start, if there is cash for {m} seasons. Classic servers for an old game, otherwise the theme rotates.'],

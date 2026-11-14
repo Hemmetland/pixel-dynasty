@@ -2,7 +2,7 @@ import { Scene } from '../render/scene.js';
 import { on, emit } from '../core/bus.js';
 import { fmtFull } from '../core/util.js';
 import { setLang, detectLang, t } from '../core/i18n.js';
-import { loadSettings, saveSettings, saveGame, loadGame, useSlot, freeSlot } from '../core/store.js';
+import { loadSettings, saveSettings, saveGame, loadGame, useSlot, freeSlot, slotList } from '../core/store.js';
 import { newGame } from '../sim/state.js';
 import { stepTick, initWorld, checkAchievements } from '../sim/clock.js';
 import { makeCompetitors } from '../sim/market.js';
@@ -353,6 +353,8 @@ export const app = {
   },
   // Ladda en sparplats (utan nummer: den senast sparade). Ett pågående spel sparas först i sin plats.
   continueGame(slot) {
+    // en konkursad plats går inte att spela vidare (inga knappar visar den, men ett direkt anrop ska inte ladda den heller)
+    if (slot && slotList().some((x) => x.slot === slot && x.meta && x.meta.over)) return false;
     if (this.G && !this.G.over) saveGame(this.G);
     const G = loadGame(slot);
     if (!G) return false;
