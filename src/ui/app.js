@@ -158,7 +158,7 @@ export const app = {
     on('toast', (n) => {
       if (this.mode !== 'play') return;
       const text = n.text || t(n.key, this.decorate(n.vars));
-      toast(text, n.kind || 'info');
+      toast(text, n.kind || 'info', undefined, false); // nyheter från spelet: hoppas över när högen inte får plats
       if (n.kind === 'good') sfx.play('good');
       else if (n.kind === 'bad') sfx.play('bad');
       else sfx.play('notify');
