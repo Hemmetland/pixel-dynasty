@@ -120,11 +120,16 @@ regWin({
     if (NW.tab === 'story') return storyTab(G);
     if (!G.news.length) return `<div class="empty">${icon('mail')}<div>${t('news.empty')}</div></div>`;
     const NIC = { info: 'info', good: 'check', bad: 'bug', platform: 'gamepad', award: 'trophy', research: 'flask', money: 'money', hire: 'team' };
-    return `<div class="col" style="gap:7px">${G.news
+    const NCOL = { info: 'var(--accent)', good: 'var(--good)', bad: 'var(--bug)', platform: 'var(--design)', award: 'var(--gold)', research: 'var(--rp)', money: 'var(--money)', hire: 'var(--fans)' };
+    let last = '';
+    return `<div class="col nws" style="gap:7px">${G.news
       .map((n) => {
         const d = dateOf(n.t);
         const vars = boldVars(n.vars);
-        return `<div class="in ${n.kind === 'good' ? 'good' : n.kind === 'bad' ? 'bad' : 'ok'}"><span class="ii">${icon(NIC[n.kind] || 'info')}</span><span style="flex:1">${t(n.key, vars)}</span><span class="faint" style="font-size:11px;white-space:nowrap">${d.year} · ${MONTHS[lang][d.month]}</span></div>`;
+        const day = `${d.year}-${d.month}`;
+        const head = day !== last ? `<div class="nws-h"><b class="disp">${MONTHS[lang][d.month]}</b><span>${d.year}</span><i></i></div>` : '';
+        last = day;
+        return `${head}<div class="in nws-r ${n.kind === 'good' ? 'good' : n.kind === 'bad' ? 'bad' : 'ok'}" style="--c:${NCOL[n.kind] || NCOL.info}"><span class="ii">${icon(NIC[n.kind] || 'info')}</span><span style="flex:1">${t(n.key, vars)}</span></div>`;
       })
       .join('')}</div>`;
   },
