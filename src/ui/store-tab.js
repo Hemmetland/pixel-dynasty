@@ -1,6 +1,5 @@
-import { esc, icon, t, tn, L, UI, act, bar, money, errToast } from './core.js';
+import { esc, icon, t, tn, L, UI, act, money, errToast } from './core.js';
 import { coverImg } from '../render/covers.js';
-import { PLATFORM } from '../data/platforms.js';
 import { sfx } from '../audio/sfx.js';
 import { fmtNum } from '../core/util.js';
 import { yearOf } from '../sim/const.js';
@@ -31,22 +30,53 @@ function seg(items, cur, actName, tip) {
   return `<div class="seg wrap-seg">${items.map((label, i) => `<button class="${cur === i ? 'on' : ''}" data-act="${actName}" data-i="${i}" ${tip ? `data-tip="${esc(tip(i))}"` : ''}>${label}</button>`).join('')}</div>`;
 }
 
-// Topplistan: det som säljer mest i butiken den här veckan, med vems spel det är
+// Hyllan: det som säljer mest i butiken den här veckan, som omslag på en hylla med vems spel det är
 const KIND_TAG = { own: ['dist.k.own', 'var(--accent)'], group: ['dist.k.group', 'var(--gold)'], ext: ['dist.k.ext', 'var(--design)'] };
-function chart(G) {
+function shelf(G, S) {
   const rows = storeChart(G, 5);
-  const body = rows.length
-    ? rows
-        .map((r, i) => {
-          const title = L(r.title);
-          const [k, c] = KIND_TAG[r.kind];
-          return `<div class="chart-row ${r.kind === 'own' ? 'yours' : ''}"><div class="rk disp">${i + 1}</div>${coverImg({ id: r.id, title, topic: r.topic, genre: r.genre, platform: r.platform }, 32)}
-        <div style="flex:1;min-width:0"><b class="ell">${esc(title)}</b><div class="row" style="gap:6px;margin-top:3px;min-width:0"><span class="tag" style="--c:${c};flex:none">${t(k)}</span><span class="faint ell" style="font-size:12px;min-width:0">${esc(r.studio)} · ${esc(PLATFORM[r.platform].name)}</span></div></div>
-        <div style="text-align:right;flex:none"><b class="num">${money(r.v)}</b><div class="faint" style="font-size:11px">${t('dist.perWeek')}</div></div></div>`;
-        })
-        .join('')
-    : `<p class="hint">${t('dist.chartNone')}</p>`;
-  return `<div class="card" style="margin-top:14px"><div class="lbl" style="margin-bottom:8px">${t('dist.chart')}</div><div class="col dist-chart" style="gap:6px">${body}</div></div>`;
+  const onSale = saleSeason(G.t) !== undefined && saleOf(S) > 0;
+  const cut = onSale ? Math.round(SALES[saleOf(S)].cut * 100) : 0;
+  const slot = (r, i) => {
+    const title = L(r.title);
+    const c = KIND_TAG[r.kind][1];
+    return `<div class="sh-card ${r.kind === 'own' ? 'yours' : ''}" style="--c:${c}">
+      ${i === 0 ? `<span class="sh-rk top" data-tip="${esc(t('dist.chart'))}">${icon('crown')}</span>` : `<span class="sh-rk disp">${i + 1}</span>`}${cut ? `<span class="sh-sale">−${cut} %</span>` : ''}
+      <div class="sh-cover">${coverImg({ id: r.id, title, topic: r.topic, genre: r.genre, platform: r.platform }, 72)}</div>
+      <b class="ell sh-t">${esc(title)}</b>
+      <span class="tag sh-k" style="--c:${c}">${t(KIND_TAG[r.kind][0])}</span>
+      <span class="faint ell sh-s">${esc(r.studio)}</span>
+      <div class="sh-v"><b class="num">${money(r.v)}</b><i>${t('dist.perWeek')}</i></div></div>`;
+  };
+  const empty = Array.from({ length: Math.max(0, 3 - rows.length) }, () => `<div class="sh-card gap" aria-hidden="true"><div class="sh-cover">${icon('plus')}</div></div>`).join('');
+  return `<div class="lbl" style="margin:18px 0 8px">${t('dist.chart')}</div>
+    <div class="shelf"><div class="sh-row">${rows.map(slot).join('')}${empty}</div><div class="sh-plank"></div></div>
+    ${rows.length ? '' : `<p class="hint" style="margin-top:8px">${t('dist.chartNone')}</p>`}`;
+}
+
+// Skyltfönstret: butikens namn under en randig markis, användare och två rattar, och det som pågår just nu
+function ringStat(v, col, label, tip) {
+  return `<div class="shop-ring" style="--p:${Math.max(0, Math.min(100, Math.round(v)))};--c:${col}" data-tip="${esc(tip)}"><div class="rg"><b class="num">${Math.round(v)}</b></div><div class="k">${label}</div></div>`;
+}
+function hero(G, S) {
+  const users = storeUsers(G, S);
+  const disc = discOf(S) * 100;
+  const tgt = reachTarget(G, S);
+  const open = S.policy === 'open';
+  const onSale = saleSeason(G.t) !== undefined && saleOf(S) > 0;
+  const chips = [
+    onSale ? `<span class="shop-chip sale">${icon('fire')}${t('dist.saleNow')} ${t('dist.salePct', { n: Math.round(SALES[saleOf(S)].cut * 100) })}</span>` : '',
+    `<span class="shop-chip" style="--c:${open ? 'var(--accent)' : 'var(--gold)'}">${icon(open ? 'globe' : 'lock')}${t(POL_KEY[S.policy][0])}</span>`,
+    S.ads > 0 ? `<span class="shop-chip" style="--c:var(--fans)">${icon('megaphone')}${t(ADS_KEY[S.ads])}</span>` : '',
+    S.ex ? `<span class="shop-chip" style="--c:var(--design)">${icon('star')}${t('dist.ex')}</span>` : '',
+  ].join('');
+  return `<div class="shop-hero ${onSale ? 'sale' : ''}">
+    <div class="shop-awning" aria-hidden="true"></div>
+    <div class="shop-body">
+      <div class="shop-sign"><div class="shop-nm disp">${esc(G.studio)}</div><div class="shop-kind">${icon('cart')}${t('mkt.tab.store')}</div>
+        <div class="shop-users" data-tip="${esc(t('dist.usersTip', { pct: pct(tgt) }))}"><b class="num">${fmtNum(Math.round(users))}</b><span>${t('dist.users')}</span><i>${t('dist.usersK', { pct: pct(S.reach) })}, ${t('dist.toward', { pct: pct(tgt) })}</i></div></div>
+      <div class="shop-rings">${ringStat(S.trust, tone(S.trust), t('dist.trust'), t('dist.trustTip'))}${ringStat(disc, tone(disc), t('dist.disc'), t('dist.discTip'))}${open ? ringStat(S.dev * 100, 'var(--design)', t('dist.devs'), t('dist.devsTip')) : ''}</div>
+    </div>
+    <div class="shop-chips">${chips}</div></div>`;
 }
 
 // Säsongsrean: rabattnivå, när nästa rea börjar och hur många som väntar på den
@@ -91,9 +121,6 @@ function econ(G, S) {
 export function storeTab(G) {
   const S = G.store;
   if (!canStore(G) || !S) return `<div class="empty">${icon('cart')}<div class="hint" style="max-width:480px">${t('dist.locked')}</div></div>`;
-  const users = storeUsers(G, S);
-  const disc = discOf(S) * 100;
-  const tgt = reachTarget(G, S);
   const y = storeScale(G);
   const wait = switchLeft(G, S);
   const open = S.policy === 'open';
@@ -106,14 +133,9 @@ export function storeTab(G) {
       </div>
       <div class="card" style="margin-top:18px"><div class="lbl" style="margin-bottom:8px">${t('dist.econ')}</div>${econ(G, S)}</div>`;
   }
-  return `<p class="hint" style="margin-bottom:12px">${icon('cart')} ${t('dist.help', { pct: Math.round(OTHER_CUT * 100) })}</p>
-    <div class="grid" style="grid-template-columns:repeat(auto-fit,minmax(150px,1fr))">
-      <div class="counter" style="--c:var(--accent)" data-tip="${esc(t('dist.usersTip', { pct: pct(tgt) }))}"><div class="v num">${fmtNum(Math.round(users))}</div><div class="k">${t('dist.users')}</div><div class="faint" style="font-size:11px;margin-top:4px">${t('dist.usersK', { pct: pct(S.reach) })}, ${t('dist.toward', { pct: pct(tgt) })}</div></div>
-      <div class="counter" style="--c:${tone(S.trust)}" data-tip="${esc(t('dist.trustTip'))}"><div class="v num">${Math.round(S.trust)}</div><div class="k">${t('dist.trust')}</div><div style="margin-top:6px">${bar(S.trust, tone(S.trust), 'thin')}</div></div>
-      <div class="counter" style="--c:${tone(disc)}" data-tip="${esc(t('dist.discTip'))}"><div class="v num">${Math.round(disc)}</div><div class="k">${t('dist.disc')}</div><div style="margin-top:6px">${bar(disc, tone(disc), 'thin')}</div></div>
-      ${open ? `<div class="counter" style="--c:var(--design)" data-tip="${esc(t('dist.devsTip'))}"><div class="v num">${t('dist.pct', { n: pct(S.dev) })}</div><div class="k">${t('dist.devs')}</div><div class="faint" style="font-size:11px;margin-top:4px">${t('dist.devsK')}</div></div>` : ''}
-    </div>
-    ${chart(G)}
+  return `${hero(G, S)}
+    <p class="hint" style="margin-top:10px">${icon('cart')} ${t('dist.help', { pct: Math.round(OTHER_CUT * 100) })}</p>
+    ${shelf(G, S)}
     <div class="lbl" style="margin:18px 0 8px">${t('dist.policy')}</div>
     <div class="dist-pol">${policyCard(G, S, 'closed')}${policyCard(G, S, 'open')}</div>
     ${wait > 0 ? `<p class="hint" style="margin-top:8px">${icon('clock')} ${tn('dist.switchWait', wait)}</p>` : open ? `<p class="hint" style="margin-top:8px">${t('dist.closeWarn')}</p>` : ''}
