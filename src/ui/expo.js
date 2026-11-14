@@ -111,7 +111,7 @@ const H = 176;
 const ease = (x) => 1 - Math.pow(1 - Math.min(1, x), 3);
 const DURATION = 7;
 
-function itemLine(r, x) {
+function itemLine(G, r, x) {
   const name = `<b>${esc(L(x.name))}</b>`;
   const bits = [];
   if (x.hype != null) bits.push(t('expo.r.hype', { n: Math.round(x.hype * 10) / 10 }));
@@ -120,7 +120,8 @@ function itemLine(r, x) {
   if (x.k === 'hw' && x.lift != null) bits.push(t('expo.r.liftHw', { v: Math.round(x.lift * 100) }));
   if (x.k === 'live' && x.fresh) bits.push(t('expo.r.fresh', { n: x.fresh }));
   if (x.viral) bits.push(`<span style="color:var(--gold)">${t('expo.r.viral')}</span>`);
-  return `<div class="exr-row" style="--c:${COL[x.k]}"><span class="exr-ic">${icon(ICON[x.k])}</span><div style="flex:1;min-width:0">${name}<div class="faint" style="font-size:12px">${bits.join(' · ') || '&nbsp;'}</div></div></div>`;
+  const thumb = x.k === 'hw' ? `<span class="exr-ic">${icon(HW_TYPES[x.type]?.ic || ICON[x.k])}</span>` : `<img class="exr-cv" src="${coverURL(coverSpec(G, x), 1)}" width="30" height="40" alt="" draggable="false">`;
+  return `<div class="exr-row${x.viral ? ' viral' : ''}" style="--c:${COL[x.k]}">${thumb}<div style="flex:1;min-width:0">${name}<div class="faint" style="font-size:12px">${bits.join(' · ') || '&nbsp;'}</div></div>${x.viral ? `<span class="exr-star">${icon('star')}</span>` : ''}</div>`;
 }
 
 export function showHall(app, G, r, close) {
@@ -136,12 +137,12 @@ export function showHall(app, G, r, close) {
       <div class="expo-news" id="expo-news"></div>
       <div class="expo-res" id="expo-res" hidden>
         <div class="grid" style="grid-template-columns:repeat(auto-fit,minmax(110px,1fr));margin-top:12px">
-          <div class="counter" style="--c:var(--accent)"><div class="v num">${fmtNum(r.visitors)}</div><div class="k">${t('expo.visitors')}</div></div>
-          <div class="counter" style="--c:var(--fans)"><div class="v num">+${fmtNum(r.fans)}</div><div class="k">${t('expo.r.fans')}</div></div>
-          <div class="counter" style="--c:var(--money)"><div class="v num">+${money(r.revenue)}</div><div class="k">${t('expo.r.rev')}</div></div>
-          <div class="counter" style="--c:var(--bug)"><div class="v num">−${money(r.cost)}</div><div class="k">${t('expo.r.cost')}</div></div>
+          <div class="counter xc" style="--c:var(--accent)"><span class="xc-i">${icon('user')}</span><div class="v num">${fmtNum(r.visitors)}</div><div class="k">${t('expo.visitors')}</div></div>
+          <div class="counter xc" style="--c:var(--fans)"><span class="xc-i">${icon('heart')}</span><div class="v num">+${fmtNum(r.fans)}</div><div class="k">${t('expo.r.fans')}</div></div>
+          <div class="counter xc" style="--c:var(--money)"><span class="xc-i">${icon('money')}</span><div class="v num">+${money(r.revenue)}</div><div class="k">${t('expo.r.rev')}</div></div>
+          <div class="counter xc" style="--c:var(--bug)"><span class="xc-i">${icon('x')}</span><div class="v num">−${money(r.cost)}</div><div class="k">${t('expo.r.cost')}</div></div>
         </div>
-        ${r.items.length ? `<div class="lbl" style="margin:14px 0 6px">${t('expo.r.items')}</div><div class="col" style="gap:7px">${r.items.map((x) => itemLine(r, x)).join('')}</div>` : ''}
+        ${r.items.length ? `<div class="lbl" style="margin:14px 0 6px">${t('expo.r.items')}</div><div class="col" style="gap:7px">${r.items.map((x) => itemLine(G, r, x)).join('')}</div>` : ''}
         ${r.rivals.length ? `<p class="hint" style="margin-top:12px">${t('expo.rivals', { list: r.rivals.map((c) => esc(c.name)).join(', ') })}</p>` : ''}
       </div>
     </div>
