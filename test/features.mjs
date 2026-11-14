@@ -326,6 +326,36 @@ ok(true, 'alla händelser körda');
     ok(vc && vc.mood === 1 && FS.liveComeback.sv.some((x) => x.replace('{title}', F.g0.title) === vc.text.sv), 'en nylig comeback hörs i rösterna');
     ok(FS.seasonStory && ['seasonStory', 'seasonRanked', 'seasonFestival', 'seasonClassic', 'liveComeback'].every((k) => FS[k].sv.length === FS[k].en.length), 'säsongsrösterna finns på båda språken i samma antal');
   }
+  // automatiska säsonger: av som standard, och när de är på startar nästa tema när spelarna fallit under 90 % av toppen
+  {
+    const AU = mkOld(80);
+    const la = AU.g0.live;
+    la.peak = Math.max(la.peak, la.subs * 1.5);
+    const first = S.autoSeasonPick(AU.GS, AU.g0);
+    ok(!la.autoSeason && first === 'classic', 'ett gammalt spel som tappat spelare får klassiska servrar först (' + first + ')');
+    run(AU.GS, 2);
+    ok(!la.season, 'automatiska säsonger är av som standard');
+    ok(S.setLiveAutoSeason(AU.GS, 7800, true) && la.autoSeason === 1, 'går att slå på');
+    const money0 = AU.GS.money;
+    run(AU.GS, 1);
+    ok(la.season && la.season.id === 'classic' && AU.GS.money < money0 && !AU.GS.news.some((n) => n.key === 'live.news.autoSeasonPaused'), 'en säsong startar av sig själv');
+    run(AU.GS, S.SEASON_GAP + S.SEASON_WEEKS);
+    ok(la.lastSeason && la.seasons >= 1 && (!la.season || la.season.id !== 'classic' || la.seasons >= 2), 'nästa säsong följer efter pausen');
+    const NG = mkOld(80);
+    NG.g0.live.peak = NG.g0.live.subs * 0.95;
+    S.setLiveAutoSeason(NG.GS, 7800, true);
+    run(NG.GS, 1);
+    ok(!NG.g0.live.season && S.autoSeasonPick(NG.GS, NG.g0) === '', 'ett spel som nästan ligger på toppen behöver ingen säsong');
+    const PO = mkOld(80);
+    PO.g0.live.peak = PO.g0.live.subs * 1.6;
+    PO.GS.money = 10;
+    S.setLiveAutoSeason(PO.GS, 7800, true);
+    PO.GS.news.length = 0;
+    run(PO.GS, 3);
+    ok(!PO.g0.live.season && PO.GS.news.filter((n) => n.key === 'live.news.autoSeasonPaused').length === 1, 'utan pengar väntar den och säger det en gång');
+    S.setLiveAutoSeason(PO.GS, 7800, false);
+    ok(PO.g0.live.autoSeason === 0 && PO.g0.live.autoSeasonWarn === 0, 'går att slå av igen');
+  }
   // för litet och för ungt: klassiska servrar kräver ett spel som är minst fem år
   const Y = mkOld(80);
   Y.g0.live.t0 = Y.GS.t - 48 * 3;

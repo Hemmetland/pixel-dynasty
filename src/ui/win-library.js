@@ -23,7 +23,7 @@ import { openExpansion } from './wizard.js';
 import { CERTS, certOf, certCounts, nextCert, totalUnits, records } from '../sim/charts.js';
 import { fanVoices, fanSource } from '../sim/fans.js';
 import { FAN_SOURCE } from '../data/fanvoices.js';
-import { SUB_TIERS, OPS, PRICE_MIN, PRICE_MAX, PATCH_WEEKS, EVENT_WEEKS, SURGE_WEEKS, tierMix, liveMonth, serverCap, livePatchCost, startLivePatch, setLivePrice, setLiveOps, closeLive, rivalMmos, rivalPull, rivalFactor, liveFactors, setLiveAuto, AUTO_FRESH, AUTO_BUFFER, eventOn, eventReadyIn, liveEventCost, startLiveEvent, SHOP, isF2P, canGoF2P, goF2P, setLiveShop, liveLoad, liveArpu, hikeShare, REGIONS, regionGain, REGION_NAME, REGION_WEEKS, regionBonus, regionsOpen, liveRegionCost, startLiveRegion, SEASONS, SEASON_WEEKS, seasonOn, seasonReadyIn, seasonShare, seasonBlock, seasonQuality, liveSeasonCost, startLiveSeason, liveAge } from '../sim/live.js';
+import { SUB_TIERS, OPS, PRICE_MIN, PRICE_MAX, PATCH_WEEKS, EVENT_WEEKS, SURGE_WEEKS, tierMix, liveMonth, serverCap, livePatchCost, startLivePatch, setLivePrice, setLiveOps, closeLive, rivalMmos, rivalPull, rivalFactor, liveFactors, setLiveAuto, setLiveAutoSeason, AUTO_FRESH, AUTO_BUFFER, AUTO_SEASON_BELOW, eventOn, eventReadyIn, liveEventCost, startLiveEvent, SHOP, isF2P, canGoF2P, goF2P, setLiveShop, liveLoad, liveArpu, hikeShare, REGIONS, regionGain, REGION_NAME, REGION_WEEKS, regionBonus, regionsOpen, liveRegionCost, startLiveRegion, SEASONS, SEASON_WEEKS, seasonOn, seasonReadyIn, seasonShare, seasonBlock, seasonQuality, liveSeasonCost, startLiveSeason, liveAge } from '../sim/live.js';
 
 // Stäng servrarna och gör till gratisspel kräver två tryck: första trycket "armerar" knappen för det spelet
 let closeArmed = null;
@@ -185,6 +185,11 @@ function eventBtn(G, g) {
 
 const dec1 = (x) => x.toFixed(1).replace('.', lang === 'sv' ? ',' : '.');
 // Säsonger: hur många spelare som lämnat sedan toppen, spelets effektiva ålder, säsongen som pågår eller de fyra temana
+function autoSeasonRow(G, g) {
+  const on = !!g.live.autoSeason;
+  return `<div class="ltier" style="margin-top:8px"><div style="flex:1;min-width:0"><b>${t('live.autoSeason')}</b><div class="faint" style="font-size:11.5px">${t('live.autoSeasonHelp', { p: Math.round(AUTO_SEASON_BELOW * 100), m: AUTO_BUFFER })}</div></div>
+    <button class="switch ${on ? 'on' : ''}" data-act="lv-autoseason" data-id="${g.id}" role="switch" aria-checked="${on ? 'true' : 'false'}" aria-label="${esc(t('live.autoSeason'))}"><i></i></button></div>`;
+}
 function seasonPanel(G, g) {
   const lv = g.live;
   const lapsed = Math.max(0, lv.peak - lv.subs);
@@ -200,7 +205,7 @@ function seasonPanel(G, g) {
     const pips = Array.from({ length: SEASON_WEEKS }, (_, i) => `<i class="${i < done ? 'on' : i === done ? 'now' : ''}"></i>`).join('');
     return `${head}<p class="hint" style="margin-bottom:8px">${t('live.seasonsHelp', { n: SEASON_WEEKS })}</p>${facts}
       <div class="ltier season-on"><span class="rn-i sbig" style="--c:var(--gold)">${icon(th.ic)}</span><div style="flex:1;min-width:0"><div class="row" style="font-size:14px"><b>${t('live.seasonOn', { name: L(th.name) })}</b><span class="sp"></span><span class="faint">${t('live.seasonLeft', { n: left })}</span></div><div class="sweeks">${pips}</div>
-        <div class="row wrap" style="gap:6px;margin-top:8px"><span class="spill" style="--c:${more >= 0 ? 'var(--good)' : 'var(--bug)'}">${icon('user')}${t('live.seasonBack', { n: (more >= 0 ? '+' : '−') + fmtNum(Math.abs(more)) })}</span><span class="spill" style="--c:var(--money)">${icon('money')}${t('live.seasonPass', { v: money(S.pass || 0) })}</span></div></div></div>`;
+        <div class="row wrap" style="gap:6px;margin-top:8px"><span class="spill" style="--c:${more >= 0 ? 'var(--good)' : 'var(--bug)'}">${icon('user')}${t('live.seasonBack', { n: (more >= 0 ? '+' : '−') + fmtNum(Math.abs(more)) })}</span><span class="spill" style="--c:var(--money)">${icon('money')}${t('live.seasonPass', { v: money(S.pass || 0) })}</span></div></div></div>${autoSeasonRow(G, g)}`;
   }
   const wait = seasonReadyIn(G, lv);
   const rows = SEASONS.map((th) => {
@@ -217,7 +222,7 @@ function seasonPanel(G, g) {
       : `<button class="btn sm sfoot" data-act="lv-season" data-id="${g.id}" data-th="${th.id}" ${wait > 0 || G.money < cost ? 'disabled' : ''}>${icon('calendar')}${t('live.seasonGo')} · ${money(cost)}</button>`;
     return `<div class="scard ${blocked ? 'locked' : ''}"><div class="row" style="gap:10px;align-items:flex-start"><span class="rn-i sbig" style="--c:var(--gold)">${icon(th.ic)}</span><div style="flex:1;min-width:0"><b>${L(th.name)}</b><div class="faint" style="font-size:11.5px;line-height:1.35;margin-top:2px">${L(th.desc)}</div></div></div><div class="row wrap" style="gap:5px;margin-top:9px">${pills.join('')}</div>${foot}</div>`;
   }).join('');
-  return `${head}<p class="hint" style="margin-bottom:8px">${t('live.seasonsHelp', { n: SEASON_WEEKS })}${wait > 0 ? ' ' + t('live.seasonWait', { n: wait }) : ''}</p>${facts}<div class="sgrid">${rows}</div>`;
+  return `${head}<p class="hint" style="margin-bottom:8px">${t('live.seasonsHelp', { n: SEASON_WEEKS })}${wait > 0 ? ' ' + t('live.seasonWait', { n: wait }) : ''}</p>${facts}<div class="sgrid">${rows}</div>${autoSeasonRow(G, g)}`;
 }
 
 // Regioner: hemmamarknaden och de delar av världen spelet kan öppna servrar i (en i taget). Ett spel från före regionerna
@@ -582,6 +587,14 @@ act('lv-auto', (el) => {
   const g = G.games.find((x) => x.id === +el.dataset.id);
   if (!g || !g.live) return;
   setLiveAuto(G, g.id, !g.live.auto);
+  sfx.play('click');
+  UI.refresh();
+});
+act('lv-autoseason', (el) => {
+  const G = UI.app.G;
+  const g = G.games.find((x) => x.id === +el.dataset.id);
+  if (!g || !g.live) return;
+  setLiveAutoSeason(G, g.id, !g.live.autoSeason);
   sfx.play('click');
   UI.refresh();
 });

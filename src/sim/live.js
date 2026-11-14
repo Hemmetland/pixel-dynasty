@@ -43,6 +43,10 @@ const MILESTONES = [10000, 100000, 1000000, 5000000, 10000000];
 // och kassan räcker till AUTO_BUFFER uppdateringar. Samma pris som en uppdatering du startar själv.
 export const AUTO_FRESH = 70;
 export const AUTO_BUFFER = 3;
+// Automatiska säsonger (L.autoSeason): när spelarbasen fallit under AUTO_SEASON_BELOW av toppen och en säsong får starta
+// väljs nästa tema av sig själv (klassiska servrar först för ett gammalt spel, annars roterande och aldrig samma som sist),
+// om kassan räcker till AUTO_BUFFER säsonger. Samma pris som en säsong du startar själv.
+export const AUTO_SEASON_BELOW = 0.9;
 // Varning när innehållet blivit inaktuellt (en gång, och igen först när det varit färskt emellan)
 const STALE_WARN = 30;
 const STALE_RESET = 50;
@@ -413,6 +417,17 @@ export function liveWeek(G) {
         note(G, 'live.news.autoPaused', { title: g.title }, 'bad');
       }
     }
+    // automatiska säsonger: nästa tema startar av sig självt; räcker inte kassan sägs det till en gång
+    if (L.autoSeason) {
+      const th = autoSeasonPick(G, g);
+      if (th) {
+        if (G.money >= liveSeasonCost(G, g, th) * AUTO_BUFFER && startLiveSeason(G, g.id, th) === true) L.autoSeasonWarn = 0;
+        else if (!L.autoSeasonWarn) {
+          L.autoSeasonWarn = 1;
+          note(G, 'live.news.autoSeasonPaused', { title: g.title }, 'bad');
+        }
+      }
+    }
     if (L.fresh < STALE_WARN && !L.patch && !L.staleWarn) {
       L.staleWarn = 1;
       note(G, 'live.news.stale', { title: g.title }, 'bad');
@@ -540,6 +555,13 @@ export function liveSeasonCost(G, g, id) {
 }
 // Veckor tills nästa säsong kan starta (0 = nu)
 export const seasonReadyIn = (G, L) => (L.ssT == null ? 0 : Math.max(0, L.ssT + SEASON_GAP - G.t));
+// Vilket tema en automatisk säsong skulle välja nu ('' = ingen säsong ska starta)
+export function autoSeasonPick(G, g) {
+  const L = g.live;
+  if (!L || L.closed || L.season || seasonReadyIn(G, L) > 0 || L.subs >= L.peak * AUTO_SEASON_BELOW) return '';
+  const order = liveAge(G, L) >= 5 ? ['classic', 'story', 'ranked', 'festival'] : ['story', 'ranked', 'festival'];
+  return order.find((id) => id !== L.lastSeason && !seasonBlock(G, g, id)) || '';
+}
 // Hur bra säsongen blir: spelets betyg, och bara SEASON_REPEAT av effekten om samma tema kördes sist
 export const seasonQuality = (g, id) => clamp(0.75 + 0.12 * (g.score - 7), 0.45, 1.15) * (g.live.lastSeason === id ? SEASON_REPEAT : 1);
 // Andelen av den återstående åldern som säsongen förnyar
@@ -618,6 +640,13 @@ export function setLiveAuto(G, id, on) {
   if (!g) return false;
   g.live.auto = on ? 1 : 0;
   g.live.autoWarn = 0;
+  return true;
+}
+export function setLiveAutoSeason(G, id, on) {
+  const g = liveOf(G, id);
+  if (!g) return false;
+  g.live.autoSeason = on ? 1 : 0;
+  g.live.autoSeasonWarn = 0;
   return true;
 }
 export function setLiveOps(G, id, ops) {
