@@ -36,6 +36,7 @@ const ICONS = {
   hammer: P('<path d="M14 5l5 5-2 2-5-5zM12 7L4.5 14.5a2 2 0 0 0 0 2.8l2.2 2.2a2 2 0 0 0 2.8 0L17 12"/>'),
   megaphone: P('<path d="M4 10v4a1 1 0 0 0 1 1h2l8 4V5L7 9H5a1 1 0 0 0-1 1zM18 9.5a4 4 0 0 1 0 5"/>'),
   coffee: P('<path d="M5 8h11v6a5 5 0 0 1-5 5H10a5 5 0 0 1-5-5zM16 9h1.5a2.5 2.5 0 0 1 0 5H16M8 3v2M12 3v2"/>'),
+  pen: P('<path d="M4 20l1-4L16.5 4.5a2 2 0 0 1 3 3L8 19z"/><path d="M14.5 6.5l3 3"/>'),
   bell: P('<path d="M6 17V11a6 6 0 0 1 12 0v6l1.5 2h-15z"/><path d="M10 21h4"/>'),
   mail: P('<rect x="3" y="5" width="18" height="14" rx="2.5"/><path d="M3.5 7l8.5 6 8.5-6"/>'),
   save: P('<path d="M5 4h11l3 3v13H5z"/><path d="M8 4v5h7V4M8 20v-6h8v6"/>'),

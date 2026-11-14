@@ -63,11 +63,11 @@ function specTags(P) {
 // Namnet kan bytas: en egen plattform får det nya namnet överallt i spelet
 const head = (P, right = '') => {
   const editing = HS.rename === P.id;
-  const btn = editing ? '' : `<button class="btn sm ghost" data-act="hw-rn" data-id="${P.id}" data-tip="${esc(t(isPlat(P.type) ? 'hw.renameTip' : 'hw.rename'))}" style="margin-left:auto;padding:1px 8px">${t('hw.rename')}</button>`;
+  const btn = editing ? '' : `<button class="hw-pen" data-act="hw-rn" data-id="${P.id}" data-tip="${esc(t(isPlat(P.type) ? 'hw.renameTip' : 'hw.rename'))}" aria-label="${t('hw.rename')}">${icon('pen')}</button>`;
   const edit = editing
     ? `<div class="row" style="gap:6px;margin-top:6px"><input class="input" id="hw-rn" maxlength="${NAME_MAX}" value="${esc(HS.rnv)}" aria-label="${t('hw.name')}" style="flex:1;min-width:0;height:32px"><button class="btn sm primary" data-act="hw-rns">${t('hw.renameSave')}</button><button class="btn sm ghost" data-act="hw-rnx" aria-label="${t('ui.close')}">${icon('x')}</button></div>`
     : '';
-  return `<div class="row" style="gap:10px;min-width:0"><span class="hw-ic" style="--c:${HW_TYPES[P.type].color}">${tyPix(P.type)}</span><div style="flex:1;min-width:0"><b class="h3 ell">${esc(P.name)}</b><div class="row wrap" style="gap:5px;margin-top:3px"><span class="faint" style="font-size:12px">${t('hw.type.' + P.type)}</span>${specTags(P)}${btn}</div>${edit}</div>${right}</div>`;
+  return `<div class="row" style="gap:10px;min-width:0"><span class="hw-ic" style="--c:${HW_TYPES[P.type].color}">${tyPix(P.type)}</span><div style="flex:1;min-width:0"><div class="row" style="gap:4px;min-width:0"><b class="h3 ell">${esc(P.name)}</b>${btn}</div><div class="row wrap" style="gap:5px;margin-top:3px"><span class="faint" style="font-size:12px">${t('hw.type.' + P.type)}</span>${specTags(P)}</div>${edit}</div>${right}</div>`;
 };
 
 // ── Inuti: processor, grafik, minne och annat som följer sin tid ──
@@ -91,9 +91,11 @@ function specText(r, solo) {
     default: return t('hw.spec.hz', { hz: r.hz });
   }
 }
+// Varje komponent får en egen färg och ikon så att specraden går att skanna
+const SPEC_IC = { cpu: ['cpu', 'var(--design)'], gpu: ['gpu', 'var(--fans)'], ram: ['box', 'var(--accent)'], disk: ['disc', 'var(--gold)'], sound: ['music', 'var(--rp)'], screen: ['eye', 'var(--money)'], battery: ['bulb', 'var(--good)'], eye: ['vr', 'var(--fans)'], hz: ['gear', 'var(--design)'] };
 const specLine = (G, P) => {
   const rows = specsOf(G, P);
-  return `<div class="hw-spec" data-tip="${esc(t('hw.spec.t'))}">${rows.map((r) => `<span>${specText(r, rows.length === 1)}</span>`).join('')}</div>`;
+  return `<div class="hw-spec" data-tip="${esc(t('hw.spec.t'))}">${rows.map((r) => { const [ic, c] = SPEC_IC[r.k] || SPEC_IC.hz; return `<span style="--c:${c}">${icon(ic)}${specText(r, rows.length === 1)}</span>`; }).join('')}</div>`;
 };
 
 // ── Utveckling ──────────────────────────────────────────────────
@@ -296,18 +298,23 @@ function revBlock(G, P) {
   if (P.up) {
     const left = Math.max(0, P.up.due - G.t);
     const done = ((G.t - P.up.t0) / Math.max(1, P.up.due - P.up.t0)) * 100;
-    return `${head}<div style="margin:6px 0">${bar(done, COL)}</div><p class="hint">${icon('wrench')} ${t('hw.rev.running', { name: t('hw.rev.' + P.up.k), n: left })}</p>${histRow}`;
+    return `${head}<div class="hw-rev run" style="--c:${P.up.k === 'slim' ? 'var(--gold)' : 'var(--accent)'}"><div class="hr-h"><span class="hr-i">${icon('wrench')}</span><b>${t('hw.rev.' + P.up.k)}</b></div><div class="hr-e">${t('hw.rev.running', { name: t('hw.rev.' + P.up.k), n: left })}</div><div style="grid-column:1/-1">${bar(Math.max(done, 3), COL)}</div></div>${histRow}`;
   }
   const wait = revWait(G, P);
-  const btns = HW_REVS.map((R) => {
+  const REV_IC = { pro: ['trend', 'var(--accent)'], slim: ['money', 'var(--gold)'] };
+  const cards = HW_REVS.map((R) => {
     const ok = canRevise(G, P, R.id);
     const cost = revCost(G, P, R.id);
     const base = t('hw.rev.' + R.id + 'Tip', { pct: pct(R.perf || 1 - R.unit), unit: pct(Math.abs(R.unit - 1)), y: String(R.life).replace('.', lang === 'sv' ? ',' : '.'), v: money(cost), w: revWeeks(G, P, R.id) });
     const tip = ok === true || ok === 'money' ? base : t(ok);
-    return `<button class="btn sm" data-act="hw-rev" data-id="${P.id}" data-v="${R.id}" ${ok === true ? '' : 'disabled'} data-tip="${esc(tip)}">${icon('wrench')}${t('hw.rev.' + R.id)} · ${money(cost)}</button>`;
+    const n = revCount(P, R.id);
+    const pips = Array.from({ length: R.max }, (_, i) => `<i class="${i < n ? 'on' : ''}"></i>`).join('');
+    const eff = R.id === 'pro' ? t('hw.rev.proShort', { pct: pct(R.perf), unit: pct(Math.abs(R.unit - 1)) }) : t('hw.rev.slimShort', { pct: pct(1 - R.unit) });
+    const [ic, col] = REV_IC[R.id];
+    return `<div class="hw-rev ${ok === true ? '' : 'off'}" style="--c:${col}"><div class="hr-h"><span class="hr-i">${icon(ic)}</span><b>${t('hw.rev.' + R.id)}</b><span class="hr-p" data-tip="${esc(t('hw.rev.done', { n, m: R.max }))}">${pips}</span></div><div class="hr-e">${eff}</div><button class="btn sm ${ok === true ? 'primary' : ''}" data-act="hw-rev" data-id="${P.id}" data-v="${R.id}" ${ok === true ? '' : 'disabled'} data-tip="${esc(tip)}">${icon('wrench')}${money(cost)} · ${tn('hw.weeksN', revWeeks(G, P, R.id))}</button></div>`;
   }).join('');
   const full = HW_REVS.every((R) => revCount(P, R.id) >= R.max);
-  return `${head}<div class="row wrap" style="gap:8px">${btns}</div><p class="hint" style="margin-top:6px">${full ? t('hw.rev.max') : wait > 0 ? t('hw.rev.wait', { n: wait }) : t('hw.rev.help')}</p>${histRow}`;
+  return `${head}<div class="hw-revs">${cards}</div><p class="hint" style="margin-top:6px">${full ? t('hw.rev.max') : wait > 0 ? t('hw.rev.wait', { n: wait }) : t('hw.rev.help')}</p>${histRow}`;
 }
 
 function productCard(G, P) {

@@ -1245,4 +1245,23 @@ input[type='range']::-moz-range-thumb { width: 18px; height: 18px; border-radius
 #devcon .dc-x { border: 0; background: transparent; color: var(--muted); font-size: 20px; line-height: 1; cursor: pointer; padding: 0 6px; }
 @media (max-width: 760px), (max-height: 559px) { #devcon { height: min(40vh, 300px); } }
 .hw-spec { display: flex; flex-wrap: wrap; gap: 4px 6px; }
-.hw-spec span { font-size: 11.5px; line-height: 1.3; padding: 2px 8px; border-radius: 6px; background: rgba(150, 172, 255, 0.1); color: var(--muted); }
+.hw-spec > span { font-size: 11.5px; line-height: 1.3; padding: 2px 8px; border-radius: 6px; background: rgba(150, 172, 255, 0.1); color: var(--muted); }
+
+/* ── Hårdvara: pennan för namn, specrad med ikoner, revisionskort ── */
+.hw-pen { flex: none; width: 26px; height: 26px; border-radius: 8px; display: grid; place-items: center; color: var(--muted); transition: background 0.15s, color 0.15s; }
+.hw-pen .ic { width: 15px; height: 15px; }
+.hw-pen:hover { background: rgba(150, 172, 255, 0.14); color: var(--text); }
+.hw-spec > span { display: inline-flex; align-items: center; gap: 6px; padding: 3px 9px 3px 6px; background: color-mix(in srgb, var(--c, var(--muted)) 12%, transparent); box-shadow: inset 0 0 0 1px color-mix(in srgb, var(--c, var(--muted)) 24%, transparent); color: var(--text); }
+.hw-spec > span .ic { padding: 0; background: none; box-shadow: none; width: 14px; height: 14px; color: var(--c, var(--muted)); flex: none; }
+.hw-revs { display: grid; grid-template-columns: repeat(auto-fit, minmax(220px, 1fr)); gap: 8px; }
+.hw-rev { display: grid; grid-template-columns: 1fr auto; gap: 4px 10px; align-items: center; padding: 10px 12px; border-radius: 12px; border: 1px solid color-mix(in srgb, var(--c) 30%, transparent); background: linear-gradient(135deg, color-mix(in srgb, var(--c) 10%, transparent), transparent 75%); }
+.hw-rev.off { opacity: 0.7; }
+.hw-rev .hr-h { grid-column: 1 / -1; display: flex; align-items: center; gap: 8px; }
+.hw-rev .hr-h b { font-size: 13.5px; }
+.hw-rev .hr-i { width: 26px; height: 26px; border-radius: 8px; display: grid; place-items: center; color: var(--c); background: color-mix(in srgb, var(--c) 18%, transparent); }
+.hw-rev .hr-i .ic { width: 15px; height: 15px; }
+.hw-rev .hr-p { margin-left: auto; display: flex; gap: 3px; }
+.hw-rev .hr-p i { width: 14px; height: 5px; border-radius: 3px; background: rgba(150, 172, 255, 0.18); }
+.hw-rev .hr-p i.on { background: var(--c); box-shadow: 0 0 6px color-mix(in srgb, var(--c) 70%, transparent); }
+.hw-rev .hr-e { font-size: 12px; color: var(--muted); grid-column: 1 / -1; }
+.hw-rev .btn { grid-column: 1 / -1; justify-content: center; }
