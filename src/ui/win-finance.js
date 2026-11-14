@@ -15,6 +15,13 @@ function lineChart(pts, color, w = 560, h = 190) {
   const vals = pts.map((p) => p.v);
   let lo = Math.min(0, ...vals);
   let hi = Math.max(...vals, 1);
+  // nästan vågrät kurva: zooma in kring värdet i stället för att fylla hela rutan med en platt yta
+  const flat = Math.max(...vals) - Math.min(...vals) < 0.04 * Math.max(1, Math.abs(Math.max(...vals)));
+  if (flat) {
+    const mid = vals[vals.length - 1];
+    lo = mid - Math.max(1, Math.abs(mid) * 0.15);
+    hi = mid + Math.max(1, Math.abs(mid) * 0.15);
+  }
   if (hi === lo) hi = lo + 1;
   const pad = { l: 8, r: 8, t: 12, b: 20 };
   const X = (i) => pad.l + (i / (pts.length - 1)) * (w - pad.l - pad.r);
@@ -23,14 +30,15 @@ function lineChart(pts, color, w = 560, h = 190) {
   const area = `${d} L${X(pts.length - 1)} ${Y(Math.max(lo, 0))} L${X(0)} ${Y(Math.max(lo, 0))} Z`;
   const zero = lo < 0 ? `<line x1="${pad.l}" x2="${w - pad.r}" y1="${Y(0)}" y2="${Y(0)}" stroke="rgba(255,107,92,.5)" stroke-dasharray="4 4" vector-effect="non-scaling-stroke"/>` : '';
   const last = pts[pts.length - 1];
+  const yl = [1, 0.5].map((f) => ({ x: pad.l + 2, y: pad.t + (1 - f) * (h - pad.t - pad.b) - 7 + (f === 1 ? 0 : 0), text: money(lo + f * (hi - lo)), at: 'start', cls: f === 1 ? 'hi' : '' }));
   const labels = [0, 0.5, 1].map((f) => {
     const i = Math.round(f * (pts.length - 1));
     const d_ = dateOf(pts[i].t);
     return { x: X(i), y: h - 8, text: `${MONTHS[lang][d_.month]} ${d_.year}`, at: f === 0 ? 'start' : f === 1 ? 'end' : 'middle' };
-  });
+  }).concat(yl);
   const svg = `<defs><linearGradient id="fg" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="${color}" stop-opacity=".4"/><stop offset="1" stop-color="${color}" stop-opacity="0"/></linearGradient></defs>
     ${gridLines(pad.l, w - pad.r, [0.25, 0.5, 0.75].map((f) => pad.t + f * (h - pad.t - pad.b)))}
-    ${zero}<path d="${area}" fill="url(#fg)"/><path d="${d}" fill="none" stroke="${color}" stroke-width="2.4" stroke-linejoin="round" stroke-linecap="round" vector-effect="non-scaling-stroke"/>`;
+    ${zero}<path d="${area}" fill="url(#fg)" opacity="${flat ? 0.35 : 1}"/><path d="${d}" fill="none" stroke="${color}" stroke-width="2.4" stroke-linejoin="round" stroke-linecap="round" vector-effect="non-scaling-stroke"/>`;
   return plot({ w, h, svg, labels, dot: { x: X(pts.length - 1), y: Y(last.v), c: color } });
 }
 

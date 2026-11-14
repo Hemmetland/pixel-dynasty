@@ -46,7 +46,7 @@ function platformsTab(G) {
     </div>`;
   };
   return `<div class="col" style="gap:10px">${live.map(row).join('')}</div>
-    ${soon.length ? `<div class="lbl" style="margin:18px 0 8px">${t('mkt.soon')}</div><div class="grid" style="grid-template-columns:repeat(auto-fit,minmax(240px,1fr))">${soon.map((p) => `<div class="card row" style="gap:12px;opacity:.75"><div class="plat-g" style="--c:${p.color};width:44px;height:38px">${glyphImg('gp_' + p.kind, p.color, 16, true)}</div><div><b>${esc(p.name)}</b><div class="faint" style="font-size:11.5px">${esc(p.maker)} · ${t('mkt.launch')} ${p.y0}</div></div></div>`).join('')}</div>` : ''}`;
+    ${soon.length ? `<div class="lbl" style="margin:18px 0 8px">${t('mkt.soon')}</div><div class="grid" style="grid-template-columns:repeat(auto-fit,minmax(240px,1fr))">${soon.map((p) => `<div class="card row soon" style="--c:${p.color};gap:12px"><div class="plat-g" style="--c:${p.color};width:44px;height:38px">${glyphImg('gp_' + p.kind, p.color, 16, true)}</div><div style="flex:1;min-width:0"><b>${esc(p.name)}</b><div class="faint" style="font-size:11.5px">${esc(p.maker)} · ${t('mkt.launch')} ${p.y0}</div></div><span class="spill" style="--c:${p.color}">${icon('calendar')}${t('mkt.inYears', { n: Math.max(1, Math.ceil(p.y0 - year)) })}</span></div>`).join('')}</div>` : ''}`;
 }
 
 // Inför galan: läget i de fyra priserna just nu, med ledaren och din bästa plats. Visas från 1981 tills galan hållits.

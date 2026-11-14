@@ -1108,3 +1108,12 @@ input[type='range']::-moz-range-thumb { width: 18px; height: 18px; border-radius
   .rcat .rcat-a { min-width: 14px; height: 14px; font-size: 9px; }
   .rtree { max-height: max(180px, calc(100vh - 150px)); }
 }
+
+/* Personalens färdigheter som tonade brickor med namn, och finanskurvans axeltexter */
+.sk { padding: 7px 10px; border-radius: 11px; background: linear-gradient(90deg, color-mix(in srgb, var(--c) 11%, transparent), rgba(150, 172, 255, 0.03)); border: 1px solid color-mix(in srgb, var(--c) 22%, transparent); }
+.sk .si { width: 24px; height: 24px; border-radius: 8px; align-items: center; justify-content: center; background: color-mix(in srgb, var(--c) 16%, transparent); }
+.sk .sk-n { display: block; font-size: 10.5px; font-weight: 700; letter-spacing: 0.05em; text-transform: uppercase; color: var(--muted); margin-bottom: 4px; }
+
+/* Marknad: kommande plattformar med nedräkning */
+.card.soon { align-items: center; border-left: 3px solid var(--c); background: linear-gradient(90deg, color-mix(in srgb, var(--c) 8%, transparent), transparent 70%), var(--glass, rgba(22, 28, 60, 0.6)); }
+.card.soon .plat-g { box-shadow: 0 0 16px -6px var(--c); }
