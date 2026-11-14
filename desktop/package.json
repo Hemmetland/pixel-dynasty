@@ -1,0 +1,29 @@
+{
+  "name": "pixel-dynasty-desktop",
+  "version": "0.1.0",
+  "private": true,
+  "description": "Pixel Dynasty – skrivbordsversion för testare (Electron-skal runt dist/index.html)",
+  "author": "Pixel Dynasty",
+  "main": "main.js",
+  "scripts": {
+    "start": "electron .",
+    "dist": "electron-builder",
+    "dist:win": "electron-builder --win",
+    "dist:mac": "electron-builder --mac",
+    "dist:linux": "electron-builder --linux"
+  },
+  "build": {
+    "appId": "se.pixeldynasty.game",
+    "productName": "Pixel Dynasty",
+    "directories": { "output": "release" },
+    "files": ["main.js", "preload.js", { "from": "../dist", "to": "game", "filter": ["index.html"] }],
+    "win": { "target": ["nsis", "zip"] },
+    "mac": { "target": ["dmg", "zip"], "category": "public.app-category.games", "identity": null },
+    "linux": { "target": ["AppImage"], "category": "Game" },
+    "nsis": { "oneClick": true, "perMachine": false }
+  },
+  "devDependencies": {
+    "electron": "^33.0.0",
+    "electron-builder": "^25.0.0"
+  }
+}
