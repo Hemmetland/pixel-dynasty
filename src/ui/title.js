@@ -1,4 +1,5 @@
 import { $, esc, icon, t, UI, act, regWin } from './core.js';
+import { identityName } from '../data/identity.js';
 import { sfx, music } from '../audio/sfx.js';
 import { on } from '../core/bus.js';
 import { avatarImg } from '../render/people.js';
@@ -283,7 +284,7 @@ regWin({
     const rows = loadHall()
       .map((e, i) => {
         const c = e.over ? 'var(--bug)' : i === 0 ? 'var(--gold)' : 'var(--accent)';
-        const bits = [t('hist.sum.games', { n: e.games }), money(e.revenue), e.awards ? t('hist.sum.awards', { n: e.awards }) : '', t('diff.' + (e.diff || 'normal')), e.weekly ? t('hall.weekly', { id: e.weekly }) : ''].filter(Boolean).join(' · ');
+        const bits = [t('hist.sum.games', { n: e.games }), money(e.revenue), e.awards ? t('hist.sum.awards', { n: e.awards }) : '', t('diff.' + (e.diff || 'normal')), e.weekly ? t('hall.weekly', { id: e.weekly }) : '', e.ident ? esc(L(identityName(e.ident))) : ''].filter(Boolean).join(' · ');
         return `<div class="card row hall-row" style="gap:14px;--c:${c}"><div class="hall-n disp">${i + 1}</div><div style="flex:1;min-width:0"><div class="row" style="gap:4px 8px;flex-wrap:wrap"><b>${esc(e.studio)}</b><span class="tag" style="--c:${c}">${e.over ? t('hall.over', { y: e.year }) : t(HALL_RANK[e.rank] || HALL_RANK[0])}</span></div>
           <div class="faint" style="font-size:12px;margin-top:2px">${bits}</div>${e.best ? `<div class="faint" style="font-size:12px">${t('hall.best', { title: `<b>${esc(L(e.best.title))}</b>`, v: e.best.score.toFixed(1) })}</div>` : ''}</div>
           <div style="text-align:right"><div class="disp hall-p">${e.points}</div><div class="faint" style="font-size:11px">${t('hall.points')}</div></div></div>`;

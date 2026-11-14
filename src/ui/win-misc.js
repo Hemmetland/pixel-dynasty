@@ -2,6 +2,8 @@ import { $, $$, esc, icon, t, L, UI, act, regWin, money, toast, errToast, MONTHS
 import { dateOf } from '../sim/const.js';
 import { fmtNum } from '../core/util.js';
 import { storyOf } from '../sim/news.js';
+import { identity } from '../sim/legacy.js';
+import { identityName } from '../data/identity.js';
 import { CERTS } from '../data/certs.js';
 import { lang } from '../core/i18n.js';
 import { music } from '../audio/sfx.js';
@@ -70,7 +72,7 @@ const STORY_IC = {
   'news.rankUp': ['chart', 'var(--accent)'], 'news.rankTop': ['crown', 'var(--gold)'], 'news.filmGood': ['film', 'var(--fans)'], 'news.acquired': ['bank', 'var(--money)'],
   'hist.firstPub': ['book', 'var(--design)'], 'hist.store': ['cart', 'var(--money)'], 'news.storeUsers': ['cart', 'var(--money)'], 'hist.hwLab': ['cpu', 'var(--tech)'],
   'hist.hwFab': ['factory', 'var(--tech)'], 'hist.firstHw': ['gpu', 'var(--tech)'], 'hist.hwPlat': ['console', 'var(--tech)'],
-  'hist.games': ['gamepad', 'var(--accent)'], 'hist.fans': ['heart', 'var(--fans)'], 'hist.cash': ['money', 'var(--money)'],
+  'hist.identity': ['crown', 'var(--gold)'], 'hist.games': ['gamepad', 'var(--accent)'], 'hist.fans': ['heart', 'var(--fans)'], 'hist.cash': ['money', 'var(--money)'],
 };
 const LIVE_HIST = new Set(['hist.f2p', 'hist.firstExp', 'hist.firstRegion']);
 const boldVars = (o) => {
@@ -102,6 +104,7 @@ function storyTab(G) {
     games && ['gamepad', 'var(--design)', t('hist.sum.games', { n: games })],
     G.stats.hits && ['star', 'var(--gold)', t('hist.sum.hits', { n: G.stats.hits })],
     G.awards.length && ['trophy', 'var(--gold)', t('hist.sum.awards', { n: G.awards.length })],
+    identity(G) && ['crown', 'var(--gold)', esc(L(identityName(identity(G))))],
   ].filter(Boolean);
   const chips = sum.map(([ic, c, text]) => `<span class="chip c" style="--c:${c}">${icon(ic)}${text}</span>`).join('');
   return `<div class="st-sum">${chips}</div><p class="hint" style="margin-bottom:6px">${t('hist.help')}</p><div class="story${rows.length < 2 ? ' one' : ''}">${list}</div>`;

@@ -21,6 +21,7 @@ import { storyWeek } from './news.js';
 import { monthlyMarket, updateTrends } from './market.js';
 import { rollDevEvent, rollStudioEvent } from './events.js';
 import { runAwards, expoOffer, galaWatch } from './awards.js';
+import { identityWatch } from './legacy.js';
 import { finishTraining, refreshCandidates, payroll, updateMood, burnoutQuits, serviceYears } from './people.js';
 import { rentOf, facUpkeep, loanInterest, spend } from './studio.js';
 import { note } from './news.js';
@@ -137,6 +138,7 @@ function monthly(G, d) {
   }
   rollStudioEvent(G);
   serviceYears(G);
+  identityWatch(G);
   checkAchievements(G);
   emit('month', G);
 }

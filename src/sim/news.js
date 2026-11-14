@@ -35,6 +35,7 @@ const MILESTONES = {
   'news.hit2': HIT,
   'news.hit3': HIT,
   'news.office': [{}],
+  'news.identity': [{ as: 'hist.identity' }],
   'news.chartTop': [{ as: 'hist.firstNo1', once: true }],
   'news.rankUp': [{ if: (v) => v.n <= 5 }],
   'news.rankTop': [{}],

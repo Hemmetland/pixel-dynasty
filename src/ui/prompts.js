@@ -20,7 +20,8 @@ import { SCOPES } from '../sim/const.js';
 import { bailoutAmount, takeBailout, declineBailout } from '../sim/studio.js';
 import { music } from '../audio/sfx.js';
 import { crowdNote } from './crowd.js';
-import { legacy, LEGACY_RANKS } from '../sim/legacy.js';
+import { legacy, identity, LEGACY_RANKS } from '../sim/legacy.js';
+import { identityName } from '../data/identity.js';
 import { rivalOf, rivalLast } from '../sim/rival.js';
 import { recordRun } from '../core/store.js';
 import { yearOf } from '../sim/const.js';
@@ -478,6 +479,12 @@ const hallLine = (h) => {
   return place + fresh;
 };
 
+// studions rykte på slutskärmarna
+const identLine = (G) => {
+  const idn = identity(G);
+  return idn ? `<p class="hint" style="margin-top:12px">${icon('star')} ${t('ident.known', { name: `<b>${esc(L(identityName(idn)))}</b>` })}</p>` : '';
+};
+
 // En rad att dela: studions namn, titel eller konkursår, poäng och intäkter, och veckans utmaning om den spelades
 function shareText(G) {
   const lg = legacy(G);
@@ -515,7 +522,7 @@ function gameoverPrompt(app, G) {
         <div class="counter" style="--c:var(--accent)"><div class="v num">${G.games.length}</div><div class="k">${t('year.games')}</div></div>
         <div class="counter" style="--c:var(--gold)"><div class="v num">${G.stats.bestScore.toFixed(1)}</div><div class="k">${t('over.best')}</div></div>
         <div class="counter" style="--c:var(--money)"><div class="v num">${money(G.stats.revenue)}</div><div class="k">${t('over.total')}</div></div>
-      </div>${hallLine(hall)}</div>
+      </div>${identLine(G)}${hallLine(hall)}</div>
     <div class="win-foot"><button class="btn" data-act="share-run">${icon('copy')}${t('share.btn')}</button><span class="sp"></span><button class="btn primary lg" data-act="over-title">${t('over.again')}</button></div>`,
     () => act('over-title', () => {
       app.promptActive = false;
@@ -542,7 +549,7 @@ function endingPrompt(app, G, p, finish) {
         <div class="counter" style="--c:var(--money)"><div class="v num">${money(G.stats.revenue)}</div><div class="k">${t('over.total')}</div></div>
         <div class="counter" style="--c:var(--fans)"><div class="v num">${fmtNum(G.fans)}</div><div class="k">${t('hud.fans')}</div></div>
         <div class="counter" style="--c:var(--hot)"><div class="v num">${G.awards.length}</div><div class="k">${t('end.awards')}</div></div>
-      </div>${hallLine(hall)}</div>
+      </div>${identLine(G)}${hallLine(hall)}</div>
     <div class="win-foot"><button class="btn" data-act="end-title">${t('menu.title')}</button><button class="btn" data-act="share-run">${icon('copy')}${t('share.btn')}</button><span class="sp"></span><button class="btn primary lg" data-act="end-go">${t('end.keep')}${icon('arrow')}</button></div>`,
     () => {
       act('end-go', () => finish());

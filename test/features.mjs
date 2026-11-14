@@ -7,6 +7,7 @@ import { PLATFORM, PLATFORMS } from '../src/data/platforms.js';
 import { STRINGS } from '../src/data/strings.js';
 import { ACHIEVEMENTS } from '../src/data/achievements.js';
 import { weeklyOf } from '../src/core/weekly.js';
+import { identityName } from '../src/data/identity.js';
 let fails = 0;
 const ok = (c, m) => { if (!c) { fails++; console.log('FAIL', m); } else console.log('ok  ', m); };
 const G = S.newGame({ studio: 'T', seed: 7, difficulty: 'normal' });
@@ -1172,6 +1173,43 @@ ok(true, 'alla händelser körda');
   const gd = S.newGame({ studio: 'D', seed: 5 });
   ok(gi.fans === 250 && gd.fans === 0 && gt.money === gd.money + 15000 && gi.staff[0].design === 12 && gd.staff[0].design === 19, 'bakgrunderna ger sina startvärden');
   ok(Object.keys(S.FOUNDER_UNLOCK).every((id) => S.FOUNDERS.includes(id)) && S.FOUNDERS.every((id) => S.ARCHETYPES[id]), 'varje bakgrund har värden');
+}
+// studions rykte: sex spel krävs, och ordningen avgör vad som vinner
+{
+  const GI = S.newGame({ studio: 'Rykte', seed: 21 });
+  const mk = (n, o) => Array.from({ length: n }, (_, i) => ({ id: 10 + i, title: 'S' + i, t: i * 20, score: 6, genre: 'action', scope: 'small', ...o(i) }));
+  GI.games = mk(5, () => ({}));
+  ok(S.identity(GI) === null, 'inget rykte före sex spel');
+  GI.games = mk(6, (i) => ({ genre: ['action', 'rpg', 'puzzle', 'sim', 'strategy', 'racing'][i], score: 6 }));
+  ok(S.identity(GI).id === 'steady', 'sex olika spel utan profil ger pålitlig hantverkare');
+  GI.games = mk(6, (i) => ({ genre: i < 4 ? 'rpg' : 'action' }));
+  ok(S.identity(GI).id === 'genre' && S.identity(GI).genre === 'rpg', 'en genre som är minst 40 % av spelen ger specialist');
+  GI.games = mk(6, (i) => ({ genre: ['action', 'rpg', 'puzzle', 'sim', 'strategy', 'racing'][i], score: 8.5 }));
+  ok(S.identity(GI).id === 'hits', 'sex spel med betyg 8+ ger hitfabriken');
+  GI.games[0].scope = GI.games[1].scope = GI.games[2].scope = 'aaa';
+  ok(S.identity(GI).id === 'blockbuster', 'tre AAA-spel går före hits');
+  GI.games[3].live = { subs: 1 }; GI.games[4].live = { subs: 1 };
+  ok(S.identity(GI).id === 'online', 'två onlinespel går först av allt');
+  GI.games = mk(8, (i) => ({ genre: ['action', 'rpg', 'puzzle', 'sim', 'strategy', 'racing', 'adventure', 'shooter'][i], score: 7.4, scope: i % 2 ? 'medium' : 'small' }));
+  ok(S.identity(GI).id === 'indie', 'åtta små och medelstora spel med bra betyg ger indieälskling');
+  ok(identityName({ id: 'genre', genre: 'rpg' }).sv.startsWith('Specialist på ') && identityName({ id: 'hits' }).en === 'The hit factory', 'namnen finns på båda språken');
+  const GW = S.newGame({ studio: 'Rykte2', seed: 22 });
+  GW.games = mk(6, () => ({ score: 8.5, genre: 'rpg' }));
+  GW.t = 1000;
+  GW.news = [];
+  S.identityWatch(GW);
+  ok(GW.news.length === 1 && GW.news[0].key === 'news.identity' && GW.flags.ident === 'hits', 'första ryktet ger en nyhet');
+  S.identityWatch(GW);
+  ok(GW.news.length === 1, 'samma rykte skrivs inte om');
+  GW.games = mk(6, (i) => ({ score: 6, genre: i < 4 ? 'rpg' : 'action' }));
+  GW.t += 40;
+  S.identityWatch(GW);
+  ok(GW.news.length === 1, 'ett nytt rykte väntar två år efter det förra');
+  GW.t += 60;
+  S.identityWatch(GW);
+  ok(GW.news.length === 2 && GW.flags.ident === 'genre:rpg' && storyHas(GW), 'och skrivs sedan, även i historien');
+  function storyHas(G) { return (G.story || []).some((x) => x.key === 'hist.identity'); }
+  ok(S.hallEntry(GW).ident.id === 'genre', 'hallens rad bär ryktet');
 }
 // sen forskning: tre motordelar och tre bonusar efter 2015, och motorbehovet växer så att en gammal motor måste byggas om
 {
