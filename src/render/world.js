@@ -591,11 +591,61 @@ export class World {
     for (let x = 0; x < W; x += 18) ctx.fillRect(x, gy + S.roadBot + 3, 1, S.H - S.roadBot - 5);
     ctx.fillStyle = '#7a7a8a';
     ctx.fillRect(0, gy + S.H - 1, W, 1);
-    // gräs
-    ctx.fillStyle = winter ? '#dfe6f4' : '#4a8a4a';
-    ctx.fillRect(0, gy + S.H, W, Math.max(0, H - gy - S.H));
-    ctx.fillStyle = winter ? '#c8d0e4' : '#3a7a3a';
-    for (let x = 0; x < W; x += 9) ctx.fillRect(x, gy + S.H + 2 + ((x * 7) % 9), 2, 1);
+    // gräs: djupare i förgrunden, kantad av en låg häck, med tuvor, blommor, löv eller snödrivor efter årstid
+    const gh = Math.max(0, H - gy - S.H);
+    const top = gy + S.H;
+    const season = winter ? 3 : this.month >= 8 && this.month <= 10 ? 2 : this.month >= 2 && this.month <= 4 ? 1 : 0;
+    const bands = [
+      ['#4a8a4a', '#4f9150', '#3f7e44', '#3a7a3a'],
+      ['#4f9a4f', '#58a458', '#448a48', '#3f8440'],
+      ['#6a8a3a', '#78953f', '#5a7a36', '#4f6e30'],
+      ['#e2e9f6', '#eef3fc', '#d2dbec', '#c0cbe2'],
+    ][season];
+    const dark = [['#3a7a3a', '#2f6a34'], ['#3f8440', '#337438'], ['#4f6e30', '#425e2a'], ['#c0cbe2', '#aab8d4']][season];
+    ctx.fillStyle = bands[0];
+    ctx.fillRect(0, top, W, gh);
+    const n = 6;
+    for (let i = 1; i < n; i++) {
+      const y0 = top + Math.round((gh * i) / n);
+      ctx.fillStyle = i % 2 ? bands[1] : bands[2];
+      ctx.fillRect(0, y0, W, Math.max(0, Math.round((gh * (i + 1)) / n) - Math.round((gh * i) / n)));
+    }
+    // skugga från trottoaren och en låg klippt häck närmast kanten
+    ctx.fillStyle = 'rgba(0,0,0,0.18)';
+    ctx.fillRect(0, top, W, 1);
+    ctx.fillStyle = dark[1];
+    ctx.fillRect(0, top + 1, W, 4);
+    ctx.fillStyle = dark[0];
+    for (let x = 0; x < W; x += 3) ctx.fillRect(x, top + 1 + ((x * 5) % 3 === 0 ? 0 : 1), 3, 2);
+    ctx.fillStyle = bands[1];
+    for (let x = 0; x < W; x += 7) ctx.fillRect(x + ((x * 3) % 5), top + 1, 2, 1);
+    // tuvor och smådetaljer, glesare nära kanten och tätare längre fram
+    for (let x = 0; x < W; x += 5) {
+      const h = (x * 2654435761) >>> 0;
+      const y = top + 7 + (h % Math.max(1, gh - 8));
+      if (y >= H) continue;
+      ctx.fillStyle = dark[h % 2];
+      ctx.fillRect(x, y, 2, 1);
+      ctx.fillRect(x + 1, y - 1, 1, 1);
+      if (h % 11 === 0) {
+        ctx.fillStyle = season === 1 ? ['#f2a8c8', '#fff2a0', '#ffffff'][h % 3] : season === 0 ? ['#f2d84a', '#ffffff', '#e8604a'][h % 3] : season === 2 ? ['#d8782a', '#e8a03a', '#b8501a'][h % 3] : '#ffffff';
+        ctx.fillRect(x + 2, y - 1, 1, 1);
+        if (season === 2) ctx.fillRect(x + 3, y - 1, 1, 1);
+      }
+    }
+    if (season === 3) {
+      // snödrivor med blå skugga
+      ctx.fillStyle = '#f8fbff';
+      for (let x = 7; x < W; x += 37) {
+        const y = top + 9 + ((x * 13) % Math.max(1, gh - 12));
+        if (y + 3 >= H) continue;
+        ctx.fillRect(x, y, 12, 2);
+        ctx.fillRect(x + 2, y - 1, 8, 1);
+        ctx.fillStyle = '#b4c2de';
+        ctx.fillRect(x + 1, y + 2, 11, 1);
+        ctx.fillStyle = '#f8fbff';
+      }
+    }
     void sky;
   }
 
