@@ -30,7 +30,13 @@ function ensure() {
     sfxBus.connect(master);
     musicBus = ctx.createGain();
     musicBus.gain.value = musicVol * 0.55;
-    musicBus.connect(master);
+    // musiken går genom ett lågpassfilter så att de högsta tonerna blir mjuka i stället för spetsiga
+    const mf = ctx.createBiquadFilter();
+    mf.type = 'lowpass';
+    mf.frequency.value = 4800;
+    mf.Q.value = 0.4;
+    musicBus.connect(mf);
+    mf.connect(master);
     // enkel klangrumsimpuls
     const len = ctx.sampleRate * 1.8;
     const buf = ctx.createBuffer(2, len, ctx.sampleRate);
@@ -153,16 +159,34 @@ export const sfx = {
 };
 
 // ── Musik ──
+// Musiken byggs av lager (trummor, bas, arpeggio, melodi, pad) som slås av och på per avsnitt på fyra takter, så att ett
+// avsnitt kan vara fullt, bara ett svävande pad med en lugn melodi, eller nästan tyst. Stämningen (MOODS) avgör tempo,
+// skala och hur ofta lagren används; musikregin i director.js väljer stämning efter hur spelet går. Slumpen här är bara
+// ljud (aldrig G.rng).
 const SCALES = { minor: [0, 2, 3, 5, 7, 8, 10], major: [0, 2, 4, 5, 7, 9, 11], dorian: [0, 2, 3, 5, 7, 9, 10] };
-const PROGS = { minor: [[0, 5, 2, 6], [0, 3, 5, 4], [0, 6, 5, 6], [0, 2, 5, 4]], major: [[0, 4, 5, 3], [0, 5, 3, 4], [5, 3, 0, 4], [0, 3, 4, 3]], dorian: [[0, 3, 0, 4], [0, 6, 3, 0]] };
-const MOODS = {
-  title: { bpm: 78, scale: 'dorian', drums: 0.25, arp: 0.7, lead: 0.5, pad: 1 },
-  play: { bpm: 92, scale: 'minor', drums: 0.8, arp: 1, lead: 0.55, pad: 0.6 },
-  report: { bpm: 84, scale: 'minor', drums: 0.15, arp: 0.5, lead: 0.2, pad: 1 },
-  award: { bpm: 108, scale: 'major', drums: 1, arp: 1, lead: 0.8, pad: 0.7 },
-  sad: { bpm: 60, scale: 'minor', drums: 0, arp: 0.2, lead: 0.1, pad: 1 },
+const PROGS = {
+  minor: [[0, 5, 2, 6], [0, 3, 5, 4], [0, 6, 5, 6], [0, 2, 5, 4], [0, 4, 5, 3], [5, 3, 0, 4]],
+  major: [[0, 4, 5, 3], [0, 5, 3, 4], [5, 3, 0, 4], [0, 3, 4, 3], [0, 2, 3, 4], [3, 0, 4, 5]],
+  dorian: [[0, 3, 0, 4], [0, 6, 3, 0], [0, 3, 6, 4], [0, 4, 3, 0]],
 };
-const M = { on: false, mood: 'title', timer: null, next: 0, step: 0, sect: null, rng: null, era: 0, key: 57 };
+export const MOODS = {
+  title: { bpm: 76, scales: ['dorian'], drums: 0.12, arp: 0.5, lead: 0.45, pad: 1.1, bass: 0.7, mix: { airy: 4, melody: 3, full: 2, breath: 1 } },
+  play: { bpm: 84, scales: ['minor', 'dorian', 'major'], drums: 0.45, arp: 0.65, lead: 0.4, pad: 0.9, bass: 1, mix: { full: 3, groove: 2.5, melody: 2.5, airy: 1.5, breath: 0.5 } },
+  calm: { bpm: 64, scales: ['major', 'dorian'], drums: 0, arp: 0.5, lead: 0.5, pad: 1.2, bass: 0.6, mix: { airy: 4.5, breath: 3, melody: 2.5 } },
+  drive: { bpm: 100, scales: ['minor'], drums: 0.8, arp: 0.85, lead: 0.5, pad: 0.6, bass: 1, mix: { full: 5, groove: 4, melody: 1 } },
+  report: { bpm: 80, scales: ['major', 'dorian'], drums: 0.1, arp: 0.4, lead: 0.3, pad: 1, bass: 0.6, mix: { airy: 3, melody: 3, breath: 1 } },
+  award: { bpm: 100, scales: ['major'], drums: 0.8, arp: 0.8, lead: 0.7, pad: 0.8, bass: 1, mix: { full: 1 } },
+  sad: { bpm: 58, scales: ['minor'], drums: 0, arp: 0.15, lead: 0.1, pad: 1, bass: 0.4, mix: { breath: 3, airy: 1 } },
+};
+// Lager per avsnitt: grid = hur glest arpeggiot går (2 = åttondelar, 4 = fjärdedelar, 8 = halvnoter)
+export const LAYERS = {
+  full: { drums: 1, bass: 1, arp: 1, lead: 1, pad: 1, grid: 2 },
+  groove: { drums: 1, bass: 1, arp: 0.7, lead: 0, pad: 1, grid: 4 },
+  melody: { drums: 0.35, bass: 0.8, arp: 0.25, lead: 1.4, pad: 1, grid: 4 },
+  airy: { drums: 0, bass: 0.5, arp: 0.45, lead: 1, pad: 1.1, grid: 8 },
+  breath: { drums: 0, bass: 0, arp: 0, lead: 0.4, pad: 1, grid: 8 },
+};
+const M = { on: false, mood: 'title', nextMood: null, timer: null, next: 0, step: 0, sect: null, rng: null, era: 0, key: 57, lastLayer: '' };
 function rng32(seed) {
   let s = seed >>> 0;
   return () => ((s = (Math.imul(s, 1664525) + 1013904223) >>> 0) / 4294967296);
@@ -172,10 +196,23 @@ function chordNotes(scaleName, deg) {
   const n = (d) => sc[((d % 7) + 7) % 7] + 12 * Math.floor(d / 7);
   return [n(deg), n(deg + 2), n(deg + 4)];
 }
+// Väljer lager efter vikterna i stämningen, och aldrig samma som förra avsnittet om det går att slippa
+function pickLayer(mood, r) {
+  const names = Object.keys(mood.mix);
+  const pick = () => {
+    let x = r() * names.reduce((a, k) => a + mood.mix[k], 0);
+    for (const k of names) if ((x -= mood.mix[k]) <= 0) return k;
+    return names[0];
+  };
+  let k = pick();
+  if (k === M.lastLayer && names.length > 1) k = pick();
+  return k;
+}
 function newSection() {
   const mood = MOODS[M.mood];
   const r = (M.rng = rng32((Math.random() * 1e9) | 0));
-  const prog = PROGS[mood.scale][Math.floor(r() * PROGS[mood.scale].length)];
+  const scale = mood.scales[Math.floor(r() * mood.scales.length)];
+  const prog = PROGS[scale][Math.floor(r() * PROGS[scale].length)];
   const arp = [[0, 1, 2, 1, 0, 1, 2, 1, 0, 1, 2, 1, 0, 1, 2, 1], [0, 2, 1, 2, 0, 2, 1, 2, 0, 2, 1, 2, 0, 2, 1, 2], [0, 1, 2, 3, 2, 1, 0, 1, 0, 1, 2, 3, 2, 1, 0, 1]][Math.floor(r() * 3)];
   // melodi: 16 steg per takt, 4 takter, i skaldeg
   const mel = [];
@@ -189,36 +226,46 @@ function newSection() {
       }
     }
   }
-  M.sect = { prog, arp, mel, scale: mood.scale };
+  const layer = pickLayer(mood, r);
+  M.lastLayer = layer;
+  M.sect = { prog, arp, mel, scale, layer, L: LAYERS[layer] };
 }
 function musicStep(t, step) {
   const mood = MOODS[M.mood];
   const sec = M.sect;
+  const L = sec.L;
   const bar = Math.floor(step / 16) % 4;
   const s16 = step % 16;
   const chord = chordNotes(sec.scale, sec.prog[bar]);
   const key = M.key;
   const era = M.era;
   const sv = 60 / mood.bpm / 4;
-  // trummor
-  if (mood.drums > 0 && ctx) {
-    if (s16 === 0 || (s16 === 8 && Math.random() < 0.7) || (s16 === 11 && Math.random() < 0.25)) {
-      tone('sine', 140, 45, t, 0.16, 0.5 * mood.drums, musicBus);
+  // trummor: mjuk bas och en tyst virvel, hi-hat bara när det är fullt drag
+  const dr = mood.drums * L.drums;
+  if (dr > 0.02 && ctx) {
+    if (s16 === 0 || (s16 === 8 && Math.random() < 0.6) || (s16 === 11 && Math.random() < 0.2)) {
+      tone('sine', 140, 45, t, 0.16, 0.45 * dr, musicBus);
     }
-    if (s16 === 4 || s16 === 12) { noise(t, 0.12, 0.2 * mood.drums, 'bandpass', 1800, musicBus); tone('triangle', 210, 140, t, 0.08, 0.1 * mood.drums, musicBus); }
-    if (s16 % 2 === 0) noise(t, 0.04, (s16 % 4 === 2 ? 0.1 : 0.06) * mood.drums, 'highpass', 7000, musicBus);
+    if (s16 === 4 || s16 === 12) { noise(t, 0.12, 0.12 * dr, 'bandpass', 1500, musicBus); tone('triangle', 210, 140, t, 0.08, 0.07 * dr, musicBus); }
+    if (dr > 0.5 && s16 % 2 === 0) noise(t, 0.04, (s16 % 4 === 2 ? 0.07 : 0.04) * dr, 'highpass', 7000, musicBus);
   }
-  // bas
-  if ([0, 6, 8, 14].includes(s16) || (s16 === 3 && Math.random() < 0.3)) {
-    tone(era === 0 ? 'triangle' : 'sawtooth', hz(key - 24 + chord[0]), hz(key - 24 + chord[0]), t, sv * (s16 === 0 ? 5 : 2.5), era === 0 ? 0.22 : 0.12, musicBus, null);
+  // bas: en lång ton per takt i de lugna lagren, annars ett lätt mönster
+  const bv = mood.bass * L.bass;
+  if (bv > 0.02) {
+    const hits = L.grid >= 8 ? [0] : [0, 6, 8, 14];
+    if (hits.includes(s16) || (L.grid < 8 && s16 === 3 && Math.random() < 0.3)) {
+      const bw = M.mood === 'drive' ? 'sawtooth' : 'triangle';
+      tone(bw, hz(key - 24 + chord[0]), hz(key - 24 + chord[0]), t, sv * (s16 === 0 ? (L.grid >= 8 ? 14 : 5) : 2.5), (bw === 'sawtooth' ? 0.1 : 0.2) * bv, musicBus, null);
+    }
   }
-  // arpeggio
-  if (Math.random() < mood.arp) {
-    const n = chord[sec.arp[s16] % 3] + (sec.arp[s16] >= 3 ? 12 : 0);
-    tone(era === 0 ? 'square' : era === 1 ? 'sawtooth' : 'triangle', hz(key + 12 + n), hz(key + 12 + n), t, sv * 1.8, era === 0 ? 0.045 : 0.05, musicBus, era === 2 && reverb ? reverb : null);
+  // arpeggio: glesare och mjukare än förr, en oktav lägre
+  if (L.arp > 0 && s16 % L.grid === 0 && Math.random() < mood.arp * L.arp) {
+    const idx = sec.arp[s16] % 4;
+    const n = chord[idx % 3] + (idx >= 3 ? 12 : 0);
+    tone(era === 0 ? 'square' : 'triangle', hz(key + n), hz(key + n), t, sv * (L.grid >= 4 ? 4 : 2), era === 0 ? 0.034 : 0.06, musicBus, era > 0 && reverb ? reverb : null);
   }
   // pad (en gång per takt)
-  if (s16 === 0 && mood.pad > 0) {
+  if (s16 === 0 && mood.pad * L.pad > 0) {
     for (const n of chord) {
       const o = ctx.createOscillator();
       const g = ctx.createGain();
@@ -229,7 +276,7 @@ function musicStep(t, step) {
       fl.frequency.value = 900;
       const dur = sv * 16;
       g.gain.setValueAtTime(0.0001, t);
-      g.gain.linearRampToValueAtTime(0.035 * mood.pad, t + dur * 0.35);
+      g.gain.linearRampToValueAtTime(0.035 * mood.pad * L.pad, t + dur * 0.35);
       g.gain.linearRampToValueAtTime(0.0001, t + dur);
       o.connect(fl);
       fl.connect(g);
@@ -239,25 +286,31 @@ function musicStep(t, step) {
       o.stop(t + dur + 0.05);
     }
   }
-  // melodi
-  const m = sec.mel.find((x) => x[0] === (step % 64));
-  if (m && Math.random() < mood.lead) {
+  // melodi: glesare i de lugna lagren, klockljud med lång efterklang i stället för spetsiga toner
+  const thin = L.grid >= 8 ? 8 : L.grid >= 4 ? 4 : 1;
+  const m = sec.mel.find((x) => x[0] === (step % 64) && x[0] % thin === 0);
+  if (m && Math.random() < mood.lead * L.lead) {
     const sc = SCALES[sec.scale];
     const d = m[1];
     const n = sc[((d % 7) + 7) % 7] + 12 * Math.floor(d / 7);
-    tone(era === 0 ? 'square' : 'triangle', hz(key + 24 + n), hz(key + 24 + n), t, sv * 2.6, era === 0 ? 0.07 : 0.09, musicBus, reverb && era > 0 ? reverb : null);
+    const soft = L.grid >= 8;
+    tone(soft ? 'sine' : era === 0 ? 'square' : 'triangle', hz(key + 12 + n), hz(key + 12 + n), t, sv * (soft ? 7 : 2.6), soft ? 0.09 : era === 0 ? 0.05 : 0.08, musicBus, reverb && (soft || era > 0) ? reverb : null);
   }
 }
 function schedule() {
   if (!ctx || !M.on) return;
-  const mood = MOODS[M.mood];
-  const sv = 60 / mood.bpm / 4;
   while (M.next < ctx.currentTime + 0.25) {
+    // en ny stämning börjar på nästa takt, så att bytet inte klipper mitt i en fras
+    if (M.nextMood && M.step % 16 === 0) {
+      M.mood = M.nextMood;
+      M.nextMood = null;
+      M.step = Math.ceil(M.step / 64) * 64;
+    }
     if (M.step % 64 === 0) newSection();
     try {
       musicStep(M.next, M.step);
     } catch { /* */ }
-    M.next += sv;
+    M.next += 60 / MOODS[M.mood].bpm / 4;
     M.step++;
   }
 }
@@ -292,14 +345,25 @@ export const music = {
     }
   },
   setMood(m) {
-    if (!MOODS[m] || M.mood === m) return;
-    M.mood = m;
-    if (M.on) {
-      M.step = Math.ceil(M.step / 64) * 64;
+    if (!MOODS[m]) return;
+    if (!M.on) {
+      M.mood = m;
+      M.nextMood = null;
+      return;
     }
+    if (M.mood === m && !M.nextMood) return;
+    M.nextMood = M.mood === m ? null : m;
   },
+  // stämningen som spelas eller är på väg (för musikregin)
+  mood: () => M.nextMood || M.mood,
   setEra(year) {
     M.era = year < 1991 ? 0 : year < 2004 ? 1 : 2;
     M.key = 57 + ((year * 7) % 5);
+  },
+  // för test: ljudkontexten, och kör schemaläggaren ett varv och ger avsnittet som spelas
+  _ctx: () => ctx,
+  _tick() {
+    schedule();
+    return M.sect && { layer: M.sect.layer, scale: M.sect.scale, mood: M.mood };
   },
 };

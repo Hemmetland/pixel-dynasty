@@ -1748,5 +1748,88 @@ for (const p of paths) {
   } catch (e) { bad.push(p.join('.') + ' ' + e.message); }
 }
 ok(!bad.length, `äldre sparning utan ett av ${paths.length} fält går att spela vidare` + (bad.length ? ': ' + bad.join(', ') : ''));
+// Andrum: slumpade händelser väntar efter ett stopp (och inför ett planerat) och kommer när det är slut
+{
+  const A = S.newGame({ studio: 'A', seed: 5, difficulty: 'normal' });
+  S.makeCompetitors(A); S.initWorld(A);
+  A.games.push({ id: 1, title: 'x', t: 0, score: 7, total: 1e5, weekly: [1], topic: 'fantasy', genre: 'action', platform: 'pc', scope: 'small', revenue: 1e5, units: 100, flags: [], reviews: [], insights: [] });
+  A.t = 120; // vecka 24 på året: inget planerat stopp i närheten
+  A.flags.evDue = true;
+  A.stopT = A.t - 1;
+  ok(S.rollStudioEvent(A) === false && A.pending.length === 0 && A.flags.evDue === true, 'andrum: en händelse som är på väg väntar när spelet nyss stannat');
+  A.stopT = A.t - S.BREATH;
+  ok(S.rollStudioEvent(A) === true && A.pending.length === 1 && A.flags.evDue === false, 'andrum: den kommer när andrummet är slut');
+  const B = S.newGame({ studio: 'B', seed: 5, difficulty: 'normal' });
+  S.makeCompetitors(B); S.initWorld(B);
+  B.games.push(A.games[0]);
+  B.t = S.tOf(1985, 11, 2); // två veckor före galan (december, vecka 3)
+  B.flags.evDue = true;
+  ok(S.rollStudioEvent(B) === false && B.flags.evDue === true, 'andrum: en händelse väntar också strax före galan');
+  // under ett helt spel stannar boten ofta, men aldrig två slumpade händelser inom andrummet
+  const C = S.newGame({ studio: 'C', seed: 11, difficulty: 'normal' });
+  S.makeCompetitors(C); S.initWorld(C);
+  let lastEv = -99, tooClose = 0, evs = 0;
+  for (let i = 0; i < 48 * 12 * S.TICKS_PER_WEEK && !C.over; i++) {
+    while (C.pending.length) {
+      const q = C.pending[0];
+      if (q.type === 'event') {
+        evs++;
+        if (C.t - lastEv < S.BREATH - 1) tooClose++;
+        lastEv = C.t;
+        S.resolveEvent(C, q.id, 0);
+      } else if (q.type === 'report') { S.releaseGame(C); C.pending.shift(); } else if (q.type === 'bailout') { S.takeBailout(C); C.pending.shift(); } else C.pending.shift();
+    }
+    if (!C.job) S.startProject(C, { title: 'y', topic: C.u.topics[0], genre: 'action', platform: 'pc', scope: 'small', audience: 'everyone' });
+    S.stepTick(C);
+  }
+  ok(evs >= 3 && tooClose === 0, `andrum: ${evs} händelser på tolv år, ingen inom ${S.BREATH - 1} veckor från en annan`);
+}
+// viktiga nyheter: milstolpar, priser och varningar får flaggan big (kort som blir kvar), vanliga nyheter inte
+{
+  const GB = JSON.parse(JSON.stringify(G));
+  GB.news = [];
+  GB.story = [];
+  GB.flags = {};
+  const seen = [];
+  const { on } = await import('../src/core/bus.js');
+  on('toast', (n) => seen.push(n));
+  S.note(GB, 'news.office', { n: 1 }, 'good');
+  S.note(GB, 'news.lowCash', {}, 'bad');
+  S.note(GB, 'news.awardWin', { title: 'A', cat: 'x', year: 1990 }, 'award');
+  S.note(GB, 'news.quitMood', { name: 'N' }, 'bad');
+  S.note(GB, 'news.staffGames', { name: 'N', n: 3 }, 'good');
+  S.note(GB, 'news.chartIn', { title: 'T', n: 40 }, 'info');
+  const big = (k) => GB.news.find((n) => n.key === k).big === 1;
+  ok(big('news.office') && big('news.lowCash') && big('news.awardWin') && big('news.quitMood'), 'milstolpar, priser och varningar får big');
+  ok(!GB.news.find((n) => n.key === 'news.staffGames').big && !GB.news.find((n) => n.key === 'news.chartIn').big, 'vanliga nyheter får inte big');
+  ok(seen.filter((n) => n.big).length === 4 && seen.length === 6, 'toast-händelsen bär flaggan big');
+  // en once-milstolpe som redan finns gör inte nyheten viktig en andra gång
+  S.note(GB, 'news.rival', { studio: 'R' }, 'info');
+  S.note(GB, 'news.rival', { studio: 'R2' }, 'info');
+  ok(GB.news[1].big === 1 && !GB.news[0].big, 'första rivalen är en milstolpe, nästa inte');
+  // olästa: nyheter nyare än G.flags.newsRead
+  ok(S.unreadNews(GB) === 0, 'ett nytt spel börjar utan olästa nyheter');
+  GB.t += 10;
+  S.note(GB, 'news.lowCash', {}, 'bad');
+  S.note(GB, 'news.chartIn', { title: 'T', n: 40 }, 'info');
+  ok(S.unreadNews(GB) === 1, 'bara viktiga nyheter räknas som olästa');
+  // ett stängt kort markerar bara sin egen nyhet som läst
+  const a = GB.news.find((x) => x.key === 'news.lowCash');
+  a.seen = 1;
+  ok(S.unreadNews(GB) === 0, 'ett stängt kort sänker räknaren med ett');
+  GB.t += 5;
+  S.note(GB, 'news.debt', { n: 2 }, 'bad');
+  S.note(GB, 'news.quit', { name: 'N' }, 'bad');
+  ok(S.unreadNews(GB) === 2, 'nya viktiga nyheter räknas upp');
+  GB.news[0].seen = 1;
+  ok(S.unreadNews(GB) === 1, 'att stänga det nyare kortet först tar bara bort det kortet');
+  GB.flags.seenNews = GB.t;
+  ok(S.unreadNews(GB) === 0, 'olästa nollas när loggen läses');
+  // en lägre skiva än studions finaste är inte viktig, trots att den är kind award
+  S.note(GB, 'news.cert', { title: 'T', cert: { sv: 'a', en: 'a' }, n: '1' }, 'award', true, false);
+  ok(!GB.news[0].big, 'note kan stänga av big');
+  // flaggan ändrar inget i spelet: samma sparning laddar och loggen får bara ett extra fält
+  ok(JSON.parse(JSON.stringify(GB.news)).length === GB.news.length, 'nyhetsloggen kan sparas som JSON');
+}
 console.log(fails ? `\n${fails} FEL` : '\nAlla tester gick bra');
 process.exit(fails ? 1 : 0);

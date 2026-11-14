@@ -13,7 +13,6 @@ import { TOPICS } from '../data/topics.js';
 import { GENRES } from '../data/genres.js';
 import { CATEGORIES } from '../data/categories.js';
 import { idealFocus } from '../sim/score.js';
-import { canStore } from '../sim/store.js';
 import { studioRanking } from '../sim/charts.js';
 import { rivalOf, rivalLog } from '../sim/rival.js';
 import { awardStandings, GALA_FIELD, AWARD_CATS } from '../sim/awards.js';
@@ -220,7 +219,8 @@ function rivalsTab(G) {
 }
 
 // Fliken Egen butik visas från 2001 (låst tills forskningen är klar), fliken Koncern med forskningen Uppköp
-const tabsOf = (G) => ['plat', 'charts', 'trends', 'insights', 'rivals', ...(canAcquireAny(G) || ownedComps(G).length ? ['group'] : []), ...(canStore(G) || yearOf(G.t) >= 2001 ? ['store'] : [])];
+// Butik och Koncern har egna knappar i menyraden (egna fönster nedan) och är inte längre flikar här
+const tabsOf = () => ['plat', 'charts', 'trends', 'insights', 'rivals'];
 
 regWin({
   id: 'market',
@@ -231,11 +231,27 @@ regWin({
   headExtra: (G) => `<div class="tabs">${tabsOf(G).map((k) => `<button class="tab ${M.tab === k ? 'on' : ''}" data-act="m-tab" data-id="${k}">${t('mkt.tab.' + k)}</button>`).join('')}</div>`,
   render(G) {
     if (!tabsOf(G).includes(M.tab)) M.tab = 'plat';
-    return M.tab === 'plat' ? platformsTab(G) : M.tab === 'charts' ? chartsTab(G) : M.tab === 'trends' ? trendsTab(G) : M.tab === 'insights' ? insightsTab(G) : M.tab === 'store' ? storeTab(G) : M.tab === 'group' ? groupTab(G) : rivalsTab(G);
+    return M.tab === 'plat' ? platformsTab(G) : M.tab === 'charts' ? chartsTab(G) : M.tab === 'trends' ? trendsTab(G) : M.tab === 'insights' ? insightsTab(G) : rivalsTab(G);
   },
   onOpen(G) {
     G.flags.seenPlat = G.t;
   },
+});
+regWin({
+  id: 'store',
+  icon: 'cart',
+  color: 'var(--money)',
+  size: 'xl',
+  title: () => t('mkt.tab.store'),
+  render: (G) => storeTab(G),
+});
+regWin({
+  id: 'group',
+  icon: 'network',
+  color: 'var(--gold)',
+  size: 'xl',
+  title: () => t('mkt.tab.group'),
+  render: (G) => groupTab(G),
 });
 act('m-tab', (el) => {
   M.tab = el.dataset.id;

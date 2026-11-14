@@ -115,6 +115,13 @@ check(!!(await page.$('[data-act="tt-continue"]')), 'Fortsätt finns efter omlad
 await page.click('[data-act="tt-continue"]');
 await page.waitForTimeout(1200);
 check((await studio()) === act4, 'Fortsätt laddar den senast sparade platsen');
+// en konkursad plats går inte att spela vidare, inte ens med ett direkt anrop
+await page.evaluate(() => {
+  const d = JSON.parse(localStorage.getItem('pixel-dynasty-save-v1-s5'));
+  d.meta = { ...(d.meta || {}), over: true };
+  localStorage.setItem('pixel-dynasty-save-v1-s5', JSON.stringify(d));
+});
+check((await page.evaluate(() => window.__pd.continueGame(5))) === false && (await studio()) === act4, 'en konkursad plats går inte att ladda, inte ens med ett direkt anrop');
 console.log(errors.length ? errors.join('\n') : 'no console errors');
 await browser.close();
 process.exit(bad || errors.length ? 1 : 0);

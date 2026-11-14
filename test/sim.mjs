@@ -136,9 +136,26 @@ function chooseBest(G, plat, scope) {
   return { title: 'Game ' + (G.games.length + 1), topic: best[0], genre: best[1], platform: plat.id, scope, audience: aud, sequelOf: prev ? prev.id : null };
 }
 
+// PROMPTDBG=1: hur många gånger spelet stoppar och kräver ett svar (ruta) per år, per sort. Vid fart 2 är ett år ungefär en minut.
+const promptSeen = new Set();
+const promptGaps = [];
+let lastPromptT = 0;
+let lastPromptK = '';
+const pairs = {};
+const prompts = {};
 function handlePending(G) {
   while (G.pending.length) {
     const p = G.pending[0];
+    if (process.env.PROMPTDBG && !promptSeen.has(p.id)) {
+      promptSeen.add(p.id);
+      const y = S.yearOf(G.t);
+      const k = p.type === 'event' ? 'event:' + p.ev : p.type;
+      (prompts[y] || (prompts[y] = [])).push(k);
+      promptGaps.push(G.t - lastPromptT);
+      if (G.t - lastPromptT <= 2) pairs[lastPromptK.replace(/^event:.*/, 'event') + ' > ' + k.replace(/^event:.*/, 'event')] = (pairs[lastPromptK.replace(/^event:.*/, 'event') + ' > ' + k.replace(/^event:.*/, 'event')] || 0) + 1;
+      lastPromptT = G.t;
+      lastPromptK = k;
+    }
     if (p.type === 'phase') {
       const J = G.job;
       // Idealfördelningen är bara känd för genrer man redan har släppt spel i (annars ligger den jämna kvar).
@@ -390,11 +407,13 @@ function manage(G) {
 const G = S.newGame({ studio: 'Bot', seed, difficulty: diff, archetype: opt('arch', undefined) });
 // NEWSDBG=1: hur många notiser (toastar) spelaren får per år och vilka som är vanligast (för att hitta torka och brus)
 const toasts = {};
+const bigs = {};
 if (process.env.NEWSDBG) {
   const { on } = await import('../src/core/bus.js');
   on('toast', (n) => {
     const y = S.yearOf(G.t);
     (toasts[y] || (toasts[y] = [])).push(n.key);
+    if (n.big) (bigs[y] || (bigs[y] = [])).push(n.key);
   });
 }
 S.makeCompetitors(G);
@@ -536,7 +555,31 @@ if (process.env.NEWSDBG) {
     for (const k of ks) all[k] = (all[k] || 0) + 1;
   }
   console.log('   toasts/year ' + per.join(' '));
+  console.log('   big/year ' + Object.entries(bigs).map(([y, ks]) => `${y}:${ks.length}`).join(' ') + ' | total ' + Object.values(bigs).reduce((n, ks) => n + ks.length, 0));
+  const bk = {};
+  for (const ks of Object.values(bigs)) for (const k of ks) bk[k] = (bk[k] || 0) + 1;
+  console.log('   big keys ' + Object.entries(bk).sort((a, b) => b[1] - a[1]).map(([k, n]) => `${k} ${n}`).join(', '));
   console.log('   top ' + Object.entries(all).sort((a, b) => b[1] - a[1]).slice(0, 28).map(([k, n]) => `${k} ${n}`).join(', '));
+}
+// --dump=fil: skriver det avslutade spelet som en sparfil (för att öppna ett mellanspel i webbläsaren: localStorage 'pixel-dynasty-save-v1')
+if (opt('dump', '')) {
+  const { writeFileSync } = await import('node:fs');
+  const { SAVE_VERSION } = await import('../src/sim/state.js');
+  writeFileSync(opt('dump', ''), JSON.stringify({ v: SAVE_VERSION, G }));
+}
+if (process.env.PROMPTDBG) {
+  const all = {};
+  const per = [];
+  for (const [y, ks] of Object.entries(prompts)) {
+    per.push(`${y}:${ks.length}`);
+    for (const k of ks) all[k.startsWith('event:') ? 'event' : k] = (all[k.startsWith('event:') ? 'event' : k] || 0) + 1;
+  }
+  console.log('   prompts/year ' + per.join(' '));
+  const g = promptGaps.slice().sort((a, b) => a - b);
+  const q = (x) => g[Math.floor(g.length * x)];
+  console.log(`   weeks between stops: median ${q(0.5)}, 10% ${q(0.1)}, 90% ${q(0.9)}; within 2 weeks ${Math.round((g.filter((x) => x <= 2).length / g.length) * 100)}%, within 4 weeks ${Math.round((g.filter((x) => x <= 4).length / g.length) * 100)}%`);
+  console.log('   pairs within 2 weeks: ' + Object.entries(pairs).sort((a, b) => b[1] - a[1]).slice(0, 12).map(([k, n]) => `${k} ${n}`).join(', '));
+  console.log('   by type ' + Object.entries(all).sort((a, b) => b[1] - a[1]).map(([k, n]) => `${k} ${n}`).join(', '));
 }
 // STORYDBG=1: studions historia (milstolparna) i slutet
 if (process.env.STORYDBG) console.log('   story ' + S.storyOf(G).length + ': ' + S.storyOf(G).map((m) => `${S.yearOf(m.t)} ${m.key.replace(/^(news|hist|live\.news)\./, '')}${m.vars.n ? ' ' + m.vars.n : ''}`).join(' | '));

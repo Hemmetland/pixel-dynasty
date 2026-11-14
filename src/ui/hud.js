@@ -1,18 +1,20 @@
-import { $, $$, esc, icon, t, tn, L, UI, act, money, MONTHS, bar } from './core.js';
+import { $, $$, esc, icon, t, tn, L, UI, act, money, MONTHS, bar, unreadNews, clearEvents } from './core.js';
 import { glyphImg } from '../render/glyphs.js';
 import { onSpritesLoaded } from '../render/sprites.js';
 import { pixIcon } from './icons.js';
 import { TOPIC } from '../data/topics.js';
 import { GENRE } from '../data/genres.js';
 import { PLATFORM } from '../data/platforms.js';
-import { dateOf, TICKS_PER_WEEK } from '../sim/const.js';
+import { dateOf, yearOf, TICKS_PER_WEEK } from '../sim/const.js';
 import { rpPerWeek } from '../sim/research.js';
-import { canUpgradeOffice, capacity, tierOf, nextTier } from '../sim/studio.js';
+import { canUpgradeOffice, capacity, tierOf, nextTier, officeReqs } from '../sim/studio.js';
 import { canHire, workers, teamFatigue, FATIGUE_MAX, FATIGUE_GRACE } from '../sim/people.js';
 import { canLicense } from '../sim/actions.js';
 import { RESEARCH, RES } from '../data/research.js';
 import { canResearch } from '../sim/research.js';
 import { canHw } from '../sim/hardware.js';
+import { canStore } from '../sim/store.js';
+import { canAcquireAny, ownedComps } from '../sim/acquire.js';
 import { hwDecisions } from './win-hardware.js';
 import { lang } from '../core/i18n.js';
 import { fmtNum, clamp } from '../core/util.js';
@@ -21,19 +23,26 @@ import { saveSettings } from '../core/store.js';
 import { CLIENTS, BRIEFS } from '../data/events.js';
 import { ACHIEVEMENTS } from '../data/achievements.js';
 import { crowdChip } from './crowd.js';
+import { REQ, reqValue, reqPct } from './win-studio.js';
 
 export const LOGOS = ['c_gameplay', 'g_action', 't_space', 't_fantasy', 't_robots', 't_pirates', 'g_casual', 't_magic'];
 
+export const hasStore = (G) => canStore(G) || yearOf(G.t) >= 2001;
+export const hasGroup = (G) => canAcquireAny(G) || ownedComps(G).length > 0;
+// Menyraden i grupper (sep = avgränsare före knappen): skapa | studion | spelen och pengarna | uppdrag.
+// Butik och Koncern har egna knappar och visas när de är upplåsta (samma villkor som flikarna i Marknad hade).
 const DOCK = [
   { id: 'wizard', ic: 'plus', k: 'dock.create', create: true },
-  { id: 'research', ic: 'flask', k: 'dock.research' },
+  { id: 'research', ic: 'flask', k: 'dock.research', sep: true },
   { id: 'staff', ic: 'team', k: 'dock.team' },
   { id: 'studio', ic: 'building', k: 'dock.studio' },
+  { id: 'hardware', ic: 'gpu', k: 'dock.hw', when: (G) => canHw(G) },
+  { id: 'library', ic: 'gamepad', k: 'dock.games', sep: true },
+  { id: 'store', ic: 'cart', k: 'dock.store', when: (G) => hasStore(G) },
   { id: 'market', ic: 'chart', k: 'dock.market' },
   { id: 'finance', ic: 'bank', k: 'dock.finance' },
-  { id: 'library', ic: 'gamepad', k: 'dock.games' },
-  { id: 'contracts', ic: 'hammer', k: 'dock.work' },
-  { id: 'hardware', ic: 'gpu', k: 'dock.hw', when: (G) => canHw(G) },
+  { id: 'group', ic: 'network', k: 'dock.group', when: (G) => hasGroup(G) },
+  { id: 'contracts', ic: 'hammer', k: 'dock.work', sep: true },
 ];
 
 let els = {};
@@ -41,6 +50,7 @@ const disp = { money: 0, rp: 0, fans: 0 };
 let lastDock = 0;
 // Panelernas cache: raderna byggs om bara när uppsättningen ändras, annars uppdateras texten på plats.
 let rowsKey = '';
+let goalKey = '';
 let brandKey = '';
 let logoKey = '';
 let lastPanels = 0;
@@ -48,7 +58,7 @@ let sheetOpen = false;
 let weekPct = 0;
 
 export function buildHUD(root) {
-  rowsKey = brandKey = logoKey = devKey = '';
+  rowsKey = brandKey = logoKey = devKey = goalKey = '';
   lastPanels = 0;
   root.insertAdjacentHTML('beforeend', `
     <div id="hud">
@@ -64,6 +74,7 @@ export function buildHUD(root) {
         <div class="stat glass" id="st-rp" style="--c:var(--rp)" data-tip=""><div class="ico">${icon('flask')}</div><div><div class="v num">0</div><div class="s"></div></div></div>
         <div class="stat glass" id="st-fans" style="--c:var(--fans)" data-tip=""><div class="ico">${icon('heart')}</div><div><div class="v num">0</div><div class="s"></div></div></div>
         <button class="glass menu-btn" id="mute-btn" data-act="hud-mute" data-tip="${t('ui.sound')}">${icon('volume')}</button>
+        <button class="glass menu-btn" id="news-btn" data-act="mn-news" data-tip="${t('ui.news')}">${icon('bell')}<i class="badge"></i></button>
         <button class="glass menu-btn" data-act="menu" data-tip="${t('ui.menu')} <span class='kbd'>M</span>">${icon('menu')}</button>
       </div>
     </div>
@@ -86,6 +97,7 @@ export function buildHUD(root) {
         <section class="pn glass" id="pn-tasks">
           <div class="pn-th"><span class="lbl">${t('pn.tasks')}</span><span class="cnt num"></span></div>
           <div class="pn-rows"></div>
+          <div class="pn-rows pn-goalrow"></div>
         </section>
       </div>
       <div id="toasts"></div>
@@ -119,6 +131,7 @@ export function buildHUD(root) {
     studio: $('#pn-studio'),
     tasks: $('#pn-tasks'),
     rows: $('#pn-tasks .pn-rows'),
+    goalrow: $('#pn-tasks .pn-goalrow'),
     clock: $('#clockp'),
     pbar: $('#pbar'),
   };
@@ -154,7 +167,12 @@ export function setHUDVisible(on) {
     const el = $('#' + id);
     if (el) el.style.display = on ? '' : 'none';
   }
-  if (!on) $('#toasts').innerHTML = '';
+  const ev = $('#events');
+  if (ev) ev.style.display = on ? '' : 'none';
+  if (!on) {
+    $('#toasts').innerHTML = '';
+    clearEvents(); // händelsekort från ett avslutat spel ska inte visas i nästa
+  }
 }
 
 // Dockans ikoner: pixelkonst 'ui.dock.<id>' ur manifestet om den finns, annars linjeikonen.
@@ -164,7 +182,19 @@ const dockItems = () => DOCK.filter((d) => !d.when || (UI.app?.G && d.when(UI.ap
 export function buildDock() {
   const items = dockItems();
   dockKey = items.map((d) => d.id).join();
-  els.dock.innerHTML = items.map((d) => `<button class="dk ${d.create ? 'create' : ''}" data-act="dock" data-id="${d.id}" data-key="${d.id}" data-tip="${t(d.k + '.tip')}">${pixIcon(`ui.dock.${d.id}`, d.ic, 26)}<span class="l">${t(d.k)}</span></button>`).join('');
+  const keep = $('.dk-s', els.dock)?.scrollLeft || 0;
+  els.dock.innerHTML = `<div class="dk-s">${items.map((d) => `${d.sep ? '<span class="dsep"></span>' : ''}<button class="dk ${d.create ? 'create' : ''}" data-act="dock" data-id="${d.id}" data-key="${d.id}" data-tip="${t(d.k + '.tip')}">${pixIcon(`ui.dock.${d.id}`, d.ic, 26)}<span class="l">${t(d.k)}</span></button>`).join('')}</div>`;
+  const sc = $('.dk-s', els.dock);
+  sc.scrollLeft = keep;
+  sc.addEventListener('scroll', dockEdges, { passive: true });
+  dockEdges();
+}
+// Mobilens dock rullar i sidled när knapparna inte ryms: toning i den kant där det finns mer att se
+function dockEdges() {
+  const sc = $('.dk-s', els.dock);
+  if (!sc) return;
+  els.dock.classList.toggle('sl', sc.scrollLeft > 4);
+  els.dock.classList.toggle('sr', sc.scrollLeft + sc.clientWidth < sc.scrollWidth - 4);
 }
 // Sprites laddas efter att dockan byggts: bygg om den (prickar, märken och vald knapp läggs tillbaka av updateDock).
 onSpritesLoaded(() => els.dock && buildDock());
@@ -210,6 +240,14 @@ export function updateHUD(G, dt) {
   set(els.fans, fmtNum(f), tn('hud.fansSub', Math.round(f)), `<b>${t('hud.fans')}</b><br>${t('hud.fansTip')}`);
   // speed
   for (const b of $$('button', els.speed)) b.classList.toggle('on', +b.dataset.v === UI.app.speed);
+  const nb = $('#news-btn');
+  if (nb) {
+    const un = unreadNews(G);
+    nb.classList.toggle('has', un > 0);
+    const bd = $('.badge', nb);
+    const tx = un > 9 ? '9+' : String(un || '');
+    if (bd.textContent !== tx) bd.textContent = tx;
+  }
   const mb = $('#mute-btn');
   if (mb) {
     const on = UI.app.settings.music || UI.app.settings.sfx;
@@ -320,6 +358,21 @@ function taskRows(G, job) {
   return [job, res[0], mkt, port, res[1], sales, res[2]].filter(Boolean).slice(0, 3).sort((a, b) => a.grp - b.grp);
 }
 
+// Nästa mål, alltid synligt under uppgifterna när handledningen är över: närmaste kontor (med det första krav som saknas
+// och hur nära man är), annars nästa prestation. Allt läses ur befintligt state.
+function goalOf(G) {
+  if (G.games.length < 2) return null;
+  const nx = nextTier(G);
+  if (nx) {
+    const miss = officeReqs(G, nx).find((r) => !r.ok);
+    if (!miss) return { id: 'o' + nx.id + 'ok', ic: 'building', c: 'var(--gold)', name: t('pn.goalNm', { name: L(nx.name) }), sub: t('pn.goalReady'), pct: 100, go: 'studio', tip: t('studio.reqReady') };
+    const why = REQ[miss.id][2];
+    return { id: 'o' + nx.id + miss.id, ic: 'building', c: 'var(--gold)', name: t('pn.goalNm', { name: L(nx.name) }), sub: `${t('pn.req.' + miss.id)} ${reqValue(miss)}`, pct: reqPct(miss), go: 'studio', tip: t(why) };
+  }
+  const na = ACHIEVEMENTS.find((a) => !G.ach.includes(a.id));
+  if (na) return { id: 'a' + na.id, ic: 'target', c: 'var(--gold)', name: t('pn.goalNm', { name: L(na.name) }), sub: L(na.desc), pct: 0, go: 'achievements', tip: t('pn.goalTip', { x: G.ach.length, y: ACHIEVEMENTS.length }) };
+  return null;
+}
 const rowHTML = (r) => {
   const tag = r.go ? 'button' : 'div';
   return `<${tag} class="tk${r.go ? ' go' : ''}" style="--c:${r.c}"${r.go ? ` data-act="pn-go" data-go="${r.go}"` : ''} data-tip=""><span class="ti">${icon(r.ic)}</span><span class="tn"><b class="nm"></b><span class="sb"></span></span><b class="pc num"></b><span class="bar thin"><i></i></span></${tag}>`;
@@ -382,6 +435,21 @@ function updatePanels(G) {
       ? rows.map(rowHTML).join('')
       : `<button class="tk idle go" data-act="pn-go" data-go="wizard" data-tip="${esc(t('pn.idleHint'))}"><span class="ti">${icon('plus')}</span><span class="tn"><b class="nm">${t('pn.idle')}</b><span class="sb">${t('pn.idleHint')}</span></span></button>`;
   }
+  // nästa mål
+  const gl = goalOf(G);
+  const gkey = gl ? gl.id : '';
+  if (gkey !== goalKey) {
+    goalKey = gkey;
+    els.goalrow.innerHTML = gl ? `<button class="tk go goal${gl.pct ? '' : ' nobar'}" style="--c:${gl.c}" data-act="dock" data-id="${gl.go}" data-tip=""><span class="ti">${icon(gl.ic)}</span><span class="tn"><b class="nm"></b><span class="sb"></span></span><b class="pc num"></b><span class="bar thin"><i></i></span></button>` : '';
+  }
+  if (gl) {
+    const ge = els.goalrow.firstElementChild;
+    put($('.nm', ge), gl.name);
+    put($('.sb', ge), gl.sub);
+    put($('.pc', ge), gl.pct ? pct(gl.pct) + '%' : '');
+    setBar(ge, gl.pct);
+    ge.dataset.tip = gl.tip;
+  }
   put($('.cnt', els.tasks), rows.length ? String(rows.length) : '');
   rows.forEach((r, i) => {
     const el = els.rows.children[i];
@@ -398,13 +466,17 @@ function updatePanels(G) {
   setBar($('#pb-proj'), job ? job.proj : 0);
   put($('#pb-goal b'), `${ach}/${ACHIEVEMENTS.length}`);
   // klockan
+  // står spelet stilla (paus) visar klockan det i stället för klockslaget: annars syns det inte att tiden står
+  const stopped = UI.app.speed === 0;
   const wxEl = $('.wx', els.clock);
-  if (wxEl.dataset.k !== ck.icon + ck.color) {
-    wxEl.dataset.k = ck.icon + ck.color;
-    wxEl.innerHTML = icon(ck.icon);
-    wxEl.style.setProperty('--c', ck.color);
+  const wxKey = stopped ? 'pause' : ck.icon + ck.color;
+  if (wxEl.dataset.k !== wxKey) {
+    wxEl.dataset.k = wxKey;
+    wxEl.innerHTML = icon(stopped ? 'pause' : ck.icon);
+    wxEl.style.setProperty('--c', stopped ? 'var(--warn)' : ck.color);
   }
-  put($('.tm b', els.clock), ck.time);
+  els.clock.classList.toggle('paused', stopped);
+  put($('.tm b', els.clock), stopped ? t('pn.paused') : ck.time);
   const dateTxt = `${MONTHS[lang][d.month]} ${d.year}`;
   put($('.tm i', els.clock), `${t('pn.week', { n: d.week + 1 })} · ${dateTxt}`);
   els.clock.dataset.tip = t('pn.clockTip', { time: ck.time, label: ck.label, date: `${t('pn.week', { n: d.week + 1 }).toLowerCase()}, ${dateTxt}` });

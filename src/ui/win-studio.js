@@ -10,7 +10,7 @@ const FCOL = { coffee: '#ffb070', lab: '#c49bff', qa: '#ff6b5c', training: '#6cc
 
 // ── Krav för nästa kontor ────────────────────────────────────────
 // id -> [ikon, rubrik, förklaring]
-const REQ = {
+export const REQ = {
   games: ['gamepad', 'studio.req.games', 'studio.why.games'],
   staff: ['team', 'studio.req.staff', 'studio.why.staff'],
   avg: ['star', 'studio.req.avg', 'studio.why.avg'],
@@ -18,7 +18,7 @@ const REQ = {
   year: ['calendar', 'studio.req.year', 'studio.why.year'],
   money: ['money', 'studio.req.money', 'studio.why.money'],
 };
-function reqValue(r) {
+export function reqValue(r) {
   switch (r.id) {
     case 'money': return `${money(Math.max(0, r.have))} / ${money(r.need)}`;
     case 'fans': return `${fmtNum(r.have)} / ${fmtNum(r.need)}`;
@@ -27,7 +27,7 @@ function reqValue(r) {
   }
 }
 // Stapelns fyllnad: hur nära kravet man är (året räknas som de senaste fem åren fram till kravet).
-function reqPct(r) {
+export function reqPct(r) {
   if (r.ok) return 100;
   if (r.id === 'year') return ((r.have - (r.need - 5)) / 5) * 100;
   return r.need > 0 ? (Math.max(0, r.have) / r.need) * 100 : 100;

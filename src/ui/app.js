@@ -2,7 +2,7 @@ import { Scene } from '../render/scene.js';
 import { on, emit } from '../core/bus.js';
 import { fmtFull } from '../core/util.js';
 import { setLang, detectLang, t } from '../core/i18n.js';
-import { loadSettings, saveSettings, saveGame, loadGame, useSlot, freeSlot } from '../core/store.js';
+import { loadSettings, saveSettings, saveGame, loadGame, useSlot, freeSlot, slotList } from '../core/store.js';
 import { newGame } from '../sim/state.js';
 import { stepTick, initWorld, checkAchievements } from '../sim/clock.js';
 import { makeCompetitors } from '../sim/market.js';
@@ -10,9 +10,11 @@ import { releaseGame, cancelProject, toggleCrunch, shipNow, extendPolish } from 
 import { cancelContract } from '../sim/contracts.js';
 import { refreshCandidates } from '../sim/people.js';
 import { sfx, music } from '../audio/sfx.js';
-import { UI, act, initUICore, toast, $, icon, L, money, esc } from './core.js';
+import { newDirector, pickMood } from '../audio/director.js';
+import { UI, act, initUICore, toast, eventCard, $, icon, L, money, esc } from './core.js';
 import { buildHUD, buildDock, updateHUD, updateDock, updateDev, setHUDVisible, flashStat, fitHUD } from './hud.js';
 import { showPrompt } from './prompts.js';
+import { PACE_MULT, paceOf } from './pace.js';
 import { FACILITIES } from '../sim/studio.js';
 import './windows.js';
 
@@ -20,6 +22,11 @@ const TICK = 0.6;
 const SPEEDS = [0, 1, 2.2, 5];
 // Utvecklingspanelens underkant på mobilen innan den har mätts (en vanlig spelpanel på en 390 px bred skärm)
 const CARD_BOTTOM = 290;
+
+// händelsekortets färg och rubrik efter nyhetens slag, och vilket fönster Visa-knappen öppnar
+const EV_KIND = { award: 'award', bad: 'warning', platform: 'platform' };
+const GO = [[/^news\.(lowCash|debt)$/, 'finance'], [/^news\.hw/, 'hardware'], [/^live\./, 'library'], [/^news\.(quit|quitMood|clash)$/, 'staff'], [/^news\.platform$/, 'market']];
+const goOf = (key) => (GO.find(([re]) => re.test(key)) || [0, 'news'])[1];
 
 export const app = {
   G: null,
@@ -156,7 +163,9 @@ export const app = {
     on('toast', (n) => {
       if (this.mode !== 'play') return;
       const text = n.text || t(n.key, this.decorate(n.vars));
-      toast(text, n.kind || 'info');
+      // viktiga nyheter (milstolpar, priser och varningar som kräver ett beslut; sim sätter flaggan big) ligger kvar som kort tills de stängs
+      if (n.big) eventCard({ kind: EV_KIND[n.kind] || 'milestone', text, go: goOf(n.key), item: n.item });
+      else toast(text, n.kind || 'info', undefined, false); // nyheter från spelet: hoppas över när högen inte får plats
       if (n.kind === 'good') sfx.play('good');
       else if (n.kind === 'bad') sfx.play('bad');
       else sfx.play('notify');
@@ -184,13 +193,13 @@ export const app = {
     });
     on('achievement', (a) => {
       sfx.play('achievement');
-      toast(t('toast.achievement', { name: `<b>${L(a.name)}</b>` }), 'award', 8000);
+      eventCard({ kind: 'achievement', text: t('toast.achievement', { name: `<b>${L(a.name)}</b>` }), go: 'achievements', item: a.item });
     });
     // en skiva som är minst lika fin som studions finaste firas; lägre skivor står bara i krönikan
     on('cert', (c) => {
       if (this.mode !== 'play' || !c.big) return;
       const name = L(c.cert.name);
-      toast(t('toast.cert', { cert: `<b style="color:${c.cert.color}">${name.charAt(0).toUpperCase() + name.slice(1)}</b>`, title: `<b>${esc(c.game.title)}</b>`, n: fmtFull(c.cert.units) }), 'award', 9000);
+      eventCard({ kind: 'award', ic: 'disc', text: t('toast.cert', { cert: `<b style="color:${c.cert.color}">${name.charAt(0).toUpperCase() + name.slice(1)}</b>`, title: `<b>${esc(c.game.title)}</b>`, n: fmtFull(c.cert.units) }), item: c.item });
       sfx.play('fanfare');
       sc.confetti(60 + c.i * 30);
     });
@@ -351,6 +360,8 @@ export const app = {
   },
   // Ladda en sparplats (utan nummer: den senast sparade). Ett pågående spel sparas först i sin plats.
   continueGame(slot) {
+    // en konkursad plats går inte att spela vidare (inga knappar visar den, men ett direkt anrop ska inte ladda den heller)
+    if (slot && slotList().some((x) => x.slot === slot && x.meta && x.meta.over)) return false;
     if (this.G && !this.G.over) saveGame(this.G);
     const G = loadGame(slot);
     if (!G) return false;
@@ -369,17 +380,38 @@ export const app = {
     emit('title');
   },
 
+  // Musikregin: en gång i sekunden, efter hur spelet går (paus, fart, övertid, ruta som visas)
+  directMusic(now) {
+    const G = this.G;
+    const D = this.musicDir || (this.musicDir = newDirector());
+    const mood = pickMood(D, {
+      now: now / 1000,
+      mode: this.mode === 'play' && G ? 'play' : 'title',
+      over: !!(G && G.over),
+      prompt: this.promptActive || !!(G && G.pending.length),
+      paused: this.speed === 0 || (this.settings.menuPause && this.menuOpen),
+      crunch: !!(G && G.job && G.job.crunch),
+      speed: this.speed,
+      style: this.settings.musicStyle,
+    });
+    if (mood && music.mood?.() !== mood) music.setMood?.(mood);
+  },
+
   // ── Loop ──
   frame(now) {
     const dt = Math.min(0.1, (now - this.last) / 1000);
     this.last = now;
+    if (now - (this.musicT || 0) >= 1000) {
+      this.musicT = now;
+      this.directMusic(now);
+    }
     const G = this.G;
     if (this.mode === 'play' && G) {
       const blocked = G.pending.length > 0 || (this.settings.menuPause && this.menuOpen) || this.speed === 0 || !!G.over || this.promptActive;
       this.scene.paused = blocked;
       this.scene.speed = this.speed;
       if (!blocked) {
-        this.acc += dt * SPEEDS[this.speed] * (this.turbo || 1);
+        this.acc += dt * SPEEDS[this.speed] * PACE_MULT[paceOf(this.settings)] * (this.turbo || 1);
         let guard = 0;
         while (this.acc >= TICK && guard++ < (this.turbo ? 600 : 8)) {
           this.acc -= TICK;

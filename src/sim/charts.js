@@ -100,8 +100,8 @@ export function chartWeek(G) {
       const big = i >= (S.bestCert ?? -1);
       if (i > (S.bestCert ?? -1)) milestone(G, 'hist.cert', { title: g.title, i });
       S.bestCert = Math.max(S.bestCert ?? -1, i);
-      note(G, 'news.cert', { title: g.title, cert: CERTS[i].name, n: fmtFull(CERTS[i].units) }, 'award', true);
-      emit('cert', { game: g, cert: CERTS[i], i, big });
+      const item = note(G, 'news.cert', { title: g.title, cert: CERTS[i].name, n: fmtFull(CERTS[i].units) }, 'award', true, big);
+      emit('cert', { game: g, cert: CERTS[i], i, big, item });
     }
     // studions mest sålda spel byter ägare
     if (g !== champ && u > (champ ? totalUnits(champ) : 0)) {

@@ -185,15 +185,18 @@ function eventBtn(G, g) {
 
 const dec1 = (x) => x.toFixed(1).replace('.', lang === 'sv' ? ',' : '.');
 // Säsonger: hur många spelare som lämnat sedan toppen, spelets effektiva ålder, säsongen som pågår eller de fyra temana
-// Fördelar per nivå: vad de ger i värde, vad de kostar i drift och engångssumma
+// Fördelar per nivå: vad de ger i värde, vad de kostar i drift och engångssumma. Att avsluta en införd fördel kräver två klick
+// (ingen återbetalning, och på pekskärm syns inte förklaringen): första klicket gör knappen röd i fyra sekunder.
+const PERK_ARM = { key: '', timer: 0 };
 function perkPanel(G, g) {
   const lv = g.live;
   const rows = PERKS.map((p, i) => {
     const on = !!(lv.perk && lv.perk[i]);
     const cost = perkCost(G, g, i);
     const pills = `<span class="spill" style="--c:var(--good)">${icon('chart')}${t('live.perkValue', { n: Math.round((p.value - 1) * 100) })}</span><span class="spill" style="--c:var(--bug)">${icon('money')}${t('live.perkUpkeep', { n: Math.round(p.upkeep * 1000) / 10 })}</span>`;
+    const armed = PERK_ARM.key === `${g.id}:${i}`;
     const btn = on
-      ? `<button class="btn sm ghost sfoot" data-act="lv-perk" data-id="${g.id}" data-i="${i}" data-on="0" data-tip="${esc(t('live.perkEndTip'))}">${icon('check')}${t('live.perkEnd')}</button>`
+      ? `<button class="btn sm ${armed ? 'danger' : 'ghost'} sfoot" data-act="lv-perk" data-id="${g.id}" data-i="${i}" data-on="0" data-tip="${esc(t('live.perkEndTip'))}">${icon(armed ? 'x' : 'check')}${t(armed ? 'live.perkEndSure' : 'live.perkEnd')}</button>`
       : `<button class="btn sm sfoot" data-act="lv-perk" data-id="${g.id}" data-i="${i}" data-on="1" ${G.money < cost ? 'disabled' : ''}>${icon('plus')}${t('live.perkAdd')} · ${money(cost)}</button>`;
     return `<div class="scard ${on ? 'on' : ''}"><div class="row" style="gap:10px;align-items:flex-start"><span class="rn-i sbig" style="--c:${on ? 'var(--gold)' : 'var(--muted)'}">${icon(p.ic)}</span><div style="flex:1;min-width:0"><div class="row" style="gap:8px"><b>${L(p.name)}</b><span class="tag" style="--c:var(--accent)">${t(TIER_KEY[SUB_TIERS[p.tier]])}</span></div><div class="faint" style="font-size:11.5px;line-height:1.35;margin-top:2px">${L(p.desc)}</div></div></div>
       <div class="row wrap" style="gap:6px;margin-top:8px">${pills}</div>${btn}</div>`;
@@ -607,6 +610,21 @@ act('lv-auto', (el) => {
 });
 act('lv-perk', (el) => {
   const G = UI.app.G;
+  if (el.dataset.on === '0') {
+    const k = `${el.dataset.id}:${el.dataset.i}`;
+    if (PERK_ARM.key !== k) {
+      PERK_ARM.key = k;
+      clearTimeout(PERK_ARM.timer);
+      PERK_ARM.timer = setTimeout(() => {
+        PERK_ARM.key = '';
+        UI.refresh();
+      }, 4000);
+      sfx.play('click');
+      return UI.refresh();
+    }
+    PERK_ARM.key = '';
+    clearTimeout(PERK_ARM.timer);
+  }
   const r = setLivePerk(G, +el.dataset.id, +el.dataset.i, el.dataset.on === '1');
   if (r === true) sfx.play('click');
   else errToast(r);

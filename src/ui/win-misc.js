@@ -1,4 +1,4 @@
-import { $, $$, esc, icon, t, L, UI, act, regWin, money, toast, errToast, MONTHS } from './core.js';
+import { $, $$, esc, icon, t, L, UI, act, regWin, money, toast, errToast, MONTHS, unreadNews } from './core.js';
 import { dateOf } from '../sim/const.js';
 import { fmtNum } from '../core/util.js';
 import { storyOf } from '../sim/news.js';
@@ -10,7 +10,10 @@ import { music } from '../audio/sfx.js';
 import { ACHIEVEMENTS } from '../data/achievements.js';
 import { MKT } from '../data/research.js';
 import { marketingOptions, launchMarketing } from '../sim/dev.js';
+import { MUSIC_STYLES } from '../audio/director.js';
+import { paceOf, paceSeg } from './pace.js';
 import { saveGame, exportCode, importCode, freeSlot, useSlot, activeSlot } from '../core/store.js';
+import { devCode } from './devconsole.js';
 
 const AIC = { a_game: 'gamepad', a_star: 'star', a_coin: 'money', a_house: 'building', a_team: 'team', a_heart: 'heart', a_flask: 'flask', a_aaa: 'rocket', a_trophy: 'trophy', a_brief: 'hammer', a_engine: 'cpu', a_clock: 'clock', a_globe: 'globe', a_bulb: 'bulb', a_crown: 'crown', a_disc: 'disc', a_chip: 'gpu' };
 const MIC = { press: 'mail', ads: 'book', tv: 'film', online: 'globe', influencer: 'heart' };
@@ -65,7 +68,9 @@ regWin({
 
 // ── Nyheter ──
 // Fliken Historia: studions milstolpar, äldst först, med ett årtal per år. Grundandet läggs till först.
-const NW = { tab: 'news' };
+const NW = { tab: 'news', only: false, since: -1 };
+// rubrik över viktiga rader i loggen, samma som på händelsekortet
+const NEWS_LABEL = { award: 'ev.award', bad: 'ev.warning', platform: 'ev.platform' };
 const STORY_IC = {
   'hist.founded': ['flag', 'var(--accent)'], 'hist.firstGame': ['gamepad', 'var(--accent)'], 'hist.firstHit': ['star', 'var(--gold)'], 'hist.firstNo1': ['trend', 'var(--good)'],
   'hist.cert': ['disc', 'var(--gold)'], 'hist.firstAward': ['trophy', 'var(--gold)'], 'news.awardWins': ['trophy', 'var(--gold)'], 'news.office': ['building', 'var(--accent)'],
@@ -111,30 +116,41 @@ function storyTab(G) {
 }
 regWin({
   id: 'news',
-  icon: 'mail',
+  icon: 'bell',
   color: 'var(--design)',
   size: 'md',
   title: () => t('news.title'),
+  onOpen(G) {
+    NW.since = G.flags.seenNews ?? G.t; // nya sedan förra gången: flaggas i listan
+    G.flags.seenNews = G.t;
+  },
   headExtra: () => `<div class="tabs">${['news', 'story'].map((k) => `<button class="tab ${NW.tab === k ? 'on' : ''}" data-act="nw-tab" data-id="${k}">${t('news.tab.' + k)}</button>`).join('')}</div>`,
   render(G) {
     if (NW.tab === 'story') return storyTab(G);
     if (!G.news.length) return `<div class="empty">${icon('mail')}<div>${t('news.empty')}</div></div>`;
+    // Viktiga nyheter (milstolpar, priser, varningar) är markerade; nya sedan förra gången loggen öppnades får en liten flagga
+    const list = NW.only ? G.news.filter((n) => n.big) : G.news;
+    const filter = `<div class="row" style="justify-content:flex-end;margin-bottom:8px"><div class="seg"><button class="${NW.only ? '' : 'on'}" data-act="nw-only" data-v="0">${t('news.all')}</button><button class="${NW.only ? 'on' : ''}" data-act="nw-only" data-v="1">${t('news.only')}</button></div></div>`;
     const NIC = { info: 'info', good: 'check', bad: 'bug', platform: 'gamepad', award: 'trophy', research: 'flask', money: 'money', hire: 'team' };
     const NCOL = { info: 'var(--accent)', good: 'var(--good)', bad: 'var(--bug)', platform: 'var(--design)', award: 'var(--gold)', research: 'var(--rp)', money: 'var(--money)', hire: 'var(--fans)' };
     let last = '';
-    return `<div class="col nws" style="gap:7px">${G.news
+    return `${filter}<div class="col nws" style="gap:7px">${list
       .map((n) => {
         const d = dateOf(n.t);
         const vars = boldVars(n.vars);
         const day = `${d.year}-${d.month}`;
         const head = day !== last ? `<div class="nws-h"><b class="disp">${MONTHS[lang][d.month]}</b><span>${d.year}</span><i></i></div>` : '';
         last = day;
-        return `${head}<div class="in nws-r ${n.kind === 'good' ? 'good' : n.kind === 'bad' ? 'bad' : 'ok'}" style="--c:${NCOL[n.kind] || NCOL.info}"><span class="ii">${icon(NIC[n.kind] || 'info')}</span><span style="flex:1">${t(n.key, vars)}</span></div>`;
+        return `${head}<div class="in nws-r ${n.kind === 'good' ? 'good' : n.kind === 'bad' ? 'bad' : 'ok'}${n.big ? ' big' : ''}" style="--c:${NCOL[n.kind] || NCOL.info}"><span class="ii">${icon(NIC[n.kind] || 'info')}</span><span style="flex:1">${n.big ? `<span class="nws-k">${t(NEWS_LABEL[n.kind] || 'ev.milestone')}</span>` : ''}${t(n.key, vars)}</span>${n.big && n.t > NW.since ? `<span class="nws-new">${t('news.new')}</span>` : ''}</div>`;
       })
       .join('')}</div>`;
   },
 });
 
+act('nw-only', (el) => {
+  NW.only = el.dataset.v === '1';
+  UI.refresh();
+});
 act('nw-tab', (el) => {
   NW.tab = el.dataset.id;
   UI.refresh();
@@ -145,12 +161,16 @@ regWin({
   id: 'menu',
   icon: 'menu',
   color: 'var(--accent)',
-  size: 'sm',
+  size: 'md',
   title: () => t('menu.title2'),
   render(G) {
-    const b = (id, ic, key, cls = '') => `<button class="btn block lg ${cls}" data-act="${id}" style="justify-content:flex-start">${icon(ic)}${t(key)}</button>`;
-    return `<div class="col" style="gap:8px">
-      ${b('mn-resume', 'play', 'menu.resume', 'primary')}${b('mn-save', 'save', 'menu.save')}${b('mn-slots', 'folder', 'menu.slots')}${b('mn-news', 'mail', 'menu.news')}${b('mn-ach', 'award', 'menu.ach')}${b('mn-set', 'settings', 'menu.settings')}${b('mn-help', 'info', 'menu.help')}${b('mn-title', 'back', 'menu.title')}</div>`;
+    const un = unreadNews(G);
+    const c = (id, ic, key, col, extra = '') => `<button class="mcard" data-act="${id}" style="--c:${col}"><span class="mi">${icon(ic)}${extra}</span><span class="mt"><b>${t(key)}</b><i>${t(key + '.d')}</i></span></button>`;
+    const grp = (k, body) => `<div class="mgrp"><div class="lbl">${t('menu.g.' + k)}</div><div class="mgrid">${body}</div></div>`;
+    return `<button class="mresume" data-act="mn-resume">${icon('play')}<span>${t('menu.resume')}</span><kbd>Esc</kbd></button>
+      ${grp('game', c('mn-save', 'save', 'menu.save', 'var(--good)') + c('mn-slots', 'folder', 'menu.slots', 'var(--gold)'))}
+      ${grp('studio', c('mn-news', 'bell', 'menu.news', 'var(--design)', un ? `<i class="badge">${un > 9 ? '9+' : un}</i>` : '') + c('mn-ach', 'award', 'menu.ach', 'var(--fans)'))}
+      ${grp('system', c('mn-set', 'settings', 'menu.settings', 'var(--accent)') + c('mn-help', 'info', 'menu.help', 'var(--rp)') + c('mn-title', 'back', 'menu.title', 'var(--bug)'))}`;
   },
 });
 act('mn-resume', () => UI.close());
@@ -171,6 +191,9 @@ act('mn-title', () => {
 
 // ── Inställningar ──
 const SET = { code: '', msg: '' };
+// Musikstil: växlande (lugna stunder emellanåt), bara lugn eller bara livlig
+const paceRow = (s) => `<div style="padding:9px 0;border-bottom:1px dashed var(--line)"><div class="row wrap" style="justify-content:space-between;gap:8px"><span>${t('set.pace')}</span>${paceSeg(s)}</div><div class="hint" style="margin-top:5px">${t('set.pace.' + paceOf(s) + '.d')}</div></div>`;
+const musicStyleRow = (s) => `<div class="row wrap" style="justify-content:space-between;gap:8px;padding:9px 0;border-bottom:1px dashed var(--line)"><span>${t('set.musicStyle')}</span><div class="seg">${MUSIC_STYLES.map((k) => `<button class="${(s.musicStyle || 'auto') === k ? 'on' : ''}" data-act="set-mstyle" data-v="${k}" ${s.music ? '' : 'disabled'}>${t('set.mstyle.' + k)}</button>`).join('')}</div></div>`;
 regWin({
   id: 'settings',
   icon: 'settings',
@@ -183,8 +206,8 @@ regWin({
     const slider = (k, key, on) => `<div class="row" style="gap:12px;padding:9px 0;border-bottom:1px dashed var(--line)"><span style="min-width:110px">${t(key)}</span><input type="range" min="0" max="100" value="${Math.round(s[k] * 100)}" data-set="${k}" ${on ? '' : 'disabled'}></div>`;
     return `
       <div class="row" style="justify-content:space-between;padding:9px 0;border-bottom:1px dashed var(--line)"><span>${icon('globe')} ${t('set.lang')}</span><div class="seg"><button class="${s.lang === 'sv' || (!s.lang && document.documentElement.lang === 'sv') ? 'on' : ''}" data-act="set-lang" data-l="sv">Svenska</button><button class="${s.lang === 'en' || (!s.lang && document.documentElement.lang === 'en') ? 'on' : ''}" data-act="set-lang" data-l="en">English</button></div></div>
-      ${tog('music', 'set.music')}${slider('musicVol', 'set.musicVol', s.music)}${tog('sfx', 'set.sfx')}${slider('sfxVol', 'set.sfxVol', s.sfx)}
-      ${tog('hd', 'set.hd')}${tog('crt', 'set.crt')}${tog('reduced', 'set.reduced')}${tog('menuPause', 'set.menuPause')}${tog('tutorial', 'set.tutorial')}
+      ${tog('music', 'set.music')}${slider('musicVol', 'set.musicVol', s.music)}${musicStyleRow(s)}${tog('sfx', 'set.sfx')}${slider('sfxVol', 'set.sfxVol', s.sfx)}
+      ${tog('hd', 'set.hd')}${tog('crt', 'set.crt')}${tog('reduced', 'set.reduced')}${paceRow(s)}${tog('menuPause', 'set.menuPause')}${tog('tutorial', 'set.tutorial')}
       ${G ? `<div class="lbl" style="margin:16px 0 8px">${t('set.saveData')}</div>
       <div class="row wrap" style="gap:8px"><button class="btn" data-act="set-export">${icon('copy')}${t('set.export')}</button><button class="btn" data-act="set-import">${icon('upload')}${t('set.import')}</button></div>
       <textarea class="input" id="set-code" rows="3" placeholder="${t('set.codePh')}" style="height:auto;padding:10px;margin-top:10px;font-size:11px;font-family:ui-monospace,monospace">${esc(SET.code)}</textarea>
@@ -209,6 +232,17 @@ act('set-tog', (el) => {
   if (k === 'music') s[k] ? music.start?.() : music.stop?.();
   UI.refresh();
 });
+act('set-mstyle', (el) => {
+  UI.app.settings.musicStyle = el.dataset.v;
+  UI.app.applySettings();
+  UI.app.musicT = 0; // musikregin tar det på en gång
+  UI.refresh();
+});
+act('set-pace', (el) => {
+  UI.app.settings.pace = el.dataset.v;
+  UI.app.applySettings();
+  UI.refresh();
+});
 act('set-lang', (el) => {
   UI.app.setLanguage(el.dataset.l);
 });
@@ -225,6 +259,13 @@ act('set-export', () => {
   UI.refresh();
 });
 act('set-import', () => {
+  // fuskkoden i kodrutan slår på utvecklarläget (på mobil utan tangentbord); inte med i utdelningsbygget
+  if (devCode(SET.code)) {
+    SET.code = '';
+    SET.msg = '';
+    UI.refresh();
+    return;
+  }
   const G = importCode(SET.code);
   if (!G) {
     SET.msg = t('set.badCode');

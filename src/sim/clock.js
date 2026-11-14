@@ -46,6 +46,7 @@ export function stepTick(G) {
     G.t++;
     weekly(G);
   }
+  if (G.pending.length) G.stopT = G.t; // spelet stannar här: slumpade händelser får andrum efteråt (se events.js)
   return true;
 }
 
@@ -150,8 +151,8 @@ export function checkAchievements(G) {
   for (const a of ACHIEVEMENTS) {
     if (!G.ach.includes(a.id) && a.check(G)) {
       G.ach.push(a.id);
-      note(G, 'news.ach', { name: a.name }, 'award', true);
-      emit('achievement', a);
+      const item = note(G, 'news.ach', { name: a.name }, 'award', true);
+      emit('achievement', { ...a, item });
     }
   }
 }
