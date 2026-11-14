@@ -5,7 +5,8 @@ const { app, BrowserWindow, Menu, protocol, shell, net } = require('electron');
 const path = require('path');
 const { pathToFileURL } = require('url');
 
-const FEEDBACK_URL = process.env.PD_FEEDBACK_URL || ''; // t.ex. ett Google Forms-/GitHub-issue-formulär
+const FEEDBACK_URL = process.env.PD_FEEDBACK_URL ||
+  'https://github.com/Hemmetland/pixel-dynasty/issues/new?template=testfeedback.yml'; // GitHub-issue med mall
 app.commandLine.appendSwitch('autoplay-policy', 'no-user-gesture-required');
 
 protocol.registerSchemesAsPrivileged([

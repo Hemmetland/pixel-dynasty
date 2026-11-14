@@ -2,6 +2,7 @@ name: Desktop builds
 on:
   workflow_dispatch:
   push:
+    branches: ['claude/installable-packaging']
     tags: ['v*']
 jobs:
   build:
