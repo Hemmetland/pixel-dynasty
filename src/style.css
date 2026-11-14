@@ -1217,3 +1217,12 @@ input[type='range']::-moz-range-thumb { width: 18px; height: 18px; border-radius
 .mcard .mt b { font-size: 14px; }
 .mcard .mt i { font-style: normal; font-size: 11.5px; color: var(--muted); line-height: 1.3; }
 @media (prefers-reduced-motion: reduce) { .menu-btn.has .ic { animation: none; } }
+
+/* Högerkolumnen får aldrig växa ner över klockan: den krymper och uppgiftslistan rullar (låga fönster som 1024x600) */
+@media (min-width: 761px) {
+  #rcol { max-height: calc(100% - 74px - 92px); }
+  #pnl { min-height: 0; }
+  #pn-studio { flex: none; }
+  #pn-tasks { min-height: 0; overflow-y: auto; scrollbar-width: thin; }
+}
+@media (min-width: 761px) and (max-width: 1099px) { #rcol { max-height: calc(100% - 74px - 176px); } }
