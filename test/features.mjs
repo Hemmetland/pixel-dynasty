@@ -313,6 +313,19 @@ ok(true, 'alla händelser körda');
   const subsF = F.g0.live.subs;
   S.startLiveSeason(F.GS, 7800, 'festival');
   ok(gap > 1000 && F.g0.live.subs > subsF + gap * 0.05, 'jubileumsfesten lockar tillbaka spelare som lämnat');
+  // spelarna pratar om säsongen medan den pågår, och om en comeback i några veckor efter att den hänt
+  {
+    const { FAN_SPECIAL: FS } = await import('../src/data/fanvoices.js');
+    const vs = (X) => S.fanVoices(X.GS, X.g0).find((v) => v.kind === 'special');
+    const vf = vs(F);
+    ok(vf && vf.mood === 1 && FS.seasonFestival.sv.includes(vf.text.sv) && vf.text.en && !/[{}]/.test(vf.text.en), 'under en säsong hörs en röst om säsongen');
+    F.g0.live.season = null;
+    ok(!vs(F) || !FS.seasonFestival.sv.includes(vs(F).text.sv), 'efter säsongen tystnar säsongsrösten');
+    F.g0.live.cbT = F.GS.t - 2;
+    const vc = vs(F);
+    ok(vc && vc.mood === 1 && FS.liveComeback.sv.some((x) => x.replace('{title}', F.g0.title) === vc.text.sv), 'en nylig comeback hörs i rösterna');
+    ok(FS.seasonStory && ['seasonStory', 'seasonRanked', 'seasonFestival', 'seasonClassic', 'liveComeback'].every((k) => FS[k].sv.length === FS[k].en.length), 'säsongsrösterna finns på båda språken i samma antal');
+  }
   // för litet och för ungt: klassiska servrar kräver ett spel som är minst fem år
   const Y = mkOld(80);
   Y.g0.live.t0 = Y.GS.t - 48 * 3;

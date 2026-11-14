@@ -368,6 +368,7 @@ function comebackWatch(G, g) {
   else if (L.low == null || L.subs < L.low) L.low = L.subs;
   if (L.low > L.peak * COMEBACK_LOW || L.subs < L.low * COMEBACK_GROW || (L.cb || 0) >= COMEBACK_MAX || G.t - L.t0 < 2 * WEEKS_PER_YEAR) return;
   L.cb = (L.cb || 0) + 1;
+  L.cbT = G.t;
   G.stats.liveComeback = (G.stats.liveComeback || 0) + 1;
   note(G, 'live.news.comeback', { title: g.title, n: fmtN(Math.round((L.subs / L.low - 1) * 100)), subs: fmtN(L.subs) }, 'good');
   mark(G, L, 'cb');
