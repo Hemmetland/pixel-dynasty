@@ -13,6 +13,7 @@ import { marketingOptions, launchMarketing } from '../sim/dev.js';
 import { MUSIC_STYLES } from '../audio/director.js';
 import { paceOf, paceSeg } from './pace.js';
 import { saveGame, exportCode, importCode, freeSlot, useSlot, activeSlot } from '../core/store.js';
+import { devCode } from './devconsole.js';
 
 const AIC = { a_game: 'gamepad', a_star: 'star', a_coin: 'money', a_house: 'building', a_team: 'team', a_heart: 'heart', a_flask: 'flask', a_aaa: 'rocket', a_trophy: 'trophy', a_brief: 'hammer', a_engine: 'cpu', a_clock: 'clock', a_globe: 'globe', a_bulb: 'bulb', a_crown: 'crown', a_disc: 'disc', a_chip: 'gpu' };
 const MIC = { press: 'mail', ads: 'book', tv: 'film', online: 'globe', influencer: 'heart' };
@@ -258,6 +259,13 @@ act('set-export', () => {
   UI.refresh();
 });
 act('set-import', () => {
+  // fuskkoden i kodrutan slår på utvecklarläget (på mobil utan tangentbord); inte med i utdelningsbygget
+  if (devCode(SET.code)) {
+    SET.code = '';
+    SET.msg = '';
+    UI.refresh();
+    return;
+  }
   const G = importCode(SET.code);
   if (!G) {
     SET.msg = t('set.badCode');

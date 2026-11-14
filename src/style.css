@@ -1226,3 +1226,21 @@ input[type='range']::-moz-range-thumb { width: 18px; height: 18px; border-radius
   #pn-tasks { min-height: 0; overflow-y: auto; scrollbar-width: thin; }
 }
 @media (min-width: 761px) and (max-width: 1099px) { #rcol { max-height: calc(100% - 74px - 176px); } }
+
+/* Utvecklarkonsolen (src/ui/devconsole.js): dold för vanliga spelare, slås på med fuskkod. Finns inte i utdelningsbygget. Flaggan sitter mitt på vänsterkanten, där inget annat finns. */
+#devpill { position: fixed; left: 0; top: 46%; z-index: 58; padding: 2px 7px 2px 5px; border-radius: 0 6px 6px 0; border: 1px solid rgba(255, 92, 157, 0.7); border-left: 0; background: rgba(40, 8, 24, 0.82); color: #ff9fc4; font: 700 10.5px/16px var(--font); letter-spacing: 0.08em; cursor: pointer; opacity: 0.8; }
+#devpill:hover { opacity: 1; }
+#devpill.cheat { background: rgba(110, 20, 52, 0.9); color: #fff; }
+#devcon { position: fixed; left: 50%; top: 8px; transform: translateX(-50%); z-index: 62; display: none; flex-direction: column; width: min(760px, calc(100% - 16px)); height: min(46vh, 420px); border-radius: 10px; border: 1px solid rgba(255, 92, 157, 0.55); background: rgba(6, 8, 20, 0.95); box-shadow: 0 14px 40px rgba(0, 0, 0, 0.6); font: 12.5px/1.45 ui-monospace, 'SF Mono', Menlo, Consolas, monospace; color: #cfd6ff; }
+#devcon.on { display: flex; }
+#devcon .dc-log { flex: 1; min-height: 0; overflow-y: auto; padding: 8px 10px; scrollbar-width: thin; user-select: text; }
+#devcon .dc-l { white-space: pre-wrap; word-break: break-word; }
+#devcon .dc-l.in { color: #fff; }
+#devcon .dc-l.ok { color: var(--good); }
+#devcon .dc-l.err { color: var(--bug); }
+#devcon .dc-l.info { color: var(--design); }
+#devcon .dc-row { display: flex; align-items: center; gap: 6px; padding: 6px 8px; border-top: 1px solid var(--line); }
+#devcon .dc-row span { color: #ff9fc4; }
+#devcon .dc-row input { flex: 1; min-width: 0; background: transparent; border: 0; outline: 0; color: #fff; font: inherit; font-size: 16px; }
+#devcon .dc-x { border: 0; background: transparent; color: var(--muted); font-size: 20px; line-height: 1; cursor: pointer; padding: 0 6px; }
+@media (max-width: 760px), (max-height: 559px) { #devcon { height: min(40vh, 300px); } }

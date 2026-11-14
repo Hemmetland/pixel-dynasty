@@ -9,6 +9,7 @@ import { RESEARCH } from './data/research.js';
 import { TOPICS } from './data/topics.js';
 import PACK from 'virtual:assets';
 import { registerSprites } from './render/sprites.js';
+import { initDevConsole } from './ui/devconsole.js';
 
 const root = document.getElementById('app');
 app.init(root);
@@ -17,6 +18,8 @@ registerSprites(PACK).then((n) => { if (n && app.scene) app.scene.staticKey = ''
 buildTitle(root);
 initTutorial(root);
 showTitle(app);
+// Utvecklarkonsolen (fusk för speltest). I utdelningsbygget (node build.mjs --release) byts modulen mot en tom stubb.
+initDevConsole(app);
 
 // Felsöknings- och testkrokar
 window.__pd = app;

@@ -8,6 +8,8 @@ import { fileURLToPath } from 'node:url';
 const root = dirname(fileURLToPath(import.meta.url));
 const watch = process.argv.includes('--watch');
 const dev = process.argv.includes('--dev');
+// --release: bygget för utdelning (paketering, andra spelare). Utvecklarkonsolen (src/ui/devconsole.js) tas då bort helt.
+const release = process.argv.includes('--release');
 
 // Sprites i assets/ (se docs/PIXELLAB.md): assets/manifest.json listar dem, och 'virtual:assets' ger dem som data-URI:er i bygget.
 const assetsPlugin = {
@@ -31,6 +33,18 @@ const assetsPlugin = {
   },
 };
 
+// Utdelningsbygget: utvecklarkonsolen byts mot en stubb med samma export, så att varken koden eller fuskkoden följer med.
+const noDevConsole = {
+  name: 'no-dev-console',
+  setup(b) {
+    b.onResolve({ filter: /devconsole\.js$/ }, () => ({ path: 'devconsole-stub', namespace: 'no-dev-console' }));
+    b.onLoad({ filter: /.*/, namespace: 'no-dev-console' }, () => ({
+      contents: 'export const devOn = () => false; export const devCode = () => false; export function initDevConsole() {}',
+      loader: 'js',
+    }));
+  },
+};
+
 const TITLE = 'Pixel Dynasty';
 const DESC = 'Bygg ett spelimperium från garaget till skyskrapan.';
 const FONTS =
@@ -46,7 +60,7 @@ async function bundle() {
     minify: !dev,
     legalComments: 'none',
     define: { 'process.env.NODE_ENV': '"production"' },
-    plugins: [assetsPlugin],
+    plugins: release ? [assetsPlugin, noDevConsole] : [assetsPlugin],
   });
   const css = await transform(await readFile(resolve(root, 'src/style.css'), 'utf8'), {
     loader: 'css',
@@ -116,7 +130,7 @@ async function emit() {
   await emitLab();
   if (dev || process.argv.includes('--with-dev')) await emitDev();
   const kb = (Buffer.byteLength(fragment(parts)) / 1024).toFixed(0);
-  console.log(`✔ dist/index.html + dist/artifact.html (${kb} kB)`);
+  console.log(`✔ dist/index.html + dist/artifact.html (${kb} kB)${release ? ' [utdelningsbygge, utan utvecklarkonsol]' : ''}`);
 }
 
 if (watch) {

@@ -15,7 +15,7 @@ const liveTop = (G) => G.games.reduce((a, g) => (g.live && !g.live.closed && (!a
 // Vem och vad händelsen handlar om väljs när den dras, så att texten och effekten gäller samma person och spel.
 // needs: 'staff' = en anställd (inte grundaren), 'game' = senaste släppta spelet, 'oldGame' = studions bästa äldre spel,
 // 'live' = det största onlinespelet som är igång.
-function eventContext(G, ev) {
+export function eventContext(G, ev) {
   const ctx = {};
   const needs = ev.needs || [];
   if (needs.includes('staff')) {

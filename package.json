@@ -6,6 +6,7 @@
   "description": "Pixel Dynasty – ett studio-tycoon-spel (prototyp)",
   "scripts": {
     "build": "node build.mjs",
+    "build:release": "node build.mjs --release",
     "watch": "node build.mjs --watch",
     "sim": "node test/sim.mjs",
     "lint": "eslint src test build.mjs",

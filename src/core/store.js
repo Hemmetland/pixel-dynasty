@@ -35,6 +35,8 @@ export function loadHall() {
   }
 }
 export function recordRun(G) {
+  // ett spel som fuskats (utvecklarkonsolen, src/ui/devconsole.js) får inte plats i hallen
+  if (G.flags && G.flags.cheat) return null;
   try {
     const e = hallEntry(G);
     const others = loadHall().filter((x) => x.id !== e.id);
