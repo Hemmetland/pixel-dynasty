@@ -452,7 +452,7 @@ export const STRINGS = {
   'hl.rumor': ['Rykten: {rival} jobbar på något stort. Ingen vill säga vad.', 'Rumour: {rival} is working on something big. Nobody will say what.'],
   'hl.hiring': ['Tidningarna skriver att {rival} anställer rekordmånga utvecklare. Konkurrensen om talangerna hårdnar.', 'The papers write that {rival} is hiring record numbers of developers. The competition for talent is getting tougher.'],
   'hl.hotgenre': ['{genre} är hetast på forumen just nu. Utvecklare över hela branschen ritar nya skisser.', '{genre} is the hottest topic on the forums right now. Developers across the industry are drawing new sketches.'],
-  'hl.trendforum': ['Spelarna efterfrågar fler {genre}-spel. Förlagen frågar sig vem som hinner först.', 'Players are asking for more {genre} games. The publishers wonder who will be first.'],
+  'hl.trendforum': ['Spelarna efterfrågar fler spel i genren {genre}. Förlagen frågar sig vem som hinner först.', 'Players are asking for more games in the {genre} genre. The publishers wonder who will be first.'],
   'hl.surprise': ['En känd kritiker kallar {title} årets överraskning. Studion bakom, {studio}, får fler samtal än på länge.', 'A well-known critic calls {title} the surprise of the year. The studio behind it, {studio}, gets more calls than in a long time.'],
   'hl.forum': ['Forumet kokar om {title}. Spelarna delar tips, teorier och sina egna bästa ögonblick.', 'The forum is buzzing about {title}. Players share tips, theories and their own best moments.'],
   'hl.fanthread': ['Fans startar en tråd om vad som borde hända i nästa spel från {studio}. Den har redan tusen svar.', 'Fans start a thread about what should happen in the next game from {studio}. It already has a thousand replies.'],

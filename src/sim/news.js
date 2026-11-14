@@ -5,8 +5,18 @@ import { AWARD_CATS } from './awards.js';
 
 // Nyhetslogg (studions krönika): lagras som nyckel + variabler så språket kan bytas efteråt. Titlar och namn kan vara
 // {sv,en}-objekt. silent = bara i loggen, utan toast (för ögonblick som redan visas på annat sätt, t.ex. ett släpp).
+// Branschrubriker och trendspaning är kuliss: de får högst FLAVOR_MAX platser i loggen, så att de inte trycker ut riktiga nyheter
+export const FLAVOR_MAX = 40;
+const isFlavor = (k) => k.startsWith('hl.') || k === 'news.trend';
 export function note(G, key, vars = {}, kind = 'info', silent = false) {
   G.news.unshift({ t: G.t, key, vars, kind });
+  if (isFlavor(key)) {
+    let n = 0;
+    for (let i = 0; i < G.news.length; i++) if (isFlavor(G.news[i].key) && ++n > FLAVOR_MAX) {
+      G.news.splice(i, 1);
+      break;
+    }
+  }
   if (G.news.length > 150) G.news.pop();
   for (const m of MILESTONES[key] || []) if (!m.if || m.if(vars, storyOf(G), G)) milestone(G, m.as || key, m.vars ? m.vars(vars, G) : vars, !!m.once);
   if (!silent) emit('toast', { key, vars, kind });

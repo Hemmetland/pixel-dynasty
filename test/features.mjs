@@ -227,6 +227,17 @@ ok(true, 'alla händelser körda');
   ok(JSON.stringify(seen.map((x) => x.t + x.id)) === JSON.stringify(seen2), 'samma frö ger samma rubriker');
   ok(seen.every((x) => STRINGS[x.id] && STRINGS[x.id][0] && STRINGS[x.id][1]), 'varje rubrik har text på båda språken');
 }
+// nyhetsloggen: kuliss (rubriker och trendspaning) tar högst FLAVOR_MAX platser och trycker inte ut riktiga nyheter
+{
+  const GN = JSON.parse(JSON.stringify(G));
+  GN.news = [];
+  S.note(GN, 'news.office', { n: 1 }, 'info', true);
+  for (let i = 0; i < 120; i++) { GN.t = i; S.note(GN, i % 3 ? 'hl.arcade' : 'news.trend', {}, 'info', true); }
+  const fl = GN.news.filter((n) => n.key.startsWith('hl.') || n.key === 'news.trend').length;
+  ok(fl === S.FLAVOR_MAX && GN.news.some((n) => n.key === 'news.office'), 'kuliss-nyheter tar högst ' + S.FLAVOR_MAX + ' platser och den riktiga nyheten ligger kvar');
+  for (let i = 0; i < 160; i++) S.note(GN, 'news.quit', { name: 'X' }, 'info', true);
+  ok(GN.news.length === 150, 'loggen rymmer fortfarande 150 poster');
+}
 // trendspaning: en ny hetast genre eller ett nytt hetaste ämne ger en nyhet, men inte vid första trendslagningen
 {
   const GT = JSON.parse(JSON.stringify(G));
@@ -244,7 +255,7 @@ ok(true, 'alla händelser körda');
     if (now !== prev) changed++;
     prev = now;
   }
-  ok(changed >= 5 && GT.news.filter((n) => n.key === 'news.trend').length === changed, 'varje byte av hetaste trend blir en nyhet (' + changed + ' byten)');
+  ok(changed >= 5 && GT.news.filter((n) => n.key === 'news.trend').length === Math.min(changed, S.FLAVOR_MAX), 'varje byte av hetaste trend blir en nyhet (' + changed + ' byten)');
 }
 // säsonger: ett gammalt, vanskött onlinespel kan komma tillbaka. Förnyelsen sänker åldern men aldrig under golvet, samma tema
 // två gånger i rad ger mindre, klassiska servrar kräver ett gammalt spel och att inte göra något ändrar ingenting.
