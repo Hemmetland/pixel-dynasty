@@ -276,13 +276,13 @@ function fitToasts(box) {
   }
 }
 // Händelsekort: viktiga händelser (milstolpar, priser, prestationer) ligger kvar högst upp tills spelaren stänger dem.
-// opts: { kind: 'award' | 'milestone' | 'achievement' | 'warning' | 'platform', text, ic, go, t0 } där go är ett fönster som Visa-knappen öppnar
-// och t0 spelets tid då nyheten kom (ett stängt kort räknas som läst).
+// opts: { kind: 'award' | 'milestone' | 'achievement' | 'warning' | 'platform', text, ic, go, item } där go är ett fönster som Visa-knappen öppnar
+// och item nyhetsposten i krönikan (ett stängt kort markerar den som läst).
 const EV = { award: ['trophy', 'var(--gold)', 'ev.award'], milestone: ['flag', 'var(--accent)', 'ev.milestone'], achievement: ['award', 'var(--fans)', 'ev.achievement'], warning: ['fire', 'var(--bug)', 'ev.warning'], platform: ['gamepad', 'var(--design)', 'ev.platform'] };
-// Inget försvinner av sig självt: de tre första korten syns (två på låga skärmar, ett på smala), resten väntar i kö och kommer när något stängs.
+// Inget försvinner av sig självt: de tre första korten syns (två på låga skärmar, ett på smala eller mycket låga), resten väntar i kö och kommer när något stängs.
 // Varningar går före i kön. Kön töms när spelaren öppnar nyhetsloggen, där allt ligger kvar.
 let evQueue = [];
-const evMax = () => (narrow() ? 1 : typeof matchMedia !== 'undefined' && matchMedia('(max-height: 559px)').matches ? 2 : 3);
+const evMax = () => (narrow() ? 1 : typeof matchMedia === 'undefined' ? 3 : matchMedia('(max-height: 419px)').matches ? 1 : matchMedia('(max-height: 559px)').matches ? 2 : 3);
 const evBox = () => {
   let box = $('#events');
   if (!box) {
@@ -318,7 +318,7 @@ function pumpEvents() {
     box.appendChild(m);
   }
 }
-function showEvent(box, { kind = 'milestone', text, ic, go = 'news', t0 }) {
+function showEvent(box, { kind = 'milestone', text, ic, go = 'news', item }) {
   const [def, col, key] = EV[kind] || EV.milestone;
   const el = document.createElement('div');
   el.className = 'evcard glass';
@@ -330,9 +330,8 @@ function showEvent(box, { kind = 'milestone', text, ic, go = 'news', t0 }) {
   el.addEventListener('click', (e) => {
     const b = e.target.closest('[data-ev]');
     if (!b) return;
-    // ett stängt kort räknas som läst: menyknappens räknare går ner
-    const G = UI.app && UI.app.G;
-    if (G && t0 != null) G.flags.seenNews = Math.max(G.flags.seenNews ?? -1, t0);
+    // ett stängt kort räknas som läst: klockans räknare går ner med ett
+    if (item) item.seen = 1;
     if (b.dataset.ev === 'go' && go) UI.open(go, null, { force: true });
     dropEvent(el);
   });

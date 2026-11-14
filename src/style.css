@@ -1177,7 +1177,7 @@ input[type='range']::-moz-range-thumb { width: 18px; height: 18px; border-radius
 .evmore:hover { background: rgba(150, 172, 255, 0.16); }
 /* Händelsekorten ligger över dockan på smala och låga skärmar, så att de inte täcker utvecklingspanelens knappar */
 @media (max-width: 760px) { #events { top: auto; bottom: calc(max(12px, env(safe-area-inset-bottom, 0px)) + 134px); } }
-@media (max-height: 559px) and (min-width: 761px) { #events { top: auto; bottom: 104px; left: calc(50% + 20px); width: min(380px, calc(100% - 500px)); } }
+@media (max-height: 559px) and (min-width: 761px) { #events { top: auto; bottom: 104px; left: max(268px, calc(50% - 190px)); transform: none; width: min(380px, calc(100% - 544px)); } }
 /* ── Menyrad i grupper: avgränsare, rullande dock på mobil med toning i kanten ── */
 #dock .dk-s { display: flex; gap: 6px; align-items: stretch; min-width: 0; overflow-x: auto; scrollbar-width: none; overscroll-behavior-x: contain; scroll-snap-type: x proximity; }
 #dock .dk-s::-webkit-scrollbar { display: none; }

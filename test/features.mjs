@@ -1813,8 +1813,21 @@ ok(!bad.length, `äldre sparning utan ett av ${paths.length} fält går att spel
   S.note(GB, 'news.lowCash', {}, 'bad');
   S.note(GB, 'news.chartIn', { title: 'T', n: 40 }, 'info');
   ok(S.unreadNews(GB) === 1, 'bara viktiga nyheter räknas som olästa');
+  // ett stängt kort markerar bara sin egen nyhet som läst
+  const a = GB.news.find((x) => x.key === 'news.lowCash');
+  a.seen = 1;
+  ok(S.unreadNews(GB) === 0, 'ett stängt kort sänker räknaren med ett');
+  GB.t += 5;
+  S.note(GB, 'news.debt', { n: 2 }, 'bad');
+  S.note(GB, 'news.quit', { name: 'N' }, 'bad');
+  ok(S.unreadNews(GB) === 2, 'nya viktiga nyheter räknas upp');
+  GB.news[0].seen = 1;
+  ok(S.unreadNews(GB) === 1, 'att stänga det nyare kortet först tar bara bort det kortet');
   GB.flags.seenNews = GB.t;
   ok(S.unreadNews(GB) === 0, 'olästa nollas när loggen läses');
+  // en lägre skiva än studions finaste är inte viktig, trots att den är kind award
+  S.note(GB, 'news.cert', { title: 'T', cert: { sv: 'a', en: 'a' }, n: '1' }, 'award', true, false);
+  ok(!GB.news[0].big, 'note kan stänga av big');
   // flaggan ändrar inget i spelet: samma sparning laddar och loggen får bara ett extra fält
   ok(JSON.parse(JSON.stringify(GB.news)).length === GB.news.length, 'nyhetsloggen kan sparas som JSON');
 }

@@ -164,7 +164,7 @@ export const app = {
       if (this.mode !== 'play') return;
       const text = n.text || t(n.key, this.decorate(n.vars));
       // viktiga nyheter (milstolpar, priser och varningar som kräver ett beslut; sim sätter flaggan big) ligger kvar som kort tills de stängs
-      if (n.big) eventCard({ kind: EV_KIND[n.kind] || 'milestone', text, go: goOf(n.key), t0: this.G && this.G.t });
+      if (n.big) eventCard({ kind: EV_KIND[n.kind] || 'milestone', text, go: goOf(n.key), item: n.item });
       else toast(text, n.kind || 'info', undefined, false); // nyheter från spelet: hoppas över när högen inte får plats
       if (n.kind === 'good') sfx.play('good');
       else if (n.kind === 'bad') sfx.play('bad');
@@ -193,13 +193,13 @@ export const app = {
     });
     on('achievement', (a) => {
       sfx.play('achievement');
-      eventCard({ kind: 'achievement', text: t('toast.achievement', { name: `<b>${L(a.name)}</b>` }), go: 'achievements', t0: this.G && this.G.t });
+      eventCard({ kind: 'achievement', text: t('toast.achievement', { name: `<b>${L(a.name)}</b>` }), go: 'achievements', item: a.item });
     });
     // en skiva som är minst lika fin som studions finaste firas; lägre skivor står bara i krönikan
     on('cert', (c) => {
       if (this.mode !== 'play' || !c.big) return;
       const name = L(c.cert.name);
-      eventCard({ kind: 'award', ic: 'disc', text: t('toast.cert', { cert: `<b style="color:${c.cert.color}">${name.charAt(0).toUpperCase() + name.slice(1)}</b>`, title: `<b>${esc(c.game.title)}</b>`, n: fmtFull(c.cert.units) }), t0: this.G && this.G.t });
+      eventCard({ kind: 'award', ic: 'disc', text: t('toast.cert', { cert: `<b style="color:${c.cert.color}">${name.charAt(0).toUpperCase() + name.slice(1)}</b>`, title: `<b>${esc(c.game.title)}</b>`, n: fmtFull(c.cert.units) }), item: c.item });
       sfx.play('fanfare');
       sc.confetti(60 + c.i * 30);
     });

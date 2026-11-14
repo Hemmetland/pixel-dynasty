@@ -16,18 +16,19 @@ const IMPORTANT = new Set([
   'live.news.autoPaused', 'live.news.autoSeasonPaused', 'live.news.stale',
   'news.platform', 'news.cert',
 ]);
-// Olästa viktiga nyheter: de som kommit efter senaste gången nyhetsloggen öppnades eller ett händelsekort stängdes (G.flags.seenNews,
-// spelets tid). Vanliga nyheter, rubriker och trendspaning räknas inte. Ett nytt spel börjar på noll.
+// Olästa viktiga nyheter: de som kommit efter senaste gången nyhetsloggen öppnades (G.flags.seenNews, spelets tid) och vars
+// händelsekort inte stängts (item.seen). Vanliga nyheter, rubriker och trendspaning räknas inte. Ett nytt spel börjar på noll.
 export const unreadNews = (G) => {
   if (G.flags.seenNews == null) G.flags.seenNews = G.t;
   let n = 0;
   for (const x of G.news) {
     if (x.t <= G.flags.seenNews) break;
-    if (x.big) n++;
+    if (x.big && !x.seen) n++;
   }
   return n;
 };
-export function note(G, key, vars = {}, kind = 'info', silent = false) {
+// big: tvinga fram (true) eller stäng av (false) flaggan; utelämnad avgörs den av nyheten (se IMPORTANT och milstolpar)
+export function note(G, key, vars = {}, kind = 'info', silent = false, big = undefined) {
   const item = { t: G.t, key, vars, kind };
   G.news.unshift(item);
   if (isFlavor(key)) {
@@ -38,10 +39,11 @@ export function note(G, key, vars = {}, kind = 'info', silent = false) {
     }
   }
   if (G.news.length > 150) G.news.pop();
-  let big = IMPORTANT.has(key) || kind === 'award';
-  for (const m of MILESTONES[key] || []) if (!m.if || m.if(vars, storyOf(G), G)) if (milestone(G, m.as || key, m.vars ? m.vars(vars, G) : vars, !!m.once)) big = true;
-  if (big) item.big = 1;
-  if (!silent) emit('toast', { key, vars, kind, big });
+  let isBig = big ?? (IMPORTANT.has(key) || kind === 'award');
+  for (const m of MILESTONES[key] || []) if (!m.if || m.if(vars, storyOf(G), G)) if (milestone(G, m.as || key, m.vars ? m.vars(vars, G) : vars, !!m.once) && big !== false) isBig = true;
+  if (isBig) item.big = 1;
+  if (!silent) emit('toast', { key, vars, kind, big: isBig, item });
+  return item;
 }
 
 // ── Studions historia ─────────────────────────────────────────────
