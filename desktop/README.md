@@ -4,7 +4,7 @@ Ett tunt skal runt `dist/index.html`. Ingen spelkod ändras. Sparfiler ligger kv
 profilmapp, se menyn Spel › Öppna mapp med sparfiler).
 
 ```
-npm run build            # i repots rot: bygger dist/index.html
+npm run build:release    # i repots rot: bygger dist/index.html utan utvecklarkonsolen (alltid för utdelning)
 cd desktop && npm install
 npm start                # kör spelet i ett fönster
 npm run dist:win         # eller dist:mac / dist:linux, resultat i desktop/release/
