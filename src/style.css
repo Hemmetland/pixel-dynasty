@@ -1098,3 +1098,12 @@ input[type='range']::-moz-range-thumb { width: 18px; height: 18px; border-radius
 .nws-r:hover { transform: translateX(2px); }
 .nws-r .ii, .nws-r.good .ii, .nws-r.bad .ii { width: 28px; height: 28px; border-radius: 9px; color: var(--c); background: color-mix(in srgb, var(--c) 16%, transparent); box-shadow: inset 0 0 0 1px color-mix(in srgb, var(--c) 30%, transparent); }
 .nws-r .ii .ic { width: 15px; height: 15px; }
+
+/* Forskning på liggande telefon: kompakta kategorikort och lägre kontrollrad så att trädet får plats */
+@media (max-height: 560px) {
+  .rcat { padding: 3px 8px 6px; gap: 4px; font-size: 11.5px; }
+  .rcat .rcat-i { display: none; }
+  .rcat .rcat-c { display: none; }
+  .rcat .rcat-a { min-width: 14px; height: 14px; font-size: 9px; }
+  .rtree { max-height: max(180px, calc(100vh - 150px)); }
+}
