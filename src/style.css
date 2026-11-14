@@ -1265,3 +1265,16 @@ input[type='range']::-moz-range-thumb { width: 18px; height: 18px; border-radius
 .hw-rev .hr-p i.on { background: var(--c); box-shadow: 0 0 6px color-mix(in srgb, var(--c) 70%, transparent); }
 .hw-rev .hr-e { font-size: 12px; color: var(--muted); grid-column: 1 / -1; }
 .hw-rev .btn { grid-column: 1 / -1; justify-content: center; }
+
+/* Låga liggande skärmar: alla fönster får ett smalare huvud och mer plats för innehållet */
+@media (max-height: 559px) {
+  #overlay { padding: 52px 8px 6px; }
+  .win-head { padding: 6px 10px 6px 14px; gap: 10px; }
+  .win-head .wi { width: 28px; height: 28px; border-radius: 9px; }
+  .win-head .wi .ic { width: 16px; height: 16px; }
+  .win-head h2 { font-size: 19px; }
+  .win-head .sub { display: none; }
+  .win-body { padding: 10px 14px 14px; }
+  .hw-card .hw-stats { gap: 6px 12px; }
+  .hw-card > [style*='margin-top:8px'], .hw-card > [style*='margin-top:10px'], .hw-card > .hw-stats, .hw-card > .hw-ctl { margin-top: 5px !important; }
+}
