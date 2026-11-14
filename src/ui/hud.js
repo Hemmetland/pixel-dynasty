@@ -1,4 +1,4 @@
-import { $, $$, esc, icon, t, tn, L, UI, act, money, MONTHS, bar } from './core.js';
+import { $, $$, esc, icon, t, tn, L, UI, act, money, MONTHS, bar, unreadNews } from './core.js';
 import { glyphImg } from '../render/glyphs.js';
 import { onSpritesLoaded } from '../render/sprites.js';
 import { pixIcon } from './icons.js';
@@ -74,6 +74,7 @@ export function buildHUD(root) {
         <div class="stat glass" id="st-rp" style="--c:var(--rp)" data-tip=""><div class="ico">${icon('flask')}</div><div><div class="v num">0</div><div class="s"></div></div></div>
         <div class="stat glass" id="st-fans" style="--c:var(--fans)" data-tip=""><div class="ico">${icon('heart')}</div><div><div class="v num">0</div><div class="s"></div></div></div>
         <button class="glass menu-btn" id="mute-btn" data-act="hud-mute" data-tip="${t('ui.sound')}">${icon('volume')}</button>
+        <button class="glass menu-btn" id="news-btn" data-act="mn-news" data-tip="${t('ui.news')}">${icon('bell')}<i class="badge"></i></button>
         <button class="glass menu-btn" data-act="menu" data-tip="${t('ui.menu')} <span class='kbd'>M</span>">${icon('menu')}</button>
       </div>
     </div>
@@ -236,6 +237,14 @@ export function updateHUD(G, dt) {
   set(els.fans, fmtNum(f), tn('hud.fansSub', Math.round(f)), `<b>${t('hud.fans')}</b><br>${t('hud.fansTip')}`);
   // speed
   for (const b of $$('button', els.speed)) b.classList.toggle('on', +b.dataset.v === UI.app.speed);
+  const nb = $('#news-btn');
+  if (nb) {
+    const un = unreadNews(G);
+    nb.classList.toggle('has', un > 0);
+    const bd = $('.badge', nb);
+    const tx = un > 9 ? '9+' : String(un || '');
+    if (bd.textContent !== tx) bd.textContent = tx;
+  }
   const mb = $('#mute-btn');
   if (mb) {
     const on = UI.app.settings.music || UI.app.settings.sfx;

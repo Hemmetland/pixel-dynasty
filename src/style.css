@@ -1181,3 +1181,27 @@ input[type='range']::-moz-range-thumb { width: 18px; height: 18px; border-radius
   #dock .dk.create { flex: 1.2 0 60px; }
   #dock .dk .dot, #dock .dk .badge { z-index: 1; }
 }
+
+/* ── Meny som kortrutnät i grupper, nyhetsklocka med olästa ── */
+.menu-btn { position: relative; }
+.menu-btn .badge { position: absolute; right: 4px; top: 4px; min-width: 17px; height: 17px; padding: 0 4px; border-radius: 9px; background: var(--hot); color: #fff; font: 700 10.5px/17px var(--font); text-align: center; box-shadow: 0 0 0 2px var(--solid); display: none; font-style: normal; }
+.menu-btn.has .badge { display: block; }
+.menu-btn.has { color: var(--text); }
+.menu-btn.has .ic { animation: bellring 3.2s var(--ease) infinite; transform-origin: 50% 12%; }
+@keyframes bellring { 0%, 86%, 100% { transform: rotate(0); } 90% { transform: rotate(14deg); } 94% { transform: rotate(-11deg); } 97% { transform: rotate(6deg); } }
+.mresume { position: relative; width: 100%; display: flex; align-items: center; justify-content: center; gap: 12px; padding: 14px 18px; border-radius: 16px; font: 800 16px var(--font); color: var(--accent-ink); background: linear-gradient(180deg, #67f0df, #2fbfb0); box-shadow: 0 10px 26px -10px rgba(77, 225, 208, 0.75), inset 0 1px 0 rgba(255, 255, 255, 0.55); transition: transform 0.15s var(--ease), filter 0.15s; }
+.mresume:hover { transform: translateY(-2px); filter: brightness(1.06); }
+.mresume .ic { width: 22px; height: 22px; }
+.mresume kbd { position: absolute; right: 14px; font: 700 11px var(--font); padding: 2px 7px; border-radius: 6px; background: rgba(0, 0, 0, 0.18); color: inherit; }
+.mgrp { margin-top: 16px; }
+.mgrp .lbl { margin-bottom: 8px; }
+.mgrid { display: grid; grid-template-columns: repeat(auto-fill, minmax(190px, 1fr)); gap: 8px; }
+.mcard { position: relative; display: flex; align-items: center; gap: 12px; padding: 12px 14px; border-radius: 14px; text-align: left; border: 1px solid var(--line); background: linear-gradient(135deg, color-mix(in srgb, var(--c) 10%, transparent), rgba(255, 255, 255, 0.025) 70%); transition: transform 0.15s var(--ease), border-color 0.15s, background 0.15s; }
+.mcard:hover { transform: translateY(-2px); border-color: color-mix(in srgb, var(--c) 60%, transparent); background: linear-gradient(135deg, color-mix(in srgb, var(--c) 20%, transparent), rgba(255, 255, 255, 0.04) 70%); }
+.mcard .mi { position: relative; flex: none; width: 42px; height: 42px; border-radius: 12px; display: grid; place-items: center; color: var(--c); background: color-mix(in srgb, var(--c) 16%, transparent); box-shadow: inset 0 0 0 1px color-mix(in srgb, var(--c) 38%, transparent); }
+.mcard .mi .ic { width: 22px; height: 22px; }
+.mcard .mi .badge { position: absolute; right: -6px; top: -6px; min-width: 18px; height: 18px; border-radius: 9px; padding: 0 5px; background: var(--hot); color: #fff; font: 700 11px/18px var(--font); font-style: normal; text-align: center; box-shadow: 0 0 0 2px var(--solid); }
+.mcard .mt { display: flex; flex-direction: column; min-width: 0; gap: 2px; }
+.mcard .mt b { font-size: 14px; }
+.mcard .mt i { font-style: normal; font-size: 11.5px; color: var(--muted); line-height: 1.3; }
+@media (prefers-reduced-motion: reduce) { .menu-btn.has .ic { animation: none; } }

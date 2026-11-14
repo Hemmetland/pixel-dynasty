@@ -11,6 +11,17 @@ export { esc, icon, t, tn, L };
 const acts = new Map();
 export const act = (name, fn) => acts.set(name, fn);
 export const wins = new Map();
+// Olästa nyheter: poster i krönikan som kommit sedan nyhetsfönstret senast öppnades (kuliss som rubriker och trendspaning räknas inte)
+export const unreadNews = (G) => {
+  if (G.flags.seenNews == null) G.flags.seenNews = G.t;
+  const seen = G.flags.seenNews;
+  let n = 0;
+  for (const x of G.news) {
+    if (x.t <= seen) break;
+    if (!x.key.startsWith('hl.') && x.key !== 'news.trend') n++;
+  }
+  return n;
+};
 export const regWin = (def) => wins.set(def.id, def);
 
 export const UI = {
