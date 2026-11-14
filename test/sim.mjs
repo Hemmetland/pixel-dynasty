@@ -27,6 +27,8 @@ const f2p = mmo && args.includes('--f2p');
 const regions = mmo && !args.includes('--no-regions');
 // --seasons: startar en säsong när spelarbasen har fallit under 90 % av toppen (klassiska servrar för gamla spel, annars roterande tema)
 const seasons = mmo && args.includes('--seasons');
+// --expo=N: går på spelmässan med monter N (1-3) och visar de starkaste sakerna (standard: hoppar över)
+const expoLevel = Math.max(0, Math.min(3, +((args.find((a) => a.startsWith('--expo=')) || '').slice(7)) || 0));
 // --ports: porterar spel med betyg 7+ till den licensierade plattform som väntas ge bäst betyg
 const ports = args.includes('--ports');
 // --publish: ger ut andra studiors spel när demons intervall har mitten 7 eller mer
@@ -145,7 +147,10 @@ function handlePending(G) {
     } else if (p.type === 'event') {
       const ev = EV[p.ev];
       S.resolveEvent(G, p.id, Math.floor(Math.random() * ev.choices.length));
-    } else if (p.type === 'bailout') { S.takeBailout(G); G.pending.shift(); } else if (p.type === 'expo') S.resolveExpo(G, p.id, 0);
+    } else if (p.type === 'bailout') { S.takeBailout(G); G.pending.shift(); } else if (p.type === 'expo') {
+      // med --expo går boten på mässan om pengarna räcker (annars hoppar den över)
+      if (!expoLevel || S.resolveExpo(G, p.id, expoLevel) !== true) S.resolveExpo(G, p.id, 0);
+    }
     else {
       // AWARDDBG=1: galans vinnare de första åren (kategori, betyg, * = ditt spel, fältet: konkurrenternas spel + dina)
       if (process.env.AWARDDBG && p.type === 'award' && p.year <= 1984) console.log(`   gala ${p.year}: ` + p.cats.map((c) => `${c.id} ${c.nominees[0].score.toFixed(1)}${c.nominees[0].yours ? '*' : ''} (${c.nominees.map((n) => n.score.toFixed(1) + (n.yours ? '*' : '')).join(' ')})`).join(' | ') + ` field ${G.market.releases.filter((r) => S.yearOf(r.t) === p.year).length}+${G.games.filter((g) => S.yearOf(g.t) === p.year).length}`);

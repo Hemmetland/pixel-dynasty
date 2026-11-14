@@ -16,9 +16,9 @@ import { scoreOf } from './hardware.js';
 // kommer ur fröet och året (aldrig G.rng), och att hoppa över mässan rör ingenting.
 export const BOOTHS = [
   null,
-  { id: 1, slots: 1, base: 1500, share: 0.0075, hall: 0.05, hype: 9, show: 0.7 },
-  { id: 2, slots: 2, base: 3500, share: 0.012, hall: 0.1, hype: 14, show: 1 },
-  { id: 3, slots: 3, base: 6000, share: 0.02, hall: 0.18, hype: 20, show: 1.4 },
+  { id: 1, slots: 1, base: 1500, share: 0.0075, hall: 0.05, hype: 8, show: 0.7 },
+  { id: 2, slots: 2, base: 3500, share: 0.012, hall: 0.1, hype: 12, show: 1 },
+  { id: 3, slots: 3, base: 6000, share: 0.02, hall: 0.18, hype: 16, show: 1.4 },
 ];
 export const EXPO_LIFT_WEEKS = 8;
 // Besökare på hela mässan: 3 000 år 1983, med 7,5 % tillväxt per år
@@ -130,10 +130,10 @@ function runExpo(G, B, picks, cost) {
     } else if (x.k === 'game') {
       const g = G.games.find((y) => y.id === x.id);
       if (g) {
-        let lift = (0.05 + 0.12 * x.q) * B.show * clamp(buzz, 0.7, 1.5);
+        let lift = (0.04 + 0.1 * x.q) * B.show * clamp(buzz, 0.7, 1.5);
         if (rng() < 0.12 + 0.2 * x.q) {
           row.viral = true;
-          lift *= 2;
+          lift *= 1.7;
           fanBonus += 0.5;
           lines.push({ k: 'viral', title: x.name });
         } else lines.push({ k: 'sold', title: x.name });
