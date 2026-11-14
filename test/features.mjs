@@ -326,6 +326,33 @@ ok(true, 'alla händelser körda');
     ok(vc && vc.mood === 1 && FS.liveComeback.sv.some((x) => x.replace('{title}', F.g0.title) === vc.text.sv), 'en nylig comeback hörs i rösterna');
     ok(FS.seasonStory && ['seasonStory', 'seasonRanked', 'seasonFestival', 'seasonClassic', 'liveComeback'].every((k) => FS[k].sv.length === FS[k].en.length), 'säsongsrösterna finns på båda språken i samma antal');
   }
+  // fördelar per nivå: engångskostnad och drift, fler väljer nivån, och priset går att höja i takt med värdet
+  {
+    const PK = mkOld(80);
+    const lp = PK.g0.live;
+    const m0 = S.tierMix(PK.GS, lp);
+    const cost0 = S.costPerSub(PK.GS, lp);
+    ok(!lp.perk && S.perkUpkeep(PK.GS, lp) === 0, 'utan fördelar är driften som förut');
+    const money0 = PK.GS.money;
+    const c1 = S.perkCost(PK.GS, PK.g0, 1);
+    ok(c1 > 0 && S.setLivePerk(PK.GS, 7800, 1, true) === true && PK.GS.money === money0 - c1 && lp.perk[1] === 1 && PK.GS.news.some((n) => n.key === 'live.news.perk'), 'en fördel kostar en engångssumma och syns i nyheterna');
+    const m1 = S.tierMix(PK.GS, lp);
+    ok(m1.share[1] > m0.share[1] && m1.k < m0.k && m1.arpu > m0.arpu && S.costPerSub(PK.GS, lp) > cost0, 'fler väljer nivån, prispåverkan minskar och driften kostar');
+    ok(S.setLivePerk(PK.GS, 7800, 1, true) === true && PK.GS.money === money0 - c1, 'att införa den igen kostar inget');
+    lp.price[1] = 1.07;
+    ok(Math.abs(S.tierMix(PK.GS, lp).share[1] - m0.share[1]) < 1e-9 && S.hikeShare(PK.GS, lp) > 0, 'priset kan höjas lika mycket som värdet utan att nivån tappar andel (men en höjning märks fortfarande)');
+    lp.price[1] = 1;
+    ok(S.setLivePerk(PK.GS, 7800, 1, false) === true && lp.perk[1] === 0 && Math.abs(S.tierMix(PK.GS, lp).k - m0.k) < 1e-12 && S.perkUpkeep(PK.GS, lp) === 0, 'avslutad fördel ger samma läge som förut');
+    const PP = mkOld(80);
+    PP.GS.money = 10;
+    ok(typeof S.setLivePerk(PP.GS, 7800, 2, true) === 'string' && !PP.g0.live.perk, 'utan pengar går det inte');
+    const FP = mkOld(80);
+    FP.g0.live.model = 'f2p';
+    ok(S.setLivePerk(FP.GS, 7800, 0, true) === false && S.perkUpkeep(FP.GS, FP.g0.live) === 0, 'gratisspel har inga fördelar');
+    const M = S.liveMonth(PK.GS, PK.g0);
+    S.setLivePerk(PK.GS, 7800, 0, true); S.setLivePerk(PK.GS, 7800, 2, true);
+    ok(S.liveMonth(PK.GS, PK.g0).cost > M.cost, 'driften räknas in i månadskostnaden');
+  }
   // automatiska säsonger: av som standard, och när de är på startar nästa tema när spelarna fallit under 90 % av toppen
   {
     const AU = mkOld(80);

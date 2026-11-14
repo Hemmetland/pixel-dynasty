@@ -29,6 +29,8 @@ const regions = mmo && !args.includes('--no-regions');
 const seasons = mmo && args.includes('--seasons');
 // --autoseason: slår på automatiska säsonger i alla onlinespel (spelets egen regel, i stället för botens --seasons)
 const autoSeason = mmo && args.includes('--autoseason');
+// --perks: inför alla tre fördelar per nivå så fort kassan räcker till fyra gånger priset (spelets egen regel)
+const perks = mmo && args.includes('--perks');
 // --expo=N: går på spelmässan med monter N (1-3) och visar de starkaste sakerna (standard: hoppar över)
 const expoLevel = Math.max(0, Math.min(3, +((args.find((a) => a.startsWith('--expo=')) || '').slice(7)) || 0));
 // --ports: porterar spel med betyg 7+ till den licensierade plattform som väntas ge bäst betyg
@@ -356,6 +358,7 @@ function manage(G) {
   // onlinespel: innehållsuppdatering när innehållet börjar bli gammalt, och servrar när det blir fullt
   if (mmo) for (const g of S.liveGames(G)) {
     if (autoSeason && !g.live.autoSeason) S.setLiveAutoSeason(G, g.id, true);
+    if (perks && !S.isF2P(g.live)) for (let i = 0; i < 3; i++) if (!(g.live.perk && g.live.perk[i]) && G.money > S.perkCost(G, g, i) * 4) S.setLivePerk(G, g.id, i, true);
     if (g.live.fresh < 50 && !g.live.patch && G.money > S.livePatchCost(G, g) * 3) S.startLivePatch(G, g.id);
     if (f2p && year >= 2010 && S.canGoF2P(G, g.live)) S.goF2P(G, g.id);
     // evenemang när en konkurrent drar spelare eller innehållet börjar bli gammalt (om --events)

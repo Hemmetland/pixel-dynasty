@@ -25,6 +25,19 @@ const TIER_W = [0.7, 0.22, 0.08];
 const TIER_X = [1, 1.7, 2.8];
 // Hur känsliga spelarna är för prisnivån (k = 1 är standardpris) och för en enskild nivås pris (fördelningen mellan nivåer)
 const PRICE_ELAST = 1.5;
+// Fördelar per nivå (L.perk = [0|1, 0|1, 0|1], en per abonnemangsnivå): spelarna räknar priset mot vad de tycker att nivån är
+// värd, så med en fördel (value > 1) väljer fler nivån och spelet tappar färre spelare av ett högre pris. En engångssumma
+// (tre månaders intäkt från nivån) och en drift per spelare i nivån (upkeep, andel av nivåns standardpris och månad).
+// Utan fördelar är allt som förut. Gratisspel har inga nivåer och ingen fördel.
+export const PERKS = [
+  { id: 'cosmetics', tier: 0, value: 1.04, upkeep: 0.03, ic: 'sparkle', name: { sv: 'Kosmetiska skins', en: 'Cosmetic skins' },
+    desc: { sv: 'Skins och emotes som alla kan tjäna ihop i spelet. Billigt, och Standard känns som mer än en betalvägg.', en: 'Skins and emotes anyone can earn in play. Cheap, and Standard feels like more than a paywall.' } },
+  { id: 'early', tier: 1, value: 1.07, upkeep: 0.035, ic: 'rocket', name: { sv: 'Tidig åtkomst', en: 'Early access' },
+    desc: { sv: 'Pro-spelare provar nya uppdateringar först och har en egen kanal till utvecklarna.', en: 'Pro players try new updates first and have a direct line to the developers.' } },
+  { id: 'founders', tier: 2, value: 1.1, upkeep: 0.04, ic: 'crown', name: { sv: 'Grundarnas krets', en: "Founders' circle" },
+    desc: { sv: 'Namn i eftertexterna, en egen server med låg latens och en årlig träff med teamet.', en: 'Names in the credits, a low-latency server of their own and a yearly meetup with the team.' } },
+];
+const perkOn = (L, i) => !!(L.perk && L.perk[i]);
 const TIER_ELAST = 2.5;
 export const PRICE_MIN = 0.5;
 export const PRICE_MAX = 2.5;
@@ -170,11 +183,12 @@ export function subPrices(year) {
 export function tierMix(G, L) {
   const def = subPrices(yearOf(G.t));
   const r = L.price.map((x) => clamp(x, PRICE_MIN, PRICE_MAX));
-  const w = r.map((x, i) => TIER_W[i] * Math.pow(x, -TIER_ELAST));
+  const v = PERKS.map((p, i) => (perkOn(L, i) ? p.value : 1)); // vad spelarna tycker att nivån är värd, mot standard
+  const w = r.map((x, i) => TIER_W[i] * Math.pow(x / v[i], -TIER_ELAST));
   const sw = w.reduce((a, b) => a + b, 0);
   const share = w.map((x) => x / sw);
   const prices = r.map((x, i) => Math.round(def[i] * x));
-  const k = r.reduce((a, x, i) => a + TIER_W[i] * x, 0);
+  const k = r.reduce((a, x, i) => a + (TIER_W[i] * x) / v[i], 0);
   const arpu = share.reduce((a, s, i) => a + s * prices[i], 0);
   return { share, prices, def, k, arpu };
 }
@@ -186,7 +200,7 @@ export function hikeShare(G, L) {
     raw = Math.max(0, 1 - SHOP[L.shop | 0].mult / from) * SHOP_K;
   } else {
     const ref = L.pref || L.price;
-    const share = tierMix(G, { price: ref }).share;
+    const share = tierMix(G, { price: ref, perk: L.perk }).share;
     raw = L.price.reduce((a, p, i) => a + share[i] * Math.max(0, clamp(p, PRICE_MIN, PRICE_MAX) / clamp(ref[i], PRICE_MIN, PRICE_MAX) - 1), 0) * HIKE_K;
   }
   return Math.min(HIKE_MAX, raw * hikeMood(L));
@@ -197,7 +211,13 @@ export function serverCap(G) {
   return Math.round(facLevel(G, 'server') * 150000 * Math.pow(1.12, Math.max(0, year - 1997)) * (G.research.done.includes('f_cloud') ? 2 : 1));
 }
 // Driftkostnad per spelare och månad
-export const costPerSub = (G, L) => 0.28 * subPrices(yearOf(G.t))[0] * OPS[L.ops].cost * (isF2P(L) ? F2P_LOAD : 1);
+export const costPerSub = (G, L) => 0.28 * subPrices(yearOf(G.t))[0] * OPS[L.ops].cost * (isF2P(L) ? F2P_LOAD : 1) + perkUpkeep(G, L);
+// Driften för fördelarna per spelare och månad (andel av nivåns standardpris, vägd med nivåns andel av spelarna)
+export function perkUpkeep(G, L) {
+  if (!L.perk || isF2P(L)) return 0;
+  const { share, def } = tierMix(G, L);
+  return PERKS.reduce((a, p, i) => a + (perkOn(L, i) ? share[i] * p.upkeep * def[i] : 0), 0);
+}
 
 // Spelets effektiva ålder i år: verklig ålder minus det säsongerna har förnyat (L.reno, i veckor)
 export const liveAge = (G, L) => Math.max(0, G.t - L.t0 - (L.reno || 0)) / WEEKS_PER_YEAR;
@@ -640,6 +660,29 @@ export function setLiveAuto(G, id, on) {
   if (!g) return false;
   g.live.auto = on ? 1 : 0;
   g.live.autoWarn = 0;
+  return true;
+}
+// Engångssumman för en fördel: tre månaders intäkt från nivån (minst ett grundbelopp, så att den inte är gratis i ett litet spel)
+export function perkCost(G, g, i) {
+  const L = g.live;
+  const mix = tierMix(G, L);
+  return Math.max(Math.round((3 * L.subs * mix.share[i] * mix.prices[i]) / 100) * 100, Math.round((mix.def[i] * 500) / 100) * 100);
+}
+// Inför eller avsluta en fördel. Att införa kostar engångssumman; att avsluta är gratis men spelarna märker det i priset.
+export function setLivePerk(G, id, i, on) {
+  const g = liveOf(G, id);
+  if (!g || !PERKS[i] || isF2P(g.live)) return false;
+  const L = g.live;
+  if (!!on === perkOn(L, i)) return true;
+  if (on) {
+    const cost = perkCost(G, g, i);
+    if (G.money < cost) return t('err.money');
+    spend(G, cost, 'liveEvents');
+    L.perkCost = (L.perkCost || 0) + cost;
+    note(G, 'live.news.perk', { title: g.title, name: PERKS[i].name }, 'good');
+  }
+  if (!L.perk) L.perk = [0, 0, 0];
+  L.perk[i] = on ? 1 : 0;
   return true;
 }
 export function setLiveAutoSeason(G, id, on) {

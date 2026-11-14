@@ -23,7 +23,7 @@ import { openExpansion } from './wizard.js';
 import { CERTS, certOf, certCounts, nextCert, totalUnits, records } from '../sim/charts.js';
 import { fanVoices, fanSource } from '../sim/fans.js';
 import { FAN_SOURCE } from '../data/fanvoices.js';
-import { SUB_TIERS, OPS, PRICE_MIN, PRICE_MAX, PATCH_WEEKS, EVENT_WEEKS, SURGE_WEEKS, tierMix, liveMonth, serverCap, livePatchCost, startLivePatch, setLivePrice, setLiveOps, closeLive, rivalMmos, rivalPull, rivalFactor, liveFactors, setLiveAuto, setLiveAutoSeason, AUTO_FRESH, AUTO_BUFFER, AUTO_SEASON_BELOW, eventOn, eventReadyIn, liveEventCost, startLiveEvent, SHOP, isF2P, canGoF2P, goF2P, setLiveShop, liveLoad, liveArpu, hikeShare, REGIONS, regionGain, REGION_NAME, REGION_WEEKS, regionBonus, regionsOpen, liveRegionCost, startLiveRegion, SEASONS, SEASON_WEEKS, seasonOn, seasonReadyIn, seasonShare, seasonBlock, seasonQuality, liveSeasonCost, startLiveSeason, liveAge } from '../sim/live.js';
+import { SUB_TIERS, OPS, PRICE_MIN, PRICE_MAX, PATCH_WEEKS, EVENT_WEEKS, SURGE_WEEKS, tierMix, liveMonth, serverCap, livePatchCost, startLivePatch, setLivePrice, setLiveOps, closeLive, rivalMmos, rivalPull, rivalFactor, liveFactors, setLiveAuto, setLiveAutoSeason, PERKS, perkCost, setLivePerk, AUTO_FRESH, AUTO_BUFFER, AUTO_SEASON_BELOW, eventOn, eventReadyIn, liveEventCost, startLiveEvent, SHOP, isF2P, canGoF2P, goF2P, setLiveShop, liveLoad, liveArpu, hikeShare, REGIONS, regionGain, REGION_NAME, REGION_WEEKS, regionBonus, regionsOpen, liveRegionCost, startLiveRegion, SEASONS, SEASON_WEEKS, seasonOn, seasonReadyIn, seasonShare, seasonBlock, seasonQuality, liveSeasonCost, startLiveSeason, liveAge } from '../sim/live.js';
 
 // Stäng servrarna och gör till gratisspel kräver två tryck: första trycket "armerar" knappen för det spelet
 let closeArmed = null;
@@ -185,6 +185,21 @@ function eventBtn(G, g) {
 
 const dec1 = (x) => x.toFixed(1).replace('.', lang === 'sv' ? ',' : '.');
 // Säsonger: hur många spelare som lämnat sedan toppen, spelets effektiva ålder, säsongen som pågår eller de fyra temana
+// Fördelar per nivå: vad de ger i värde, vad de kostar i drift och engångssumma
+function perkPanel(G, g) {
+  const lv = g.live;
+  const rows = PERKS.map((p, i) => {
+    const on = !!(lv.perk && lv.perk[i]);
+    const cost = perkCost(G, g, i);
+    const pills = `<span class="spill" style="--c:var(--good)">${icon('chart')}${t('live.perkValue', { n: Math.round((p.value - 1) * 100) })}</span><span class="spill" style="--c:var(--bug)">${icon('money')}${t('live.perkUpkeep', { n: Math.round(p.upkeep * 1000) / 10 })}</span>`;
+    const btn = on
+      ? `<button class="btn sm ghost sfoot" data-act="lv-perk" data-id="${g.id}" data-i="${i}" data-on="0" data-tip="${esc(t('live.perkEndTip'))}">${icon('check')}${t('live.perkEnd')}</button>`
+      : `<button class="btn sm sfoot" data-act="lv-perk" data-id="${g.id}" data-i="${i}" data-on="1" ${G.money < cost ? 'disabled' : ''}>${icon('plus')}${t('live.perkAdd')} · ${money(cost)}</button>`;
+    return `<div class="scard ${on ? 'on' : ''}"><div class="row" style="gap:10px;align-items:flex-start"><span class="rn-i sbig" style="--c:${on ? 'var(--gold)' : 'var(--muted)'}">${icon(p.ic)}</span><div style="flex:1;min-width:0"><div class="row" style="gap:8px"><b>${L(p.name)}</b><span class="tag" style="--c:var(--accent)">${t(TIER_KEY[SUB_TIERS[p.tier]])}</span></div><div class="faint" style="font-size:11.5px;line-height:1.35;margin-top:2px">${L(p.desc)}</div></div></div>
+      <div class="row wrap" style="gap:6px;margin-top:8px">${pills}</div>${btn}</div>`;
+  }).join('');
+  return `<div class="lbl" style="margin:14px 0 4px">${t('live.perks')}</div><p class="hint" style="margin-bottom:8px">${t('live.perksHelp')}</p><div class="sgrid">${rows}</div>`;
+}
 function autoSeasonRow(G, g) {
   const on = !!g.live.autoSeason;
   return `<div class="ltier" style="margin-top:8px"><div style="flex:1;min-width:0"><b>${t('live.autoSeason')}</b><div class="faint" style="font-size:11.5px">${t('live.autoSeasonHelp', { p: Math.round(AUTO_SEASON_BELOW * 100), m: AUTO_BUFFER })}</div></div>
@@ -288,7 +303,7 @@ function livePanel(G, g) {
     <div class="row wrap" style="gap:10px"><div class="seg">${SHOP.map((_, i) => `<button class="${(L.shop | 0) === i ? 'on' : ''}" data-act="lv-shop" data-id="${g.id}" data-i="${i}">${t(SHOP_KEY[i])}</button>`).join('')}</div>
     <span class="faint" style="font-size:12.5px">${t('live.arpu', { v: money(liveArpu(G, L)) })}</span></div>${hikeLine(G, L)}`
     : `<div class="lbl" style="margin:14px 0 4px">${t('live.tiers')}</div><p class="hint" style="margin-bottom:8px">${t('live.tierHelp')}</p>
-    <div class="col" style="gap:6px">${tiers}</div>${hikeLine(G, L)}
+    <div class="col" style="gap:6px">${tiers}</div>${hikeLine(G, L)}${perkPanel(G, g)}
     ${canGoF2P(G, L) ? `<div class="ltier f2p-row" style="margin-top:8px"><div style="flex:1;min-width:0"><b>${t('live.f2pHead')}</b><div class="faint" style="font-size:11.5px">${t('live.f2pHelp')}</div></div>
       <button class="btn sm ${f2pArm ? 'danger' : ''}" data-act="lv-f2p" data-id="${g.id}">${icon('refresh')}${t(f2pArm ? 'live.f2pSure' : 'live.f2p')}</button></div>` : ''}`;
   return `<div class="card live-card" style="margin-top:16px">
@@ -588,6 +603,13 @@ act('lv-auto', (el) => {
   if (!g || !g.live) return;
   setLiveAuto(G, g.id, !g.live.auto);
   sfx.play('click');
+  UI.refresh();
+});
+act('lv-perk', (el) => {
+  const G = UI.app.G;
+  const r = setLivePerk(G, +el.dataset.id, +el.dataset.i, el.dataset.on === '1');
+  if (r === true) sfx.play('click');
+  else errToast(r);
   UI.refresh();
 });
 act('lv-autoseason', (el) => {
