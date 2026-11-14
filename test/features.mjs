@@ -109,6 +109,30 @@ for (const ev of EVENTS) {
   S.cancelProject(G);
 }
 ok(true, 'alla händelser körda');
+// studiojubileet kommer vart tionde år och bara en gång per decennium; arbetsmiljögranskningen kräver låg stämning och sen tid
+{
+  const EV = Object.fromEntries(EVENTS.map((e) => [e.id, e]));
+  const GJ = S.newGame({ studio: 'J', seed: 3 });
+  GJ.games.push({ id: 1, title: 'Ett', t: 5, score: 7, weekly: [1] });
+  GJ.t = 480 - 4;
+  const ann = EV.anniversary.when;
+  ok(!ann(GJ), 'jubileet kommer inte före tio år');
+  GJ.t = 480 + 4;
+  ok(ann(GJ), 'jubileet kan komma efter tio år');
+  GJ.flags.ev_anniversary = GJ.t;
+  ok(!ann(GJ), 'jubileet kommer bara en gång per decennium');
+  GJ.t = 960 + 2;
+  ok(ann(GJ), 'och igen efter tjugo år');
+  const GP = S.newGame({ studio: 'P', seed: 3 });
+  GP.t = 48 * 39;
+  for (let i = 0; i < 6; i++) GP.staff.push({ id: 100 + i, mood: 50 });
+  ok(EV.labor_press.when(GP), 'arbetsmiljögranskningen kan komma när stämningen är låg');
+  for (const s2 of GP.staff) s2.mood = 90;
+  ok(!EV.labor_press.when(GP), 'men inte när teamet mår bra');
+  GP.t = 48 * 30;
+  for (const s2 of GP.staff) s2.mood = 40;
+  ok(!EV.labor_press.when(GP) && !EV.ai_tools.when(GP) && !EV.catalog_deal.when(GP), 'och inte före sin tid');
+}
 // händelser för onlinespel: gäller det största spelet som är igång och ändrar dess spelare och innehåll
 {
   const GL = JSON.parse(JSON.stringify(G));

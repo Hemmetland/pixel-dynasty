@@ -431,6 +431,17 @@ if (args.includes('--live')) {
   for (const m of (G.market.mmos || [])) console.log(`rival ${S.yearOf(m.t0)}${m.closed ? '-' + S.yearOf(m.closed) : ''} ${m.studio} ${m.title.en} ${m.genre} score ${m.score}`);
 }
 if (args.includes('--ach')) console.log('ach ' + G.ach.join(' '));
+// --years: per år, genomsnitt av spelens poäng och delarna i betyget (för att se varför poängen sjunker)
+if (args.includes('--years')) {
+  const by = {};
+  for (const g of G.games.filter((x) => x.parts && !x.expansionOf)) (by[S.yearOf(g.t)] || (by[S.yearOf(g.t)] = [])).push(g);
+  const m = (a, f) => (a.reduce((x, g) => x + f(g), 0) / a.length).toFixed(2);
+  for (const [y, a] of Object.entries(by)) {
+    const sc = {};
+    for (const g of a) sc[g.scope[0]] = (sc[g.scope[0]] || 0) + 1;
+    console.log(`${y} n ${a.length} score ${m(a, (g) => g.score)} scopes ${Object.entries(sc).map(([k, v]) => k + v).join('')} rd ${m(a, (g) => g.parts.rd)} rt ${m(a, (g) => g.parts.rt)} s0 ${m(a, (g) => g.parts.s0)} compat ${m(a, (g) => g.parts.mCompat)} fit ${m(a, (g) => g.parts.mFit)} bug ${m(a, (g) => g.parts.mBug)} fresh ${m(a, (g) => g.parts.mFresh)} plat ${m(a, (g) => g.parts.mPlat)} raw ${m(a, (g) => g.parts.s0 * g.parts.mCompat * g.parts.mFit * g.parts.mPlat * g.parts.mBug * g.parts.mFresh)}`);
+  }
+}
 // --news: krönikans rader per nyckel (de senaste 150)
 if (args.includes('--news')) {
   const n = {};
