@@ -1282,6 +1282,14 @@ ok(true, 'alla händelser körda');
   ok(!has('f2p1m'), 'ett abonnemangsspel eller under en miljon räknas inte');
   GX.games.push(live({ model: 'f2p', peak: 1.2e6, closed: true }));
   ok(has('f2p1m'), 'en miljon spelare i ett gratisspel');
+  // rykte och tio år
+  GX.t = 479;
+  ok(!has('decade') && !has('known') && !has('hitfactory'), 'varken tio år, rykte eller hitfabrik från start');
+  GX.t = 480;
+  GX.flags.ident = 'genre:rpg';
+  ok(has('decade') && has('known') && !has('hitfactory'), 'tio år och ett rykte, men inte hitfabriken');
+  GX.flags.ident = 'hits';
+  ok(has('hitfactory'), 'känd som hitfabriken');
 }
 // ärkerivalen: studion närmast framför blir rival, årets duell avgörs vid årsskiftet, raka segrar avgör den och en ny
 // rival utses. Duellen rör varken pengar, fans eller slumpföljden.
