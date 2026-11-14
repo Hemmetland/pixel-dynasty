@@ -258,7 +258,7 @@ const madeBefore = (H, type) => H.products.some((p) => p.type === type);
 const nextGen = (H, type) => (H.lines[type] || 0) + 1;
 export const hwName = (H, type, cls) => HW_TYPES[type].name(nextGen(H, type)) + CLS[cls].suffix;
 // Spelaren döper sin hårdvara själv: några tecken, utan taggtecken
-export const cleanName = (s) => String(s ?? '').replace(/[<>&"`]/g, '').replace(/\s+/g, ' ').trim().slice(0, NAME_MAX);
+export const cleanName = (s) => String(s ?? '').replace(/<[^>]*>/g, '').replace(/[<>&"`]/g, '').replace(/\s+/g, ' ').trim().slice(0, NAME_MAX);
 // Förslag på namn till nästa generation: har linjen ett eget namn räknas det upp (Nova 2, Nova 3), annars standardnamnet
 export function suggestName(G, type, cls) {
   const H = G.hw;
@@ -997,6 +997,8 @@ function finishRev(G, H, P) {
   const k = P.up.k;
   const R = revOf(k);
   if (R.perf) {
+    // specifikationen (P.sf) stiger med lyftet, medan perf0 är marknadsrelativt och åldras
+    P.sf = (P.sf ?? P.perf0) * (1 + R.perf);
     P.perf0 = relPerf(G, P) * (1 + R.perf);
     P.pt = G.t;
   }
@@ -1019,7 +1021,7 @@ function finishRev(G, H, P) {
 // visas deras namn.
 const snapCores = (n) => (n < 1.5 ? 1 : n < 3 ? 2 : n < 6 ? 4 : n < 12 ? 8 : n < 20 ? 16 : n < 28 ? 24 : 32);
 export function specsOf(G, P, y = yfOf(P.t ?? G.t)) {
-  const f = Math.max(0.6, P.perf0 ?? P.perf ?? 1);
+  const f = Math.max(0.6, P.sf ?? P.perf0 ?? P.perf ?? 1);
   const scaled = (k, p) => curveAt(k, y) * Math.pow(f, p);
   const cpu = (name) => ({ k: 'cpu', cores: snapCores(curveAt('cores', y)), ghz: scaled('ghz', 0.5), nm: Math.round(curveAt('nm', y)), name });
   const gpu = (name) => ({ k: 'gpu', tflops: scaled('tflops', 2), vram: curveAt('vram', y), name });

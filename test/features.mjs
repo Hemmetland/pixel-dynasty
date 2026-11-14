@@ -1852,7 +1852,7 @@ ok(!bad.length, `äldre sparning utan ett av ${paths.length} fält går att spel
     return P;
   };
   // namn
-  ok(S.cleanName('  Nova   <b>Prime  ') === 'Nova bPrime' && S.cleanName('x'.repeat(40)).length === S.NAME_MAX, 'namnet rensas: taggtecken bort, mellanslag hopdragna, högst 24 tecken');
+  ok(S.cleanName('  Nova   <b>Prime  ') === 'Nova Prime' && S.cleanName('A < B') === 'A B' && S.cleanName('x'.repeat(40)).length === S.NAME_MAX, 'namnet rensas: taggar och taggtecken bort, mellanslag hopdragna, högst 24 tecken');
   const gpu = make({ type: 'gpu', cls: 'mid', name: 'Nova  Prime' }, 'meridian', 20000);
   ok(gpu && gpu.name === 'Nova Prime' && gpu.custom && gpu.state === 'market', 'ett eget namn följer med från designen till produkten');
   ok(S.suggestName(GR, 'gpu', 'mid').name === 'Nova Prime 2' && S.suggestName(GR, 'cpu', 'mid').name === 'Quark 1', 'efterföljaren till en produkt med eget namn föreslås med nästa nummer, andra linjer behåller standardnamnet');
@@ -1875,6 +1875,11 @@ ok(!bad.length, `äldre sparning utan ett av ${paths.length} fält går att spel
   ok(!gpu.up && gpu.revs.length === 1 && gpu.name === 'Nova Prime Ti', 'revisionen blir klar och namnet får sitt tillägg');
   const after = S.relPerf(GR, gpu);
   ok(after > before * 1.05, 'Pro lyfter prestandan mot marknaden (' + before.toFixed(2) + ' till ' + after.toFixed(2) + ')');
+  {
+    // specraden stiger med revisionen i stället för att följa det marknadsrelativa talet
+    const s1 = S.specsOf(GR, gpu)[0], s0 = S.specsOf(GR, { ...gpu, sf: undefined, perf0: gpu.sf / 1.12 })[0];
+    ok(gpu.sf > 0 && s1.tflops > s0.tflops * 1.2, 'specraden stiger efter en Pro-revision (' + s0.tflops.toFixed(2) + ' till ' + s1.tflops.toFixed(2) + ' TFLOPS)');
+  }
   {
     const u = S.unitCost(GR, gpu, gpu.partner), rv = gpu.revUnit;
     delete gpu.revUnit;

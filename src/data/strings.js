@@ -1566,7 +1566,7 @@ export const STRINGS = {
   'hw.rev.help': ['En revision uppgraderar produkten medan den säljer vidare och tar ingen designplats. Det måste gå ett halvår från lanseringen eller förra revisionen.', 'A revision upgrades the product while it keeps selling and takes no design slot. Half a year has to pass since launch or the last revision.'],
   'hw.rev.pro': ['Prestandarevision', 'Performance revision'],
   'hw.rev.slim': ['Kostnadsrevision', 'Cost revision'],
-  'hw.rev.proTip': ['Prestandan mot marknaden lyfts {pct} % och åldrandet börjar om. Enhetskostnaden stiger {unit} %, efterfrågan får ett lyft och livscykeln blir {y} år längre. Kostar {v}, tar {w} veckor.', 'Performance against the market rises {pct}% and ageing starts over. Unit cost rises {unit}%, demand gets a lift and the life cycle gets {y} years longer. Costs {v}, takes {w} weeks.'],
+  'hw.rev.proTip': ['När arbetet är klart lyfts prestandan mot marknaden {pct} % över nivån den har då, och åldrandet börjar om. Enhetskostnaden stiger {unit} %, efterfrågan får ett lyft och livscykeln blir {y} år längre. Kostar {v}, tar {w} veckor.', 'When the work is done, performance against the market is lifted {pct}% above the level it has then, and ageing starts over. Unit cost rises {unit}%, demand gets a lift and the life cycle gets {y} years longer. Costs {v}, takes {w} weeks.'],
   'hw.rev.slimTip': ['Enhetskostnaden sjunker {pct} % för alla kommande order och livscykeln blir {y} år längre. Kostar {v}, tar {w} veckor.', 'Unit cost drops {pct}% for all coming orders and the life cycle gets {y} years longer. Costs {v}, takes {w} weeks.'],
   'hw.rev.running': ['{name} pågår, klar om {n} v', '{name} under way, done in {n} wk'],
   'hw.rev.hist': ['{name} {y}', '{name} {y}'],
