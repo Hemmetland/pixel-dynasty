@@ -2,7 +2,7 @@ import { rnd, rint, gauss, pick, chance, seeded, hashStr } from '../core/rng.js'
 import { clamp } from '../core/util.js';
 import { FIRST, LAST } from '../data/names.js';
 import { emit } from '../core/bus.js';
-import { yearOf, wageIndex } from './const.js';
+import { yearOf, wageIndex, WEEKS_PER_YEAR } from './const.js';
 import { TRAIN_TEMPO } from './tempo.js';
 import { DIFFICULTY, nextId } from './state.js';
 import { tr } from './tr.js';
@@ -267,6 +267,24 @@ export function burnoutQuits(G) {
 // Aktiva arbetare: alla som inte är på kurs.
 export function workers(G) {
   return G.staff.filter((s) => s.trainUntil <= G.t);
+}
+
+// Medarbetare som stannar: en nyhet efter 3, 5, 10 och 20 år i studion (varje månad kollas det) och efter 10 och 25 spel
+// (när ett spel släpps). Bara visning, och de små siffrorna kommer tyst i krönikan så att det inte blir brus.
+export const SERVICE_YEARS = [3, 5, 10, 20];
+export const SERVICE_GAMES = [10, 25];
+export function serviceYears(G) {
+  for (const s of G.staff) {
+    if (s.isFounder) continue;
+    const y = Math.floor((G.t - s.hired) / WEEKS_PER_YEAR);
+    if (SERVICE_YEARS.includes(y) && (s.ann || 0) < y) {
+      s.ann = y;
+      note(G, 'news.staffYears', { name: s.name, n: y }, 'good', y < 5);
+    }
+  }
+}
+export function serviceGames(G, s) {
+  if (!s.isFounder && SERVICE_GAMES.includes(s.games)) note(G, 'news.staffGames', { name: s.name, n: s.games }, 'good', s.games < 25);
 }
 
 // Månadslön

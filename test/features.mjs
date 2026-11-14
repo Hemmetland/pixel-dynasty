@@ -1135,6 +1135,32 @@ ok(true, 'alla händelser körda');
   ok(gi.fans === 250 && gd.fans === 0 && gt.money === gd.money + 15000 && gi.staff[0].design === 12 && gd.staff[0].design === 19, 'bakgrunderna ger sina startvärden');
   ok(Object.keys(S.FOUNDER_UNLOCK).every((id) => S.FOUNDERS.includes(id)) && S.FOUNDERS.every((id) => S.ARCHETYPES[id]), 'varje bakgrund har värden');
 }
+// medarbetare som stannar: en nyhet efter 3, 5, 10 och 20 år och efter 10 och 25 spel, en gång var, aldrig för grundaren
+{
+  const GS = S.newGame({ studio: 'Staff', seed: 8 });
+  S.makeCompetitors(GS); S.initWorld(GS);
+  const a = { id: 90, name: 'Anna', hired: 0, games: 0, isFounder: false, trainUntil: -1 };
+  const b = { id: 91, name: 'Bo', hired: 100, games: 9, isFounder: false, trainUntil: -1 };
+  GS.staff.push(a, b);
+  GS.t = 48 * 3 + 5;
+  const n0 = GS.news.length;
+  S.serviceYears(GS);
+  ok(GS.news.length === n0 + 1 && GS.news[0].key === 'news.staffYears' && GS.news[0].vars.n === 3 && GS.news[0].vars.name === 'Anna' && a.ann === 3, 'tre år i studion ger en nyhet');
+  S.serviceYears(GS);
+  ok(GS.news.length === n0 + 1, 'nyheten kommer bara en gång');
+  GS.t = 48 * 5;
+  S.serviceYears(GS);
+  ok(GS.news.length === n0 + 2 && GS.news[0].vars.n === 5 && !GS.staff[0].ann, 'fem år ger en ny nyhet, men aldrig för grundaren');
+  const n1 = GS.news.length;
+  S.serviceGames(GS, b);
+  ok(GS.news.length === n1, 'nio spel ger ingen nyhet');
+  b.games = 10;
+  S.serviceGames(GS, b);
+  ok(GS.news.length === n1 + 1 && GS.news[0].key === 'news.staffGames' && GS.news[0].vars.n === 10, 'tio spel ger en nyhet');
+  GS.staff[0].games = 10;
+  S.serviceGames(GS, GS.staff[0]);
+  ok(GS.news.length === n1 + 1, 'grundarens spel räknas i studions krönika, inte här');
+}
 // veckans utmaning: samma vecka ger samma frö och därmed samma värld
 {
   ok(weeklyOf(new Date(2026, 10, 14)).id === '2026-W46' && weeklyOf(new Date(2026, 10, 9)).id === '2026-W46' && weeklyOf(new Date(2026, 10, 15)).id === '2026-W46' && weeklyOf(new Date(2026, 10, 16)).id === '2026-W47', 'veckan går från måndag till söndag');

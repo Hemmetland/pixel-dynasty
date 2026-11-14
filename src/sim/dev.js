@@ -8,7 +8,7 @@ import { MKT } from '../data/research.js';
 import { SCOPES, yearOf, yfOf, moneyScale, engineMult, TICKS_PER_WEEK } from './const.js';
 import { SCOPE_TEMPO } from './tempo.js';
 import { DIFFICULTY } from './state.js';
-import { workers, moodMult, fatigueMult } from './people.js';
+import { workers, moodMult, fatigueMult, serviceGames } from './people.js';
 import { bugMult, qaFixMult, mktCostMult, mktHypeMult, serverMult, labMult, spend } from './studio.js';
 import { phaseCats, normFocus, startFocus, evaluate, compatOf, parPerTick, isNovel } from './score.js';
 import { startSales, forecast } from './sales.js';
@@ -333,6 +333,7 @@ export function releaseGame(G) {
     w[skill] += rnd(G) < 0.55 ? 1 : 0;
     if (rnd(G) < 0.5) w[w.spec === 'coder' ? 'tech' : 'design'] += 1;
     w.games++;
+    serviceGames(G, w);
   }
   G.job = null;
   emit('released', game);

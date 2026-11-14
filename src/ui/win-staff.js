@@ -34,7 +34,8 @@ function teamCard(G, s) {
       <div class="sc-mood" style="--c:${mc}" data-tip="${t(mt)}"><span class="md"></span>${Math.round(s.mood)}</div>
     </div>
     ${skills(G, s)}
-    <div class="row" style="margin-top:10px;gap:6px">
+    <div class="faint" style="font-size:11.5px;margin-top:8px">${tn('staff.tenure', s.games, { y: dateOf(s.hired).year })}</div>
+    <div class="row" style="margin-top:6px;gap:6px">
       <span class="muted" style="font-size:12px">${s.isFounder ? t('staff.noSalary') : money(s.salary) + t('ui.perMonth')}</span><span class="sp"></span>
       ${G.u.flags.training ? `<button class="btn sm ${open ? 'on' : ''}" data-act="s-trainopen" data-id="${s.id}" ${tr === true ? '' : 'disabled'} data-tip="${tr === true ? t('staff.trainTip') : t('staff.train.' + tr)}">${icon('book')}${t('staff.train')}</button>` : ''}
       ${s.isFounder ? '' : `<button class="btn sm" data-act="s-raise" data-id="${s.id}" data-tip="${t('staff.raiseTip')}">${icon('money')}${t('staff.raise')}</button><button class="btn sm danger" data-act="s-fire" data-id="${s.id}">${S.fireFor === s.id ? t('staff.confirm') : icon('x')}</button>`}
