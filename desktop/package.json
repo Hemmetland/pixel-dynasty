@@ -15,12 +15,52 @@
   "build": {
     "appId": "se.pixeldynasty.game",
     "productName": "Pixel Dynasty",
-    "directories": { "output": "release" },
-    "files": ["main.js", "preload.js", "feedback-url.txt", { "from": "../dist", "to": "game", "filter": ["index.html"] }],
-    "win": { "target": ["nsis", "zip"] },
-    "mac": { "target": ["dmg", "zip"], "category": "public.app-category.games", "identity": null },
-    "linux": { "target": ["AppImage"], "category": "Game" },
-    "nsis": { "oneClick": true, "perMachine": false }
+    "directories": {
+      "output": "release"
+    },
+    "files": [
+      "main.js",
+      "preload.js",
+      "feedback-url.txt",
+      {
+        "from": "../dist",
+        "to": "game",
+        "filter": [
+          "index.html"
+        ]
+      }
+    ],
+    "win": {
+      "target": [
+        "nsis"
+      ],
+      "artifactName": "Pixel-Dynasty-Windows.${ext}"
+    },
+    "mac": {
+      "target": [
+        {
+          "target": "dmg",
+          "arch": [
+            "arm64",
+            "x64"
+          ]
+        }
+      ],
+      "category": "public.app-category.games",
+      "identity": null,
+      "artifactName": "Pixel-Dynasty-Mac-${arch}.${ext}"
+    },
+    "linux": {
+      "target": [
+        "AppImage"
+      ],
+      "category": "Game",
+      "artifactName": "Pixel-Dynasty-Linux.${ext}"
+    },
+    "nsis": {
+      "oneClick": true,
+      "perMachine": false
+    }
   },
   "devDependencies": {
     "electron": "^33.0.0",

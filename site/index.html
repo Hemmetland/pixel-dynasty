@@ -1,0 +1,86 @@
+<!doctype html>
+<html lang="sv">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Pixel Dynasty – testversion</title>
+<style>
+  :root { --bg:#10131c; --card:#1a1f2e; --ink:#eef1f8; --dim:#9aa4bd; --accent:#3ee0c8; --line:#2a3148; }
+  * { box-sizing: border-box; }
+  body { margin:0; background:var(--bg); color:var(--ink); font:17px/1.55 system-ui, -apple-system, "Segoe UI", sans-serif; }
+  main { max-width: 720px; margin: 0 auto; padding: 40px 16px 64px; }
+  h1 { font-size: 40px; margin: 0 0 4px; letter-spacing: .02em; }
+  h1 span { color: var(--accent); }
+  .tag { color: var(--dim); margin: 0 0 28px; }
+  .card { background: var(--card); border: 1px solid var(--line); border-radius: 14px; padding: 20px; margin: 18px 0; }
+  .btns { display: flex; flex-wrap: wrap; gap: 12px; margin-top: 14px; }
+  a.btn { display: inline-block; background: var(--accent); color: #07201c; font-weight: 700; text-decoration: none;
+          padding: 14px 20px; border-radius: 10px; }
+  a.btn.alt { background: transparent; color: var(--ink); border: 1px solid var(--line); }
+  a.btn:hover { filter: brightness(1.1); }
+  h2 { font-size: 20px; margin: 0 0 6px; }
+  ol { padding-left: 22px; margin: 8px 0 0; }
+  code { background: #0b0e16; padding: 2px 6px; border-radius: 5px; font-size: 14px; }
+  small, .dim { color: var(--dim); }
+  #fb { display: none; }
+</style>
+</head>
+<body>
+<main>
+  <h1>PIXEL <span>DYNASTY</span></h1>
+  <p class="tag">Från garage till spelimperium. Testversion – tack för att du hjälper till!</p>
+
+  <div class="card">
+    <h2>1. Ladda ner</h2>
+    <div class="dim">Välj din dator. Det är ett vanligt installationsprogram, filen är ca 100 MB.</div>
+    <div class="btns">
+      <a class="btn" href="https://github.com/Hemmetland/pixel-dynasty/releases/latest/download/Pixel-Dynasty-Windows.exe">Windows</a>
+      <a class="btn" href="https://github.com/Hemmetland/pixel-dynasty/releases/latest/download/Pixel-Dynasty-Mac-arm64.dmg">Mac (nyare, M1 eller senare)</a>
+      <a class="btn alt" href="https://github.com/Hemmetland/pixel-dynasty/releases/latest/download/Pixel-Dynasty-Mac-x64.dmg">Mac (äldre, Intel)</a>
+    </div>
+    <p class="dim" style="margin-bottom:0"><small>Osäker på Mac? Äpplemenyn › Om den här datorn. Står det "Apple M…" är det den första knappen.</small></p>
+  </div>
+
+  <div class="card">
+    <h2>2. Installera</h2>
+    <p>Eftersom spelet är en testversion är det inte signerat, så datorn visar en varning första gången. Spelet är säkert, så här går du förbi den:</p>
+    <strong>Windows</strong>
+    <ol>
+      <li>Dubbelklicka på filen du laddade ner.</li>
+      <li>Ser du en blå ruta "Windows skyddade datorn": klicka <b>Mer information</b> och sedan <b>Kör ändå</b>.</li>
+      <li>Spelet installeras och startar. Du hittar det sedan i startmenyn.</li>
+    </ol>
+    <br>
+    <strong>Mac</strong>
+    <ol>
+      <li>Öppna filen du laddade ner och dra Pixel Dynasty till mappen Program.</li>
+      <li>Försök öppna spelet. Du får ett meddelande om att det inte kan kontrolleras – klicka Klar/OK.</li>
+      <li>Öppna <b>Systeminställningar › Integritet och säkerhet</b>, scrolla ner och klicka <b>Öppna ändå</b> bredvid Pixel Dynasty. Skriv ditt lösenord.</li>
+      <li>Står det att appen är "skadad"? Öppna Terminal och skriv <code>xattr -cr /Applications/Pixel\ Dynasty.app</code>, tryck Retur och försök igen.</li>
+    </ol>
+  </div>
+
+  <div class="card">
+    <h2>Hellre inte installera?</h2>
+    <p style="margin:0">Du kan också spela direkt i webbläsaren. Då sparas spelet i just den webbläsaren.</p>
+    <div class="btns"><a class="btn alt" href="spela/">Spela i webbläsaren</a></div>
+  </div>
+
+  <div class="card" id="fb">
+    <h2>3. Berätta vad du tycker</h2>
+    <p style="margin:0">Både små och stora saker hjälper: det som var kul, förvirrande eller stressigt, och buggar.
+      Menyn Spel › Skicka feedback i spelet öppnar samma formulär.</p>
+    <div class="btns"><a class="btn" id="fb-link" href="#">Öppna feedbackformuläret</a></div>
+  </div>
+
+  <p class="dim"><small>Tips: spelet har fem sparplatser. Under Inställningar finns en exportkod som fungerar som backup.</small></p>
+</main>
+<script>
+  var url = "__FEEDBACK_URL__";
+  if (url.indexOf("http") === 0) {
+    document.getElementById("fb").style.display = "block";
+    document.getElementById("fb-link").href = url;
+  }
+</script>
+</body>
+</html>
