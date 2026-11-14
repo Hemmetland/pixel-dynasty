@@ -4,3 +4,5 @@ dist/dev/
 
 .env
 .env.*
+desktop/node_modules/
+desktop/release/

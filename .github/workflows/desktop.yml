@@ -1,0 +1,61 @@
+name: Desktop builds
+on:
+  workflow_dispatch:
+  push:
+    branches: ['claude/installable-packaging']
+    tags: ['v*']
+jobs:
+  build:
+    strategy:
+      matrix:
+        os: [windows-latest, macos-latest, ubuntu-latest]
+    runs-on: ${{ matrix.os }}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with: { node-version: 22 }
+      - run: npm ci && npm run build:release && test "$(grep -c fuskkod dist/index.html)" = "0"
+      - run: npm install
+        working-directory: desktop
+      - run: npx electron-builder --publish never
+        working-directory: desktop
+        env: { CSC_IDENTITY_AUTO_DISCOVERY: 'false' }
+      - uses: actions/upload-artifact@v4
+        with:
+          name: installers-${{ matrix.os }}
+          path: |
+            desktop/release/Pixel-Dynasty-*.exe
+            desktop/release/Pixel-Dynasty-*.dmg
+            desktop/release/Pixel-Dynasty-*.AppImage
+
+  # Publiceras bara när en tagg som v0.1.0 pushas: skapar en öppen release med installationsfilerna
+  # och lägger nedladdningssidan (site/) plus webbversionen på grenen gh-pages.
+  publish:
+    if: startsWith(github.ref, 'refs/tags/v')
+    needs: build
+    runs-on: ubuntu-latest
+    permissions: { contents: write }
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/download-artifact@v4
+        with: { pattern: installers-*, merge-multiple: true, path: files }
+      - name: Skapa release
+        env: { GH_TOKEN: '${{ github.token }}' }
+        run: gh release create "$GITHUB_REF_NAME" files/* --title "Pixel Dynasty $GITHUB_REF_NAME" --notes "Testversion. Ladda ner via nedladdningssidan." --latest
+      - uses: actions/setup-node@v4
+        with: { node-version: 22 }
+      - run: npm ci && npm run build:release && test "$(grep -c fuskkod dist/index.html)" = "0"
+      - name: Bygg sajten
+        run: |
+          mkdir -p out/spela
+          URL="$(tr -d '\r\n' < desktop/feedback-url.txt || true)"
+          sed "s#__FEEDBACK_URL__#${URL}#" site/index.html > out/index.html
+          cp dist/index.html out/spela/index.html
+          touch out/.nojekyll
+      - name: Publicera på gh-pages
+        run: |
+          cd out
+          git init -q -b gh-pages
+          git config user.name "github-actions"; git config user.email "actions@users.noreply.github.com"
+          git add -A; git commit -qm "Nedladdningssida $GITHUB_REF_NAME"
+          git push -f "https://x-access-token:${{ github.token }}@github.com/${{ github.repository }}.git" gh-pages
