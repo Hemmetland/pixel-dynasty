@@ -1288,3 +1288,6 @@ input[type='range']::-moz-range-thumb { width: 18px; height: 18px; border-radius
   .win-head .tabs:has(> .tab:nth-child(5):last-child) .tab { flex-basis: auto; }
   .win-head h2 { flex: 1 1 auto; }
 }
+
+/* Hårdvarukortets nyckeltal: etiketterna kan bli två rader, värdena ligger ändå på samma linje i raden */
+.hw-stat { display: flex; flex-direction: column; justify-content: space-between; gap: 2px; }
