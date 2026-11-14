@@ -407,11 +407,13 @@ function manage(G) {
 const G = S.newGame({ studio: 'Bot', seed, difficulty: diff, archetype: opt('arch', undefined) });
 // NEWSDBG=1: hur många notiser (toastar) spelaren får per år och vilka som är vanligast (för att hitta torka och brus)
 const toasts = {};
+const bigs = {};
 if (process.env.NEWSDBG) {
   const { on } = await import('../src/core/bus.js');
   on('toast', (n) => {
     const y = S.yearOf(G.t);
     (toasts[y] || (toasts[y] = [])).push(n.key);
+    if (n.big) (bigs[y] || (bigs[y] = [])).push(n.key);
   });
 }
 S.makeCompetitors(G);
@@ -553,6 +555,10 @@ if (process.env.NEWSDBG) {
     for (const k of ks) all[k] = (all[k] || 0) + 1;
   }
   console.log('   toasts/year ' + per.join(' '));
+  console.log('   big/year ' + Object.entries(bigs).map(([y, ks]) => `${y}:${ks.length}`).join(' ') + ' | total ' + Object.values(bigs).reduce((n, ks) => n + ks.length, 0));
+  const bk = {};
+  for (const ks of Object.values(bigs)) for (const k of ks) bk[k] = (bk[k] || 0) + 1;
+  console.log('   big keys ' + Object.entries(bk).sort((a, b) => b[1] - a[1]).map(([k, n]) => `${k} ${n}`).join(', '));
   console.log('   top ' + Object.entries(all).sort((a, b) => b[1] - a[1]).slice(0, 28).map(([k, n]) => `${k} ${n}`).join(', '));
 }
 // --dump=fil: skriver det avslutade spelet som en sparfil (för att öppna ett mellanspel i webbläsaren: localStorage 'pixel-dynasty-save-v1')

@@ -1784,5 +1784,37 @@ ok(!bad.length, `äldre sparning utan ett av ${paths.length} fält går att spel
   }
   ok(evs >= 3 && tooClose === 0, `andrum: ${evs} händelser på tolv år, ingen inom ${S.BREATH - 1} veckor från en annan`);
 }
+// viktiga nyheter: milstolpar, priser och varningar får flaggan big (kort som blir kvar), vanliga nyheter inte
+{
+  const GB = JSON.parse(JSON.stringify(G));
+  GB.news = [];
+  GB.story = [];
+  GB.flags = {};
+  const seen = [];
+  const { on } = await import('../src/core/bus.js');
+  on('toast', (n) => seen.push(n));
+  S.note(GB, 'news.office', { n: 1 }, 'good');
+  S.note(GB, 'news.lowCash', {}, 'bad');
+  S.note(GB, 'news.awardWin', { title: 'A', cat: 'x', year: 1990 }, 'award');
+  S.note(GB, 'news.quitMood', { name: 'N' }, 'bad');
+  S.note(GB, 'news.staffGames', { name: 'N', n: 3 }, 'good');
+  S.note(GB, 'news.chartIn', { title: 'T', n: 40 }, 'info');
+  const big = (k) => GB.news.find((n) => n.key === k).big === 1;
+  ok(big('news.office') && big('news.lowCash') && big('news.awardWin') && big('news.quitMood'), 'milstolpar, priser och varningar får big');
+  ok(!GB.news.find((n) => n.key === 'news.staffGames').big && !GB.news.find((n) => n.key === 'news.chartIn').big, 'vanliga nyheter får inte big');
+  ok(seen.filter((n) => n.big).length === 4 && seen.length === 6, 'toast-händelsen bär flaggan big');
+  // en once-milstolpe som redan finns gör inte nyheten viktig en andra gång
+  S.note(GB, 'news.rival', { studio: 'R' }, 'info');
+  S.note(GB, 'news.rival', { studio: 'R2' }, 'info');
+  ok(GB.news[1].big === 1 && !GB.news[0].big, 'första rivalen är en milstolpe, nästa inte');
+  // olästa: nyheter nyare än G.flags.newsRead
+  GB.t += 10;
+  S.note(GB, 'news.lowCash', {}, 'bad');
+  const n1 = S.unreadNews(GB);
+  GB.flags.newsRead = GB.t;
+  ok(n1 >= 1 && S.unreadNews(GB) === 0, 'olästa viktiga nyheter räknas och nollas när loggen läses');
+  // flaggan ändrar inget i spelet: samma sparning laddar och loggen får bara ett extra fält
+  ok(JSON.parse(JSON.stringify(GB.news)).length === GB.news.length, 'nyhetsloggen kan sparas som JSON');
+}
 console.log(fails ? `\n${fails} FEL` : '\nAlla tester gick bra');
 process.exit(fails ? 1 : 0);

@@ -8,8 +8,19 @@ import { AWARD_CATS } from './awards.js';
 // Branschrubriker och trendspaning är kuliss: de får högst FLAVOR_MAX platser i loggen, så att de inte trycker ut riktiga nyheter
 export const FLAVOR_MAX = 40;
 const isFlavor = (k) => k.startsWith('hl.') || k === 'news.trend';
+// Nyheter som inte får försvinna förrän spelaren sett dem (gränssnittet visar dem som ett kort som blir kvar): milstolpar, alltså det
+// som hamnar i historien, och varningar eller händelser som kräver ett beslut. Flaggan `big` är bara till för uppvisning, sim läser den inte.
+const IMPORTANT = new Set([
+  'news.lowCash', 'news.debt', 'news.quit', 'news.quitMood', 'news.clash', 'news.groupOver', 'news.storeDown',
+  'news.hwBatch', 'news.hwHeat', 'news.hwPatent', 'news.hwSuit', 'news.hwCash', 'news.hwSoldOut', 'news.hwPatentLost',
+  'live.news.autoPaused', 'live.news.autoSeasonPaused', 'live.news.stale',
+  'news.platform', 'news.cert',
+]);
+// viktiga nyheter som kommit efter senaste gången loggen öppnades eller ett kort stängdes (G.flags.newsRead, spelets tid)
+export const unreadNews = (G) => G.news.reduce((n, x) => n + (x.big && x.t > (G.flags.newsRead ?? -1) ? 1 : 0), 0);
 export function note(G, key, vars = {}, kind = 'info', silent = false) {
-  G.news.unshift({ t: G.t, key, vars, kind });
+  const item = { t: G.t, key, vars, kind };
+  G.news.unshift(item);
   if (isFlavor(key)) {
     let n = 0;
     for (let i = 0; i < G.news.length; i++) if (isFlavor(G.news[i].key) && ++n > FLAVOR_MAX) {
@@ -18,8 +29,10 @@ export function note(G, key, vars = {}, kind = 'info', silent = false) {
     }
   }
   if (G.news.length > 150) G.news.pop();
-  for (const m of MILESTONES[key] || []) if (!m.if || m.if(vars, storyOf(G), G)) milestone(G, m.as || key, m.vars ? m.vars(vars, G) : vars, !!m.once);
-  if (!silent) emit('toast', { key, vars, kind });
+  let big = IMPORTANT.has(key) || kind === 'award';
+  for (const m of MILESTONES[key] || []) if (!m.if || m.if(vars, storyOf(G), G)) if (milestone(G, m.as || key, m.vars ? m.vars(vars, G) : vars, !!m.once)) big = true;
+  if (big) item.big = 1;
+  if (!silent) emit('toast', { key, vars, kind, big });
 }
 
 // ── Studions historia ─────────────────────────────────────────────
@@ -75,11 +88,13 @@ const MILESTONES = {
 };
 const STORY_MAX = 300;
 
+// true när något nytt hamnade i historien (en "once"-milstolpe som redan finns ger false)
 export function milestone(G, key, vars = {}, once = false) {
   const h = storyOf(G);
-  if (once && h.some((x) => x.key === key)) return;
+  if (once && h.some((x) => x.key === key)) return false;
   h.push({ t: G.t, key, vars });
   if (h.length > STORY_MAX) h.splice(0, h.length - STORY_MAX);
+  return true;
 }
 
 // Mått som passeras: fansen och kassan. Varje steg firas med en nyhet och hamnar i historien. Nivån sparas i stats, så

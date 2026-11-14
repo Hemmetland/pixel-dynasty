@@ -218,7 +218,7 @@ const narrow = () => typeof matchMedia !== 'undefined' && matchMedia('(max-width
 // efter att en notis lagts till måste passningen göras om, så vi följer #devpanel, #pnl och #clockp
 let watched = [];
 const ro = typeof ResizeObserver !== 'undefined' ? new ResizeObserver(() => placeToasts()) : null;
-if (typeof addEventListener !== 'undefined') addEventListener('resize', () => placeToasts());
+if (typeof addEventListener !== 'undefined') addEventListener('resize', () => { placeToasts(); if (evQueue.length) pumpEvents(); });
 export function placeToasts() {
   const box = $('#toasts');
   const dp = $('#devpanel');
@@ -274,6 +274,82 @@ function fitToasts(box) {
     if (over > 0) el.style.maxHeight = Math.max(34, el.offsetHeight - Math.ceil(over)) + 'px';
   }
 }
+// Händelsekort: viktiga händelser (milstolpar, priser, prestationer) ligger kvar högst upp tills spelaren stänger dem.
+// opts: { kind: 'award' | 'milestone' | 'achievement' | 'warning' | 'platform', text, ic, go, t0 } där go är ett fönster som Visa-knappen öppnar
+// och t0 spelets tid då nyheten kom (ett stängt kort räknas som läst).
+const EV = { award: ['trophy', 'var(--gold)', 'ev.award'], milestone: ['flag', 'var(--accent)', 'ev.milestone'], achievement: ['award', 'var(--fans)', 'ev.achievement'], warning: ['fire', 'var(--bug)', 'ev.warning'], platform: ['gamepad', 'var(--design)', 'ev.platform'] };
+// Inget försvinner av sig självt: de tre första korten syns (två på låga skärmar, ett på smala), resten väntar i kö och kommer när något stängs.
+// Varningar går före i kön. Kön töms när spelaren öppnar nyhetsloggen, där allt ligger kvar.
+let evQueue = [];
+const evMax = () => (narrow() ? 1 : typeof matchMedia !== 'undefined' && matchMedia('(max-height: 559px)').matches ? 2 : 3);
+const evBox = () => {
+  let box = $('#events');
+  if (!box) {
+    box = document.createElement('div');
+    box.id = 'events';
+    document.body.appendChild(box);
+  }
+  return box;
+};
+export function eventCard(o) {
+  const box = evBox();
+  evQueue = evQueue.filter((q) => q.text !== o.text);
+  for (const c of box.querySelectorAll('.evcard')) if (c.dataset.txt === o.text) c.remove(); // samma nyhet igen ersätter den gamla
+  const first = o.kind === 'warning' ? evQueue.findIndex((q) => q.kind !== 'warning') : -1;
+  if (first >= 0) evQueue.splice(first, 0, o);
+  else evQueue.push(o);
+  pumpEvents();
+}
+function pumpEvents() {
+  const box = evBox();
+  let free = evMax() - box.querySelectorAll('.evcard:not(.out)').length;
+  while (free-- > 0 && evQueue.length) showEvent(box, evQueue.shift());
+  box.querySelector('.evmore')?.remove();
+  if (evQueue.length) {
+    const m = document.createElement('button');
+    m.className = 'evmore glass';
+    m.textContent = t('ev.more', { n: evQueue.length });
+    m.addEventListener('click', () => {
+      evQueue = [];
+      UI.open('news', null, { force: true });
+      pumpEvents();
+    });
+    box.appendChild(m);
+  }
+}
+function showEvent(box, { kind = 'milestone', text, ic, go = 'news', t0 }) {
+  const [def, col, key] = EV[kind] || EV.milestone;
+  const el = document.createElement('div');
+  el.className = 'evcard glass';
+  el.setAttribute('role', kind === 'warning' ? 'alert' : 'status');
+  el.dataset.txt = text;
+  el.style.setProperty('--c', col);
+  el.innerHTML = `<div class="ev-i">${icon(ic || def)}</div><div class="ev-b"><div class="ev-k">${t(key)}</div><div class="ev-t">${text}</div></div>
+    <div class="ev-a">${go ? `<button class="btn sm" data-ev="go">${t('ev.show')}</button>` : ''}<button class="iconbtn" data-ev="x" aria-label="${esc(t('ui.close'))}">${icon('x')}</button></div>`;
+  el.addEventListener('click', (e) => {
+    const b = e.target.closest('[data-ev]');
+    if (!b) return;
+    // ett stängt kort räknas som läst: menyknappens räknare går ner
+    const G = UI.app && UI.app.G;
+    if (G && t0 != null) G.flags.newsRead = Math.max(G.flags.newsRead ?? -1, t0);
+    if (b.dataset.ev === 'go' && go) UI.open(go, null, { force: true });
+    dropEvent(el);
+  });
+  box.prepend(el);
+}
+const dropEvent = (el) => {
+  if (el.classList.contains('out')) return;
+  el.classList.add('out');
+  setTimeout(() => {
+    el.remove();
+    pumpEvents(); // nästa kort i kön får platsen
+  }, 380);
+};
+export const clearEvents = () => {
+  evQueue = [];
+  const box = $('#events');
+  if (box) box.innerHTML = '';
+};
 const dropToast = (el) => {
   if (el.classList.contains('out')) return;
   el.classList.add('out');

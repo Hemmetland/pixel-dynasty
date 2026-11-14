@@ -1,7 +1,7 @@
 import { $, $$, esc, icon, t, L, UI, act, regWin, money, toast, errToast, MONTHS } from './core.js';
 import { dateOf } from '../sim/const.js';
 import { fmtNum } from '../core/util.js';
-import { storyOf } from '../sim/news.js';
+import { storyOf, unreadNews } from '../sim/news.js';
 import { identity } from '../sim/legacy.js';
 import { identityName } from '../data/identity.js';
 import { CERTS } from '../data/certs.js';
@@ -67,7 +67,9 @@ regWin({
 
 // ── Nyheter ──
 // Fliken Historia: studions milstolpar, äldst först, med ett årtal per år. Grundandet läggs till först.
-const NW = { tab: 'news' };
+const NW = { tab: 'news', only: false, since: -1 };
+// rubrik över viktiga rader i loggen, samma som på händelsekortet
+const NEWS_LABEL = { award: 'ev.award', bad: 'ev.warning', platform: 'ev.platform' };
 const STORY_IC = {
   'hist.founded': ['flag', 'var(--accent)'], 'hist.firstGame': ['gamepad', 'var(--accent)'], 'hist.firstHit': ['star', 'var(--gold)'], 'hist.firstNo1': ['trend', 'var(--good)'],
   'hist.cert': ['disc', 'var(--gold)'], 'hist.firstAward': ['trophy', 'var(--gold)'], 'news.awardWins': ['trophy', 'var(--gold)'], 'news.office': ['building', 'var(--accent)'],
@@ -117,26 +119,37 @@ regWin({
   color: 'var(--design)',
   size: 'md',
   title: () => t('news.title'),
+  onOpen(G) {
+    NW.since = G.flags.newsRead ?? -1;
+    G.flags.newsRead = G.t;
+  },
   headExtra: () => `<div class="tabs">${['news', 'story'].map((k) => `<button class="tab ${NW.tab === k ? 'on' : ''}" data-act="nw-tab" data-id="${k}">${t('news.tab.' + k)}</button>`).join('')}</div>`,
   render(G) {
     if (NW.tab === 'story') return storyTab(G);
     if (!G.news.length) return `<div class="empty">${icon('mail')}<div>${t('news.empty')}</div></div>`;
+    // Viktiga nyheter (milstolpar, priser, varningar) är markerade; nya sedan förra gången loggen öppnades får en liten flagga
+    const list = NW.only ? G.news.filter((n) => n.big) : G.news;
+    const filter = `<div class="row" style="justify-content:flex-end;margin-bottom:8px"><div class="seg"><button class="${NW.only ? '' : 'on'}" data-act="nw-only" data-v="0">${t('news.all')}</button><button class="${NW.only ? 'on' : ''}" data-act="nw-only" data-v="1">${t('news.only')}</button></div></div>`;
     const NIC = { info: 'info', good: 'check', bad: 'bug', platform: 'gamepad', award: 'trophy', research: 'flask', money: 'money', hire: 'team' };
     const NCOL = { info: 'var(--accent)', good: 'var(--good)', bad: 'var(--bug)', platform: 'var(--design)', award: 'var(--gold)', research: 'var(--rp)', money: 'var(--money)', hire: 'var(--fans)' };
     let last = '';
-    return `<div class="col nws" style="gap:7px">${G.news
+    return `${filter}<div class="col nws" style="gap:7px">${list
       .map((n) => {
         const d = dateOf(n.t);
         const vars = boldVars(n.vars);
         const day = `${d.year}-${d.month}`;
         const head = day !== last ? `<div class="nws-h"><b class="disp">${MONTHS[lang][d.month]}</b><span>${d.year}</span><i></i></div>` : '';
         last = day;
-        return `${head}<div class="in nws-r ${n.kind === 'good' ? 'good' : n.kind === 'bad' ? 'bad' : 'ok'}" style="--c:${NCOL[n.kind] || NCOL.info}"><span class="ii">${icon(NIC[n.kind] || 'info')}</span><span style="flex:1">${t(n.key, vars)}</span></div>`;
+        return `${head}<div class="in nws-r ${n.kind === 'good' ? 'good' : n.kind === 'bad' ? 'bad' : 'ok'}${n.big ? ' big' : ''}" style="--c:${NCOL[n.kind] || NCOL.info}"><span class="ii">${icon(NIC[n.kind] || 'info')}</span><span style="flex:1">${n.big ? `<span class="nws-k">${t(NEWS_LABEL[n.kind] || 'ev.milestone')}</span>` : ''}${t(n.key, vars)}</span>${n.big && n.t > NW.since ? `<span class="nws-new">${t('news.new')}</span>` : ''}</div>`;
       })
       .join('')}</div>`;
   },
 });
 
+act('nw-only', (el) => {
+  NW.only = el.dataset.v === '1';
+  UI.refresh();
+});
 act('nw-tab', (el) => {
   NW.tab = el.dataset.id;
   UI.refresh();
@@ -150,7 +163,10 @@ regWin({
   size: 'sm',
   title: () => t('menu.title2'),
   render(G) {
-    const b = (id, ic, key, cls = '') => `<button class="btn block lg ${cls}" data-act="${id}" style="justify-content:flex-start">${icon(ic)}${t(key)}</button>`;
+    const b = (id, ic, key, cls = '') => {
+      const n = id === 'mn-news' ? unreadNews(G) : 0;
+      return `<button class="btn block lg ${cls}" data-act="${id}" style="justify-content:flex-start">${icon(ic)}${t(key)}${n ? `<span class="mn-n">${t('news.unread', { n })}</span>` : ''}</button>`;
+    };
     return `<div class="col" style="gap:8px">
       ${b('mn-resume', 'play', 'menu.resume', 'primary')}${b('mn-save', 'save', 'menu.save')}${b('mn-slots', 'folder', 'menu.slots')}${b('mn-news', 'mail', 'menu.news')}${b('mn-ach', 'award', 'menu.ach')}${b('mn-set', 'settings', 'menu.settings')}${b('mn-help', 'info', 'menu.help')}${b('mn-title', 'back', 'menu.title')}</div>`;
   },

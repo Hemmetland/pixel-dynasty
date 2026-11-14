@@ -11,7 +11,7 @@ import { cancelContract } from '../sim/contracts.js';
 import { refreshCandidates } from '../sim/people.js';
 import { sfx, music } from '../audio/sfx.js';
 import { newDirector, pickMood } from '../audio/director.js';
-import { UI, act, initUICore, toast, $, icon, L, money, esc } from './core.js';
+import { UI, act, initUICore, toast, eventCard, $, icon, L, money, esc } from './core.js';
 import { buildHUD, buildDock, updateHUD, updateDock, updateDev, setHUDVisible, flashStat, fitHUD } from './hud.js';
 import { showPrompt } from './prompts.js';
 import { PACE_MULT, paceOf } from './pace.js';
@@ -22,6 +22,11 @@ const TICK = 0.6;
 const SPEEDS = [0, 1, 2.2, 5];
 // Utvecklingspanelens underkant på mobilen innan den har mätts (en vanlig spelpanel på en 390 px bred skärm)
 const CARD_BOTTOM = 290;
+
+// händelsekortets färg och rubrik efter nyhetens slag, och vilket fönster Visa-knappen öppnar
+const EV_KIND = { award: 'award', bad: 'warning', platform: 'platform' };
+const GO = [[/^news\.(lowCash|debt)$/, 'finance'], [/^news\.hw/, 'hardware'], [/^live\./, 'library'], [/^news\.(quit|quitMood|clash)$/, 'staff'], [/^news\.platform$/, 'market']];
+const goOf = (key) => (GO.find(([re]) => re.test(key)) || [0, 'news'])[1];
 
 export const app = {
   G: null,
@@ -158,7 +163,9 @@ export const app = {
     on('toast', (n) => {
       if (this.mode !== 'play') return;
       const text = n.text || t(n.key, this.decorate(n.vars));
-      toast(text, n.kind || 'info', undefined, false); // nyheter från spelet: hoppas över när högen inte får plats
+      // viktiga nyheter (milstolpar, priser och varningar som kräver ett beslut; sim sätter flaggan big) ligger kvar som kort tills de stängs
+      if (n.big) eventCard({ kind: EV_KIND[n.kind] || 'milestone', text, go: goOf(n.key), t0: this.G && this.G.t });
+      else toast(text, n.kind || 'info', undefined, false); // nyheter från spelet: hoppas över när högen inte får plats
       if (n.kind === 'good') sfx.play('good');
       else if (n.kind === 'bad') sfx.play('bad');
       else sfx.play('notify');
@@ -186,13 +193,13 @@ export const app = {
     });
     on('achievement', (a) => {
       sfx.play('achievement');
-      toast(t('toast.achievement', { name: `<b>${L(a.name)}</b>` }), 'award', 8000);
+      eventCard({ kind: 'achievement', text: t('toast.achievement', { name: `<b>${L(a.name)}</b>` }), go: 'achievements', t0: this.G && this.G.t });
     });
     // en skiva som är minst lika fin som studions finaste firas; lägre skivor står bara i krönikan
     on('cert', (c) => {
       if (this.mode !== 'play' || !c.big) return;
       const name = L(c.cert.name);
-      toast(t('toast.cert', { cert: `<b style="color:${c.cert.color}">${name.charAt(0).toUpperCase() + name.slice(1)}</b>`, title: `<b>${esc(c.game.title)}</b>`, n: fmtFull(c.cert.units) }), 'award', 9000);
+      eventCard({ kind: 'award', ic: 'disc', text: t('toast.cert', { cert: `<b style="color:${c.cert.color}">${name.charAt(0).toUpperCase() + name.slice(1)}</b>`, title: `<b>${esc(c.game.title)}</b>`, n: fmtFull(c.cert.units) }), t0: this.G && this.G.t });
       sfx.play('fanfare');
       sc.confetti(60 + c.i * 30);
     });

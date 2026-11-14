@@ -1,4 +1,5 @@
-import { $, $$, esc, icon, t, tn, L, UI, act, money, MONTHS, bar } from './core.js';
+import { $, $$, esc, icon, t, tn, L, UI, act, money, MONTHS, bar, clearEvents } from './core.js';
+import { unreadNews } from '../sim/news.js';
 import { glyphImg } from '../render/glyphs.js';
 import { onSpritesLoaded } from '../render/sprites.js';
 import { pixIcon } from './icons.js';
@@ -158,7 +159,12 @@ export function setHUDVisible(on) {
     const el = $('#' + id);
     if (el) el.style.display = on ? '' : 'none';
   }
-  if (!on) $('#toasts').innerHTML = '';
+  const ev = $('#events');
+  if (ev) ev.style.display = on ? '' : 'none';
+  if (!on) {
+    $('#toasts').innerHTML = '';
+    clearEvents(); // händelsekort från ett avslutat spel ska inte visas i nästa
+  }
 }
 
 // Dockans ikoner: pixelkonst 'ui.dock.<id>' ur manifestet om den finns, annars linjeikonen.
@@ -529,6 +535,13 @@ export function updateDock(G) {
   set('hardware', 'badge', hwDecisions(G));
   set('contracts', 'badge', (!G.job ? G.contracts.length : 0) + (G.pub ? G.pub.pitches.filter((p) => !p.seen).length : 0));
   for (const b of $$('.dk', els.dock)) b.classList.toggle('on', UI.cur === b.dataset.key);
+  // menyknappen visar hur många viktiga nyheter som ännu inte setts (de ligger kvar i nyhetsloggen under Menyn)
+  const mb = $('.menu-btn[data-act="menu"]');
+  if (mb) {
+    const n = unreadNews(G);
+    if (n) mb.dataset.n = n > 9 ? '9+' : n;
+    else delete mb.dataset.n;
+  }
 }
 
 // ── Utvecklingspanel ──
