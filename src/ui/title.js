@@ -15,6 +15,7 @@ import { hasSave, saveMeta, loadHall, slotList, latestSlot, freeSlot } from '../
 import { STUDIO_NAMES, FIRST, LAST } from '../data/names.js';
 import { dateOf } from '../sim/const.js';
 import { LOGOS } from './hud.js';
+import { paceOf, paceSeg } from './pace.js';
 import { lang } from '../core/i18n.js';
 import { money } from './core.js';
 import { L } from '../core/i18n.js';
@@ -56,6 +57,7 @@ function swatches(list, key, cur) {
 
 const archSection = (hall) => `<div><div class="lbl" style="margin-bottom:6px">${t('ng.arch')}</div><div class="grid" style="grid-template-columns:repeat(auto-fit,minmax(150px,1fr));gap:8px">${ARCH.map((x) => archCard(x, hall)).join('')}</div></div>`;
 const diffSection = () => `<div><div class="lbl" style="margin-bottom:6px">${t('ng.diff')}</div><div class="seg">${DIFF.map((d) => `<button class="${N.diff === d ? 'on' : ''}" data-act="ng-diff" data-id="${d}">${t('diff.' + d)}</button>`).join('')}</div><div class="hint" style="margin-top:6px">${t('diff.' + N.diff + '.d')}</div></div>`;
+const paceSection = () => `<div><div class="lbl" style="margin-bottom:6px">${t('set.pace')}</div>${paceSeg(UI.app.settings)}<div class="hint" style="margin-top:6px">${t('set.pace.' + paceOf(UI.app.settings) + '.d')}</div></div>`;
 // Veckans utmaning: samma värld för alla den här veckan, med bakgrund och svårighet låsta så att poängen går att jämföra
 function weeklyBanner() {
   return `<div class="card weekly"><div class="row" style="gap:8px"><span style="color:var(--gold)">${icon('calendar')}</span><b>${t('ng.weekly', { id: N.weekly.id })}</b></div><div class="hint" style="margin-top:6px">${t('ng.weekly.d')}</div>
@@ -83,7 +85,7 @@ regWin({
         <div><div class="lbl" style="margin-bottom:6px">${t('ng.studio')}</div><input class="input" id="ng-studio" maxlength="22" value="${esc(N.studio)}" autocomplete="off"></div>
         <div><div class="lbl" style="margin-bottom:6px">${t('ng.founder')}</div><input class="input" id="ng-founder" maxlength="24" value="${esc(N.founder)}" autocomplete="off"></div>
         <div><div class="lbl" style="margin-bottom:6px">${t('ng.logo')}</div><div class="row wrap" style="gap:6px">${LOGOS.map((g, i) => `<button class="logo-opt ${N.logo === i ? 'on' : ''}" data-act="ng-logo" data-i="${i}">${glyphImg(g, '#fff', 16, true)}</button>`).join('')}</div></div>
-        ${N.weekly ? weeklyBanner() : archSection(hall) + diffSection()}
+        ${N.weekly ? weeklyBanner() : archSection(hall) + diffSection()}${paceSection()}
       </div></div>`;
   },
   foot() {

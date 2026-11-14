@@ -11,6 +11,7 @@ import { ACHIEVEMENTS } from '../data/achievements.js';
 import { MKT } from '../data/research.js';
 import { marketingOptions, launchMarketing } from '../sim/dev.js';
 import { MUSIC_STYLES } from '../audio/director.js';
+import { paceOf, paceSeg } from './pace.js';
 import { saveGame, exportCode, importCode, freeSlot, useSlot, activeSlot } from '../core/store.js';
 
 const AIC = { a_game: 'gamepad', a_star: 'star', a_coin: 'money', a_house: 'building', a_team: 'team', a_heart: 'heart', a_flask: 'flask', a_aaa: 'rocket', a_trophy: 'trophy', a_brief: 'hammer', a_engine: 'cpu', a_clock: 'clock', a_globe: 'globe', a_bulb: 'bulb', a_crown: 'crown', a_disc: 'disc', a_chip: 'gpu' };
@@ -173,6 +174,7 @@ act('mn-title', () => {
 // ── Inställningar ──
 const SET = { code: '', msg: '' };
 // Musikstil: växlande (lugna stunder emellanåt), bara lugn eller bara livlig
+const paceRow = (s) => `<div style="padding:9px 0;border-bottom:1px dashed var(--line)"><div class="row wrap" style="justify-content:space-between;gap:8px"><span>${t('set.pace')}</span>${paceSeg(s)}</div><div class="hint" style="margin-top:5px">${t('set.pace.' + paceOf(s) + '.d')}</div></div>`;
 const musicStyleRow = (s) => `<div class="row wrap" style="justify-content:space-between;gap:8px;padding:9px 0;border-bottom:1px dashed var(--line)"><span>${t('set.musicStyle')}</span><div class="seg">${MUSIC_STYLES.map((k) => `<button class="${(s.musicStyle || 'auto') === k ? 'on' : ''}" data-act="set-mstyle" data-v="${k}" ${s.music ? '' : 'disabled'}>${t('set.mstyle.' + k)}</button>`).join('')}</div></div>`;
 regWin({
   id: 'settings',
@@ -187,7 +189,7 @@ regWin({
     return `
       <div class="row" style="justify-content:space-between;padding:9px 0;border-bottom:1px dashed var(--line)"><span>${icon('globe')} ${t('set.lang')}</span><div class="seg"><button class="${s.lang === 'sv' || (!s.lang && document.documentElement.lang === 'sv') ? 'on' : ''}" data-act="set-lang" data-l="sv">Svenska</button><button class="${s.lang === 'en' || (!s.lang && document.documentElement.lang === 'en') ? 'on' : ''}" data-act="set-lang" data-l="en">English</button></div></div>
       ${tog('music', 'set.music')}${slider('musicVol', 'set.musicVol', s.music)}${musicStyleRow(s)}${tog('sfx', 'set.sfx')}${slider('sfxVol', 'set.sfxVol', s.sfx)}
-      ${tog('hd', 'set.hd')}${tog('crt', 'set.crt')}${tog('reduced', 'set.reduced')}${tog('menuPause', 'set.menuPause')}${tog('tutorial', 'set.tutorial')}
+      ${tog('hd', 'set.hd')}${tog('crt', 'set.crt')}${tog('reduced', 'set.reduced')}${paceRow(s)}${tog('menuPause', 'set.menuPause')}${tog('tutorial', 'set.tutorial')}
       ${G ? `<div class="lbl" style="margin:16px 0 8px">${t('set.saveData')}</div>
       <div class="row wrap" style="gap:8px"><button class="btn" data-act="set-export">${icon('copy')}${t('set.export')}</button><button class="btn" data-act="set-import">${icon('upload')}${t('set.import')}</button></div>
       <textarea class="input" id="set-code" rows="3" placeholder="${t('set.codePh')}" style="height:auto;padding:10px;margin-top:10px;font-size:11px;font-family:ui-monospace,monospace">${esc(SET.code)}</textarea>
@@ -216,6 +218,11 @@ act('set-mstyle', (el) => {
   UI.app.settings.musicStyle = el.dataset.v;
   UI.app.applySettings();
   UI.app.musicT = 0; // musikregin tar det på en gång
+  UI.refresh();
+});
+act('set-pace', (el) => {
+  UI.app.settings.pace = el.dataset.v;
+  UI.app.applySettings();
   UI.refresh();
 });
 act('set-lang', (el) => {

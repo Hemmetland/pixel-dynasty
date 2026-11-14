@@ -2,7 +2,7 @@ import { clamp } from '../core/util.js';
 import { rnd, chance, weighted, pick } from '../core/rng.js';
 import { emit } from '../core/bus.js';
 import { EVENTS, EV } from '../data/events.js';
-import { SCOPES, yearOf, moneyScale } from './const.js';
+import { SCOPES, yearOf, moneyScale, dateOf, TICKS_PER_WEEK } from './const.js';
 import { SCOPE_TEMPO } from './tempo.js';
 import { earn, spend } from './studio.js';
 import { parPerTick } from './score.js';
@@ -37,8 +37,36 @@ function eventContext(G, ev) {
 // Samma händelse kommer tidigast efter 36 veckor (studio) eller 40 veckor (under utveckling).
 const COOLDOWN = { studio: 36, dev: 40 };
 const fresh = (G, e) => G.t - (G.flags['ev_' + e.id] ?? -999) > COOLDOWN[e.kind];
+// Andrum: en slumpad händelse kommer inte rakt efter att spelet senast stannat för något annat (en ruta, en rapport, ett
+// årsskifte). Faller slumpen medan det är andrum väntar händelsen (flaggan *Due) och kommer så fort andrummet är slut,
+// så att det blir lika många händelser men utspridda. G.stopT sätts i stepTick.
+// Händelsen väntar också när ett planerat stopp är nära: mässan, galan, årsskiftet eller nästa fas i spelet.
+export const BREATH = 5; // veckor
+const AHEAD = 2; // veckor
+function soonStop(G) {
+  for (let k = 1; k <= AHEAD; k++) {
+    const d = dateOf(G.t + k);
+    if ((d.month === 5 && d.week === 1 && G.u.flags.expo) || (d.month === 11 && d.week === 3) || (d.month === 0 && d.week === 0)) return true;
+  }
+  const J = G.job;
+  if (J && J.kind === 'game' && J.state === 'dev' && J.phase < 3) {
+    const next = (J.devTicks / 3) * (J.phase + 1);
+    if (next - J.ticks <= AHEAD * TICKS_PER_WEEK) return true;
+  }
+  return false;
+}
+const breathing = (G) => G.t - (G.stopT ?? -99) < BREATH || soonStop(G);
 export function rollStudioEvent(G, force) {
-  if (G.pending.length || (!force && (G.games.length < 1 || !chance(G, 0.17)))) return false;
+  if (G.pending.length) return false;
+  if (!force) {
+    if (G.games.length < 1) return false;
+    if (!G.flags.evDue && !chance(G, 0.17)) return false;
+    if (breathing(G)) {
+      G.flags.evDue = true;
+      return false;
+    }
+    G.flags.evDue = false;
+  }
   const pool = EVENTS.filter((e) => e.kind === 'studio' && e.when(G) && fresh(G, e));
   if (!pool.length) return false;
   const ev = weighted(G, pool, (e) => e.weight);
@@ -49,7 +77,13 @@ export function rollStudioEvent(G, force) {
 export function rollDevEvent(G) {
   const J = G.job;
   if (!J || J.kind !== 'game' || J.state !== 'dev' || J.phase >= 3 || G.pending.length) return false;
-  if (J.events >= 3 || J.ticks < 12 || !chance(G, 0.075 / (SCOPE_TEMPO[J.scope] || 1))) return false;
+  if (J.events >= 3 || J.ticks < 12) return false;
+  if (!J.evDue && !chance(G, 0.075 / (SCOPE_TEMPO[J.scope] || 1))) return false;
+  if (breathing(G)) {
+    J.evDue = true;
+    return false;
+  }
+  J.evDue = false;
   const pool = EVENTS.filter((e) => e.kind === 'dev' && e.when(G) && fresh(G, e));
   if (!pool.length) return false;
   const ev = weighted(G, pool, (e) => e.weight);

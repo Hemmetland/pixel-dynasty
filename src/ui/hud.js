@@ -398,13 +398,17 @@ function updatePanels(G) {
   setBar($('#pb-proj'), job ? job.proj : 0);
   put($('#pb-goal b'), `${ach}/${ACHIEVEMENTS.length}`);
   // klockan
+  // står spelet stilla (paus) visar klockan det i stället för klockslaget: annars syns det inte att tiden står
+  const stopped = UI.app.speed === 0;
   const wxEl = $('.wx', els.clock);
-  if (wxEl.dataset.k !== ck.icon + ck.color) {
-    wxEl.dataset.k = ck.icon + ck.color;
-    wxEl.innerHTML = icon(ck.icon);
-    wxEl.style.setProperty('--c', ck.color);
+  const wxKey = stopped ? 'pause' : ck.icon + ck.color;
+  if (wxEl.dataset.k !== wxKey) {
+    wxEl.dataset.k = wxKey;
+    wxEl.innerHTML = icon(stopped ? 'pause' : ck.icon);
+    wxEl.style.setProperty('--c', stopped ? 'var(--warn)' : ck.color);
   }
-  put($('.tm b', els.clock), ck.time);
+  els.clock.classList.toggle('paused', stopped);
+  put($('.tm b', els.clock), stopped ? t('pn.paused') : ck.time);
   const dateTxt = `${MONTHS[lang][d.month]} ${d.year}`;
   put($('.tm i', els.clock), `${t('pn.week', { n: d.week + 1 })} · ${dateTxt}`);
   els.clock.dataset.tip = t('pn.clockTip', { time: ck.time, label: ck.label, date: `${t('pn.week', { n: d.week + 1 }).toLowerCase()}, ${dateTxt}` });

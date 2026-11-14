@@ -293,6 +293,8 @@ button.pn-c:hover { background: rgba(150, 172, 255, 0.13); border-color: var(--l
 #clockp .tm b { font: 700 28px/0.9 var(--disp); letter-spacing: 0.03em; text-shadow: 0 2px 0 rgba(0, 0, 0, 0.35); }
 #clockp .tm i { font: 600 11px/1 var(--font); font-style: normal; color: var(--muted); white-space: nowrap; }
 #clockp .bar { grid-column: 1 / -1; height: 4px; }
+#clockp.paused .tm b { color: var(--warn); }
+#clockp.paused .bar i { opacity: 0.45; }
 .brand .dt .tod { display: none; align-items: center; gap: 4px; margin-left: 6px; color: var(--c, var(--warn)); font: 700 12px var(--font); }
 .brand .dt .tod .ic { width: 14px; height: 14px; }
 .dk.on::after { content: ''; position: absolute; left: 24%; right: 24%; bottom: 3px; height: 2px; border-radius: 2px; background: var(--accent); box-shadow: 0 0 8px var(--accent); }

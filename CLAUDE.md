@@ -6,7 +6,7 @@ Standalone repository (it started as the `game/` folder of Hemmetland/budgetverk
 ## Commands
 - `npm install` once. `npm run build` writes `dist/index.html` (standalone) and `dist/artifact.html` (fragment). `npm run watch` rebuilds on save.
 - `node build.mjs --with-dev` also builds the test pages in `src/dev/` to `dist/dev/`.
-- `npm run lint`, `npm test` (sim API tests), `npm run pacing` (progression measured with bots; also `node test/sim.mjs -v`).
+- `npm run lint`, `npm test` (sim API and music tests), `npm run pacing` (progression measured with bots; also `node test/sim.mjs -v`). `PROMPTDBG=1` / `NEWSDBG=1` with `test/sim.mjs` count how often the game stops for the player and how many toasts come per year; `--dump=file` writes the finished game as a save.
 - UI tests drive Chromium through playwright-core (`test/drive.mjs`, `soak.mjs`, `slots.mjs`, `scene-shot.mjs`, `shot.mjs`). They expect Chromium at
   `/opt/pw-browsers/chromium-1194/chrome-linux/chrome` (cloud path). Locally edit that path in the scripts or set it to your Chrome/Chromium.
 - `dist/` is committed so the game can be opened without a build; rebuild before committing source changes.

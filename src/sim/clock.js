@@ -46,6 +46,7 @@ export function stepTick(G) {
     G.t++;
     weekly(G);
   }
+  if (G.pending.length) G.stopT = G.t; // spelet stannar här: slumpade händelser får andrum efteråt (se events.js)
   return true;
 }
 

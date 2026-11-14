@@ -14,6 +14,7 @@ import { newDirector, pickMood } from '../audio/director.js';
 import { UI, act, initUICore, toast, $, icon, L, money, esc } from './core.js';
 import { buildHUD, buildDock, updateHUD, updateDock, updateDev, setHUDVisible, flashStat, fitHUD } from './hud.js';
 import { showPrompt } from './prompts.js';
+import { PACE_MULT, paceOf } from './pace.js';
 import { FACILITIES } from '../sim/studio.js';
 import './windows.js';
 
@@ -401,7 +402,7 @@ export const app = {
       this.scene.paused = blocked;
       this.scene.speed = this.speed;
       if (!blocked) {
-        this.acc += dt * SPEEDS[this.speed] * (this.turbo || 1);
+        this.acc += dt * SPEEDS[this.speed] * PACE_MULT[paceOf(this.settings)] * (this.turbo || 1);
         let guard = 0;
         while (this.acc >= TICK && guard++ < (this.turbo ? 600 : 8)) {
           this.acc -= TICK;
