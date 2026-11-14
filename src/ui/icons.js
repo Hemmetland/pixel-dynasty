@@ -75,6 +75,7 @@ const ICONS = {
   volume: P('<path d="M4 9.5h3.5L12 5.5v13l-4.5-4H4zM15.5 9a4 4 0 0 1 0 6M18 6.5a8 8 0 0 1 0 11"/>'),
   mute: P('<path d="M4 9.5h3.5L12 5.5v13l-4.5-4H4zM16 9.5l5 5M21 9.5l-5 5"/>'),
   music: P('<path d="M9 18V5l11-2v13"/><circle cx="6.5" cy="18" r="2.5"/><circle cx="17.5" cy="16" r="2.5"/>'),
+  network: P('<circle cx="12" cy="5" r="2.5"/><circle cx="5" cy="18" r="2.5"/><circle cx="19" cy="18" r="2.5"/><path d="M12 7.5v4.5M12 12l-5.2 4M12 12l5.2 4"/><circle cx="12" cy="12" r="1.2" fill="currentColor"/>'),
   globe: P('<circle cx="12" cy="12" r="9"/><path d="M3 12h18M12 3c3 3 3 15 0 18M12 3c-3 3-3 15 0 18"/>'),
   refresh: P('<path d="M20 5v5h-5M4 19v-5h5M5.5 9A7.5 7.5 0 0 1 19 10M18.5 15A7.5 7.5 0 0 1 5 14"/>'),
   skull: P('<path d="M12 3a8 8 0 0 0-8 8c0 2.6 1.2 4.2 3 5.3V20h10v-3.7c1.8-1.1 3-2.7 3-5.3a8 8 0 0 0-8-8z"/><circle cx="9" cy="11.5" r="1.4" fill="currentColor"/><circle cx="15" cy="11.5" r="1.4" fill="currentColor"/><path d="M10.5 20v-2M13.5 20v-2"/>'),

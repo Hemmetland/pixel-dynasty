@@ -121,6 +121,8 @@
     "ui.dock.library": { "file": "ui/dock-library.png", "fw": 32, "fh": 32, "note": "handritad pixel för pixel (Kör)" },
     "ui.dock.contracts": { "file": "ui/dock-contracts.png", "fw": 32, "fh": 32, "note": "handritad pixel för pixel (Kör)" },
     "ui.dock.hardware": { "file": "ui/dock-hardware.png", "fw": 32, "fh": 32, "note": "handritad pixel för pixel (Kör)" },
+    "ui.dock.store": { "file": "ui/dock-store.png", "fw": 32, "fh": 32, "note": "handritad pixel för pixel (grafikagenten)" },
+    "ui.dock.group": { "file": "ui/dock-group.png", "fw": 32, "fh": 32, "note": "handritad pixel för pixel (grafikagenten)" },
     "ui.hw.sound": { "file": "ui/hw-sound.png", "fw": 32, "fh": 32, "note": "handritad pixel för pixel (Kör)" },
     "ui.hw.gpu": { "file": "ui/hw-gpu.png", "fw": 32, "fh": 32, "note": "handritad pixel för pixel (Kör)" },
     "ui.hw.pc": { "file": "ui/hw-pc.png", "fw": 32, "fh": 32, "note": "handritad pixel för pixel (Kör)" },
