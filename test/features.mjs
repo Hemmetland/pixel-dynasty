@@ -1180,7 +1180,7 @@ ok(true, 'alla händelser körda');
   ok(S.engineNeed(2016) < S.engineNeed(2017) && S.engineNeed(2017) < S.engineNeed(2019) && S.engineNeed(2019) < S.engineNeed(2022) && S.engineNeed(2022) === S.engineNeed(2040), 'motorbehovet växer med varje ny motordel');
   const GR = S.newGame({ studio: 'Late', seed: 9 });
   for (const id of late) S.applyUnlocks(GR, RESEARCH.find((r) => r.id === id));
-  ok(['proc', 'rt', 'ml'].every((f) => GR.u.feats.includes(f)) && GR.perk.qa === 0.3 && GR.perk.sales === 0.03 && GR.perk.hire === 0.5 && GR.perk.morale === 3 && GR.perk.bugs === -0.08, 'noderna ger motordelar och bonusar');
+  ok(['proc', 'rt', 'ml'].every((f) => GR.u.feats.includes(f)) && GR.perk.qa === 0.5 && GR.perk.sales === 0.05 && GR.perk.hire === 0.5 && GR.perk.morale === 4 && GR.perk.bugs === -0.1, 'noderna ger motordelar och bonusar');
   const old16 = { tech: 269, built: 2016 }; // en komplett motor från 2016
   ok(S.engineMult(old16, 2016.5) > S.engineMult(old16, 2022) && S.engineMult({ tech: 269 + 132, built: 2022 }, 2022) >= S.engineMult(old16, 2022) + 0.05, 'en ny motor med de nya delarna slår en gammal komplett motor');
 }
