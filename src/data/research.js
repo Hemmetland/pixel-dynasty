@@ -63,6 +63,9 @@ export const RESEARCH = [
   R('f_mocap', 'tech', 'Rörelseinfångning', 'Motion Capture', 'Motordel: Realistiska animationer.', 'Engine part: Realistic animation.', 1300, 200000, 9, ['f_phys'], 2005, { feats: ['mocap'] }, {}, 'f_gear'),
   R('f_cloud', 'tech', 'Molntjänster', 'Cloud Services', 'Motordel: Servrar och live-tjänster.', 'Engine part: Servers and live services.', 2100, 400000, 10, ['f_net'], 2010, { feats: ['cloud'] }, {}, 'f_gear'),
   R('f_pbr', 'tech', 'Fotorealism', 'Photoreal Rendering', 'Motordel: Fysikaliskt korrekt rendering.', 'Engine part: Physically based rendering.', 5200, 900000, 12, ['f_shader'], 2014, { feats: ['pbr'] }, {}, 'f_gear'),
+  R('f_proc', 'tech', 'Procedurell generering', 'Procedural Generation', 'Motordel: Världar och banor som bygger sig själva.', 'Engine part: Worlds and levels that build themselves.', 7500, 1300000, 12, ['f_pbr'], 2017, { feats: ['proc'] }, {}, 'f_gear'),
+  R('f_rt', 'tech', 'Strålföljning', 'Ray Tracing', 'Motordel: Ljus som beter sig som i verkligheten.', 'Engine part: Light that behaves like the real thing.', 11000, 2200000, 12, ['f_pbr'], 2019, { feats: ['rt'] }, {}, 'f_gear'),
+  R('f_ml', 'tech', 'Maskininlärning', 'Machine Learning', 'Motordel: Motståndare som lär sig och animation som fyller i luckorna.', 'Engine part: Opponents that learn and animation that fills in the gaps.', 16000, 3500000, 14, ['f_proc', 'f_rt'], 2022, { feats: ['ml'] }, {}, 'f_gear'),
   R('f_vr', 'tech', 'VR-rendering', 'VR Rendering', 'Motordel: Stereoskopisk 3D.', 'Engine part: Stereoscopic 3D.', 3600, 700000, 10, ['f_shader'], 2015, { feats: ['vr'] }, {}, 'f_gear'),
 
   // ── Affärer ──────────────────────────────────────────────────
@@ -95,6 +98,9 @@ export const RESEARCH = [
   R('s_train1', 'staff', 'Utbildning', 'Training Courses', 'Skicka personal på kurs för att höja färdigheter.', 'Send staff on courses to raise their skills.', 38, 0, 3, [], 1980, { flags: ['training'] }, {}, 's_train'),
   R('s_train2', 'staff', 'Avancerade kurser', 'Advanced Training', 'Högre tak på färdigheter och bättre kurser.', 'Higher skill caps and better courses.', 180, 0, 5, ['s_train1'], 1990, { flags: ['training2'] }, { skillCap: 40 }, 's_train'),
   R('s_hr1', 'staff', 'Rekryteringsbyrå', 'Recruiting Agency', 'Fler och bättre kandidater varje månad.', 'More and better candidates every month.', 70, 0, 4, [], 1983, { flags: ['hr1'] }, { hire: 1 }, 's_hr'),
+  R('q_cloudqa', 'prod', 'Molnbaserad testning', 'Cloud Testing', 'Tusentals testmaskiner på en gång: buggar fixas 30 % snabbare och färre slinker igenom.', 'Thousands of test machines at once: bugs get fixed 30% faster and fewer slip through.', 6000, 900000, 10, ['q_ci'], 2016, {}, { qa: 0.3, bugs: -0.08 }, 'q_bug'),
+  R('b_data', 'biz', 'Spelaranalys', 'Player Analytics', 'Du ser vad spelarna gör och formar spelen efter det: dina spel säljer 3 % mer.', 'You see what players do and shape games to fit: your games sell 3% more.', 8000, 1500000, 10, ['b_mkt5'], 2017, {}, { sales: 0.03 }, 'm_online'),
+  R('s_remote', 'staff', 'Distansarbete', 'Remote Work', 'Kandidater från hela världen och ett lugnare team.', 'Candidates from all over the world and a calmer team.', 6500, 800000, 10, ['s_hr2'], 2018, {}, { hire: 0.5, morale: 3 }, 's_hr'),
   R('s_hr2', 'staff', 'Headhunters', 'Headhunters', 'Elitprofiler dyker upp.', 'Elite profiles show up.', 300, 0, 5, ['s_hr1'], 1992, { flags: ['hr2'] }, { hire: 1 }, 's_hr'),
   R('s_perks', 'staff', 'Personalförmåner', 'Staff Perks', 'Högre arbetsglädje och mindre personalomsättning.', 'Higher morale and less staff turnover.', 50, 0, 4, [], 1984, {}, { morale: 8 }, 's_perk'),
 
@@ -147,6 +153,9 @@ export const FEATURES = [
   { id: 'cloud', tech: 30, cost: 380000, name: { sv: 'Molntjänster', en: 'Cloud Services' } },
   { id: 'vr', tech: 34, cost: 650000, name: { sv: 'VR-rendering', en: 'VR Rendering' } },
   { id: 'pbr', tech: 40, cost: 850000, name: { sv: 'Fotorealism', en: 'Photoreal Rendering' } },
+  { id: 'proc', tech: 38, cost: 1100000, name: { sv: 'Procedurell generering', en: 'Procedural Generation' } },
+  { id: 'rt', tech: 44, cost: 1800000, name: { sv: 'Strålföljning', en: 'Ray Tracing' } },
+  { id: 'ml', tech: 50, cost: 2800000, name: { sv: 'Maskininlärning', en: 'Machine Learning' } },
 ];
 export const FEAT = Object.fromEntries(FEATURES.map((f) => [f.id, f]));
 

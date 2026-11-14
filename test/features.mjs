@@ -1135,6 +1135,17 @@ ok(true, 'alla händelser körda');
   ok(gi.fans === 250 && gd.fans === 0 && gt.money === gd.money + 15000 && gi.staff[0].design === 12 && gd.staff[0].design === 19, 'bakgrunderna ger sina startvärden');
   ok(Object.keys(S.FOUNDER_UNLOCK).every((id) => S.FOUNDERS.includes(id)) && S.FOUNDERS.every((id) => S.ARCHETYPES[id]), 'varje bakgrund har värden');
 }
+// sen forskning: tre motordelar och tre bonusar efter 2015, och motorbehovet växer så att en gammal motor måste byggas om
+{
+  const late = ['f_proc', 'f_rt', 'f_ml', 'q_cloudqa', 'b_data', 's_remote'];
+  ok(late.every((id) => RESEARCH.some((r) => r.id === id && r.year >= 2016)) && RESEARCH.every((r) => r.req.every((q) => RESEARCH.some((x) => x.id === q))), 'de sena noderna kommer efter 2015 och alla krav finns');
+  ok(S.engineNeed(2016) < S.engineNeed(2017) && S.engineNeed(2017) < S.engineNeed(2019) && S.engineNeed(2019) < S.engineNeed(2022) && S.engineNeed(2022) === S.engineNeed(2040), 'motorbehovet växer med varje ny motordel');
+  const GR = S.newGame({ studio: 'Late', seed: 9 });
+  for (const id of late) S.applyUnlocks(GR, RESEARCH.find((r) => r.id === id));
+  ok(['proc', 'rt', 'ml'].every((f) => GR.u.feats.includes(f)) && GR.perk.qa === 0.3 && GR.perk.sales === 0.03 && GR.perk.hire === 0.5 && GR.perk.morale === 3 && GR.perk.bugs === -0.08, 'noderna ger motordelar och bonusar');
+  const old16 = { tech: 269, built: 2016 }; // en komplett motor från 2016
+  ok(S.engineMult(old16, 2016.5) > S.engineMult(old16, 2022) && S.engineMult({ tech: 269 + 132, built: 2022 }, 2022) >= S.engineMult(old16, 2022) + 0.05, 'en ny motor med de nya delarna slår en gammal komplett motor');
+}
 // medarbetare som stannar: en nyhet efter 3, 5, 10 och 20 år och efter 10 och 25 spel, en gång var, aldrig för grundaren
 {
   const GS = S.newGame({ studio: 'Staff', seed: 8 });
