@@ -5,7 +5,7 @@ import { coverImg } from '../render/covers.js';
 import { TOPIC } from '../data/topics.js';
 import { GENRE } from '../data/genres.js';
 import { CAT } from '../data/categories.js';
-import { PLATFORM } from '../data/platforms.js';
+import { PLATFORM, PLATFORMS } from '../data/platforms.js';
 import { REVIEWERS } from '../data/reviews.js';
 import { EV } from '../data/events.js';
 import { reviewTexts, phaseCats, idealFocus, SCOPE_CAP, softCap } from '../sim/score.js';
@@ -404,6 +404,23 @@ function awardPrompt(app, G, p, finish) {
 }
 
 // ── Årsrapport ────────────────────────────────────────────────────
+// Ett kort vid varje decennieskifte (och det sista året): vad som är nytt i världen. Det ligger i årsrapporten, så det blir inget extra stopp.
+const ERA_YEARS = [1990, 2000, 2010, 2020];
+function eraCard(year) {
+  if (!ERA_YEARS.includes(year)) return '';
+  const inDecade = (y) => y >= year && y < year + 10;
+  const real = PLATFORMS.filter((x) => !x.own && x.id !== 'pc');
+  const fresh = real.filter((x) => inDecade(x.y0)).sort((a, b) => a.y0 - b.y0 || a.m0 - b.m0).slice(0, 6);
+  const gone = real.filter((x) => x.y1 < 2100 && inDecade(x.y1)).sort((a, b) => b.weight - a.weight).slice(0, 4).sort((a, b) => a.y1 - b.y1);
+  const list = (arr, k) => arr.map((x) => `<b>${esc(x.name)}</b> <span class="faint">(${k === 'y0' ? x.y0 : x.y1})</span>`).join(' · ');
+  return `<div class="card" style="margin-bottom:16px;border-color:color-mix(in srgb, var(--gold) 45%, transparent);background:color-mix(in srgb, var(--gold) 6%, transparent)">
+    <div class="lbl" style="color:var(--gold)">${icon('sparkle')} ${t('era.lbl')}</div>
+    <div class="h3" style="margin:4px 0 6px">${t('era.h.' + year)}</div>
+    <p class="muted" style="margin:0">${t('era.b.' + year)}</p>
+    ${fresh.length ? `<div class="hint" style="margin-top:10px"><b>${t('era.new')}</b> ${list(fresh, 'y0')}</div>` : ''}
+    ${gone.length ? `<div class="hint" style="margin-top:6px"><b>${t('era.old')}</b> ${list(gone, 'y1')}</div>` : ''}
+  </div>`;
+}
 function yearPrompt(app, G, p, finish) {
   const lo = (p.year - 1980) * 48;
   const hi = lo + 48;
@@ -438,6 +455,7 @@ function yearPrompt(app, G, p, finish) {
   UI.modal(`
     <div class="win-head"><div class="wi" style="--wc:var(--gold)">${icon('calendar')}</div><h2>${t('year.title', { y: p.year })}<div class="sub">${esc(G.studio)}</div></h2></div>
     <div class="win-body">
+      ${eraCard(p.year + 1)}
       <div class="grid" style="grid-template-columns:repeat(auto-fit,minmax(130px,1fr))">
         <div class="counter" style="--c:var(--money)"><div class="v num">${money(rev)}</div><div class="k">${t('year.revenue')}</div></div>
         <div class="counter" style="--c:${cash1 >= cash0 ? 'var(--good)' : 'var(--bug)'}"><div class="v num">${cash1 >= cash0 ? '+' : ''}${money(cash1 - cash0)}</div><div class="k">${t('year.cash')}</div></div>
