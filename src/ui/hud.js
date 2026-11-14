@@ -22,6 +22,9 @@ import { music } from '../audio/sfx.js';
 import { saveSettings } from '../core/store.js';
 import { CLIENTS, BRIEFS } from '../data/events.js';
 import { ACHIEVEMENTS } from '../data/achievements.js';
+import { GOALS } from '../data/goals.js';
+import { activeGoals, goalProg } from '../sim/goals.js';
+import { progText, goalsTip, goalsDone } from './goals.js';
 import { crowdChip } from './crowd.js';
 import { REQ, reqValue, reqPct } from './win-studio.js';
 
@@ -361,6 +364,12 @@ function taskRows(G, job) {
 // Nästa mål, alltid synligt under uppgifterna när handledningen är över: närmaste kontor (med det första krav som saknas
 // och hur nära man är), annars nästa prestation. Allt läses ur befintligt state.
 function goalOf(G) {
+  const ag = activeGoals(G);
+  if (ag.length) {
+    const x = ag[0];
+    const p = goalProg(G, x);
+    return { id: 'g' + x.id, ic: x.ic, c: 'var(--gold)', name: t('pn.goalNm', { name: L(x.name) }), sub: p.max > 1 ? progText(x, p) : L(x.desc), pct: p.max > 1 ? p.pct : 0, go: x.go || 'achievements', tip: goalsTip(G) };
+  }
   if (G.games.length < 2) return null;
   const nx = nextTier(G);
   if (nx) {
@@ -419,11 +428,12 @@ function updatePanels(G) {
   res.dataset.tip = t('pn.resTip', { cash: money(G.money), rp: fmtNum(G.rp), net: (net >= 0 ? '+' : '−') + money(Math.abs(net)), pm: t('ui.perMonth') }) + runway;
   const goal = $('#pc-goal');
   const ach = G.ach.length;
-  put($('.v', goal), `${ach}/${ACHIEVEMENTS.length}`);
-  setBar(goal, (ach / ACHIEVEMENTS.length) * 100);
+  const gdone = goalsDone(G);
+  put($('.v', goal), `${gdone}/${GOALS.length}`);
+  setBar(goal, (gdone / GOALS.length) * 100);
   const nx = nextTier(G);
   const na = ACHIEVEMENTS.find((a) => !G.ach.includes(a.id));
-  goal.dataset.tip = t('pn.goalTip', { x: ach, y: ACHIEVEMENTS.length }) +
+  goal.dataset.tip = goalsTip(G) + '<br><br>' + t('pn.goalTip', { x: ach, y: ACHIEVEMENTS.length }) +
     (nx ? t(nx.fans > 0 ? 'pn.goalOffice' : 'pn.goalOfficeCash', { name: L(nx.name), fans: fmtNum(nx.fans), haveFans: fmtNum(G.fans), cost: money(nx.cost) }) : '') +
     (na ? t('pn.goalNext', { name: L(na.name), desc: L(na.desc) }) : '');
   // pågående uppgifter
@@ -440,7 +450,7 @@ function updatePanels(G) {
   const gkey = gl ? gl.id : '';
   if (gkey !== goalKey) {
     goalKey = gkey;
-    els.goalrow.innerHTML = gl ? `<button class="tk go goal${gl.pct ? '' : ' nobar'}" style="--c:${gl.c}" data-act="dock" data-id="${gl.go}" data-tip=""><span class="ti">${icon(gl.ic)}</span><span class="tn"><b class="nm"></b><span class="sb"></span></span><b class="pc num"></b><span class="bar thin"><i></i></span></button>` : '';
+    els.goalrow.innerHTML = gl ? `<button class="tk go goal${gl.pct ? '' : ' nobar'}" style="--c:${gl.c}" data-act="pn-go" data-go="${gl.go}" data-tip=""><span class="ti">${icon(gl.ic)}</span><span class="tn"><b class="nm"></b><span class="sb"></span></span><b class="pc num"></b><span class="bar thin"><i></i></span></button>` : '';
   }
   if (gl) {
     const ge = els.goalrow.firstElementChild;
@@ -464,7 +474,7 @@ function updatePanels(G) {
   put($('#pb-team b'), `${G.staff.length}/${cap}`);
   put($('#pb-proj b'), job ? pct(job.proj) + '%' : '–');
   setBar($('#pb-proj'), job ? job.proj : 0);
-  put($('#pb-goal b'), `${ach}/${ACHIEVEMENTS.length}`);
+  put($('#pb-goal b'), `${gdone}/${GOALS.length}`);
   // klockan
   // står spelet stilla (paus) visar klockan det i stället för klockslaget: annars syns det inte att tiden står
   const stopped = UI.app.speed === 0;

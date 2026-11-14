@@ -77,6 +77,7 @@ export function newGame(opts = {}) {
     yr: {},
     awards: [],
     ach: [],
+    goals: { done: [] },
     stats: { gamesMade: 0, revenue: 0, bestScore: 0, hits: 0, contracts: 0, hires: 0, researched: 0, events: 0 },
     flags: {},
     news: [],

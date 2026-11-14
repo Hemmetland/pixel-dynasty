@@ -14,6 +14,8 @@ import { MUSIC_STYLES } from '../audio/director.js';
 import { paceOf, paceSeg } from './pace.js';
 import { saveGame, exportCode, importCode, freeSlot, useSlot, activeSlot } from '../core/store.js';
 import { devCode } from './devconsole.js';
+import { goalsHTML, goalsDone } from './goals.js';
+import { GOALS } from '../data/goals.js';
 
 const AIC = { a_game: 'gamepad', a_star: 'star', a_coin: 'money', a_house: 'building', a_team: 'team', a_heart: 'heart', a_flask: 'flask', a_aaa: 'rocket', a_trophy: 'trophy', a_brief: 'hammer', a_engine: 'cpu', a_clock: 'clock', a_globe: 'globe', a_bulb: 'bulb', a_crown: 'crown', a_disc: 'disc', a_chip: 'gpu' };
 const MIC = { press: 'mail', ads: 'book', tv: 'film', online: 'globe', influencer: 'heart' };
@@ -56,9 +58,9 @@ regWin({
   color: 'var(--gold)',
   size: 'lg',
   title: () => t('ach.title'),
-  sub: (G) => `${G.ach.length}/${ACHIEVEMENTS.length}`,
+  sub: (G) => `${t('goal.title')} ${goalsDone(G)}/${GOALS.length} · ${t('ach.sec')} ${G.ach.length}/${ACHIEVEMENTS.length}`,
   render(G) {
-    return `<div class="bar" style="--c:var(--gold);margin-bottom:16px"><i style="width:${(G.ach.length / ACHIEVEMENTS.length) * 100}%"></i></div>
+    return `${goalsHTML(G)}<div class="bar" style="--c:var(--gold);margin-bottom:16px"><i style="width:${(G.ach.length / ACHIEVEMENTS.length) * 100}%"></i></div>
       <div class="grid" style="grid-template-columns:repeat(auto-fill,minmax(250px,1fr))">${ACHIEVEMENTS.map((a) => {
         const on = G.ach.includes(a.id);
         return `<div class="card row ach ${on ? 'on' : ''}" style="gap:12px"><div class="ai">${icon(AIC[a.glyph] || 'star')}</div><div style="flex:1"><b>${L(a.name)}</b><div class="hint">${L(a.desc)}</div></div>${on ? icon('check') : icon('lock')}</div>`;

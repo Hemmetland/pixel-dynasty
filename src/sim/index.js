@@ -29,3 +29,4 @@ export * from './hardware.js';
 export * from './charts.js';
 export * from './fans.js';
 export * from './rival.js';
+export * from './goals.js';

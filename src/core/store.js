@@ -1,5 +1,6 @@
 import { SAVE_VERSION, DIFFICULTY, newGame } from '../sim/state.js';
 import { migrateLooks } from '../sim/people.js';
+import { seedGoals } from '../sim/goals.js';
 import { setOwnPlatforms } from '../data/platforms.js';
 import { hallEntry, hallSort, founderNew } from '../sim/legacy.js';
 
@@ -156,6 +157,7 @@ function migrate(G) {
   G.uid = G.uid || 1000;
   G.staff = G.staff || [];
   G.nextId = G.nextId || 1 + Math.max(1, ...G.staff.map((s) => s.id), ...(G.candidates || []).map((c) => c.id));
+  const noGoals = !G.goals;
   // Fyll i fält som saknas i äldre sparningar ur en ny mall (en nivå ner); befintliga värden och personal rörs inte
   const T = newGame({ seed: G.seed ?? 1, difficulty: DIFFICULTY[G.difficulty] ? G.difficulty : undefined, archetype: G.archetype });
   for (const [k, v] of Object.entries(T)) {
@@ -165,6 +167,7 @@ function migrate(G) {
       for (const [k2, v2] of Object.entries(v)) if (G[k][k2] === undefined) G[k][k2] = v2;
     }
   }
+  if (noGoals) seedGoals(G);
   G.v = SAVE_VERSION;
   migrateLooks(G);
   if (G.hw) G.hw.plats ||= [];

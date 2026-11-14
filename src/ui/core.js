@@ -278,7 +278,7 @@ function fitToasts(box) {
 // Händelsekort: viktiga händelser (milstolpar, priser, prestationer) ligger kvar högst upp tills spelaren stänger dem.
 // opts: { kind: 'award' | 'milestone' | 'achievement' | 'warning' | 'platform', text, ic, go, item } där go är ett fönster som Visa-knappen öppnar
 // och item nyhetsposten i krönikan (ett stängt kort markerar den som läst).
-const EV = { award: ['trophy', 'var(--gold)', 'ev.award'], milestone: ['flag', 'var(--accent)', 'ev.milestone'], achievement: ['award', 'var(--fans)', 'ev.achievement'], warning: ['fire', 'var(--bug)', 'ev.warning'], platform: ['gamepad', 'var(--design)', 'ev.platform'] };
+const EV = { award: ['trophy', 'var(--gold)', 'ev.award'], milestone: ['flag', 'var(--accent)', 'ev.milestone'], achievement: ['award', 'var(--fans)', 'ev.achievement'], goal: ['target', 'var(--gold)', 'ev.goal'], warning: ['fire', 'var(--bug)', 'ev.warning'], platform: ['gamepad', 'var(--design)', 'ev.platform'] };
 // Inget försvinner av sig självt: de tre första korten syns (två på låga skärmar, ett på smala eller mycket låga), resten väntar i kö och kommer när något stängs.
 // Varningar går före i kön. Kön töms när spelaren öppnar nyhetsloggen, där allt ligger kvar.
 let evQueue = [];

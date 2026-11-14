@@ -5,6 +5,8 @@ import { setLang, detectLang, t } from '../core/i18n.js';
 import { loadSettings, saveSettings, saveGame, loadGame, useSlot, freeSlot, slotList } from '../core/store.js';
 import { newGame } from '../sim/state.js';
 import { stepTick, initWorld, checkAchievements } from '../sim/clock.js';
+import { checkGoals } from '../sim/goals.js';
+import { rewardText } from './goals.js';
 import { makeCompetitors } from '../sim/market.js';
 import { releaseGame, cancelProject, toggleCrunch, shipNow, extendPolish } from '../sim/dev.js';
 import { cancelContract } from '../sim/contracts.js';
@@ -180,16 +182,23 @@ export const app = {
     // affärer: två i personalen skakar hand i mötesrummet eller lobbyn
     for (const ev of ['acquired', 'pubSign', 'frDeal']) on(ev, () => sc.deal());
     on('hired', (s) => {
+      checkGoals(this.G);
       sfx.play('good');
       toast(t('toast.hired', { name: `<b>${s.name}</b>` }), 'hire');
     });
     on('researched', (r) => {
+      checkGoals(this.G);
       sfx.play('research');
       toast(t('toast.researched', { name: `<b>${L(r.name)}</b>` }), 'research', 7000);
     });
     on('refined', ({ r, level }) => {
       sfx.play('research');
       toast(t('toast.refined', { name: `<b>${L(r.name)}</b>`, n: level }), 'research', 6000);
+    });
+    on('goal', ({ goal, item }) => {
+      sfx.play('achievement');
+      eventCard({ kind: 'goal', text: t('toast.goal', { name: `<b>${L(goal.name)}</b>`, rw: rewardText(this.G, goal) }), go: 'achievements', item });
+      sc.confetti(30);
     });
     on('achievement', (a) => {
       sfx.play('achievement');
@@ -210,6 +219,7 @@ export const app = {
       if (g.score >= 9) sc.fireworks(5);
       sfx.play(g.score >= 8 ? 'fanfare' : 'release');
       checkAchievements(this.G);
+      checkGoals(this.G);
     });
     on('awards', () => {
       sc.fireworks(7);

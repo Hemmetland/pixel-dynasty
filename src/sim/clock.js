@@ -23,6 +23,7 @@ import { rollDevEvent, rollStudioEvent } from './events.js';
 import { runAwards, galaWatch } from './awards.js';
 import { expoOffer } from './expo.js';
 import { identityWatch } from './legacy.js';
+import { checkGoals } from './goals.js';
 import { headlineWatch } from './headlines.js';
 import { finishTraining, refreshCandidates, payroll, updateMood, burnoutQuits, serviceYears } from './people.js';
 import { rentOf, facUpkeep, loanInterest, spend } from './studio.js';
@@ -144,6 +145,7 @@ function monthly(G, d) {
   identityWatch(G);
   headlineWatch(G);
   checkAchievements(G);
+  checkGoals(G);
   emit('month', G);
 }
 

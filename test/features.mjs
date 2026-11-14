@@ -1924,5 +1924,49 @@ ok(!bad.length, `äldre sparning utan ett av ${paths.length} fält går att spel
   const back = JSON.parse(JSON.stringify(GR.hw));
   ok(back.products.find((x) => x.id === gpu.id).revs.length === 2, 'revisionerna följer med sparningen');
 }
+// studiomål
+{
+  const GG = S.newGame({ studio: 'Goal', seed: 11 });
+  ok(JSON.stringify(S.activeGoals(GG).map((x) => x.id)) === '["first_game","research1","score6"]', 'tre aktiva mål från start');
+  ok(S.goalProg(GG, S.activeGoals(GG)[0]).pct === 0, 'framsteget börjar på noll');
+  const got = [];
+  const off = (await import('../src/core/bus.js')).on('goal', (e) => got.push(e));
+  GG.games.push({ id: 1, title: 'A', score: 5, revenue: 5000, scope: 'small' });
+  GG.stats.bestScore = 5;
+  const rp0 = GG.rp, m0 = GG.money, f0 = GG.fans;
+  S.checkGoals(GG);
+  ok(S.goalDone(GG, 'first_game') && !S.goalDone(GG, 'research1'), 'ett nått mål klaras och ett ej nått väntar');
+  ok(GG.rp === rp0 + 3 && GG.money === m0 + 1200 && GG.fans === f0, 'belöningen betalas ut en gång');
+  ok(got.length === 1 && got[0].goal.id === 'first_game' && got[0].reward.money === 1200, 'mål-händelsen bär målet och belöningen');
+  ok(GG.news[0].key === 'news.goal', 'målet står i krönikan');
+  S.checkGoals(GG);
+  ok(GG.rp === rp0 + 3 && got.length === 1, 'ett klart mål betalas aldrig två gånger');
+  // betyg 7 når score6, och score7 väntar tills det är aktivt: båda klaras i samma kontroll när platsen finns
+  GG.stats.bestScore = 7;
+  ok(!S.goalDone(GG, 'score6') && S.goalProg(GG, S.activeGoals(GG).find((x) => x.id === 'score6')).ok, 'score6 är nått och aktivt');
+  S.checkGoals(GG);
+  ok(S.goalDone(GG, 'score6') && !S.goalDone(GG, 'score7') && got.length === 2, 'score6 klaras, score7 väntar på sin plats i listan');
+  ok(S.activeGoals(GG).some((x) => x.id === 'hire1') && S.activeGoals(GG).length === 3, 'nya mål fyller platserna');
+  ok(S.goalReward(GG, S.activeGoals(GG)[0]).money === undefined || S.goalReward(GG, S.activeGoals(GG)[0]).money > 0, 'belöningen är ett positivt belopp');
+  // pengarna skalas med året
+  const late = S.newGame({ studio: 'L', seed: 3 });
+  late.t = 48 * 20;
+  const gx = S.activeGoals(late)[0];
+  ok(S.goalReward(late, gx).money > gx.reward.money, 'belöningen i pengar växer med året');
+  // en gammal sparning får det som redan är gjort som klart utan belöning
+  const old = S.newGame({ studio: 'O', seed: 4 });
+  for (let i = 0; i < 9; i++) old.games.push({ id: i + 1, title: 'g' + i, score: 8.5, revenue: 2e6, scope: 'large' });
+  old.stats.bestScore = 8.5;
+  old.fans = 6000;
+  const rpO = old.rp, mO = old.money;
+  S.seedGoals(old);
+  ok(['first_game', 'games3', 'score8', 'fans5k', 'large', 'rev1m', 'games8'].every((id) => S.goalDone(old, id)), 'seedGoals räknar redan nådda mål som klara');
+  ok(old.rp === rpO && old.money === mO, 'seedGoals ger ingen belöning');
+  // allt går att spara och ladda
+  ok(JSON.parse(JSON.stringify(GG)).goals.done.includes('first_game'), 'klara mål följer med sparningen');
+  // onlinemålet visas först när forskningen är gjord
+  ok(!S.activeGoals(late, 99).some((x) => x.id === 'live1') && !S.activeGoals(late, 99).some((x) => x.id === 'hw1'), 'onlinespel- och hårdvarumålet väntar på forskningen');
+  off();
+}
 console.log(fails ? `\n${fails} FEL` : '\nAlla tester gick bra');
 process.exit(fails ? 1 : 0);
