@@ -1278,3 +1278,13 @@ input[type='range']::-moz-range-thumb { width: 18px; height: 18px; border-radius
   .hw-card .hw-stats { gap: 6px 12px; }
   .hw-card > [style*='margin-top:8px'], .hw-card > [style*='margin-top:10px'], .hw-card > .hw-stats, .hw-card > .hw-ctl { margin-top: 5px !important; }
 }
+
+/* Låg och smal (liggande telefon under 761 px): flikraden stannar på samma rad som rubriken */
+@media (max-width: 760px) and (max-height: 559px) {
+  .win-head { flex-wrap: nowrap; row-gap: 0; }
+  .win-head .tabs { order: 0; flex: 0 1 auto; width: auto; flex-wrap: nowrap; overflow-x: auto; padding: 2px; gap: 2px; scrollbar-width: none; }
+  .win-head .tabs::-webkit-scrollbar { display: none; }
+  .win-head .tabs .tab { flex: none; padding: 4px 8px; font-size: 12px; }
+  .win-head .tabs:has(> .tab:nth-child(5):last-child) .tab { flex-basis: auto; }
+  .win-head h2 { flex: 1 1 auto; }
+}
