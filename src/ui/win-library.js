@@ -196,22 +196,28 @@ function seasonPanel(G, g) {
     const th = SEASONS.find((x) => x.id === S.id);
     const left = Math.max(0, S.until - G.t);
     const more = Math.round(lv.subs - S.subs0);
+    const done = SEASON_WEEKS - left;
+    const pips = Array.from({ length: SEASON_WEEKS }, (_, i) => `<i class="${i < done ? 'on' : i === done ? 'now' : ''}"></i>`).join('');
     return `${head}<p class="hint" style="margin-bottom:8px">${t('live.seasonsHelp', { n: SEASON_WEEKS })}</p>${facts}
-      <div class="ltier season-on"><span class="rn-i" style="--c:var(--gold)">${icon(th.ic)}</span><div style="flex:1;min-width:0"><div class="row" style="font-size:13px"><b>${t('live.seasonOn', { name: L(th.name) })}</b><span class="sp"></span><span class="faint">${t('live.seasonLeft', { n: left })}</span></div>${bar(((SEASON_WEEKS - left) / SEASON_WEEKS) * 100, 'var(--gold)', 'thin')}
-        <div class="faint" style="font-size:11.5px;margin-top:4px">${t('live.seasonBack', { n: (more >= 0 ? '+' : '−') + fmtNum(Math.abs(more)) })} · ${t('live.seasonPass', { v: money(S.pass || 0) })}</div></div></div>`;
+      <div class="ltier season-on"><span class="rn-i sbig" style="--c:var(--gold)">${icon(th.ic)}</span><div style="flex:1;min-width:0"><div class="row" style="font-size:14px"><b>${t('live.seasonOn', { name: L(th.name) })}</b><span class="sp"></span><span class="faint">${t('live.seasonLeft', { n: left })}</span></div><div class="sweeks">${pips}</div>
+        <div class="row wrap" style="gap:6px;margin-top:8px"><span class="spill" style="--c:${more >= 0 ? 'var(--good)' : 'var(--bug)'}">${icon('user')}${t('live.seasonBack', { n: (more >= 0 ? '+' : '−') + fmtNum(Math.abs(more)) })}</span><span class="spill" style="--c:var(--money)">${icon('money')}${t('live.seasonPass', { v: money(S.pass || 0) })}</span></div></div></div>`;
   }
   const wait = seasonReadyIn(G, lv);
   const rows = SEASONS.map((th) => {
     const cost = liveSeasonCost(G, g, th.id);
     const blocked = seasonBlock(G, g, th.id);
-    const info = [t('live.seasonRenew', { n: Math.round(seasonShare(g, th.id) * 100) }), `+${Math.round((th.lift - 1) * 100)} %`, t('live.seasonPass', { v: '+' + Math.round(th.pass * 100) + ' %' })];
-    if (lv.lastSeason === th.id && seasonQuality(g, th.id) < 1) info.push(t('live.seasonRepeat'));
-    const right = blocked
-      ? `<span class="faint" style="font-size:12px;text-align:right">${icon('lock')} ${t('live.seasonLocked', { n: th.minAge })}</span>`
-      : `<button class="btn sm" data-act="lv-season" data-id="${g.id}" data-th="${th.id}" ${wait > 0 || G.money < cost ? 'disabled' : ''}>${icon('calendar')}${t('live.seasonGo')} · ${money(cost)}</button>`;
-    return `<div class="ltier"><span class="rn-i" style="--c:var(--gold)">${icon(th.ic)}</span><div style="flex:1;min-width:0"><b>${L(th.name)}</b><div class="faint" style="font-size:11.5px">${L(th.desc)}<br>${info.join(' · ')}</div></div>${right}</div>`;
+    const pills = [
+      `<span class="spill" style="--c:var(--accent)">${icon('refresh')}${t('live.seasonRenew', { n: Math.round(seasonShare(g, th.id) * 100) })}</span>`,
+      `<span class="spill" style="--c:var(--good)">${icon('chart')}+${Math.round((th.lift - 1) * 100)} %</span>`,
+      `<span class="spill" style="--c:var(--money)">${icon('money')}${t('live.seasonPass', { v: '+' + Math.round(th.pass * 100) + ' %' })}</span>`,
+    ];
+    if (lv.lastSeason === th.id && seasonQuality(g, th.id) < 1) pills.push(`<span class="spill" style="--c:var(--warn)">${icon('info')}${t('live.seasonRepeat')}</span>`);
+    const foot = blocked
+      ? `<span class="faint sfoot">${icon('lock')} ${t('live.seasonLocked', { n: th.minAge })}</span>`
+      : `<button class="btn sm sfoot" data-act="lv-season" data-id="${g.id}" data-th="${th.id}" ${wait > 0 || G.money < cost ? 'disabled' : ''}>${icon('calendar')}${t('live.seasonGo')} · ${money(cost)}</button>`;
+    return `<div class="scard ${blocked ? 'locked' : ''}"><div class="row" style="gap:10px;align-items:flex-start"><span class="rn-i sbig" style="--c:var(--gold)">${icon(th.ic)}</span><div style="flex:1;min-width:0"><b>${L(th.name)}</b><div class="faint" style="font-size:11.5px;line-height:1.35;margin-top:2px">${L(th.desc)}</div></div></div><div class="row wrap" style="gap:5px;margin-top:9px">${pills.join('')}</div>${foot}</div>`;
   }).join('');
-  return `${head}<p class="hint" style="margin-bottom:8px">${t('live.seasonsHelp', { n: SEASON_WEEKS })}${wait > 0 ? ' ' + t('live.seasonWait', { n: wait }) : ''}</p>${facts}<div class="col" style="gap:6px">${rows}</div>`;
+  return `${head}<p class="hint" style="margin-bottom:8px">${t('live.seasonsHelp', { n: SEASON_WEEKS })}${wait > 0 ? ' ' + t('live.seasonWait', { n: wait }) : ''}</p>${facts}<div class="sgrid">${rows}</div>`;
 }
 
 // Regioner: hemmamarknaden och de delar av världen spelet kan öppna servrar i (en i taget). Ett spel från före regionerna
