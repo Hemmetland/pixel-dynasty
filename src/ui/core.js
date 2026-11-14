@@ -245,6 +245,13 @@ const dropToast = (el) => {
 export function toast(text, kind = 'info', ms = 5200) {
   const box = $('#toasts');
   if (!box) return;
+  // Är fönstret så lågt att det inte finns plats för en notis utan att den täcker klockan visas bara felmeddelanden
+  // (nyheterna finns kvar i krönikan)
+  {
+    const clock = $('#clockp');
+    const limit = clock && clock.offsetHeight ? clock.getBoundingClientRect().top : innerHeight - 90;
+    if (kind !== 'bad' && limit - 8 - box.getBoundingClientRect().top < 40) return;
+  }
   // samma text igen: låt den gamla försvinna så att den nya hamnar sist
   for (const o of box.children) if (o.dataset.txt === text) o.remove();
   // lästid: längre texter får stå kvar längre (cirka 55 ms per tecken, högst nio sekunder)
@@ -254,7 +261,7 @@ export function toast(text, kind = 'info', ms = 5200) {
   el.dataset.txt = text;
   el.style.setProperty('--c', TOAST_COL[kind] || TOAST_COL.info);
   el.style.setProperty('--ms', ms + 'ms');
-  el.innerHTML = `<div class="ti">${icon(TOAST_ICON[kind] || 'info')}</div><div>${text}</div>`;
+  el.innerHTML = `<div class="ti">${icon(TOAST_ICON[kind] || 'info')}</div><div class="tt">${text}</div>`;
   el.addEventListener('click', () => dropToast(el)); // tryck bort
   box.appendChild(el);
   // låg skärm (liggande mobil): en notis i taget, annars når högen ner över dockan
@@ -273,6 +280,11 @@ export function toast(text, kind = 'info', ms = 5200) {
     const o = keep.shift();
     used -= o.offsetHeight + 6;
     dropToast(o);
+  }
+  // den sista notisen får inte heller täcka klockan: först utan effektbrickor och med högst två rader, sedan med högsta höjd
+  if (keep.length === 1 && used > room) {
+    el.classList.add('compact');
+    if (el.offsetHeight + 6 > room) el.style.maxHeight = Math.max(34, Math.floor(room - 6)) + 'px';
   }
   setTimeout(() => dropToast(el), ms);
 }
