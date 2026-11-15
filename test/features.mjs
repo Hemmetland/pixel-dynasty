@@ -3008,7 +3008,8 @@ ok(!bad.length, `äldre sparning utan ett av ${paths.length} fält går att spel
   GB.fr = { offers: [], deals: [], hype: {}, next: GB.t + 100 };
   const pit = (lo, hi, adv) => { const p = { id: GB.uid++, studio: 'S', color: '#fff', title: { sv: 'P' + lo, en: 'P' + lo }, topic: 'fantasy', genre: 'rpg', platform: 'pc', scope: 'small', q: (lo + hi) / 2, lo, hi, weeks: 8, until: GB.t + 12, seen: false, advance: adv }; GB.pub.pitches.push(p); return p; };
   const off = (kind, up, lo, hi) => { const o = { id: GB.uid++, series: 9000 + GB.uid, title: 'S', kind, partner: 'X', color: '#fff', until: GB.t + 12, seen: false, up }; if (kind === 'film') Object.assign(o, { q: (lo + hi) / 2, lo, hi }); GB.fr.offers.push(o); return o; };
-  const lowP = pit(6, 7, 50000), midP = pit(7, 7.8, 50000), topP = pit(8, 9, 50000), thirdP = pit(7, 7.4, 50000);
+  const lowP = pit(6, 7, 50000), midP = pit(7, 7.8, 50000), topP = pit(8, 9, 50000);
+  pit(7, 7.4, 50000); // en tredje över gränsen: platserna räcker bara till två
   const lowF = off('film', 40000, 5, 6), goodF = off('film', 60000, 7, 8), merch = off('merch', 20000), comic = off('comic', 10000);
   ok(!S.bizOpen(GB) && S.setBiz(GB, 'pub', 1) === false, 'avdelningen kräver forskningen');
   S.bizWeek(GB);
