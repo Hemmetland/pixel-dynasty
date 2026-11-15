@@ -253,7 +253,7 @@ function engBlock(G, team) {
       <div class="faint" style="font-size:12px">${t('tm.eng.need', { need: inf.need, n: inf.n })}</div>
       <div class="faint" style="font-size:12px;margin-top:2px" data-tip="${esc(t('tm.ops.rutinTip'))}">${t('tm.ops.rutin', { n: inf.rutin, m: RUTIN_MAX })}</div>${busy}
       <div class="muted" style="font-size:12px;margin-top:6px">${gives}</div>
-      <div class="row" style="margin-top:8px"><button class="btn sm" data-act="tm-engshop">${icon('cog')}${t('tm.eng.open')}</button><span class="sp"></span><button class="btn sm" data-act="tm-endrole" data-tid="${team.id}" data-tip="${esc(t('tm.ops.endTip'))}">${t('tm.eng.end')}</button></div></div></div>`;
+      <div class="row wrap" style="margin-top:8px;gap:8px"><button class="btn sm" data-act="tm-engshop">${icon('cog')}${t('tm.eng.open')}</button><span class="sp"></span><button class="btn sm" data-act="tm-endrole" data-tid="${team.id}" data-tip="${esc(t('tm.ops.endTip'))}">${t('tm.eng.end')}</button></div></div></div>`;
 }
 // Ett butiksteam: hur väl det räcker till och vad det ger (kampanjerna ställer du in i fliken Egen butik)
 function shopBlock(G, team) {
