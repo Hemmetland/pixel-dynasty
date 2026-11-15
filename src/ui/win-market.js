@@ -18,6 +18,7 @@ import { rivalOf, rivalLog } from '../sim/rival.js';
 import { awardStandings, GALA_FIELD, AWARD_CATS } from '../sim/awards.js';
 import { storeTab } from './store-tab.js';
 import { groupTab } from './group-tab.js';
+import { sceneHTML } from './livescene.js';
 import { STABLE_MIN, stability } from '../sim/group.js';
 import { acqMax, SUB_SHARE, canAcquireAny, ownedComps, compYearly, acqPrice, canAcquire, acquire, subIncome } from '../sim/acquire.js';
 
@@ -245,7 +246,7 @@ regWin({
   color: 'var(--money)',
   size: 'xl',
   title: () => t('mkt.tab.store'),
-  render: (G) => storeTab(G),
+  render: (G) => sceneHTML('shop', G) + storeTab(G),
 });
 regWin({
   id: 'group',
@@ -253,7 +254,7 @@ regWin({
   color: 'var(--gold)',
   size: 'xl',
   title: () => t('mkt.tab.group'),
-  render: (G) => groupTab(G),
+  render: (G) => sceneHTML('group', G) + groupTab(G),
 });
 act('m-tab', (el) => {
   M.tab = el.dataset.id;

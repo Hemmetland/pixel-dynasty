@@ -1,4 +1,5 @@
 import { $, esc, icon, t, tn, L, UI, act, regWin, bar, money, errToast } from './core.js';
+import { sceneHTML } from './livescene.js';
 import { GENRE } from '../data/genres.js';
 import { TOPIC } from '../data/topics.js';
 import { pixIcon } from './icons.js';
@@ -490,7 +491,7 @@ regWin({
   headExtra: () => `<div class="tabs">${TABS.map((k) => `<button class="tab ${HS.tab === k ? 'on' : ''}" data-act="hw-tab" data-id="${k}">${t('hw.tab.' + k)}</button>`).join('')}</div>`,
   render(G) {
     const H = G.hw;
-    return HS.tab === 'prod' ? prodTab(G, H) : HS.tab === 'partners' ? partnersTab(G, H) : devTab(G, H);
+    return sceneHTML('factory', G, { color: '#4de1d0' }) + (HS.tab === 'prod' ? prodTab(G, H) : HS.tab === 'partners' ? partnersTab(G, H) : devTab(G, H));
   },
   bind(el) {
     const n = $('#hw-name', el);

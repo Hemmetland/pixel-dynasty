@@ -1,3 +1,4 @@
+import { sceneHTML } from './livescene.js';
 import { esc, icon, t, L, UI, act, regWin, bar, money, toast } from './core.js';
 import { sfx } from '../audio/sfx.js';
 import { glyphImg, hasGlyph } from '../render/glyphs.js';
@@ -206,7 +207,7 @@ regWin({
         <svg class="rlines" width="${L_.W}" height="${L_.H}">${linesHTML(G, L_)}</svg>
         ${RESEARCH.filter((r) => L_.pos[r.id]).map((r) => nodeHTML(G, r, L_)).join("")}
       </div></div>`;
-    return `
+    return `${sceneHTML('lab', G)}
       <div class="row wrap" style="gap:10px;margin-bottom:14px">${active || `<div class="hint" style="flex:1">${icon('info')} ${t('res.idle')}</div>`}</div>
       <div class="row wrap" style="gap:8px;margin-bottom:12px">${chips}<span class="sp"></span>
         <button class="chip btnchip ${R.only ? 'on' : ''}" data-act="r-only">${icon('check')}${t('res.onlyAvail')}</button>
