@@ -12,7 +12,7 @@ import { fmtNum } from '../core/util.js';
 import { TOPICS } from '../data/topics.js';
 import { GENRES } from '../data/genres.js';
 import { CATEGORIES } from '../data/categories.js';
-import { idealFocus } from '../sim/score.js';
+import { idealFocus, comboKnown, focusKnown, recipeLevel, RCP_MAX } from '../sim/score.js';
 import { studioRanking } from '../sim/charts.js';
 import { rivalOf, rivalLog } from '../sim/rival.js';
 import { awardStandings, GALA_FIELD, AWARD_CATS } from '../sim/awards.js';
@@ -115,12 +115,12 @@ function insightsTab(G) {
   const rows = topics
     .map((tp) => `<div class="mx-r">${glyphImg(tp.glyph, '#fff', 16, false)}<span>${L(tp.name)}</span></div>${genres
       .map((g) => {
-        const k = G.know.combos[tp.id + '|' + g.id];
+        const k = comboKnown(G, tp.id, g.id);
         return k ? `<div class="mx-c k" style="--c:${COL[Math.round(k)]}" data-tip="${esc(t('compat.' + Math.round(k)))}"></div>` : `<div class="mx-c u">?</div>`;
       })
       .join('')}`)
     .join('');
-  const known = genres.filter((g) => G.know.focus[g.id]);
+  const known = genres.filter((g) => focusKnown(G, g.id));
   const focus = known.length
     ? known
         .map((g) => {
@@ -132,7 +132,9 @@ function insightsTab(G) {
         })
         .join('')
     : `<div class="hint">${icon('info')} ${t('mkt.noFocus')}</div>`;
-  return `<p class="hint" style="margin-bottom:14px">${t('mkt.insightHelp')}</p>
+  const lvl = recipeLevel(G);
+  const book = G.u.flags.resTeams || lvl > 0 ? `<p class="hint" style="margin-bottom:10px">${icon('flask')} ${t('mkt.recipeLevel', { n: lvl, m: RCP_MAX })}</p>` : '';
+  return `<p class="hint" style="margin-bottom:14px">${t('mkt.insightHelp')}</p>${book}
     <div class="mx" style="grid-template-columns:140px repeat(${genres.length}, 44px)">${head}${rows}</div>
     <div class="lbl" style="margin:20px 0 8px">${t('mkt.idealFocus')}</div>
     <div class="grid" style="grid-template-columns:repeat(auto-fill,minmax(280px,1fr))">${focus}</div>`;

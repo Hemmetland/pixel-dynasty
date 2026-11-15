@@ -152,6 +152,9 @@ export const bugMult = (G) => Math.max(0.4, 1 + G.perk.bugs - 0.06 * facLevel(G,
 export const mktCostMult = (G) => 1 - 0.1 * facLevel(G, 'marketing') - (G.perk.mktCost || 0);
 export const mktHypeMult = (G) => 1 + 0.12 * facLevel(G, 'marketing');
 export const serverMult = (G) => 1 + 0.04 * facLevel(G, 'server');
+// Ett forskningsteam med inriktningen Ny teknik (resteam.js) ger alla studions spel mer teknik: RES_TECH × teamets effekt (G.resTech, 0–1)
+export const RES_TECH = 0.05;
+export const techLead = (G) => 1 + RES_TECH * (G.resTech || 0);
 
 // ── Pengar ───────────────────────────────────────────────────────
 export function earn(G, amount, cat = 'sales') {

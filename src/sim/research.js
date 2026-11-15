@@ -50,7 +50,8 @@ export function researchTick(G) {
   // RP-inkomst
   let rp = 0;
   for (const w of workers(G)) rp += w.research;
-  const gain = rp * RP_RATE * labMult(G);
+  // forskningsteamen (resteam.js) räknar ut sin del per tick varje vecka: G.resRp
+  const gain = rp * RP_RATE * labMult(G) + (G.resRp || 0);
   G.rp += gain;
   const done = [];
   for (const a of G.research.active) {
@@ -80,5 +81,5 @@ export function researchCount(G) {
 export function rpPerWeek(G) {
   let rp = 0;
   for (const w of workers(G)) rp += w.research;
-  return rp * RP_RATE * labMult(G) * TICKS_PER_WEEK;
+  return (rp * RP_RATE * labMult(G) + (G.resRp || 0)) * TICKS_PER_WEEK;
 }

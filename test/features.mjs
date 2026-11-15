@@ -2667,6 +2667,93 @@ ok(!bad.length, `äldre sparning utan ett av ${paths.length} fält går att spel
   ok(gol.live.subs > 0 && gol.live.eLift === undefined && S.kindOfGame(gol).id === 'mmo' && S.liveFactors(GOl, gol).esports === 1, 'gamla onlinespel utan e-sport och sort räknas som MMO utan e-sportlyft');
   ok(S.esportPlan(GOl, gol, 'race', 2, 0, 0).viewers > 0 && !gol.live.esp, 'förhandsvisningen skapar inget i spelet');
 }
+// ── Forskningsteam: ny teknik (forskningspoäng) och recept (receptnivå) ──────────────
+{
+  const mk = () => {
+    const W = S.newGame({ studio: 'R', seed: 77 }); S.makeCompetitors(W); S.initWorld(W);
+    W.t = 48 * 24; W.money = 5e7; W.fans = 80000; W.office.tier = 4; W.office.fac.lab = { lvl: 3, slot: 0 };
+    for (let i = 0; i < 9; i++) { S.refreshCandidates(W); W.money += W.candidates[0].fee; S.hire(W, W.candidates[0].id); }
+    return W;
+  };
+  const GR = mk();
+  const crew = GR.staff.filter((x) => !x.isFounder);
+  const T = S.createTeam(GR);
+  for (const x of crew.slice(0, 4)) S.addMember(GR, T.id, x.id);
+  ok(S.assignRes(GR, T.id, 'tech') !== true && S.canRes(GR, T, 'tech') === 'resLocked', 'ett forskningsteam kräver forskningen Forskningsteam');
+  GR.u.flags.resTeams = true;
+  ok(S.canRes(GR, T, 'nej') === 'resFocus', 'okänd inriktning nekas');
+  const GRnoLab = mk(); GRnoLab.office.fac = {}; GRnoLab.u.flags.resTeams = true;
+  const Tn = S.createTeam(GRnoLab); for (const x of GRnoLab.staff.filter((q) => !q.isFounder).slice(0, 4)) S.addMember(GRnoLab, Tn.id, x.id);
+  ok(S.canRes(GRnoLab, Tn, 'recipe') === 'noSeats', 'utan labb finns inga platser för ett forskningsteam');
+  // teknik: samma personer ger mer forskningspoäng i labbet än vid skrivborden
+  const rpDesk = S.rpPerWeek(GR);
+  const rngBefore = GR.rng;
+  ok(S.assignRes(GR, T.id, 'tech') === true && T.role === 'res' && T.target === 'tech' && T.members.every((id) => GR.staff.find((x) => x.id === id).out), 'teamet flyttar in i labbet (utanför huset)');
+  const rpAfter0 = S.rpPerWeek(GR);
+  S.resWeek(GR);
+  const rpTeam = S.rpPerWeek(GR);
+  const deskRp = crew.slice(0, 4).reduce((a, x) => a + x.research, 0) * 0.05 * S.labMult(GR) * S.TICKS_PER_WEEK;
+  ok(GR.resRp > 0 && rpTeam - rpAfter0 > deskRp * 0.3 && rpTeam - rpAfter0 < deskRp * (1 + S.RES_RP) + 1e-6, 'ett teknikteam ger mer forskningspoäng än samma personer vid skrivborden, men inte oändligt mycket');
+  ok(rpTeam > rpDesk - deskRp, 'forskningspoängen från teamet räknas in i veckotakten');
+  ok(T.resW === 1 && GR.rng === rngBefore, 'forskningsteamet drar aldrig ur slumptalsföljden');
+  ok(GR.resTech > 0 && Math.abs(S.techLead(GR) - (1 + S.RES_TECH * GR.resTech)) < 1e-12 && S.techLead(GR) > 1 && S.techLead(GR) <= 1 + S.RES_TECH, 'ett teknikteam ger alla spel lite mer teknik (högst ' + S.RES_TECH * 100 + ' %)');
+  const T2 = S.createTeam(GR); for (const x of crew.slice(4, 8)) S.addMember(GR, T2.id, x.id);
+  ok(S.canRes(GR, T2, 'tech') === 'resTaken' && S.canRes(GR, T2, 'recipe') === true, 'en inriktning har bara ett team');
+  GR.u.flags.training = true; GR.u.flags.autoTeams = true;
+  ok(S.canTrainTeam(GR, T) === 'role' && S.canMission(GR, T, 'new') === 'roleGame', 'ett forskningsteam går inte på kurs eller tar spelprojekt');
+  // recept: nivå efter nivå, bara kunskap
+  ok(S.assignRes(GR, T2.id, 'recipe') === true, 'ett andra team tar receptet');
+  ok(S.recipeLevel(GR) === 0 && !S.focusKnown(GR, 'strategy') && S.comboKnown(GR, 'fantasy', 'rpg') === 0, 'före receptkunskapen är inget känt');
+  const eff = S.resEff(GR, T2);
+  ok(eff > 0.3 && eff <= 1, 'effekten är mellan 0 och 1 och beror på teamets skicklighet (' + eff.toFixed(2) + ')');
+  let w = 0;
+  while (S.recipeLevel(GR) < 1 && w++ < 400) S.resWeek(GR);
+  ok(S.recipeLevel(GR) === 1 && Math.abs(w - S.RCP_LEVEL_PTS / eff) < 4 && GR.news.some((n) => n.key === 'news.recipeLevel1'), 'nivå 1 efter ' + w + ' veckor (en nivå tar minst ' + S.RCP_LEVEL_PTS + ' veckor) och en nyhet');
+  ok(S.focusKnown(GR, 'strategy') && GR.know.focus.strategy === undefined, 'nivå 1: idealfördelningen är känd för alla genrer utan att ha släppt något');
+  const startF = S.startFocus(GR, 'strategy', null);
+  ok(JSON.stringify(startF) === JSON.stringify(S.defaultFocus(GR, 'strategy', null)), 'nya projekt börjar med idealfördelningen');
+  ok(S.comboKnown(GR, 'fantasy', 'rpg') === 0, 'nivå 1 visar ännu inte matchningen');
+  while (S.recipeLevel(GR) < 2 && w++ < 2000) S.resWeek(GR);
+  ok(S.comboKnown(GR, 'fantasy', 'rpg') === Math.round(S.compatOf('fantasy', 'rpg')) && S.comboKnown(GR, 'fantasy', 'rpg', 'action') === 0, 'nivå 2: matchningen för alla teman och genrer, men ännu inte blandningar');
+  while (S.recipeLevel(GR) < 3 && w++ < 3000) S.resWeek(GR);
+  ok(S.comboKnown(GR, 'fantasy', 'rpg', 'adventure') === Math.round(S.compatOf('fantasy', 'rpg', 'adventure')), 'nivå 3: matchningen för genreblandningar');
+  {
+    const Jk = { scope: 'medium', crunch: false, genre: 'rpg', genre2: null };
+    const nov = { ...crew[0], gx: {} };
+    const GRk = JSON.parse(JSON.stringify(GR));
+    GRk.rcp = 0;
+    const d0 = S.teamOutput(GRk, Jk, 0.5, [nov]).d;
+    GRk.rcp = 5 * S.RCP_LEVEL_PTS;
+    const d5 = S.teamOutput(GRk, Jk, 0.5, [nov]).d;
+    GRk.rcp = S.RCP_MAX * S.RCP_LEVEL_PTS;
+    const d10 = S.teamOutput(GRk, Jk, 0.5, [nov]).d;
+    ok(d5 > d0 && d10 > d5 && Math.abs(d10 / d0 - S.knowMult(S.RCP_KNOW) / S.knowMult(0)) < 1e-9, 'receptkunskapen lär ut genrerna till hela studion: även en nybörjare får rutin (nivå 10: ' + S.RCP_KNOW + ' steg)');
+    ok(S.teamOutput(GRk, Jk, 0.5, [nov]).kavg === 0, 'rapportens rutin i genren räknar bara det teamet själv gjort');
+  }
+  const sc0 = S.scoreLegs({ r: 1, s0: 5, mCompat: 1, mFit: 1.02, mAud: 1 }, 'large');
+  ok(sc0.recipe === 100 && sc0.craft === 50, 'receptkunskapen ändrar inte betygsräkningen: ett perfekt recept ger ändå bara det teamet förmår');
+  // självgående team väljer bättre recept med nivån
+  GR.u.flags.autoTeams = true; GR.u.flags.sequels = true; GR.u.flags.genre2 = true; GR.u.scopes = ['small', 'medium', 'large'];
+  for (const x of ['rpg', 'action', 'adventure', 'strategy', 'simulation']) if (!GR.u.genres.includes(x)) GR.u.genres.push(x);
+  const Tg = S.createTeam(GR); for (const x of crew.slice(8)) S.addMember(GR, Tg.id, x.id);
+  GR.rcp = 0;
+  const cfgLow = S.planMission(GR, Tg, 'new');
+  GR.rcp = S.RCP_MAX * S.RCP_LEVEL_PTS;
+  const cfgTop = S.planMission(GR, Tg, 'new');
+  const cp = (c) => S.compatOf(c.topic, c.genre, c.genre2);
+  ok(cp(cfgTop) >= cp(cfgLow) - 1e-9 && cfgTop.genre2, 'på högsta receptnivån väljer ett självgående team minst lika bra recept, med genreblandning');
+  ok(JSON.stringify(S.planMission(GR, Tg, 'new')) === JSON.stringify(cfgTop), 'valet är detsamma varje gång (deterministiskt)');
+  GR.rcp = 3 * S.RCP_LEVEL_PTS;
+  ok(!S.planMission(GR, Tg, 'new').genre2, 'före nivå 4 provar teamet inga genreblandningar');
+  // sluta forska: skrivbord måste finnas, annars blir de kvar
+  ok(S.endRes(GR, T.id) === true && !T.role && T.members.every((id) => !GR.staff.find((x) => x.id === id).out), 'teamet kan sluta forska och är tillbaka vid skrivborden');
+  S.resWeek(GR);
+  ok(GR.resRp === 0 && GR.resTech === 0 && S.techLead(GR) === 1, 'utan teknikteam ger ingen extra forskning eller teknik');
+  // en gammal sparfil utan receptkunskap
+  const old = JSON.parse(JSON.stringify(GR)); delete old.rcp; delete old.resRp;
+  ok(S.recipeLevel(old) === 0 && S.rpPerWeek(old) > 0, 'en gammal sparfil utan receptnivå och teamforskning fungerar');
+}
+
 // ── Genrekunskap och betygets två ben ────────────────────────────
 {
   const GX = S.newGame({ studio: 'GX', seed: 21, difficulty: 'normal' });

@@ -12,7 +12,7 @@ import { PLATFORM, platTier, potential } from '../data/platforms.js';
 import { SCOPES, SCOPE_IDS, yearOf, yfOf, TICKS_PER_WEEK } from './const.js';
 import { SCOPE_TEMPO } from './tempo.js';
 import { buildJob, stepJob, releaseGame, platformOpen, expectedRevenue } from './dev.js';
-import { evaluate, compatOf, defaultFocus } from './score.js';
+import { evaluate, compatOf, defaultFocus, recipeLevel, focusKnown } from './score.js';
 import { labMult, spend } from './studio.js';
 import { randomTitle } from './market.js';
 import { liveGames, EXP_SCOPES } from './live.js';
@@ -85,18 +85,34 @@ function pickScope(G, n, platId, kind) {
   for (const id of opts) if (SCOPES[id].team <= n + 1) best = id;
   return best;
 }
-// Nytt spel: den kombination av tema och genre som passar bäst och inte upprepar de senaste spelen
+// Nytt spel: den kombination av tema och genre som passar bäst och inte upprepar de senaste spelen. Utan receptkunskap väljer teamet
+// med ett visst slarv (en slumpad del, men ur en hash och inte ur G.rng) som minskar för varje receptnivå (forskningsteamet) och
+// är borta på nivå 10. Från nivå 4 provar teamet också genreblandningar, som kan ge bättre matchning än en ensam genre.
 function pickCombo(G, team) {
   let best = null;
   let bv = -1e9;
   const recent = G.games.slice(-8);
+  const lvl = recipeLevel(G);
+  const slop = 0.5 * (1 - lvl / 10);
+  const blend = lvl >= 4 && G.u.flags.genre2;
+  const noise = (topic, genre, genre2) => slop * hash01(G, `combo:${topic}:${genre}${genre2 ? ':' + genre2 : ''}:${team.id}:${team.exp || 0}`);
   for (const topic of G.u.topics) {
     for (const genre of G.u.genres) {
       const rep = recent.filter((g) => g.topic === topic && g.genre === genre).length;
-      const v = compatOf(topic, genre) - 0.7 * rep + (G.know.focus[genre] ? 0.3 : 0) + 0.5 * hash01(G, `combo:${topic}:${genre}:${team.id}:${team.exp || 0}`);
+      const base = -0.7 * rep + (focusKnown(G, genre) ? 0.3 : 0);
+      const v = compatOf(topic, genre) + base + noise(topic, genre);
       if (v > bv) {
         bv = v;
         best = { topic, genre };
+      }
+      if (!blend) continue;
+      for (const genre2 of G.u.genres) {
+        if (genre2 === genre) continue;
+        const vb = compatOf(topic, genre, genre2) + base + noise(topic, genre, genre2);
+        if (vb > bv) {
+          bv = vb;
+          best = { topic, genre, genre2 };
+        }
       }
     }
   }
@@ -163,7 +179,7 @@ export function startMission(G, id, kind, baseId) {
   J.autoMult = 0.82 + 0.02 * sp + 0.12 * Math.min(1, leadScore(lead) / (4 * skillCap(G)));
   J.autoBug = 1 - 0.02 * sp;
   J.crunch = false;
-  if (sp >= 2 && !G.know.focus[J.genre]) J.focus = defaultFocus(G, J.genre, J.genre2);
+  if (sp >= 2 && !focusKnown(G, J.genre)) J.focus = defaultFocus(G, J.genre, J.genre2);
   team.mission = { kind, base: baseId || null, J, t0: G.t };
   for (const s of mem) s.away = true;
   return true;

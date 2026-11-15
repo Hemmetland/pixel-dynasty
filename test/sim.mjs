@@ -86,6 +86,15 @@ const hwtArg = args.find((x) => x === '--hwteam' || x.startsWith('--hwteam='));
 const hwtOn = !!hwtArg;
 const hwtN = +(hwtArg && hwtArg.split('=')[1]) || 3;
 const hwtLines = opt('hwtl', 'pc').split(',');
+// --res=N: när Forskningsteam finns bildar botten ett team av de N senast anställda (utan grundaren) för varje inriktning i --resf
+// (standard recipe,tech; ordningen avgör vilken som får personal först)
+const resArg = args.find((x) => x === '--res' || x.startsWith('--res='));
+const resOn = !!resArg;
+const resN = +(resArg && resArg.split('=')[1]) || 4;
+const resFoci = opt('resf', 'recipe,tech').split(',');
+// --resw=weak: teamet tas ur de svagaste i design och teknik (standard: de senast anställda)
+const resWeak = opt('resw', 'new') === 'weak';
+const resHire = opt('resw', 'new') === 'hire';
 // --bd: skriv ut årets pengar per kategori (för balansarbete)
 const bd = args.includes('--bd');
 const acc = {};
@@ -327,6 +336,35 @@ function manage(G) {
       if (typeof tm === 'string') break;
       for (const x of free.sort((p, q) => q.hired - p.hired).slice(0, opsN)) S.addMember(G, tm.id, x.id);
       S.assignOps(G, tm.id, g.id);
+    }
+  }
+  // forskningsteam: ett team per inriktning
+  if (resOn && G.u.flags.resTeams) {
+    for (const f of resFoci) {
+      if (S.resTeamOf(G, f)) continue;
+      if (resHire) {
+        // nyanställda till teamet i stället för ur den vanliga personalen (en i taget: ett skrivbord måste vara ledigt)
+        let tm = S.teamsOf(G).find((x) => !x.role && x.resFor === f);
+        if (!tm && S.seatCap(G) - S.outCount(G) >= resN) {
+          tm = S.createTeam(G);
+          if (typeof tm === 'string') break;
+          tm.resFor = f;
+        }
+        if (!tm) continue;
+        if (tm.members.length < resN) {
+          const burn = S.payroll(G) + S.rentOf(G);
+          const c = G.candidates.slice().sort((a, b) => (b.design + b.tech) - (a.design + a.tech))[0];
+          if (c && S.canHire(G) && G.money > c.fee + (burn + c.salary) * 8 + 5000 && S.hire(G, c.id) === true) S.addMember(G, tm.id, c.id);
+        }
+        if (tm.members.length >= resN) S.assignRes(G, tm.id, f);
+        continue;
+      }
+      const free = G.staff.filter((x) => !x.isFounder && !S.teamOfStaff(G, x.id));
+      if (free.length < resN + 2 || S.seatCap(G) - S.outCount(G) < resN) break;
+      const tm = S.createTeam(G);
+      if (typeof tm === 'string') break;
+      for (const x of free.sort(resWeak ? (p, q) => p.design + p.tech - (q.design + q.tech) : (p, q) => q.hired - p.hired).slice(0, resN)) S.addMember(G, tm.id, x.id);
+      S.assignRes(G, tm.id, f);
     }
   }
   // porteringar: bästa väntade betyg gånger plattformens storlek, bara för spel med betyg 7+
@@ -585,6 +623,10 @@ if (teamsOn) {
 if (hwtOn && G.hw) {
   const ht = S.teamsOf(G).filter((x) => x.role === 'hw');
   console.log(`hw teams: ${ht.length}, ${ht.map((x) => x.target + ' gen ' + Math.max(0, ...G.hw.products.filter((p) => p.type === x.target).map((p) => p.gen)) + ' rutin ' + S.hwRutin(x)).join(', ')}, team products ${G.hw.products.filter((p) => p.team).length}, revs ${G.hw.products.reduce((a, p) => a + (p.revs || []).length, 0)}`);
+}
+if (resOn) {
+  const rt = S.teamsOf(G).filter((x) => x.role === 'res');
+  console.log(`res teams: ${rt.length}, ${rt.map((x) => x.target + ' rutin ' + S.resRutin(x) + ' eff ' + Math.round(S.resEff(G, x) * 100)).join(', ')}, recipe level ${S.recipeLevel(G)} (${Math.round(G.rcp || 0)} pts), rp/week extra ${Math.round((G.resRp || 0) * S.TICKS_PER_WEEK)}`);
 }
 if (opsOn) {
   const ot = S.teamsOf(G).filter((x) => x.role === 'ops');

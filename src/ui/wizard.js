@@ -8,7 +8,7 @@ import { PHASES } from '../data/categories.js';
 import { PLATFORMS, PLATFORM, potential, platTier, techMult, pcGeneration } from '../data/platforms.js';
 import { SCOPES, SCOPE_IDS, AUDIENCES, yearOf, yfOf, engineMult } from '../sim/const.js';
 import { startProject, platformOpen, teamOutput, baseHype } from '../sim/dev.js';
-import { phaseCats, idealFocus, normFocus, techWeight, platFit, startFocus, seqFatigue, vrFit } from '../sim/score.js';
+import { phaseCats, idealFocus, normFocus, techWeight, platFit, startFocus, seqFatigue, vrFit, comboKnown, focusKnown } from '../sim/score.js';
 import { franchiseMult } from '../sim/sales.js';
 import { seriesHype, rootOf } from '../sim/franchise.js';
 import { buyLicense, licenseCost } from '../sim/actions.js';
@@ -165,7 +165,7 @@ function trendBadge(G, kind, id) {
 function stepConcept(G) {
   const topics = TOPICS.filter((x) => G.u.topics.includes(x.id));
   const genres = GENRES.filter((x) => G.u.genres.includes(x.id));
-  const known = (tp, ge) => G.know.combos[tp + '|' + ge];
+  const known = (tp, ge) => comboKnown(G, tp, ge);
   const tiles = topics
     .map((tp) => {
       let dot = '';
@@ -192,7 +192,9 @@ function stepConcept(G) {
   let compat = '';
   if (W.topic && W.genre) {
     const k = known(W.topic, W.genre);
-    if (k && !W.genre2) compat = `<div class="compat" style="--c:${COMPAT_COL[Math.round(k)]}"><span class="pips">${[1, 2, 3, 4].map((i) => `<i class="${i <= Math.round(k) ? 'on' : ''}"></i>`).join('')}</span><b>${t('compat.' + Math.round(k))}</b><span class="muted">${t('wiz.compatKnown')}</span></div>`;
+    const kb = W.genre2 ? comboKnown(G, W.topic, W.genre, W.genre2) : 0;
+    if (kb) compat = `<div class="compat" style="--c:${COMPAT_COL[Math.round(kb)]}"><span class="pips">${[1, 2, 3, 4].map((i) => `<i class="${i <= Math.round(kb) ? 'on' : ''}"></i>`).join('')}</span><b>${t('compat.' + Math.round(kb))}</b><span class="muted">${t('wiz.compatBook')}</span></div>`;
+    else if (k && !W.genre2) compat = `<div class="compat" style="--c:${COMPAT_COL[Math.round(k)]}"><span class="pips">${[1, 2, 3, 4].map((i) => `<i class="${i <= Math.round(k) ? 'on' : ''}"></i>`).join('')}</span><b>${t('compat.' + Math.round(k))}</b><span class="muted">${t(G.know.combos[W.topic + '|' + W.genre] ? 'wiz.compatKnown' : 'wiz.compatBook')}</span></div>`;
     else if (W.genre2) {
       compat = `<div class="compat unk"><span class="muted">${t('wiz.compatBlend')}</span></div>`;
     } else compat = `<div class="compat unk">${icon('search')}<span class="muted">${t('wiz.compatUnknown')}</span></div>`;
@@ -270,7 +272,7 @@ function stepMarket(G) {
 
 function stepFocus(G) {
   const cats = phaseCats(G, 0);
-  const ideal = G.know.focus[W.genre] ? idealFocus(G, W.genre, 0, W.genre2) : null;
+  const ideal = focusKnown(G, W.genre) ? idealFocus(G, W.genre, 0, W.genre2) : null;
   return `
     <div class="wz-sec">
       <div class="lbl">${t(PHASES[0].name.en ? 'dev.p1' : 'dev.p1')} · ${t('wiz.focusTitle')}</div>
@@ -320,7 +322,7 @@ function summary(G) {
 // Receptet (tema, genrer, fokus, målgrupp) är det andra benet av betyget: det visar vad du vet om matchningen innan du startar
 function recipeBox(G) {
   if (!W.topic || !W.genre) return '';
-  const k = !W.genre2 ? G.know.combos[W.topic + '|' + W.genre] : null;
+  const k = comboKnown(G, W.topic, W.genre, W.genre2);
   const col = k ? COMPAT_COL[Math.round(k)] : 'var(--muted)';
   const txt = k ? t('compat.' + Math.round(k)) : t(W.genre2 ? 'wiz.recipeBlend' : 'wiz.recipeUnk');
   return `<div class="ready" style="--c:${col}"><div class="row"><span class="lbl">${t('wiz.recipe')}</span><span class="sp"></span><b style="color:${col}">${txt}</b></div><div class="hint" style="margin-top:6px">${t('wiz.recipeHelp')}</div></div>`;
@@ -358,7 +360,7 @@ regWin({
     });
     if (W.step === 2) {
       const cats = phaseCats(G, 0);
-      const ideal = G.know.focus[W.genre] ? idealFocus(G, W.genre, 0, W.genre2) : null;
+      const ideal = focusKnown(G, W.genre) ? idealFocus(G, W.genre, 0, W.genre2) : null;
       bindFocus(el, cats, W.focus, ideal, 'wf', () => {});
     }
   },

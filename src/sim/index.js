@@ -6,6 +6,7 @@ export * from './teams.js';
 export * from './autoteam.js';
 export * from './opsteam.js';
 export * from './hwteam.js';
+export * from './resteam.js';
 export * from './studio.js';
 export * from './research.js';
 export * from './dev.js';

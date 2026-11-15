@@ -23,7 +23,7 @@ const DYN = [
   'menu.g.', 'ng.hair.',
   'arch.', 'compat.', 'diff.', 'expo.d', 'hl.', 'set.mstyle.', 'set.pace.', 'pn.req.', 'era.h.', 'era.b.', 'expo.i.', 'expo.n.', 'expo.o', 'fin.c.', 'help.', 'hw.arch.', 'hw.cls.', 'hw.clsTip.', 'hw.pd.', 'hw.pk.', 'hw.q.', 'hw.qTip.',
   'hw.rev.', 'hw.spec.', 'news.hwRev', 'hw.tab.', 'hw.type.', 'hw.typeD.', 'ins.', 'ins.audience.', 'ins.bugs.', 'ins.compat.', 'ins.focus.', 'ins.platform.', 'ins.vr.', 'mkt.tab.', 'news.tab.', 'skill.',
-  'staff.train.', 'tut.', 'dist.deal.', 'tm.err.', 'tm.mis.', 'tm.hw.st.', 'tm.role.', 'legs.', 'legs.adv.', 'ins.know.',
+  'staff.train.', 'tut.', 'dist.deal.', 'tm.err.', 'tm.mis.', 'tm.hw.st.', 'tm.role.', 'legs.', 'legs.adv.', 'ins.know.', 'tm.res.on.', 'tm.res.f.', 'tm.res.l', 'news.recipeLevel',
 ];
 if (process.argv.includes('--missing')) {
   const { STRINGS } = await import('../src/data/strings.js');

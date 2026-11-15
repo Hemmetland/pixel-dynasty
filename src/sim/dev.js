@@ -8,9 +8,9 @@ import { MKT } from '../data/research.js';
 import { SCOPES, yearOf, yfOf, moneyScale, engineMult, TICKS_PER_WEEK } from './const.js';
 import { SCOPE_TEMPO } from './tempo.js';
 import { DIFFICULTY } from './state.js';
-import { workers, moodMult, fatigueMult, serviceGames, knowOf, knowMult, learnGenre } from './people.js';
-import { bugMult, qaFixMult, mktCostMult, mktHypeMult, serverMult, labMult, spend } from './studio.js';
-import { phaseCats, normFocus, startFocus, evaluate, compatOf, parPerTick, isNovel } from './score.js';
+import { workers, moodMult, fatigueMult, serviceGames, knowOf, knowMult, learnGenre, GX_MAX } from './people.js';
+import { bugMult, qaFixMult, mktCostMult, mktHypeMult, serverMult, techLead, labMult, spend } from './studio.js';
+import { phaseCats, normFocus, startFocus, evaluate, compatOf, parPerTick, isNovel, recipeKnow } from './score.js';
 import { startSales, forecast } from './sales.js';
 import { storeRelease } from './store.js';
 import { groupRelease } from './group.js';
@@ -154,6 +154,7 @@ export function teamOutput(G, J, mixD, crew) {
   let t_ = 0;
   let fix = 0;
   let kx = 0;
+  const know0 = J.genre ? recipeKnow(G) : 0;
   const hasMentor = ws.some((w) => w.trait === 'mentor');
   ws.forEach((w, i) => {
     // Fler händer ger avtagande nytta (samordning) och mindre utanför projektets idealstorlek.
@@ -169,7 +170,7 @@ export function teamOutput(G, J, mixD, crew) {
     if (J.genre) {
       const k = knowOf(w, J.genre, J.genre2);
       kx += k;
-      eff *= knowMult(k);
+      eff *= knowMult(Math.min(GX_MAX, k + know0));
     }
     d += w.design * eff * (0.35 + 1.3 * mixD);
     t_ += w.tech * eff * (0.35 + 1.3 * (1 - mixD));
@@ -190,7 +191,7 @@ export function stepJob(G, J, ws, auto) {
   const yf = yfOf(G.t);
   const eng = engineOf(G, J);
   const opt = ownPlatOpt(G, J);
-  const em = engineMult(eng, yf, engineCap(G, J)) * serverMult(G);
+  const em = engineMult(eng, yf, engineCap(G, J)) * serverMult(G) * techLead(G);
   if (J.phase < 3) {
     const cats = phaseCats(G, J.phase);
     const foc = J.focus[J.phase];

@@ -50,7 +50,15 @@ export function defaultFocus(G, genre, genre2) {
 }
 // Startfördelningen för ett nytt projekt: genrens ideal först när du har lärt dig det (släppt ett spel i genren),
 // annars jämnt fördelat. Att hitta idealet är en del av spelet, inte en gratis förinställning.
-export const focusKnown = (G, genre) => !!G.know.focus[genre];
+export const RCP_MAX = 10;
+export const RCP_LEVEL_PTS = 60; // veckor med full effekt per receptnivå (forskningsteamet i resteam.js)
+// Receptnivån: studions kunskap om vad som passar ihop, uppbyggd av ett forskningsteam med inriktningen Recept (G.rcp)
+export const recipeLevel = (G) => Math.min(RCP_MAX, Math.floor((G.rcp || 0) / RCP_LEVEL_PTS));
+// Receptkunskapen lär ut genrerna till hela studion: varje receptnivå ger alla medarbetare RCP_KNOW / 10 steg extra rutin i alla genrer
+// (högst GX_MAX tillsammans med den egna), så en ny medarbetare eller en ny genre inte börjar helt från noll
+export const RCP_KNOW = 3;
+export const recipeKnow = (G) => (RCP_KNOW * recipeLevel(G)) / RCP_MAX;
+export const focusKnown = (G, genre) => !!G.know.focus[genre] || recipeLevel(G) >= 1;
 export function startFocus(G, genre, genre2) {
   return focusKnown(G, genre) ? defaultFocus(G, genre, genre2) : [0, 1, 2].map((p) => normFocus(phaseCats(G, p), {}));
 }
@@ -105,6 +113,12 @@ export function compatOf(topic, genre, genre2) {
   // ett riktigt bra genrepar kan lyfta över vad en ensam genre når
   const ps = pairScore(genre, genre2);
   return clamp(c1 * 0.62 + c2 * 0.38 + ps * 0.35, 1, ps > 0 ? 4.4 : 4);
+}
+// Matchningen mellan tema och genre (1–4) om studion känner till den: från ett släppt spel, och från nivå 2 för alla (blandningar från nivå 3)
+export function comboKnown(G, topic, genre, genre2) {
+  const lvl = recipeLevel(G);
+  if (genre2) return lvl >= 3 ? Math.round(compatOf(topic, genre, genre2)) : 0;
+  return G.know.combos[topic + '|' + genre] || (lvl >= 2 ? Math.round(compatOf(topic, genre)) : 0);
 }
 export function audFit(topic, genre, audience, genre2) {
   const m = TOPIC[topic].mature + GENRE[genre].mature * 0.5 + (genre2 ? GENRE[genre2].mature * 0.25 : 0);

@@ -4,10 +4,12 @@ import { avatarImg } from '../render/people.js';
 import { SPECS, TRAITS, hire, fire, raise, train, canTrain, trainCost, trainWeeks, trainingSlots, trainingNow, skillCap, canHire, SKILLS, payroll, workers, growWeeksLeft, GROW_XP, bestGenres, genreKnow, GX_MAX, GX_STEP } from '../sim/people.js';
 import { GENRE, GENRES } from '../data/genres.js';
 import { TEAM_MAX, TEAM_SIZE, holds, endRole, teamsOf, teamName, membersOf, teamOfStaff, teamsOpen, createTeam, disbandTeam, addMember, removeMember, courseInfo, canTrainTeam, trainTeam, teamAvg, leadOf, setLead } from '../sim/teams.js';
-import { capacity, seated, outCount, seatCap } from '../sim/studio.js';
+import { capacity, seated, outCount, seatCap, RES_TECH } from '../sim/studio.js';
 import { autoOpen, canMission, eligibleBases, missionQuote, startMission, cancelMission, missionProgress, missionWeeksLeft, samspel, SAMSPEL_MAX, MISSION_KINDS, MISSION_MIN } from '../sim/autoteam.js';
 import { opsOpen, opsInfo, opsNeed, canOps, assignOps, RUTIN_MAX } from '../sim/opsteam.js';
 import { hwTeamOpen, hwInfo, hwLines, canHwTeam, assignHw, HW_NEED } from '../sim/hwteam.js';
+import { resOpen, resInfo, canRes, assignRes, RES_FOCUS, RES_NEED, RES_RP } from '../sim/resteam.js';
+import { RCP_MAX, recipeKnow } from '../sim/score.js';
 import { HW_TEAM_MT, HW_TEAM_COST, HW_TEAM_TIME } from '../sim/hardware.js';
 import { liveGames, TM_DECAY, TM_OUTAGE, TM_COST, TM_RENO } from '../sim/live.js';
 import { SCOPES } from '../sim/const.js';
@@ -115,7 +117,7 @@ function crew(G, team) {
     ${mem.length < TEAM_SIZE ? `<div class="row" style="margin-top:8px"><button class="btn sm ${S.addFor === team.id ? 'on' : ''}" data-act="tm-addopen" data-tid="${team.id}">${icon('plus')}${t('tm.add')}</button></div>` : ''}${picker}
     ${mem.length ? `<div class="lbl" style="margin:12px 0 0">${t('tm.avg')}</div>${skills(G, teamAvg(G, team))}${teamGx(mem)}` : ''}
     ${roleBlock(G, team)}
-    ${team.role === 'ops' ? opsBlock(G, team) : team.role === 'hw' ? hwBlock(G, team) : `<div style="margin-top:12px;padding-top:10px;border-top:1px dashed var(--line)"><div class="lbl" style="margin:0 0 6px">${t('tm.course')}</div>${course}</div>${missionBlock(G, team)}`}
+    ${team.role === 'ops' ? opsBlock(G, team) : team.role === 'hw' ? hwBlock(G, team) : team.role === 'res' ? resBlock(G, team) : `<div style="margin-top:12px;padding-top:10px;border-top:1px dashed var(--line)"><div class="lbl" style="margin:0 0 6px">${t('tm.course')}</div>${course}</div>${missionBlock(G, team)}`}
   </div>`;
 }
 
@@ -123,7 +125,8 @@ function crew(G, team) {
 function roleBlock(G, team) {
   const showOps = opsOpen(G) || team.role === 'ops';
   const showHw = hwTeamOpen(G) || team.role === 'hw';
-  if (!showOps && !showHw) return '';
+  const showRes = resOpen(G) || team.role === 'res';
+  if (!showOps && !showHw && !showRes) return '';
   const picking = S.pick && S.pick.tid === team.id ? S.pick.kind : null;
   let pick = '';
   if (picking === 'ops') {
@@ -153,10 +156,17 @@ function roleBlock(G, team) {
         : `<span class="faint" style="font-size:12px">${t('tm.hw.none')}</span>`
     }</div>`;
   }
+  else if (picking === 'res') {
+    pick = `<div class="lbl" style="margin:10px 0 4px">${t('tm.res.pick')}</div><div class="tm-mem">${RES_FOCUS.map((f) => {
+      const ok = canRes(G, team, f);
+      const cur = team.role === 'res' && team.target === f;
+      return `<button class="tm-chip add ${cur ? 'on' : ''}" data-act="tm-pickres" data-tid="${team.id}" data-k="${f}" ${ok === true || cur ? '' : 'disabled'} data-tip="${esc(ok === true ? t('tm.res.f.' + f + 'Tip') : t('tm.err.' + ok))}"><span class="ell">${t('tm.res.f.' + f)}</span><b class="num">${icon('user')}${RES_NEED[f]}</b></button>`;
+    }).join('')}</div>`;
+  }
   const none = !holds(team);
   const btn = (k, ic, on, tip, dis = '') => `<button class="btn sm ${on ? 'on' : ''}" data-act="tm-role" data-tid="${team.id}" data-k="${k}" ${dis} ${tip ? `data-tip="${esc(t(tip))}"` : ''}>${icon(ic)}${t('tm.role.' + k)}</button>`;
   return `<div style="margin-top:12px;padding-top:10px;border-top:1px dashed var(--line)"><div class="lbl" style="margin:0 0 6px">${t('tm.role')}</div>
-    <div class="row wrap" style="gap:6px">${btn('game', 'gamepad', none, '', team.mission && !none ? 'disabled' : '')}${showOps ? btn('ops', 'globe', team.role === 'ops', 'tm.role.opsTip') : ''}${showHw ? btn('hw', 'cpu', team.role === 'hw', 'tm.role.hwTip') : ''}</div>${pick}</div>`;
+    <div class="row wrap" style="gap:6px">${btn('game', 'gamepad', none, '', team.mission && !none ? 'disabled' : '')}${showOps ? btn('ops', 'globe', team.role === 'ops', 'tm.role.opsTip') : ''}${showHw ? btn('hw', 'cpu', team.role === 'hw', 'tm.role.hwTip') : ''}${showRes ? btn('res', 'flask', team.role === 'res', 'tm.role.resTip') : ''}</div>${pick}</div>`;
 }
 // Ett produktteam: vilken linje, hur väl det räcker till och vad det ger
 function hwBlock(G, team) {
@@ -177,6 +187,31 @@ function hwBlock(G, team) {
       <div class="row" style="margin-top:8px"><span class="sp"></span><button class="btn sm" data-act="tm-endrole" data-tid="${team.id}" data-tip="${esc(t('tm.ops.endTip'))}">${t('tm.hw.end')}</button></div></div>
     ${toggleRow('tm-hwrev', team.id, team.autoRev !== false, t('tm.hw.autorev'), t('tm.hw.autorevHelp'))}
     ${toggleRow('tm-repeat', team.id, !!team.repeat, t('tm.hw.repeat'), t('tm.hw.repeatHelp'))}</div>`;
+}
+// Ett forskningsteam: inriktning, hur väl det räcker till och vad det ger (teknik: forskningspoäng, recept: receptnivån)
+function resBlock(G, team) {
+  const head = `<div class="lbl" style="margin:12px 0 6px">${t('tm.role.res')}</div>`;
+  const inf = resInfo(G, team);
+  if (!inf) return `<div>${head}<div class="hint" style="margin:0">${icon('info')} ${t('tm.err.resFocus')}</div></div>`;
+  const pct = Math.round(inf.eff * 100);
+  let gives;
+  if (inf.focus === 'tech') gives = `<div class="muted" style="font-size:12px;margin-top:6px">${t('tm.res.tech', { n: Math.round(RES_TECH * inf.eff * 100 * 10) / 10 })} ${t('tm.res.rp', { rp: Math.round(inf.rp), more: Math.round(RES_RP * inf.eff * 100) })}</div>`;
+  else {
+    const lv = inf.level;
+    const mark = (n, txt) => `<div class="faint" style="font-size:12px;margin-top:2px;${lv >= n ? 'color:var(--good)' : ''}">${lv >= n ? icon('check') : icon('lock')} ${txt}</div>`;
+    const more = Math.max(0, lv - 4);
+    gives = `<div style="margin-top:8px">${bar((lv / RCP_MAX) * 100, 'var(--rp)')}<div class="row" style="margin-top:4px"><b>${t('tm.res.level', { n: lv, m: RCP_MAX })}</b></div>
+      <div class="faint" style="font-size:12px;margin-top:2px">${lv >= RCP_MAX ? t('tm.res.max') : inf.weeksLeft ? t('tm.res.next', { w: inf.weeksLeft }) : ''}</div>
+      <div class="muted" style="font-size:12px;margin-top:2px">${t('tm.res.know', { n: Math.round(recipeKnow(G) * 10) / 10 })}</div>
+      <div style="margin-top:6px">${mark(1, t('tm.res.l1'))}${mark(2, t('tm.res.l2'))}${mark(3, t('tm.res.l3'))}${mark(4, t('tm.res.l4'))}${mark(5, t('tm.res.l5') + (more ? ` · ${more}/6` : ''))}</div></div>`;
+  }
+  return `<div>${head}<div class="hint" style="margin:0 0 8px">${t('tm.res.help')}</div>
+    <div class="sf-spot-row on" style="display:block"><div class="row" style="gap:8px"><b class="ell" style="flex:1;min-width:0">${t('tm.res.on.' + inf.focus)}</b><span class="tag" style="--c:var(--good)" data-tip="${esc(t('tm.ops.effTip'))}">${t('tm.ops.eff', { n: pct })}</span></div>
+      <div style="margin:8px 0 4px">${bar(pct, 'var(--good)')}</div>
+      <div class="faint" style="font-size:12px">${t('tm.res.need', { need: inf.need, n: inf.n })}</div>
+      <div class="faint" style="font-size:12px;margin-top:2px" data-tip="${esc(t('tm.ops.rutinTip'))}">${t('tm.ops.rutin', { n: inf.rutin, m: RUTIN_MAX })}</div>
+      ${gives}
+      <div class="row" style="margin-top:8px"><span class="sp"></span><button class="btn sm" data-act="tm-endrole" data-tid="${team.id}" data-tip="${esc(t('tm.ops.endTip'))}">${t('tm.res.end')}</button></div></div></div>`;
 }
 // Ett driftteam: vilket spel, hur väl det räcker till och vad det ger
 function opsBlock(G, team) {
@@ -465,6 +500,14 @@ act('tm-pickgame', (el) => {
 });
 act('tm-pickline', (el) => {
   const r = assignHw(UI.app.G, +el.dataset.tid, el.dataset.k);
+  if (r === true) {
+    sfx.play('research');
+    S.pick = null;
+  } else errToast(r);
+  UI.refresh();
+});
+act('tm-pickres', (el) => {
+  const r = assignRes(UI.app.G, +el.dataset.tid, el.dataset.k);
   if (r === true) {
     sfx.play('research');
     S.pick = null;
