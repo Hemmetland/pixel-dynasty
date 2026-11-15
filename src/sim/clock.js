@@ -91,7 +91,12 @@ function weekly(G) {
   }
   if (d.month === 5 && d.week === 1) expoOffer(G);
   if (d.month === 8 && d.week === 3) galaWatch(G);
-  if (d.month === 11 && d.week === 3) runAwards(G);
+  if (d.month === 11 && d.week === 3) {
+    // galan hålls som förut, men ceremonin visas först när året bokförs (en paus i stället för två med en veckas mellanrum)
+    runAwards(G);
+    const i = G.pending.findIndex((x) => x.type === 'award');
+    if (i >= 0) G.galaHold = (G.galaHold || []).concat(G.pending.splice(i, 1));
+  }
   if (G.t % WEEKS_PER_MONTH === 0) monthly(G, d);
 }
 
@@ -151,6 +156,7 @@ function monthly(G, d) {
     G.yr = {};
     G.yrT = null;
     rankYear(G);
+    if (G.galaHold) G.pending.push(...G.galaHold.splice(0));
     G.pending.push({ type: 'year', id: G.uid++, year: yearOf(G.t) - 1 });
   }
   if (G.t === 48 * 41 && !G.flags.ending) {

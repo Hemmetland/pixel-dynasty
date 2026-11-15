@@ -2966,5 +2966,38 @@ ok(!bad.length, `äldre sparning utan ett av ${paths.length} fält går att spel
   ok(!S.overloaded(W), 'klockan: ledningen är inte överbelastad');
 }
 
+// galan visas tillsammans med årsrapporten: samma paus, galan först, och inget stannar i galaveckan
+{
+  const GH = S.newGame({ studio: 'Hold', seed: 57 }); S.makeCompetitors(GH); S.initWorld(GH);
+  const rel = (t, score, total) => { const r = { id: GH.uid++, t, comp: 1, studio: 'X', color: '#fff', title: { sv: 'R' + score, en: 'R' + score }, score, total, platform: 'pc', genre: 'rpg', topic: 'fantasy', scope: 'small', price: 10, tail: 1 }; GH.market.releases.push(r); return r; };
+  GH.t = 48 * 3 + 30;
+  for (const sc of [5, 5.5, 6, 6.5]) rel(48 * 3 + 10, sc, 1e5);
+  GH.games.push({ id: GH.uid++, title: 'Mästerverket', t: GH.t - 5, score: 9.9, topic: 'fantasy', genre: 'rpg', platform: 'pc', scope: 'small', units: 1e9, total: 1e10, priceAt: 10, parts: { rd: 4, rt: 4 }, weekly: [], ports: [] });
+  const seen = [];
+  while (GH.t < 48 * 4 + 2) { GH.money = Math.max(GH.money, 1e9); S.stepTick(GH); if (GH.pending.length) { seen.push({ t: GH.t, types: GH.pending.map((p) => p.type) }); GH.pending.length = 0; } }
+  const aw = seen.filter((x) => x.types.includes('award'));
+  const yr = seen.find((x) => x.types.includes('year'));
+  ok(GH.awards.length > 0 && aw.length === 1 && yr && aw[0].t === yr.t && yr.t === 48 * 4 && yr.types.indexOf('award') < yr.types.indexOf('year'), 'galan visas när året bokförs, före årsrapporten, i samma paus (' + seen.map((x) => x.t + ':' + x.types.join('+')).join(' ') + ')');
+  ok(!seen.some((x) => x.t === 48 * 4 - 1 && x.types.includes('award')) && !(GH.galaHold || []).length, 'ingen paus i galaveckan och inget blir kvar');
+}
+
+// många likadana nyheter på kort tid: de två första visas som toast, resten står bara i krönikan
+{
+  const GN = S.newGame({ studio: 'Burst', seed: 61 });
+  const { on } = await import('../src/core/bus.js');
+  const got = [];
+  on('toast', (n) => got.push(n.key + ':' + n.kind));
+  GN.t = 100;
+  for (let i = 0; i < 5; i++) S.note(GN, 'news.port', { title: 'T' + i, plat: 'pc', v: 7 }, 'info');
+  ok(got.filter((x) => x === 'news.port:info').length === S.BURST_MAX && GN.news.filter((n) => n.key === 'news.port').length === 5, 'fem likadana nyheter på en vecka: ' + S.BURST_MAX + ' toast, alla i krönikan');
+  S.note(GN, 'news.lowCash', {}, 'bad'); S.note(GN, 'news.lowCash', {}, 'bad'); S.note(GN, 'news.lowCash', {}, 'bad');
+  ok(got.filter((x) => x === 'news.lowCash:bad').length === 3, 'varningar visas alltid');
+  S.note(GN, 'news.office', { n: 1 }, 'good', false, true); S.note(GN, 'news.office', { n: 2 }, 'good', false, true); S.note(GN, 'news.office', { n: 3 }, 'good', false, true);
+  ok(got.filter((x) => x === 'news.office:good').length === 3, 'stora nyheter visas alltid');
+  GN.t += S.BURST_WEEKS + 1;
+  S.note(GN, 'news.port', { title: 'Sen', plat: 'pc', v: 7 }, 'info');
+  ok(got.filter((x) => x === 'news.port:info').length === S.BURST_MAX + 1, 'efter ' + S.BURST_WEEKS + ' veckor visas nästa igen');
+}
+
 console.log(fails ? `\n${fails} FEL` : '\nAlla tester gick bra');
 process.exit(fails ? 1 : 0);

@@ -27,6 +27,18 @@ export const unreadNews = (G) => {
   }
   return n;
 };
+// Samma sorts nyhet många gånger på kort tid (många team som blir klara samma månad): de BURST_MAX första visas som toast, resten
+// står bara i krönikan. Varningar och stora nyheter visas alltid.
+export const BURST_WEEKS = 4;
+export const BURST_MAX = 2;
+const burst = (G, key, item) => {
+  let n = 0;
+  for (const x of G.news) {
+    if (G.t - x.t > BURST_WEEKS) break;
+    if (x !== item && x.key === key) n++;
+  }
+  return n >= BURST_MAX;
+};
 // big: tvinga fram (true) eller stäng av (false) flaggan; utelämnad avgörs den av nyheten (se IMPORTANT och milstolpar)
 export function note(G, key, vars = {}, kind = 'info', silent = false, big = undefined) {
   const item = { t: G.t, key, vars, kind };
@@ -42,7 +54,7 @@ export function note(G, key, vars = {}, kind = 'info', silent = false, big = und
   let isBig = big ?? (IMPORTANT.has(key) || kind === 'award');
   for (const m of MILESTONES[key] || []) if (!m.if || m.if(vars, storyOf(G), G)) if (milestone(G, m.as || key, m.vars ? m.vars(vars, G) : vars, !!m.once) && big !== false) isBig = true;
   if (isBig) item.big = 1;
-  if (!silent) emit('toast', { key, vars, kind, big: isBig, item });
+  if (!silent && (isBig || kind === 'bad' || !burst(G, key, item))) emit('toast', { key, vars, kind, big: isBig, item });
   return item;
 }
 

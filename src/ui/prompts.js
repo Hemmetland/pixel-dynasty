@@ -417,6 +417,8 @@ function awardPrompt(app, G, p, finish) {
     'xl',
   );
   music.setMood?.('award');
+  app.scene.fireworks(7);
+  app.scene.confetti(160);
   sfx.play('fanfare');
 }
 

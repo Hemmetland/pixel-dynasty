@@ -222,10 +222,6 @@ export const app = {
       checkAchievements(this.G);
       checkGoals(this.G);
     });
-    on('awards', () => {
-      sc.fireworks(7);
-      sc.confetti(160);
-    });
     on('phase', () => sfx.play('phase'));
     on('compRelease', (r) => {
       if (this.mode !== 'play' || r.score < 8.6) return;
