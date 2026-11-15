@@ -1909,6 +1909,8 @@ export const STRINGS = {
   'ls.engine': ['Motorrummet', 'The engine room'],
   'ls.engine.on': ['Bygger motorn {name}', 'Building the engine {name}'],
   'ls.engine.team': ['Motorteamet {team} väntar på nästa bygge', 'Engine team {team} waits for the next build'],
+  'ls.bank': ['Ekonomiavdelningen räknar pengar', 'The finance department is counting money'],
+  'ls.bank.red': ['Kassan är tom, dags att rädda ekonomin', 'The cash is gone, time to save the finances'],
   'ls.live': ['Servrarna går', 'The servers are running'],
   'ls.live.on': ['{n} spelare är inne i världen', '{n} players are in the world'],
   'ls.live.ops': ['Driftteamet håller koll på servrarna', 'The ops team is watching the servers'],
