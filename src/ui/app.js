@@ -28,6 +28,8 @@ const CARD_BOTTOM = 290;
 // händelsekortets färg och rubrik efter nyhetens slag, och vilket fönster Visa-knappen öppnar
 const EV_KIND = { award: 'award', bad: 'warning', platform: 'platform' };
 // Stora stunder som inte har någon egen ruta får ett litet firande: ljud, konfetti, ibland fyrverkerier, och personalen jublar
+// händelse i livet-flödet -> pratbubbla över personen den gäller (de som redan visas av float, som bugg och snilleblixt, står kvar där)
+const LIFE_EMOTE = { fix: 'heart', tired: 'zzz', hired: 'heart', anniv: 'heart' };
 const CHEER = {
   rankTop: { sfx: 'fanfare', conf: 90, fw: 4, cele: 4 },
   liveLaunch: { sfx: 'launch', conf: 70, fw: 3, cele: 3.5 },
@@ -172,6 +174,19 @@ export const app = {
     });
     // Sim -> UI
     on('float', (f) => sc.float(f.kind, f.staff, f.amount));
+    // livet i studion (sim/life.js): händelser ur simen får personalen i scenen att reagera
+    on('life', (b) => {
+      if (this.mode !== 'play') return;
+      const e = b.s && LIFE_EMOTE[b.k];
+      if (e) sc.emote(b.s, e, undefined, true);
+      // händelser för hela studion: fest, gäster, pizza och fanbrev
+      if (b.k === 'party') {
+        sc.celebrateNow(3.5);
+        sc.confetti(50);
+      } else if (b.k === 'visitor') sc.deal();
+      else if (b.k === 'pizza') sc.celebrateNow(2.5);
+      else if (b.k === 'fans') sc.confetti(25);
+    });
     on('toast', (n) => {
       if (this.mode !== 'play') return;
       const text = n.text || t(n.key, this.decorate(n.vars));

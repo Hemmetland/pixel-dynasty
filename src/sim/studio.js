@@ -3,6 +3,7 @@ import { emit } from '../core/bus.js';
 import { yearOf, moneyScale } from './const.js';
 import { t } from '../core/i18n.js';
 import { note } from './news.js';
+import { beat } from './life.js';
 
 // ── Kontor ───────────────────────────────────────────────────────
 // Att flytta till ett större kontor är en milstolpe. Utöver pengar (cost) krävs:
@@ -115,6 +116,7 @@ export function buildFacility(G, id) {
     while (used.has(slot)) slot++;
     G.office.fac[id] = { lvl: 1, slot };
   } else G.office.fac[id].lvl++;
+  beat(G, 'built', { g: id });
   emit('facility', { id, lvl: facLevel(G, id) });
   return true;
 }

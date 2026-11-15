@@ -4,6 +4,7 @@ import { FEAT } from '../data/research.js';
 import { yfOf, TICKS_PER_WEEK } from './const.js';
 import { spend } from './studio.js';
 import { engineEff } from './const.js';
+import { beat } from './life.js';
 
 export function engineCost(featIds) {
   return featIds.reduce((s, id) => s + FEAT[id].cost, 0);
@@ -37,6 +38,7 @@ export function engineTick(G) {
     const e = { id: G.uid++, name: J.name, feats: J.feats, tech: engineTech(J.feats), built: yfOf(G.t) };
     G.engines.push(e);
     G.job = null;
+    beat(G, 'engine', { g: e.name });
     emit('engineDone', e);
   }
 }

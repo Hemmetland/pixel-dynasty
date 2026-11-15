@@ -7,6 +7,7 @@ import { yearOf, yfOf, moneyScale, wageIndex, tOf, WEEKS_PER_YEAR, WEEKS_PER_MON
 import { unitRev, curveFor } from './sales.js';
 import { spend, earn, capacity, seated } from './studio.js';
 import { note } from './news.js';
+import { beat } from './life.js';
 
 // Egen hårdvara (balansunderlaget docs/HARDWARE_SPEC.md): med forskningen Hårdvarulabb får studion en hårdvaruavdelning
 // som designar egna produkter vid sidan av spelen (den blockerar inte G.job). En produkt är ett designprojekt (design
@@ -343,6 +344,7 @@ export function startDesign(G, spec) {
   };
   H.lines[spec.type] = gen;
   H.projects.push(P);
+  beat(G, 'hwStart', { g: P.name, staff: H.chief });
   emit('hwDesign', P);
   return true;
 }
@@ -385,9 +387,11 @@ function finishDesign(G, H, P) {
   if (rngFor(G, `proto:${P.id}:${P.redo}`)() < risk) {
     P.state = 'fail';
     P.failT = G.t;
+    beat(G, 'hwProto', { g: P.name, a: 0, v: 1, staff: H.chief });
     note(G, 'news.hwFail', { name: P.name }, 'bad');
   } else {
     P.state = 'ready';
+    beat(G, 'hwProto', { g: P.name, a: 1, v: 0, staff: H.chief });
     note(G, 'news.hwProto', { name: P.name }, 'good');
   }
   emit('hwProto', P);
@@ -649,6 +653,7 @@ export function discontinue(G, id, auto = false) {
   // plattformen lever vidare och tonar ut på ett par år, som konkurrenternas
   const pl = platOf(G, P);
   if (pl) pl.y1 = yfOf(G.t) + 2;
+  beat(G, 'hwEnd', { g: P.name });
   note(G, 'news.hwEnd', { name: P.name, n: fmtNum(Math.round(P.sold)) }, 'info', auto);
   return true;
 }
@@ -764,6 +769,7 @@ export function hwWeek(G) {
     if (S.short <= G.t && r() < pp.short) {
       S.short = G.t + 8 + Math.floor(r() * 13);
       S.shortK = 0.5;
+      beat(G, 'hwShort', { g: pp.name });
       note(G, 'news.hwShort', { partner: pp.name }, 'bad');
     }
     if (S.fxUntil <= G.t && r() < FX_P) {
@@ -780,11 +786,13 @@ export function hwWeek(G) {
     pay(G, H, 'design', step, 'hwDev');
     J.paid += step;
     J.done++;
+    if (J.done * 2 === J.weeks || (J.weeks % 2 && J.done === (J.weeks + 1) / 2)) beat(G, 'hwHalf', { g: J.name, staff: H.chief });
     // läckan: en gång under de sista veckorna
     if (!J.leakRoll && J.weeks - J.done <= LEAK_WEEKS) {
       J.leakRoll = true;
       if (rngFor(G, `leak:${J.id}`)() < LEAK_P) {
         J.leak = true;
+        beat(G, 'hwLeak', { g: J.name });
         note(G, 'news.hwLeak', { name: J.name }, 'info');
       }
     }
@@ -801,12 +809,14 @@ export function hwWeek(G) {
       const P = productOf(G, o.p);
       if (!P) continue;
       P.stock += n;
+      beat(G, 'hwParts', { g: P.name, a: n });
       if (P.state === 'prod') release(G, H, P);
       if (o.left <= 0) {
         const S = partnerState(H, pp.id);
         S.rel = clamp(S.rel + 2, 0, 100);
         if (!P.issue && rngFor(G, `batch:${o.id}`)() < 2 * P.defect) {
           P.issue = { kind: 'batch', units: o.units, value: o.cost, t: G.t };
+          beat(G, 'hwBatch', { g: P.name });
           note(G, 'news.hwBatch', { name: P.name }, 'bad');
         }
       }
@@ -832,6 +842,7 @@ function release(G, H, P) {
   const s = scoreOf(G, P);
   P.score0 = s;
   H.rep = clamp(H.rep + (s * 10 - H.rep) * 0.25, 0, 100);
+  beat(G, 'hwLaunch', { g: P.name, a: Math.round(s * 10) / 10, v: s >= 7 ? 0 : s >= 5.5 ? 1 : 2 });
   note(G, 'news.hwLaunch', { name: P.name, v: s.toFixed(1) }, s >= 7 ? 'good' : s < 5.5 ? 'bad' : 'info');
   if (P.type === 'gpu' && rngFor(G, `bench:${P.id}`)() < BENCH_P) P.bench = 'offer';
   if (P.leak) {
@@ -1016,6 +1027,7 @@ function finishRev(G, H, P) {
   P.lifeAdd = (P.lifeAdd || 0) + R.life;
   if (R.hype) P.boost = Math.min(HIT_MAX, (P.boost || 0) + R.hype);
   (P.revs ||= []).push({ k, t: G.t });
+  beat(G, 'hwRev', { g: P.name });
   P.revLast = G.t;
   const tail = revSuffix(P.type, k);
   if (!P.name.endsWith(tail)) P.name = cleanName(P.name + tail);

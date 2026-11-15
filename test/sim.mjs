@@ -576,6 +576,17 @@ if (process.env.NEWSDBG) {
     if (n.big) (bigs[y] || (bigs[y] = [])).push(n.key);
   });
 }
+// LIFEDBG=1: hur många händelser i livet-flödet (sim/life.js) scenerna får per år och av vilka sorter, och hur många veckor som har minst en
+const lifeSeen = {};
+const lifeWeeks = new Set();
+if (process.env.LIFEDBG) {
+  const { on } = await import('../src/core/bus.js');
+  on('life', (b) => {
+    const y = S.yearOf(G.t);
+    (lifeSeen[y] || (lifeSeen[y] = [])).push(b.k);
+    lifeWeeks.add(b.t);
+  });
+}
 S.makeCompetitors(G);
 S.initWorld(G);
 let lastYear = 1979;
@@ -754,6 +765,17 @@ if (opt('dump', '')) {
   const { writeFileSync } = await import('node:fs');
   const { SAVE_VERSION } = await import('../src/sim/state.js');
   writeFileSync(opt('dump', ''), JSON.stringify({ v: SAVE_VERSION, G }));
+}
+if (process.env.LIFEDBG) {
+  const all = {};
+  const per = [];
+  for (const [y, ks] of Object.entries(lifeSeen)) {
+    per.push(`${y}:${ks.length}`);
+    for (const k of ks) all[k] = (all[k] || 0) + 1;
+  }
+  console.log('   life/year ' + per.join(' '));
+  console.log('   life kinds ' + Object.entries(all).sort((a, b) => b[1] - a[1]).map(([k, n]) => `${k} ${n}`).join(', '));
+  console.log(`   weeks with a beat: ${lifeWeeks.size} of ${G.t} (${Math.round((lifeWeeks.size / G.t) * 100)}%)`);
 }
 if (process.env.PROMPTDBG) {
   const all = {};
