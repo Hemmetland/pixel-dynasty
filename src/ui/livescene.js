@@ -16,6 +16,7 @@ import { HW_TYPES } from '../data/hardware.js';
 import { lifeState, lifeLog, lifeText } from '../sim/life.js';
 import { hashStr } from '../core/rng.js';
 import { fmtNum } from '../core/util.js';
+import { topSellers } from '../sim/market.js';
 
 const R = V.R;
 const H = 56; // logisk höjd; bredden följer fönstret (3 skärmpixlar per pixel, 2 på smal skärm)
@@ -64,6 +65,12 @@ const STATE = {
   },
   group: (G) => lifeState(G, 'group'),
   shop: (G) => lifeState(G, 'store'),
+  market: (G) => {
+    let top = [];
+    try { top = topSellers(G, 12, 5); } catch { top = []; }
+    return { top, looks: (G.staff || []).filter((x) => !x.away).map((x) => x.look) };
+  },
+  hall: (G) => ({ games: (G.games || []).slice(-8).map((g) => ({ id: g.id, score: g.score || 0 })), n: (G.games || []).length, awards: (G.awards || []).length, fans: G.fans || 0 }),
   bank: (G) => ({ money: G.money, hist: (G.hist && G.hist.cash ? G.hist.cash.slice(-40).map((p) => p.v) : []), looks: (G.staff || []).filter((x) => !x.away).map((x) => x.look) }),
   live: (G, cfg) => {
     const l = lifeState(G, 'live');
@@ -76,8 +83,8 @@ const STATE = {
     return { ...l, looks: staff };
   },
 };
-const TICK_SC = { studio: ['dev', 'studio'], factory: ['hw'], engine: ['eng'], group: ['group'], lab: ['lab'], shop: ['store'], live: ['live'], bank: ['dev', 'studio'] };
-const LOG_SC = { studio: 'dev', factory: 'hw', engine: 'eng', group: 'group', lab: 'lab', shop: 'store', live: 'live', bank: 'studio' };
+const TICK_SC = { studio: ['dev', 'studio'], factory: ['hw'], engine: ['eng'], group: ['group'], lab: ['lab'], shop: ['store'], live: ['live'], bank: ['dev', 'studio'], market: ['dev'], hall: ['dev', 'studio'] };
+const LOG_SC = { studio: 'dev', factory: 'hw', engine: 'eng', group: 'group', lab: 'lab', shop: 'store', live: 'live', bank: 'studio', market: 'dev', hall: 'dev' };
 function refresh(kind, cfg) {
   try {
     cfg.st = STATE[kind](cfg.G, cfg);
@@ -89,6 +96,8 @@ function caption(kind, cfg) {
   const st = cfg.st;
   if (kind === 'studio') return !st ? t('ls.studio') : st.active ? t('ls.studio.on', { title: st.title || '…' }) : st.report ? t('ls.studio.report') : t('ls.studio.idle');
   if (kind === 'engine') return st && st.active ? t('ls.engine.on', { name: st.name }) : st && st.team ? t('ls.engine.team', { team: st.team.name }) : t('ls.engine');
+  if (kind === 'market') return t('ls.market');
+  if (kind === 'hall') return !st || !st.n ? t('ls.hall.empty') : t('ls.hall', { n: st.n });
   if (kind === 'bank') return !st ? t('ls.bank') : st.money < 0 ? t('ls.bank.red') : t('ls.bank');
   if (kind === 'live') return !st || !st.g ? t('ls.live') : st.g.ops && !st.g.event ? t('ls.live.ops') : st.g.event ? t('ls.live.ev') : st.g.patch ? t('ls.live.patch') : st.g.season ? t('ls.live.season') : t('ls.live.on', { n: fmtNum(st.g.subs) });
   if (kind === 'shop') return !st || !st.open ? t('ls.shop') : st.paused ? t('ls.shop.closed') : st.ev ? t('ls.shop.ev', { name: st.ev }) : t('ls.shop.on');
@@ -841,6 +850,112 @@ function drawBank(ctx, W, tm, cfg) {
   darken(ctx, W, 0.04, '#7cffb0');
 }
 
+// ── Marknaden ──
+function drawMarket(ctx, W, tm, cfg) {
+  const fy = H - 6;
+  const st = cfg.st || { top: [], looks: [] };
+  R(ctx, 0, 0, W, H, '#121a3a');
+  for (let x = 0; x < W; x += 14) R(ctx, x, 0, 1, H - 12, '#18214a');
+  R(ctx, 0, H - 12, W, 12, '#242c4a');
+  R(ctx, 0, H - 12, W, 1, '#5a6aa0');
+  R(ctx, 0, H - 4, W, 1, '#181e36');
+  // löpande nyhetsband högst upp
+  R(ctx, 0, 2, W, 6, '#0a0f24');
+  for (let i = 0; i < 12; i++) {
+    const x = Math.round(((i * 46 - tm * 14) % (W + 46) + (W + 46)) % (W + 46)) - 20;
+    R(ctx, x, 4, 8 + (i * 5) % 14, 2, ['#4de1d0', '#ffd36a', '#ff7ab8', '#8aff9a'][i % 4]);
+  }
+  // topplistan som stapeldiagram på en stor skärm
+  const sw = Math.min(150, Math.round(W * 0.42)), sx = Math.round(W * 0.5 - sw / 2);
+  R(ctx, sx - 2, 10, sw + 4, 32, '#0c1226');
+  R(ctx, sx - 2, 10, sw + 4, 1, '#5a6aa0');
+  R(ctx, sx - 2, 41, sw + 4, 1, '#3a4670');
+  const top = st.top;
+  const mx = Math.max(1, ...top.map((r) => (Number.isFinite(r.rev) ? r.rev : 0)));
+  const flash = recent(['chart', 'disc'], 3, tm).length;
+  top.slice(0, 5).forEach((r, i) => {
+    const bw = Math.max(4, Math.round(((Number.isFinite(r.rev) ? r.rev : 0) / mx) * (sw - 8)));
+    const y = 13 + i * 5.6;
+    const col = r.yours ? '#ffd36a' : r.color || '#6a8ad8';
+    R(ctx, sx + 2, Math.round(y), bw, 4, col);
+    R(ctx, sx + 2, Math.round(y), bw, 1, 'rgba(255,255,255,.35)');
+    if (r.yours && flash && Math.floor(tm * 6) % 2) R(ctx, sx + 2 + bw + 1, Math.round(y), 2, 4, '#ffffff');
+  });
+  if (!top.length) for (let i = 0; i < 5; i++) R(ctx, sx + 2, 13 + i * 6, 10 + i * 6, 3, '#26335e');
+  // analytiker vid sina skrivbord och en som pekar på skärmen
+  const lk = (i) => (st.looks && st.looks[i]) || cfg.looks[i];
+  person(ctx, sx - 12, fy + 1, lk(0), 'present', tm, 1, false, 0.3);
+  if (W >= 260) {
+    F.desk2(ctx, 10, fy, 1, 6, 3);
+    F.chair2(ctx, 10, fy, '#3a5a8a');
+    person(ctx, 13, fy, lk(1), 'type', tm, 1, true, 0.6);
+  }
+  F.desk2(ctx, sx + sw + 14, fy, 1, 7, 3);
+  F.chair2(ctx, sx + sw + 14, fy, '#3a5a8a');
+  person(ctx, sx + sw + 17, fy, lk(2), 'type', tm, 1, true, 1.1);
+  for (const e of recent(['chart', 'disc'], 4.6, tm)) confetti(ctx, W, tm - e.t0, e.b.n);
+  darken(ctx, W, 0.04, '#7caaff');
+}
+
+// ── Spelhyllan (biblioteket) ──
+function drawHall(ctx, W, tm, cfg) {
+  const fy = H - 6;
+  const st = cfg.st || { games: [], n: 0, awards: 0, fans: 0 };
+  R(ctx, 0, 0, W, H, '#2a2036');
+  for (let x = 0; x < W; x += 16) R(ctx, x, 0, 1, H - 12, '#312640');
+  R(ctx, 0, H - 12, W, 12, '#3e3040');
+  R(ctx, 0, H - 12, W, 1, '#7a6488');
+  R(ctx, 0, H - 4, W, 1, '#241a2c');
+  // inramade affischer: en per spel, ljusare färg ju bättre betyg
+  const slots = Math.max(3, Math.min(8, Math.floor((W - 90) / 28)));
+  const gs = st.games.slice(-slots);
+  for (let i = 0; i < slots; i++) {
+    const x = 10 + i * 28;
+    const g = gs[i];
+    R(ctx, x, 8, 22, 28, '#1a1424');
+    R(ctx, x, 8, 22, 1, '#8a7a4a');
+    if (g) {
+      const hue = (g.id * 47) % 360;
+      ctx.fillStyle = `hsl(${hue},55%,${28 + Math.min(10, g.score) * 3}%)`;
+      ctx.fillRect(x + 2, 10, 18, 24);
+      R(ctx, x + 5, 14, 12, 3, 'rgba(255,255,255,.55)');
+      R(ctx, x + 5, 20, 8, 1, 'rgba(255,255,255,.4)');
+      for (let k = 0; k < Math.min(5, Math.round(g.score / 2)); k++) R(ctx, x + 4 + k * 3, 29, 2, 2, '#ffe27a');
+    } else R(ctx, x + 2, 10, 18, 24, '#241c30');
+    // spotlight
+    ctx.globalAlpha = 0.06;
+    R(ctx, x - 2, 0, 26, 8, '#fff0b0');
+    ctx.globalAlpha = 1;
+  }
+  // trofébyrå till höger: en pokal per vunnet pris
+  const tx = W - 70;
+  R(ctx, tx, 22, 56, 22, '#3a2a20');
+  R(ctx, tx + 1, 23, 54, 20, '#1a1410');
+  const cups = Math.min(7, st.awards);
+  for (let i = 0; i < 7; i++) {
+    const cx = tx + 4 + i * 7;
+    if (i < cups) {
+      R(ctx, cx, 30, 5, 5, '#ffd36a');
+      R(ctx, cx + 1, 35, 3, 3, '#e8b848');
+      R(ctx, cx - 1, 38, 7, 2, '#b8882a');
+      if (Math.floor(tm * 1.5 + i * 1.7) % 6 === 0) R(ctx, cx + 1, 29, 1, 1, '#ffffff');
+    } else R(ctx, cx + 1, 38, 3, 2, '#2a2018');
+  }
+  // besökare går förbi och tittar, fler ju fler fans
+  const vis = st.n ? Math.min(3, 1 + Math.floor(Math.log10(Math.max(10, st.fans)) / 2)) : 0;
+  for (let i = 0; i < vis; i++) {
+    const period = 16 + i * 3;
+    const k = (tm + i * 6.1) % period;
+    const xa = 20 + ((i * 53) % Math.max(30, W - 140));
+    const look = cfg.looks[(i + 2) % cfg.looks.length];
+    if (k < 3) person(ctx, lerp(-8, xa, k / 3), fy + 2, look, 'walk', tm, 1, false, i);
+    else if (k < 10) person(ctx, xa, fy + 2, look, 'notes', tm, 1, false, i);
+    else person(ctx, lerp(xa, W + 8, (k - 10) / (period - 10)), fy + 2, look, 'walk', tm, 1, false, i);
+  }
+  for (const e of recent(['launch', 'done', 'disc', 'anniv'], 4.6, tm)) confetti(ctx, W, tm - e.t0, e.b.n);
+  darken(ctx, W, 0.04, '#ffd8ff');
+}
+
 // ── Koncernen ──
 function drawGroup(ctx, W, tm, cfg) {
   const fy = H - 6;
@@ -937,7 +1052,7 @@ function drawGroup(ctx, W, tm, cfg) {
   ctx.globalAlpha = 1;
   for (const e of recent(['party', 'anniv', 'fans', 'film', 'grpDone'], 4.6, tm)) confetti(ctx, W, tm - e.t0, e.b.n);
 }
-const DRAW = { studio: drawStudio, factory: drawFactory, engine: drawEngine, group: drawGroup, lab: drawLab, shop: drawShop, live: drawLive, bank: drawBank };
+const DRAW = { studio: drawStudio, factory: drawFactory, engine: drawEngine, group: drawGroup, lab: drawLab, shop: drawShop, live: drawLive, bank: drawBank, market: drawMarket, hall: drawHall };
 
 // ── Timer ──
 let timer = 0;
