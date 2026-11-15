@@ -13,9 +13,14 @@ import { yearOf, priceOf, moneyScale, WEEKS_PER_MONTH, WEEKS_PER_YEAR } from './
 import { facLevel, earn, spend } from './studio.js';
 import { forecast } from './sales.js';
 import { note } from './news.js';
+import { KIND } from '../data/onlinekinds.js';
 
 // Storlekar som går att göra som onlinespel, och som expansion
 export const LIVE_SCOPES = ['large', 'aaa'];
+// Sorten av onlinespel (data/onlinekinds.js) avgör vilka storlekar som går: ett MMO kräver Stor eller AAA, de andra sorterna också Medel.
+// Spel utan sort (äldre sparningar) räknas som MMO.
+export const kindData = (L) => KIND[L && L.kind] || KIND.mmo;
+export const liveScopesFor = (kind) => (KIND[kind] || KIND.mmo).scopes;
 export const EXP_SCOPES = ['small', 'medium', 'large'];
 // Onlinespel tar längre tid (servrar, konton, betalning): utvecklingstiden × LIVE_DEV
 export const LIVE_DEV = 1.25;
@@ -48,7 +53,7 @@ export const OPS = [
   { cost: 1.35, mult: 1.05, outage: 0.0015 },
 ];
 // Innehållet blir gammalt: färskhet −1,1 per vecka (från 100), en uppdatering ger +30 efter 8 veckor
-const FRESH_DECAY = 1.1;
+const FRESH_DECAY = 1.1; // × sortens decay (skjutspel åldras fortare, odlingsspel långsammare)
 export const PATCH_WEEKS = 8;
 const PATCH_FRESH = 30;
 const MILESTONES = [10000, 100000, 1000000, 5000000, 10000000];
@@ -211,7 +216,7 @@ export function serverCap(G) {
   return Math.round(facLevel(G, 'server') * 150000 * Math.pow(1.12, Math.max(0, year - 1997)) * (G.research.done.includes('f_cloud') ? 2 : 1));
 }
 // Driftkostnad per spelare och månad
-export const costPerSub = (G, L) => 0.28 * subPrices(yearOf(G.t))[0] * OPS[L.ops].cost * (isF2P(L) ? F2P_LOAD : 1) + perkUpkeep(G, L);
+export const costPerSub = (G, L) => 0.28 * subPrices(yearOf(G.t))[0] * OPS[L.ops].cost * kindData(L).ops * (isF2P(L) ? F2P_LOAD : 1) + perkUpkeep(G, L);
 // Driften för fördelarna per spelare och månad (andel av nivåns standardpris, vägd med nivåns andel av spelarna)
 export function perkUpkeep(G, L) {
   if (!L.perk || isF2P(L)) return 0;
@@ -231,7 +236,7 @@ export function liveTarget(G, g) {
   const fresh = 0.4 + (0.6 * L.fresh) / 100;
   const price = isF2P(L) ? F2P_POT * SHOP[L.shop | 0].mult : Math.exp(-PRICE_ELAST * (tierMix(G, L).k - 1)) * subEra(yearOf(G.t));
   const ev = eventOn(G, L) ? EVENT_LIFT : 1;
-  return L.pot * age * fresh * price * OPS[L.ops].mult * ev * seasonLift(G, L) * rivalFactor(G, g) * regionMult(g);
+  return L.pot * age * fresh * price * OPS[L.ops].mult * ev * seasonLift(G, L) * rivalFactor(G, g) * regionMult(g) * (L.eLift || 1);
 }
 // Samma målnivå del för del, för driftpanelen: varje del som multiplikator (1 = ingen påverkan) mot ett nytt spel med
 // färskt innehåll, normalpris och normal drift. full = servrarna är fulla och håller tillbaka spelarna.
@@ -249,6 +254,7 @@ export function liveFactors(G, g) {
     season: seasonLift(G, L),
     rivals: rivalFactor(G, g),
     regions: regionMult(g),
+    esports: L.eLift || 1,
     full: cap > 0 ? liveLoad(G) > cap : true,
     target: liveTarget(G, g),
   };
@@ -263,11 +269,11 @@ export const liveCostMonth = (G) => liveGames(G).reduce((a, g) => a + liveMonth(
 
 // När onlinespelet släpps (efter startSales): spelarpotentialen från samma prognos som boxförsäljningen.
 // Boxen säljer mindre (många väntar på abonnemanget) men abonnemangen fortsätter så länge spelet lever.
-export function launchLive(G, game) {
+export function launchLive(G, game, kind) {
   const units = forecast(G, game, { noise: false }) / priceOf(yearOf(G.t));
   game.total *= 0.55;
   game.live = {
-    t0: G.t, pot: units * 0.18 * Math.exp(0.3 * (game.score - 7)) * HOME, subs: 0, peak: 0, fresh: 100,
+    t0: G.t, pot: units * 0.18 * Math.exp(0.3 * (game.score - 7)) * HOME * (KIND[kind] ? KIND[kind].pot : 1), kind: KIND[kind] ? kind : undefined, subs: 0, peak: 0, fresh: 100,
     price: [1, 1, 1], ops: 1, patch: null, closed: 0, rev: 0, cost: 0, hist: [], outages: 0, ms: 0, exps: [], marks: [],
     boost: G.t + 10, hype: game.hype || 0, regions: [], region: null,
   };
@@ -410,7 +416,7 @@ export function liveWeek(G) {
   let weekRev = 0;
   for (const g of games) {
     const L = g.live;
-    L.fresh = Math.max(0, L.fresh - FRESH_DECAY);
+    L.fresh = Math.max(0, L.fresh - FRESH_DECAY * kindData(L).decay);
     if (L.patch && G.t >= L.patch.until) {
       L.fresh = Math.min(100, L.fresh + PATCH_FRESH);
       L.patch = null;

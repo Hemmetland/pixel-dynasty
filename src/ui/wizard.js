@@ -18,13 +18,14 @@ import { lang } from '../core/i18n.js';
 import { clamp, fmtNum } from '../core/util.js';
 import { workers } from '../sim/people.js';
 import { engineCap, ownPlatOpt } from '../sim/hardware.js';
-import { liveUnlocked, canGoLive, liveGames, LIVE_SCOPES, EXP_SCOPES, LIVE_DEV } from '../sim/live.js';
+import { liveUnlocked, canGoLive, liveGames, liveScopesFor, EXP_SCOPES, LIVE_DEV } from '../sim/live.js';
+import { KINDS, KIND, kindOf } from '../data/onlinekinds.js';
 import { TITLE_PARTS } from '../data/names.js';
 
 const W = {};
 function reset(G) {
   Object.assign(W, {
-    step: 0, title: '', topic: null, genre: null, genre2: null, platform: null, audience: 'everyone', scope: 'small', engineId: null, sequelOf: null, live: false, expansionOf: null,
+    step: 0, title: '', topic: null, genre: null, genre2: null, platform: null, audience: 'everyone', scope: 'small', engineId: null, sequelOf: null, live: false, kind: '', expansionOf: null,
     focus: null, titleAuto: true, G, used: false,
   });
   const best = bestPlatform(G);
@@ -100,7 +101,9 @@ export function teamReadiness(G, cfg) {
 const verdict = (r) => (r < 0.45 ? ['bad', 'wiz.tooHard'] : r < 0.75 ? ['warn', 'wiz.hard'] : r < 1.5 ? ['good', 'wiz.good'] : r < 2.4 ? ['good', 'wiz.great'] : ['accent', 'wiz.easy']);
 const VCOL = { bad: 'var(--bug)', warn: 'var(--warn)', good: 'var(--good)', accent: 'var(--accent)' };
 // Storlekar som formatet tillåter: onlinespel Stor/AAA, expansioner upp till Stor
-const scopeAllowed = (id) => (W.live ? LIVE_SCOPES.includes(id) : W.expansionOf ? EXP_SCOPES.includes(id) : true);
+// Sorten av onlinespel: det spelaren valt, annars det tema och genre ger. Den avgör vilka storlekar som går.
+const kindNow = () => (KIND[W.kind] ? W.kind : kindOf(W.topic, W.genre, W.genre2));
+const scopeAllowed = (id) => (W.live ? liveScopesFor(kindNow()).includes(id) : W.expansionOf ? EXP_SCOPES.includes(id) : true);
 // Byt till en tillåten storlek (den största upplåsta som plattformen klarar) när formatet ändras
 function fitFormat(G) {
   if (scopeAllowed(W.scope)) return;
@@ -132,15 +135,21 @@ function formatHTML(G) {
   if (!liveUnlocked(G)) return '';
   // onlinespel kräver serverrummet och minst en av storlekarna Stor/AAA
   const server = canGoLive(G);
-  const scopeOk = LIVE_SCOPES.some((id) => G.u.scopes.includes(id));
+  const scopeOk = KINDS.some((k) => k.scopes.some((id) => G.u.scopes.includes(id)));
   const can = server && scopeOk;
   const lives = liveGames(G);
   const fmt = `<div class="wz-sec"><div class="lbl">${t('wiz.format')}</div><div class="seg"><button class="${!W.live && !W.expansionOf ? 'on' : ''}" data-act="w-fmt" data-id="game">${t('wiz.fmtGame')}</button><button class="${W.live ? 'on' : ''}" data-act="w-fmt" data-id="live" ${can ? '' : 'disabled'}>${icon('globe')}${t('wiz.fmtLive')}</button></div>
     <p class="hint" style="margin-top:6px">${can ? t('wiz.fmtHelp') : `${icon('lock')} ${t(server ? 'wiz.fmtNeedScope' : 'wiz.fmtNeedServer')}`}</p></div>`;
+  // sorten av onlinespel (som standard den tema och genre ger)
+  const kn = kindNow();
+  const kinds = W.live
+    ? `<div class="wz-sec"><div class="lbl">${t('wiz.kind')}</div><div class="seg wrap">${KINDS.map((k) => `<button class="${kn === k.id ? 'on' : ''}" data-act="w-kind" data-id="${k.id}" data-tip="${esc(L(k.desc))}">${icon(k.ic)}${L(k.name)}</button>`).join('')}</div>
+    <p class="hint" style="margin-top:6px"><b>${L(KIND[kn].name)}.</b> ${L(KIND[kn].desc)} ${t('wiz.kindHelp')}</p></div>`
+    : '';
   const exp = lives.length
     ? `<div class="wz-sec"><div class="lbl">${t('wiz.expansion')}</div><div class="row wrap">${lives.map((g) => `<button class="chip btnchip ${W.expansionOf === g.id ? 'on' : ''}" data-act="w-exp" data-id="${g.id}">${icon('globe')}${esc(g.title)}<span class="muted">${fmtNum(g.live.subs)}</span></button>`).join('')}</div><p class="hint" style="margin-top:6px">${t('wiz.expHelp')}</p></div>`
     : '';
-  return fmt + exp;
+  return fmt + kinds + exp;
 }
 
 // Försäljningen räknas när spelet släpps: hinner trenden bytas innan ett spel av den här storleken är klart?
@@ -242,7 +251,7 @@ function stepMarket(G) {
     const [vk, vtxt] = verdict(rd.r);
     const fades = [G.market.trend.genre.find((x) => x.id === W.genre), G.market.trend.topic.find((x) => x.id === W.topic)].some((x) => x && x.mult > 1.1 && trendFades(G, x, id));
     return `<button class="card scope ${W.scope === id ? 'sel' : ''} ${!unlocked || weak || !fmtOk ? 'lockd' : ''}" data-act="w-scope" data-id="${id}" ${!unlocked || !fmtOk ? 'disabled' : ''}>
-      <div class="row"><b class="disp" style="font-size:22px">${L(sc.name)}</b><span class="sp"></span>${!unlocked ? icon('lock') : !fmtOk ? `<span class="tag" style="--c:var(--bug)">${t(W.live ? 'wiz.liveScope' : 'wiz.expScope')}</span>` : weak ? `<span class="tag" style="--c:var(--bug)">${t('wiz.needTier', { n: sc.minTier })}</span>` : `<span class="tag" style="--c:${VCOL[vk]}">${t(vtxt)}</span>`}</div>
+      <div class="row"><b class="disp" style="font-size:22px">${L(sc.name)}</b><span class="sp"></span>${!unlocked ? icon('lock') : !fmtOk ? `<span class="tag" style="--c:var(--bug)">${t(W.live ? (kindNow() === 'mmo' ? 'wiz.liveScope' : 'wiz.liveScope2') : 'wiz.expScope')}</span>` : weak ? `<span class="tag" style="--c:var(--bug)">${t('wiz.needTier', { n: sc.minTier })}</span>` : `<span class="tag" style="--c:${VCOL[vk]}">${t(vtxt)}</span>`}</div>
       <div class="hint" style="margin:4px 0 8px">${unlocked ? L(sc.desc) : t('wiz.locked')}</div>
       <div class="row" style="gap:14px;font-size:12px"><span>${icon('clock')} ${weeksOf(id)} ${t('ui.weeksShort')}</span><span>${icon('team')} ${t('wiz.idealTeam', { n: sc.team })}</span>${fades ? `<span data-tip="${t('wiz.trendHotFade')}" style="opacity:.7">${icon('fire')} ${t('wiz.trendFadeShort')}</span>` : ''}</div>
     </button>`;
@@ -296,7 +305,7 @@ function summary(G) {
     </div>
     <div class="kv"><span>${t('wiz.platform')}</span><b>${esc(plat.id === 'pc' ? pcGeneration(yearOf(G.t)) : plat.name)}</b></div>
     <div class="kv"><span>${t('wiz.scope')}</span><b>${L(sc.name)}</b></div>
-    ${W.live || W.expansionOf ? `<div class="kv"><span>${t('wiz.format')}</span><b>${W.live ? t('wiz.fmtLive') : esc(t('wiz.expOf', { title: G.games.find((g) => g.id === W.expansionOf)?.title || '' }))}</b></div>` : ''}
+    ${W.live || W.expansionOf ? `<div class="kv"><span>${t('wiz.format')}</span><b>${W.live ? L(KIND[kindNow()].name) : esc(t('wiz.expOf', { title: G.games.find((g) => g.id === W.expansionOf)?.title || '' }))}</b></div>` : ''}
     <div class="kv"><span>${t('wiz.duration')}</span><b>${weeksOf(W.scope)} ${t('ui.weeksShort')}</b></div>
     <div class="kv"><span>${t('wiz.team')}</span><b>${workers(G).length} ${tn('wiz.people', workers(G).length)}</b></div>
     <div class="kv"><span>${t('wiz.startHype')}</span><b>${Math.max(0, Math.round(baseHype(G) + seqHype(G)))}</b></div>
@@ -473,7 +482,7 @@ act('w-seq', (el) => {
 });
 act('w-fmt', (el) => {
   const G = UI.app.G;
-  W.live = el.dataset.id === 'live' && canGoLive(G) && LIVE_SCOPES.some((id) => G.u.scopes.includes(id));
+  W.live = el.dataset.id === 'live' && canGoLive(G) && KINDS.some((k) => k.scopes.some((id) => G.u.scopes.includes(id)));
   if (W.expansionOf) {
     W.expansionOf = null;
     if (!W.titleAuto) W.title = '';
@@ -481,6 +490,11 @@ act('w-fmt', (el) => {
     prefill(G);
   }
   fitFormat(G);
+  UI.refresh();
+});
+act('w-kind', (el) => {
+  W.kind = el.dataset.id;
+  fitFormat(UI.app.G);
   UI.refresh();
 });
 act('w-exp', (el) => {
@@ -561,7 +575,7 @@ act('w-even', () => {
 });
 act('w-start', () => {
   const G = UI.app.G;
-  const r = startProject(G, { title: W.title, topic: W.topic, genre: W.genre, genre2: W.genre2, platform: W.platform, scope: W.scope, audience: W.audience, engineId: W.engineId, sequelOf: W.sequelOf, focus0: W.focus, live: W.live, expansionOf: W.expansionOf });
+  const r = startProject(G, { title: W.title, topic: W.topic, genre: W.genre, genre2: W.genre2, platform: W.platform, scope: W.scope, audience: W.audience, engineId: W.engineId, sequelOf: W.sequelOf, focus0: W.focus, live: W.live, kind: W.kind, expansionOf: W.expansionOf });
   if (typeof r === 'string') {
     errToast(r);
     return;

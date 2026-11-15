@@ -17,7 +17,8 @@ import { groupRelease } from './group.js';
 import { hwRelease, ownPlatOpt, engineCap } from './hardware.js';
 import { crowding } from './market.js';
 import { note } from './news.js';
-import { LIVE_SCOPES, EXP_SCOPES, LIVE_DEV, canGoLive, launchLive, releaseExpansion } from './live.js';
+import { liveScopesFor, EXP_SCOPES, LIVE_DEV, canGoLive, launchLive, releaseExpansion } from './live.js';
+import { KIND, kindOf } from '../data/onlinekinds.js';
 import { takeSeriesHype } from './franchise.js';
 
 export const RP_RATE = 0.05;
@@ -41,7 +42,9 @@ export function startProject(G, cfg) {
   if (cfg.expansionOf && !base) return t('err.liveGone');
   if (base) cfg = { ...cfg, topic: base.topic, genre: base.genre, genre2: base.genre2, platform: base.platform, audience: base.audience, live: false, sequelOf: null };
   if (cfg.live && !canGoLive(G)) return t('err.liveServer');
-  if (cfg.live && !LIVE_SCOPES.includes(cfg.scope)) return t('err.liveScope');
+  // sorten av onlinespel följer tema och genre om spelaren inte valt en annan; den avgör vilka storlekar som går
+  const kind = cfg.live ? (KIND[cfg.kind] ? cfg.kind : kindOf(cfg.topic, cfg.genre, cfg.genre2)) : null;
+  if (cfg.live && !liveScopesFor(kind).includes(cfg.scope)) return t('err.liveScope');
   if (base && !EXP_SCOPES.includes(cfg.scope)) return t('err.expScope');
   const { topic, genre, platform, scope, audience } = cfg;
   if (!G.u.topics.includes(topic) || !G.u.genres.includes(genre)) return 'invalid';
@@ -66,6 +69,7 @@ export function startProject(G, cfg) {
     devTicks: Math.round(sc.weeks * (cfg.live ? LIVE_DEV : 1)) * TICKS_PER_WEEK,
     polishTicks: sc.polish * TICKS_PER_WEEK,
     live: !!cfg.live,
+    liveKind: kind,
     expansionOf: base ? base.id : null,
     polishDone: 0,
     phase: 0,
@@ -318,7 +322,7 @@ export function releaseGame(G) {
       note(G, 'news.seqBetter', { title: game.title, prev: prev.title }, 'good');
     } else if (game.score < prev.score) note(G, 'news.seqWorse', { title: game.title, prev: prev.title }, 'info');
   }
-  if (J.live) launchLive(G, game);
+  if (J.live) launchLive(G, game, J.liveKind);
   else if (J.expansionOf) releaseExpansion(G, game);
   // krönikan: släppet (betygsrapporten visas redan, så ingen toast). Expansioner har sin egen nyhet.
   if (!J.expansionOf) {

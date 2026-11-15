@@ -83,6 +83,8 @@ export const ACHIEVEMENTS = [
   A('hw_platform', 'a_chip', 'Egen plattform', 'Platform Holder', 'Lansera en egen spelplattform.', 'Launch a game platform of your own.', (G) => (G.hw?.plats?.length || 0) >= 1),
   A('hw_factory', 'a_chip', 'Fabrikör', 'Factory Owner', 'Bygg en egen fabrik för din hårdvara.', 'Build a factory for your own hardware.', (G) => (G.hw?.fab?.lvl || 0) >= 1),
   A('hw_vr', 'a_chip', 'En annan verklighet', 'Another Reality', 'Lansera ett eget VR-headset.', 'Launch a VR headset of your own.', (G) => (G.hw?.products || []).some((P) => P.type === 'vr')),
+  A('esport1', 'a_star', 'Arrangören', 'The Organiser', 'Håll en e-sporttävling i ett av dina onlinespel.', 'Host an e-sport tournament in one of your online games.', (G) => (G.stats.esports || 0) >= 1),
+  A('esport_million', 'a_crown', 'Miljonpublik', 'Million Viewers', 'Få en miljon tittare till dina e-sportevent sammanlagt.', 'Get a million viewers to your e-sport events in total.', (G) => (G.stats.esportViewers || 0) >= 1e6),
   A('legend', 'a_clock', 'Legend', 'Legend', 'Spela till år 2020.', 'Play until the year 2020.', (G) => G.t >= 48 * 40),
 ];
 export const ACH = Object.fromEntries(ACHIEVEMENTS.map((a) => [a.id, a]));

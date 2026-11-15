@@ -8,6 +8,7 @@ import { contractTick, refreshContracts } from './contracts.js';
 import { engineTick } from './engines.js';
 import { salesWeek } from './sales.js';
 import { liveWeek } from './live.js';
+import { esportsWeek } from './esports.js';
 import { portWeek } from './ports.js';
 import { pubWeek } from './publish.js';
 import { frWeek } from './franchise.js';
@@ -65,6 +66,7 @@ function weekly(G) {
   storeWeek(G);
   hwWeek(G);
   liveWeek(G);
+  esportsWeek(G);
   updateMood(G);
   rollDevEvent(G);
   const d = dateOf(G.t);

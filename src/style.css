@@ -1480,3 +1480,12 @@ input[type='range']::-moz-range-thumb { width: 18px; height: 18px; border-radius
 
 /* Rykten: titeln på en spelserie som förlaget släpper nästa del i */
 .rumor-title{font-weight:600;font-size:13.5px;color:var(--gold);margin-top:2px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+
+/* E-sport i bibliotekets onlinepanel (v107): tävlingskort, nivåknappar, förhandsvisning */
+.es-type { cursor: pointer; text-align: left; font: inherit; color: inherit; }
+.es-seg { flex-wrap: wrap; }
+.es-seg button.best { box-shadow: inset 0 0 0 1px color-mix(in srgb, var(--gold) 70%, transparent); }
+.es-seg button .ic { width: 14px; height: 14px; margin-right: 4px; vertical-align: -2px; color: var(--gold); }
+.es-pv { margin-top: 12px; padding: 10px 12px; border-radius: 12px; border: 1px solid var(--line); background: rgba(246, 184, 74, 0.05); }
+.es-log .rn-i { flex: none; }
+.es-on { border-color: color-mix(in srgb, var(--gold) 45%, transparent); }

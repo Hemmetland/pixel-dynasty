@@ -5,6 +5,7 @@ import { TOPICS } from '../src/data/topics.js';
 import { RESEARCH, REFINES } from '../src/data/research.js';
 import { EV } from '../src/data/events.js';
 import { HW_TYPES, HW_PARTNER } from '../src/data/hardware.js';
+import { etypesOf } from '../src/data/onlinekinds.js';
 
 const args = process.argv.slice(2);
 const opt = (k, d) => {
@@ -25,6 +26,12 @@ const events = mmo && !args.includes('--no-events');
 // --f2p: gör onlinespelen till gratisspel från 2010
 const f2p = mmo && args.includes('--f2p');
 const regions = mmo && !args.includes('--no-regions');
+// --esports: arrangerar e-sportevent i onlinespelen när vilan är slut (den prisnivå som ger mest pengar kvar, --espp=1 sändning studio,
+// --espm=1 kampanj). --kind=survival gör onlinespelen till en annan sort än MMO (botens standard är MMO så att äldre mätningar gäller).
+const esports = mmo && args.includes('--esports');
+const espP = +opt('espp', 0);
+const espM = +opt('espm', 0);
+const liveKind = opt('kind', 'mmo');
 // --seasons: startar en säsong när spelarbasen har fallit under 90 % av toppen (klassiska servrar för gamla spel, annars roterande tema)
 const seasons = mmo && args.includes('--seasons');
 // --autoseason: slår på automatiska säsonger i alla onlinespel (spelets egen regel, i stället för botens --seasons)
@@ -108,7 +115,7 @@ function chooseProject(G) {
     if (live && live.live.fresh < 70 && G.t - Math.max(live.live.t0, ...live.live.exps.map((id) => G.games.find((x) => x.id === id).t)) > 96) return { title: live.title + ': Exp', topic: live.topic, genre: live.genre, platform: live.platform, scope: 'medium', audience: live.audience, expansionOf: live.id };
     if (!live && S.canGoLive(G) && S.LIVE_SCOPES.includes(scope)) {
       const cfg = chooseBest(G, plat, scope);
-      return { ...cfg, live: true };
+      return { ...cfg, live: true, kind: liveKind };
     }
   }
   if (casual || (mid && Math.random() < 0.5)) {
@@ -374,6 +381,11 @@ function manage(G) {
   }
   // onlinespel: innehållsuppdatering när innehållet börjar bli gammalt, och servrar när det blir fullt
   if (mmo) for (const g of S.liveGames(G)) {
+    if (esports && S.canEsport(G, g) === true) {
+      const ty = etypesOf(g.live.kind || 'mmo')[0].id;
+      const i = S.espBestPrize(G, g, ty, espP, espM);
+      if (i >= 0 && G.money > S.esportPlan(G, g, ty, i, espP, espM).cost.total * 4) S.startEsport(G, g.id, ty, i, espP, espM);
+    }
     if (autoSeason && !g.live.autoSeason) S.setLiveAutoSeason(G, g.id, true);
     if (perks && !S.isF2P(g.live)) for (let i = 0; i < 3; i++) if (!(g.live.perk && g.live.perk[i]) && G.money > S.perkCost(G, g, i) * 4) S.setLivePerk(G, g.id, i, true);
     if (g.live.fresh < 50 && !g.live.patch && G.money > S.livePatchCost(G, g) * 3) S.startLivePatch(G, g.id);
@@ -464,7 +476,7 @@ if (args.includes('--live')) {
   for (const g of G.games.filter((x) => x.live)) {
     const L = g.live;
     if (args.includes('--curve')) console.log('   curve (k) ' + L.hist.filter((_, i) => i % 12 === 0).map((h) => Math.round(h.v / 1000)).join(' '));
-    console.log(`live ${S.yearOf(L.t0)}${L.closed ? '-' + S.yearOf(L.closed) : ''} ${g.title.en || g.title} score ${g.score}${L.model === 'f2p' ? ' f2p' : ''} peak ${Math.round(L.peak).toLocaleString()} subs ${Math.round(L.subs).toLocaleString()} exps ${L.exps.length} seasons ${L.seasons || 0} sscost $${Math.round((L.seasonCost || 0) / 1e6)}M pass $${Math.round((L.passRev || 0) / 1e6)}M reno ${Math.round((L.reno || 0) / 4.8) / 10}y comebacks ${L.cb || 0} events ${L.events || 0} evcost $${Math.round((L.evCost || 0) / 1e6)}M rev $${Math.round(L.rev / 1e6)}M cost $${Math.round(L.cost / 1e6)}M regions ${L.regions ? L.regions.join('+') || 'home' : 'world'} regcost $${Math.round((L.regionCost || 0) / 1e5) / 10}M`);
+    console.log(`live ${S.yearOf(L.t0)}${L.closed ? '-' + S.yearOf(L.closed) : ''} ${g.title.en || g.title} score ${g.score}${L.model === 'f2p' ? ' f2p' : ''} peak ${Math.round(L.peak).toLocaleString()} subs ${Math.round(L.subs).toLocaleString()} exps ${L.exps.length} seasons ${L.seasons || 0} sscost $${Math.round((L.seasonCost || 0) / 1e6)}M pass $${Math.round((L.passRev || 0) / 1e6)}M reno ${Math.round((L.reno || 0) / 4.8) / 10}y comebacks ${L.cb || 0} events ${L.events || 0} pot ${Math.round(L.pot)} epot ${Math.round(L.ePot || 0)} elift ${(L.eLift || 1).toFixed(2)} esports ${L.esp ? L.esp.n : 0} scene ${L.esp ? Math.round(L.esp.scene) : 0} espnet $${Math.round((L.esp ? L.esp.log.reduce((a, r) => a + r.sponsors - r.cost, 0) : 0) / 1e5) / 10}M evcost $${Math.round((L.evCost || 0) / 1e6)}M rev $${Math.round(L.rev / 1e6)}M cost $${Math.round(L.cost / 1e6)}M regions ${L.regions ? L.regions.join('+') || 'home' : 'world'} regcost $${Math.round((L.regionCost || 0) / 1e5) / 10}M`);
   }
   for (const m of (G.market.mmos || [])) console.log(`rival ${S.yearOf(m.t0)}${m.closed ? '-' + S.yearOf(m.closed) : ''} ${m.studio} ${m.title.en} ${m.genre} score ${m.score}`);
 }

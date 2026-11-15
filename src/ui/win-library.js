@@ -1,4 +1,4 @@
-import { $, esc, icon, t, tn, L, UI, act, regWin, money, errToast, bar } from './core.js';
+import { $, esc, icon, t, tn, L, L as pick, UI, act, regWin, money, errToast, bar } from './core.js';
 import { sfx } from '../audio/sfx.js';
 import { glyphImg } from '../render/glyphs.js';
 import { coverImg } from '../render/covers.js';
@@ -23,6 +23,8 @@ import { openExpansion } from './wizard.js';
 import { CERTS, certOf, certCounts, nextCert, totalUnits, records } from '../sim/charts.js';
 import { fanVoices, fanSource } from '../sim/fans.js';
 import { FAN_SOURCE } from '../data/fanvoices.js';
+import { KIND, etypesOf, ETYPE } from '../data/onlinekinds.js';
+import { PRIZES, PRODS, MKTS, ESP_MIN, ESP_AUTO_BUFFER, esportPlan, espRating, espBestPrize, espReadyIn, canEsport, startEsport, setEsportAuto, kindOfGame } from '../sim/esports.js';
 import { SUB_TIERS, OPS, PRICE_MIN, PRICE_MAX, PATCH_WEEKS, EVENT_WEEKS, SURGE_WEEKS, tierMix, liveMonth, serverCap, livePatchCost, startLivePatch, setLivePrice, setLiveOps, closeLive, rivalMmos, rivalPull, rivalFactor, liveFactors, setLiveAuto, setLiveAutoSeason, PERKS, perkCost, setLivePerk, AUTO_FRESH, AUTO_BUFFER, AUTO_SEASON_BELOW, eventOn, eventReadyIn, liveEventCost, startLiveEvent, SHOP, isF2P, canGoF2P, goF2P, setLiveShop, liveLoad, liveArpu, hikeShare, REGIONS, regionGain, REGION_NAME, REGION_WEEKS, regionBonus, regionsOpen, liveRegionCost, startLiveRegion, SEASONS, SEASON_WEEKS, seasonOn, seasonReadyIn, seasonShare, seasonBlock, seasonQuality, liveSeasonCost, startLiveSeason, liveAge } from '../sim/live.js';
 
 // Stäng servrarna och gör till gratisspel kräver två tryck: första trycket "armerar" knappen för det spelet
@@ -270,6 +272,73 @@ function regionPanel(G, g) {
   return `${head}<p class="hint" style="margin-bottom:8px">${t('live.regionsHelp', { n: REGION_WEEKS })}</p><div class="col" style="gap:6px">${row(t('live.regionHome'), '', done)}${rows}</div>`;
 }
 
+// E-sport: välj tävling, prispengar, sändning och marknadsföring och se vad det väntas ge innan det startar. Valen sparas per spel
+// medan fönstret är öppet. Avkastningen räknas av sim/esports.js (esportPlan) och visas som ett betyg, och efter eventet finns resultatet i loggen.
+const ES = {};
+const esState = (G, g) => {
+  const st = ES[g.id] || (ES[g.id] = {});
+  const types = etypesOf(kindOfGame(g).id);
+  if (!st.type || !types.some((x) => x.id === st.type)) st.type = types[0].id;
+  st.p = st.p ?? 0;
+  st.m = st.m ?? 0;
+  if (st.i === undefined) st.i = Math.max(0, espBestPrize(G, g, st.type, st.p, st.m));
+  return st;
+};
+const RATE_KEY = { great: 'es.rate.great', good: 'es.rate.good', even: 'es.rate.even', poor: 'es.rate.poor', bad: 'es.rate.bad' };
+const RATE_COL = { great: 'var(--good)', good: 'var(--good)', even: 'var(--warn)', poor: 'var(--warn)', bad: 'var(--bug)' };
+const PROD_KEY = ['es.prod.own', 'es.prod.studio', 'es.prod.world'];
+const PROD_TIP = ['es.prod.own.tip', 'es.prod.studio.tip', 'es.prod.world.tip'];
+const MKT_KEY = ['es.mkt.none', 'es.mkt.campaign', 'es.mkt.global'];
+// Tittare och spelare avrundade till två värdesiffror ("ungefär")
+const approx = (x) => {
+  const v = Math.max(0, Math.round(x));
+  if (v < 100) return v;
+  const p = Math.pow(10, Math.floor(Math.log10(v)) - 1);
+  return Math.round(v / p) * p;
+};
+function esportPanel(G, g) {
+  const lv = g.live;
+  const E = lv.esp || { scene: 0, n: 0, ready: 0, cur: null, log: [], trad: {}, auto: null };
+  const kind = kindOfGame(g);
+  const head = `<div class="row" style="margin:16px 0 4px;gap:8px">${icon('trophy')}<div class="lbl">${t('es.title')}</div><span class="sp"></span>
+    <span class="spill" style="--c:var(--gold)" data-tip="${esc(t('es.sceneTip'))}">${icon('star')}${t('es.scene')}: ${t('es.sceneVal', { n: Math.round(E.scene) })}</span></div>
+    <p class="hint" style="margin-bottom:8px">${t('es.help')}</p>`;
+  const log = E.log.length
+    ? `<div class="lbl" style="margin:12px 0 4px">${t('es.log')}</div><div class="col" style="gap:5px">${E.log.slice(0, 4).map((r) => `<div class="ltier es-log"><span class="rn-i" style="--c:${RATE_COL[espRating(r.roi)]}">${icon(ETYPE[r.type].ic)}</span><div style="flex:1;min-width:0"><b>${L(ETYPE[r.type].name)}</b> <span class="faint">${dateOf(r.t).year}</span><div class="faint" style="font-size:11.5px">${t('es.logRow', { team: r.winner, prize: money(r.prize), v: fmtNum(approx(r.viewers)), n: fmtNum(approx(r.newPlayers)) })}</div></div><b class="num" style="color:${RATE_COL[espRating(r.roi)]}">${Math.round(r.roi * 100)}&nbsp;%</b></div>`).join('')}</div>`
+    : E.cur ? '' : `<p class="hint">${t('es.logNone')}</p>`;
+  if (E.cur) {
+    const C = E.cur;
+    const left = Math.max(0, C.weeks - C.w);
+    const pips = Array.from({ length: C.weeks }, (_, i) => `<i class="${i < C.w ? 'on' : i === C.w ? 'now' : ''}"></i>`).join('');
+    return `${head}<div class="ltier season-on es-on"><span class="rn-i sbig" style="--c:var(--gold)">${icon(ETYPE[C.type].ic)}</span><div style="flex:1;min-width:0"><div class="row" style="font-size:14px"><b>${t('es.running', { name: L(ETYPE[C.type].name) })}</b><span class="sp"></span><span class="faint">${t('es.left', { n: left })}</span></div><div class="sweeks">${pips}</div>
+      <div class="row wrap" style="gap:6px;margin-top:8px"><span class="spill" style="--c:var(--accent)">${icon('eye')}${t('es.soFar', { v: fmtNum(approx(C.viewers)) })}</span><span class="spill" style="--c:var(--good)">${icon('user')}${t('es.soFarNew', { n: fmtNum(approx(C.newPlayers)) })}</span><span class="spill" style="--c:var(--money)">${icon('money')}${t('es.soFarSpons', { v: money(C.sponsors) })}</span></div></div></div>${log}`;
+  }
+  const can = canEsport(G, g);
+  const st = esState(G, g);
+  const types = etypesOf(kind.id);
+  const typeCards = `<div class="sgrid">${types.map((ty) => `<button class="scard es-type ${st.type === ty.id ? 'sel' : ''}" data-act="es-type" data-id="${g.id}" data-t="${ty.id}"><div class="row" style="gap:10px;align-items:flex-start"><span class="rn-i sbig" style="--c:var(--gold)">${icon(ty.ic)}</span><div style="flex:1;min-width:0;text-align:left"><b>${L(ty.name)}</b> <span class="faint" style="font-size:11.5px">${t('es.weeks', { n: ty.weeks })}</span><div class="faint" style="font-size:11.5px;line-height:1.35;margin-top:2px">${L(ty.desc)}</div></div></div></button>`).join('')}</div>`;
+  const best = espBestPrize(G, g, st.type, st.p, st.m);
+  const prizeBtns = PRIZES.map((_, i) => `<button class="${st.i === i ? 'on' : ''} ${best === i ? 'best' : ''}" data-act="es-set" data-id="${g.id}" data-k="i" data-v="${i}">${best === i ? icon('star') : ''}${money(esportPlan(G, g, st.type, i, st.p, st.m).cost.prize)}</button>`).join('');
+  const prodBtns = PRODS.map((_, i) => `<button class="${st.p === i ? 'on' : ''}" data-act="es-set" data-id="${g.id}" data-k="p" data-v="${i}" data-tip="${esc(t(PROD_TIP[i]))}">${icon(PRODS[i].ic)}${t(PROD_KEY[i])}</button>`).join('');
+  const mktBtns = MKTS.map((_, i) => `<button class="${st.m === i ? 'on' : ''}" data-act="es-set" data-id="${g.id}" data-k="m" data-v="${i}">${icon(MKTS[i].ic)}${t(MKT_KEY[i])}</button>`).join('');
+  const pl = esportPlan(G, g, st.type, st.i, st.p, st.m);
+  const rate = espRating(pl.roi);
+  const pv = `<div class="es-pv"><div class="row wrap" style="gap:6px"><span class="spill" style="--c:var(--accent)">${icon('eye')}${t('es.pv.viewers', { n: fmtNum(approx(pl.viewers)) })}</span><span class="spill" style="--c:var(--good)">${icon('user')}${tn('es.pv.new', approx(pl.newPlayers), { n: fmtNum(approx(pl.newPlayers)) })}</span><span class="spill" style="--c:var(--money)">${icon('money')}${t('es.pv.spons', { v: money(pl.sponsors) })}</span><span class="spill" style="--c:var(--bug)">${icon('trophy')}${t('es.pv.cost', { v: money(pl.cost.total) })}</span></div>
+    <div class="row wrap" style="gap:8px;margin-top:8px" data-tip="${esc(t('es.rate.tip'))}"><span class="tag" style="--c:${RATE_COL[rate]}">${t(RATE_KEY[rate])}</span><span class="faint" style="font-size:12.5px">${t('es.back', { n: Math.round(pl.roi * 100) })}</span>${st.i === best ? `<span class="tag" style="--c:var(--gold)" data-tip="${esc(t('es.best.tip'))}">${icon('star')}${t('es.best')}</span>` : ''}</div></div>`;
+  const wait = espReadyIn(G, lv);
+  const go = `<div class="row wrap" style="gap:8px;margin-top:10px"><button class="btn primary" data-act="es-go" data-id="${g.id}" ${can === true && G.money >= pl.cost.total ? '' : 'disabled'}>${icon('trophy')}${t('es.go')} · ${money(pl.cost.total)}</button>${can !== true && can !== 'gone' ? `<span class="faint" style="font-size:12.5px">${can}</span>` : G.money < pl.cost.total ? `<span class="faint" style="font-size:12.5px">${t('err.money')}</span>` : wait > 0 ? '' : ''}</div>`;
+  const on = !!E.auto;
+  const auto = `<div class="ltier autoseason ${on ? 'on' : ''}" style="margin-top:8px"><span class="rn-i" style="--c:${on ? 'var(--good)' : 'var(--muted)'}">${icon('refresh')}</span><div style="flex:1;min-width:0"><b>${t('es.auto')}</b><div class="faint" style="font-size:11.5px">${on ? t('es.autoOn', { name: L(ETYPE[E.auto.type].name), v: money(esportPlan(G, g, E.auto.type, E.auto.i, E.auto.p, E.auto.m).cost.total) }) : t('es.autoHelp', { m: ESP_AUTO_BUFFER })}</div></div>
+    <button class="switch ${on ? 'on' : ''}" data-act="es-auto" data-id="${g.id}" role="switch" aria-checked="${on ? 'true' : 'false'}" aria-label="${esc(t('es.auto'))}"><i></i></button></div>`;
+  if (lv.subs < ESP_MIN && !E.n) return `${head}<p class="hint">${icon('lock')} ${t('es.small', { n: fmtNum(ESP_MIN) })}</p>${log}`;
+  return `${head}<div class="lbl" style="margin:6px 0 4px">${t('es.type')}</div>${typeCards}
+    <div class="grid" style="grid-template-columns:repeat(auto-fit,minmax(240px,1fr));gap:12px 16px;margin-top:10px">
+      <div><div class="lbl" style="margin-bottom:4px" data-tip="${esc(t('es.prizeTip'))}">${t('es.prize')}</div><div class="seg es-seg">${prizeBtns}</div></div>
+      <div><div class="lbl" style="margin-bottom:4px">${t('es.prod')}</div><div class="seg es-seg">${prodBtns}</div></div>
+      <div><div class="lbl" style="margin-bottom:4px">${t('es.mkt')}</div><div class="seg es-seg">${mktBtns}</div></div></div>
+    ${pv}${go}${auto}${log}`;
+}
+
 // Prishöjningar: vad en höjning som väntar kostar när veckan går, och hur spelarna tar en höjning just nu
 const HIKE_KEY = { hi: 'live.hike.hi', mid: 'live.hike.mid', lo: 'live.hike.lo' };
 const HIKE_NOW = { hi: 'live.hike.hi', mid: 'live.hike.midNow', lo: 'live.hike.lo' };
@@ -310,7 +379,7 @@ function livePanel(G, g) {
     ${canGoF2P(G, L) ? `<div class="ltier f2p-row" style="margin-top:8px"><div style="flex:1;min-width:0"><b>${t('live.f2pHead')}</b><div class="faint" style="font-size:11.5px">${t('live.f2pHelp')}</div></div>
       <button class="btn sm ${f2pArm ? 'danger' : ''}" data-act="lv-f2p" data-id="${g.id}">${icon('refresh')}${t(f2pArm ? 'live.f2pSure' : 'live.f2p')}</button></div>` : ''}`;
   return `<div class="card live-card" style="margin-top:16px">
-    <div class="row" style="margin-bottom:10px;gap:8px"><span class="tag" style="--c:var(--good)">${icon('globe')}${t('live.tag')}</span>${f2p ? `<span class="tag" style="--c:var(--warn)">${t('live.f2pTag')}</span>` : ''}<div class="lbl">${t('live.title')}</div><span class="sp"></span>${L.exps.length ? `<span class="faint" style="font-size:12px">${t('live.exps')}: ${L.exps.length}</span>` : ''}</div>
+    <div class="row" style="margin-bottom:10px;gap:8px"><span class="tag" style="--c:var(--good)">${icon('globe')}${t('live.tag')}</span>${L.kind ? `<span class="tag" style="--c:var(--accent)" data-tip="${esc(pick(KIND[L.kind].desc))}">${icon(KIND[L.kind].ic)}${pick(KIND[L.kind].name)}</span>` : ''}${f2p ? `<span class="tag" style="--c:var(--warn)">${t('live.f2pTag')}</span>` : ''}<div class="lbl">${t('live.title')}</div><span class="sp"></span>${L.exps.length ? `<span class="faint" style="font-size:12px">${t('live.exps')}: ${L.exps.length}</span>` : ''}</div>
     <div class="grid" style="grid-template-columns:repeat(auto-fit,minmax(130px,1fr))">
       <div class="counter" style="--c:var(--good)"><div class="v num">${fmtNum(L.subs)}</div><div class="k">${t(f2p ? 'live.players' : 'live.subs')} · ${t('live.peak', { n: fmtNum(L.peak) })}</div></div>
       <div class="counter" style="--c:var(--money)"><div class="v num">${money(m.rev)}</div><div class="k">${t('live.revM')}</div></div>
@@ -324,6 +393,7 @@ function livePanel(G, g) {
     ${outlook(G, g)}
     <div class="lbl" style="margin:16px 0 4px">${t(f2p ? 'live.chartPlayers' : 'live.chart')}</div>${subsChart(G, g)}
     ${seasonPanel(G, g)}
+    ${esportPanel(G, g)}
     ${rivalList(G, g)}
     ${regionPanel(G, g)}
     ${pay}
@@ -689,5 +759,37 @@ act('lv-close', (el) => {
     closeArmed = null;
     closeLive(UI.app.G, id);
   }
+  UI.refresh();
+});
+
+// E-sport: val av tävling och nivåer, start och återkommande event
+act('es-type', (el) => {
+  const st = ES[+el.dataset.id] || (ES[+el.dataset.id] = {});
+  st.type = el.dataset.t;
+  st.i = undefined;
+  UI.refresh();
+});
+act('es-set', (el) => {
+  const st = ES[+el.dataset.id] || (ES[+el.dataset.id] = {});
+  st[el.dataset.k] = +el.dataset.v;
+  UI.refresh();
+});
+act('es-go', (el) => {
+  const G = UI.app.G;
+  const st = ES[+el.dataset.id];
+  if (!st) return;
+  const r = startEsport(G, +el.dataset.id, st.type, st.i, st.p, st.m);
+  if (r === true) sfx.play('fanfare');
+  else if (r) errToast(r);
+  UI.refresh();
+});
+act('es-auto', (el) => {
+  const G = UI.app.G;
+  const id = +el.dataset.id;
+  const g = G.games.find((x) => x.id === id);
+  if (!g || !g.live) return;
+  const st = ES[id];
+  if (g.live.esp && g.live.esp.auto) setEsportAuto(G, id, null);
+  else if (st) setEsportAuto(G, id, { type: st.type, i: st.i, p: st.p, m: st.m });
   UI.refresh();
 });

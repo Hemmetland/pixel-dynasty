@@ -13,6 +13,7 @@ import { FRANCHISES, FRANCHISE, frTitle } from '../src/data/franchises.js';
 import { COMPETITORS } from '../src/data/names.js';
 import { TOPIC } from '../src/data/topics.js';
 import { GENRE } from '../src/data/genres.js';
+import { KINDS, KIND, ETYPES, kindOf, etypesOf } from '../src/data/onlinekinds.js';
 let fails = 0;
 const ok = (c, m) => { if (!c) { fails++; console.log('FAIL', m); } else console.log('ok  ', m); };
 const G = S.newGame({ studio: 'T', seed: 7, difficulty: 'normal' });
@@ -2071,6 +2072,120 @@ ok(!bad.length, `äldre sparning utan ett av ${paths.length} fält går att spel
   guardF = 0;
   while (S.yearOf(OLD.t) < 1990 && guardF++ < 1e6) { OLD.pending.length = 0; S.stepTick(OLD); }
   ok(OLD.market.releases.length > 5 && OLD.market.releases.every((r) => !r.fr), 'gamla förlag utan serier får vanliga titlar');
+}
+
+// ── E-sport och fler sorters onlinespel ──
+{
+  // sorten följer tema och genre, och varje sort har egna tävlingar
+  ok(kindOf('survival', 'action') === 'survival' && kindOf('zombies', 'shooter') === 'survival', 'överlevnadstemat ger ett överlevnadsspel');
+  ok(kindOf('farming', 'casual') === 'farm' && kindOf('sports', 'simulation') === 'sports' && kindOf('fantasy', 'shooter') === 'shooter', 'odling, sport och skjutspel känns igen');
+  ok(kindOf('fantasy', 'rpg') === 'mmo' && kindOf('space', 'strategy') === 'arena' && kindOf('abstract', 'casual') === 'party' && kindOf('fantasy', 'racing') === 'sports', 'rollspel blir MMO, strategi arena, casual partyspel');
+  ok(KINDS.length === 7 && KINDS.every((k) => etypesOf(k.id).length >= 1 && ETYPES.filter((e) => e.kind === k.id).length === etypesOf(k.id).length), 'sju sorter med minst en tävling var');
+  ok(S.liveScopesFor('mmo').join() === 'large,aaa' && S.liveScopesFor('survival').includes('medium') && S.liveScopesFor(undefined).join() === 'large,aaa', 'ett MMO kräver Stor, andra sorter går i Medel');
+
+  const mkOnline = (kind, year = 2012, subs = 200000, score = 8) => {
+    const GE = JSON.parse(JSON.stringify(G));
+    GE.pending = [];
+    GE.t = 48 * (year - 1980) + 5;
+    GE.money = 1e9;
+    GE.games.push({ id: 7900, title: 'E', t: GE.t - 20, score, weekly: [1], total: 1e6, priceAt: 50, topic: 'fantasy', genre: 'rpg', platform: 'pc', scope: 'aaa', audience: 'everyone', revenue: 0, units: 0, insights: [], reviews: [], flags: [] });
+    const g = GE.games[GE.games.length - 1];
+    S.launchLive(GE, g, kind);
+    g.live.subs = subs;
+    g.live.pot = subs * 1.25 * (KIND[kind] ? KIND[kind].pot : 1);
+    return [GE, g];
+  };
+  // sorten ändrar potentialen och hur fort innehållet åldras; utan sort är det ett MMO
+  const [, gm] = mkOnline('mmo');
+  const [, gf] = mkOnline('farm');
+  const [, gn] = mkOnline(undefined);
+  const [GSh, gsh] = mkOnline('shooter');
+  const [GMm, gmm] = mkOnline('mmo');
+  ok(Math.abs(gf.live.pot / gm.live.pot - 0.75) < 0.01 && gf.live.kind === 'farm' && gn.live.kind === undefined && gn.live.pot === gm.live.pot, 'odlingsspelet drar färre spelare, ett spel utan sort är som ett MMO');
+  S.liveWeek(GSh); S.liveWeek(GMm);
+  ok(gsh.live.fresh < gmm.live.fresh && Math.abs((100 - gmm.live.fresh) - 1.1) < 1e-9, 'innehållet i ett skjutspel blir gammalt fortare än i ett MMO');
+  ok(S.costPerSub(GSh, gsh.live) > S.costPerSub(GMm, gmm.live), 'driften av ett skjutspel kostar mer per spelare');
+
+  // avkastningen: ett lagom event lönar sig, att satsa allt gör det inte, och ett för litet spel går back
+  const [GP, gp] = mkOnline('mmo');
+  const best = S.espBestPrize(GP, gp, 'race', 0, 0);
+  const planBest = S.esportPlan(GP, gp, 'race', best, 0, 0);
+  const planMax = S.esportPlan(GP, gp, 'race', 4, 2, 2);
+  ok(best >= 0 && best <= 3 && planBest.roi >= 1.3 && S.espRating(planBest.roi) !== 'bad', `ett lagom event ger mer än pengarna tillbaka (${planBest.roi.toFixed(2)} gånger, nivå ${best})`);
+  ok(planMax.roi < 1 && planMax.net < planBest.net && planMax.cost.total > planBest.cost.total * 3, 'att satsa allt på en gång går back och ger mindre vinst än lagom');
+  ok(planBest.viewers > 1000 && planBest.newPlayers > 100 && planBest.sponsors > 0 && planBest.cost.total === planBest.cost.prize + planBest.cost.prod + planBest.cost.mkt, 'förhandsvisningen har tittare, nya spelare, sponsorer och kostnad');
+  const [GT, gt] = mkOnline('mmo', 2003, 4000);
+  ok([0, 1, 2, 3, 4].every((i) => S.esportPlan(GT, gt, 'race', i, 0, 0).roi < 1.3) && S.esportPlan(GT, gt, 'race', 2, 1, 1).roi < 1, 'ett litet spel tidigt går back med de flesta nivåer');
+  const [GOld, go] = mkOnline('mmo', 1999, 100000);
+  ok(S.esportPlan(GOld, go, 'race', 2, 0, 0).roi < S.esportPlan(GP, gp, 'race', 2, 0, 0).roi, 'e-sporten är lönsammare med åren (tidens räckvidd växer)');
+  ok([1, 2, 3].every((i) => S.esportPlan(GP, gp, 'race', i, 0, 0).viewers < S.esportPlan(GP, gp, 'race', i + 1, 0, 0).viewers) && S.esportPlan(GP, gp, 'race', 4, 0, 0).viewers < S.esportPlan(GP, gp, 'race', 0, 0, 0).viewers * 12, 'större prispengar ger fler tittare men med avtagande effekt');
+  const kt = (kind, ty) => S.esportPlan(...mkOnline(kind), ty, 2, 0, 0).viewers;
+  ok(kt('arena', 'bracket') > kt('farm', 'harvest') * 2, 'ett arenaspel drar många fler tittare än ett odlingsspel');
+
+  // ett event från start till slut
+  const [GR, gr] = mkOnline('mmo');
+  const rngBefore = GR.rng;
+  const m0 = GR.money, s0 = gr.live.subs, f0 = GR.fans;
+  ok(S.startEsport(GR, gr.id, 'dungeon', 99, 0, 0) === false && S.startEsport(GR, gr.id, 'bracket', 2, 0, 0) === false, 'ogiltiga val och en tävling från en annan sort nekas');
+  const plan = S.esportPlan(GR, gr, 'race', 2, 1, 0);
+  ok(S.startEsport(GR, gr.id, 'race', 2, 1, 0) === true && GR.money === m0 - plan.cost.total && gr.live.esp.cur && gr.live.esp.cur.weeks === 3, 'eventet startar och kostar prispengar, sändning och marknadsföring');
+  ok(typeof S.startEsport(GR, gr.id, 'race', 2, 1, 0) === 'string' && S.canEsport(GR, gr) !== true, 'ett event i taget i samma spel');
+  let guardE = 0;
+  while (gr.live.esp.cur && guardE++ < 20) { S.esportsWeek(GR); GR.t++; }
+  const E = gr.live.esp;
+  ok(!E.cur && GR.stats.esports === 1 && E.log.length === 1 && E.log[0].type === 'race' && GR.stats.esportViewers > 1000, 'eventet blir klart efter sina veckor och loggas');
+  ok(Math.abs(E.log[0].viewers - plan.viewers) / plan.viewers < 0.25, 'tittarsiffran hamnar nära förhandsvisningen (spänningen avgör resten)');
+  ok(gr.live.subs > s0 && GR.fans > f0 && GR.money > m0 - plan.cost.total, 'nya spelare, fans och sponsorintäkter kommer in');
+  ok(GR.rng === rngBefore, 'e-sporten drar aldrig ur spelets slumptalsföljd');
+  ok(E.scene > 0 && gr.live.eLift > 1 && GR.news.some((n) => n.key === 'esp.news.end') && GR.month.breakdown.esports !== undefined, 'scenen växer, lyfter spelarna och eventet blir en nyhet och en egen post i ekonomin');
+  ok(S.canEsport(GR, gr) !== true && S.espReadyIn(GR, gr.live) > 0, 'efter eventet vilar spelarna ett tag');
+  const sceneNow = E.scene;
+  for (let i = 0; i < 10; i++) { S.esportsWeek(GR); GR.t++; }
+  ok(E.scene < sceneNow && S.espReadyIn(GR, gr.live) === 0 && S.canEsport(GR, gr) === true, 'scenen sjunker sakta utan event och vilan tar slut');
+  // tradition: samma tävling igen drar fler
+  ok(S.esportPlan(GR, gr, 'race', 2, 1, 0).viewers > S.esportPlan(GR, { ...gr, live: { ...gr.live, esp: { ...E, scene: 0, trad: {} } } }, 'race', 2, 1, 0).viewers, 'scen och tradition ger fler tittare nästa gång');
+  // samma slump i två identiska spel
+  const [GA, ga] = mkOnline('mmo');
+  const [GB, gb] = mkOnline('mmo');
+  S.startEsport(GA, ga.id, 'race', 2, 1, 0); S.startEsport(GB, gb.id, 'race', 2, 1, 0);
+  for (let i = 0; i < 4; i++) { S.esportsWeek(GA); GA.t++; S.esportsWeek(GB); GB.t++; }
+  ok(ga.live.esp.log[0].viewers === gb.live.esp.log[0].viewers && ga.live.esp.log[0].winner === gb.live.esp.log[0].winner, 'två lika spel ger samma utfall (slumpen är en hash av fröet)');
+
+  // krav: spelare, pengar och att spelet lever
+  const [GS2, gs2] = mkOnline('mmo', 2012, 1000);
+  ok(typeof S.canEsport(GS2, gs2) === 'string' && S.startEsport(GS2, gs2.id, 'race', 0, 0, 0) !== true, 'ett spel med för få spelare kan inte arrangera event');
+  const [GM2, gm2] = mkOnline('mmo');
+  GM2.money = 100;
+  ok(S.startEsport(GM2, gm2.id, 'race', 2, 0, 0) !== true && !(gm2.live.esp && gm2.live.esp.cur) && GM2.money === 100, 'utan pengar startar inget event');
+
+  // återkommande event
+  const [GU, gu] = mkOnline('mmo');
+  ok(S.setEsportAuto(GU, gu.id, { type: 'dungeon', i: 1, p: 0, m: 0 }) === true && S.setEsportAuto(GU, gu.id, { type: 'nej', i: 1, p: 0, m: 0 }) === false, 'återkommande event sätts upp, ogiltiga val nekas');
+  S.esportsWeek(GU);
+  ok(gu.live.esp.cur && gu.live.esp.cur.type === 'dungeon', 'ett återkommande event startar direkt när spelet inte vilar');
+  let guardU = 0;
+  while (gu.live.esp.cur && guardU++ < 20) { S.esportsWeek(GU); GU.t++; }
+  S.esportsWeek(GU);
+  ok(!gu.live.esp.cur && S.espReadyIn(GU, gu.live) > 0, 'inget nytt event under vilan');
+  const GU2 = JSON.parse(JSON.stringify(GU));
+  const gu2 = GU2.games.find((x) => x.id === 7900);
+  GU.t = gu.live.esp.ready;
+  S.esportsWeek(GU);
+  ok(gu.live.esp.cur && gu.live.esp.cur.type === 'dungeon' && gu.live.esp.n === 2, 'ett återkommande event startar när vilan är slut');
+  gu2.live.esp.ready = GU2.t - 1;
+  GU2.money = 10;
+  S.esportsWeek(GU2);
+  S.esportsWeek(GU2);
+  ok(gu2.live.esp.autoWarn === 1 && GU2.news.filter((n) => n.key === 'esp.news.autoPaused').length === 1, 'när kassan inte räcker sägs det en gång');
+  ok(S.setEsportAuto(GU2, gu2.id, null) === true && !gu2.live.esp.auto, 'återkommande event går att stänga av');
+
+  // en gammal sparning: onlinespel utan e-sport och utan sort laddar och räknar
+  const [GOl, gol] = mkOnline(undefined);
+  delete gol.live.esp;
+  delete gol.live.eLift;
+  S.liveWeek(GOl); S.esportsWeek(GOl);
+  ok(gol.live.subs > 0 && gol.live.eLift === undefined && S.kindOfGame(gol).id === 'mmo' && S.liveFactors(GOl, gol).esports === 1, 'gamla onlinespel utan e-sport och sort räknas som MMO utan e-sportlyft');
+  ok(S.esportPlan(GOl, gol, 'race', 2, 0, 0).viewers > 0 && !gol.live.esp, 'förhandsvisningen skapar inget i spelet');
 }
 console.log(fails ? `\n${fails} FEL` : '\nAlla tester gick bra');
 process.exit(fails ? 1 : 0);

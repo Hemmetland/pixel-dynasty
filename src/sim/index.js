@@ -30,3 +30,4 @@ export * from './charts.js';
 export * from './fans.js';
 export * from './rival.js';
 export * from './goals.js';
+export * from './esports.js';
