@@ -1,3 +1,4 @@
+import { sceneHTML } from './livescene.js';
 import { $, esc, icon, t, L, UI, act, regWin, bar, money, moneyFull, toast, MONTHS } from './core.js';
 import { sfx } from '../audio/sfx.js';
 import { loanLimit, loanTotal, takeLoan, repayLoan, loanInterest, rentOf, facUpkeep } from '../sim/studio.js';
@@ -74,7 +75,7 @@ regWin({
     const runway = burn > 0 ? Math.max(0, G.money / burn) : 99; // i skuld finns ingen marginal kvar
     const room = Math.max(0, loanLimit(G) - loanTotal(G));
     const step = Math.max(1000, Math.round((20000 * moneyScale(yearOf(G.t))) / 2000) * 1000);
-    return `
+    return `${sceneHTML('bank', G)}
       <div class="grid" style="grid-template-columns:1.5fr 1fr;gap:20px;align-items:start">
         <div class="col">
           <div class="card"><div class="row" style="margin-bottom:8px"><div class="lbl">${t('fin.cashChart')}</div><span class="sp"></span><span class="chip c" style="--c:${mnet >= 0 ? 'var(--good)' : 'var(--bug)'}">${mnet >= 0 ? '▲' : '▼'} ${money(Math.abs(mnet))}${t('ui.perMonth')}</span></div>${lineChart(pts, '#7cf29a')}</div>

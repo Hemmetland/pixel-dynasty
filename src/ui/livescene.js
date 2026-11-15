@@ -64,6 +64,7 @@ const STATE = {
   },
   group: (G) => lifeState(G, 'group'),
   shop: (G) => lifeState(G, 'store'),
+  bank: (G) => ({ money: G.money, hist: (G.hist && G.hist.cash ? G.hist.cash.slice(-40).map((p) => p.v) : []), looks: (G.staff || []).filter((x) => !x.away).map((x) => x.look) }),
   live: (G, cfg) => {
     const l = lifeState(G, 'live');
     const g = l.games.find((x) => x.id === cfg.gid) || l.games[0] || null;
@@ -75,8 +76,8 @@ const STATE = {
     return { ...l, looks: staff };
   },
 };
-const TICK_SC = { studio: ['dev', 'studio'], factory: ['hw'], engine: ['eng'], group: ['group'], lab: ['lab'], shop: ['store'], live: ['live'] };
-const LOG_SC = { studio: 'dev', factory: 'hw', engine: 'eng', group: 'group', lab: 'lab', shop: 'store', live: 'live' };
+const TICK_SC = { studio: ['dev', 'studio'], factory: ['hw'], engine: ['eng'], group: ['group'], lab: ['lab'], shop: ['store'], live: ['live'], bank: ['dev', 'studio'] };
+const LOG_SC = { studio: 'dev', factory: 'hw', engine: 'eng', group: 'group', lab: 'lab', shop: 'store', live: 'live', bank: 'studio' };
 function refresh(kind, cfg) {
   try {
     cfg.st = STATE[kind](cfg.G, cfg);
@@ -88,6 +89,7 @@ function caption(kind, cfg) {
   const st = cfg.st;
   if (kind === 'studio') return !st ? t('ls.studio') : st.active ? t('ls.studio.on', { title: st.title || '…' }) : st.report ? t('ls.studio.report') : t('ls.studio.idle');
   if (kind === 'engine') return st && st.active ? t('ls.engine.on', { name: st.name }) : st && st.team ? t('ls.engine.team', { team: st.team.name }) : t('ls.engine');
+  if (kind === 'bank') return !st ? t('ls.bank') : st.money < 0 ? t('ls.bank.red') : t('ls.bank');
   if (kind === 'live') return !st || !st.g ? t('ls.live') : st.g.ops && !st.g.event ? t('ls.live.ops') : st.g.event ? t('ls.live.ev') : st.g.patch ? t('ls.live.patch') : st.g.season ? t('ls.live.season') : t('ls.live.on', { n: fmtNum(st.g.subs) });
   if (kind === 'shop') return !st || !st.open ? t('ls.shop') : st.paused ? t('ls.shop.closed') : st.ev ? t('ls.shop.ev', { name: st.ev }) : t('ls.shop.on');
   if (kind === 'lab') return st && st.active.length ? t('ls.lab.on', { n: st.active.length }) : t('ls.lab');
@@ -773,6 +775,72 @@ function drawLive(ctx, W, tm, cfg) {
   darken(ctx, W, 0.04, '#7cc8ff');
 }
 
+// ── Ekonomin ──
+function drawBank(ctx, W, tm, cfg) {
+  const fy = H - 6;
+  const st = cfg.st || { money: 0, hist: [], looks: [] };
+  const red = st.money < 0;
+  R(ctx, 0, 0, W, H, '#14261f');
+  for (let x = 0; x < W; x += 12) R(ctx, x, 0, 1, H - 12, '#193228');
+  R(ctx, 0, H - 12, W, 12, '#26342e');
+  R(ctx, 0, H - 12, W, 1, '#5a7a68');
+  R(ctx, 0, H - 4, W, 1, '#1a2620');
+  // valvet: tung dörr med hjul som snurrar sakta, lampan visar läget
+  const vx = 12;
+  R(ctx, vx, 6, 38, 38, '#3a4a4a');
+  R(ctx, vx, 6, 38, 1, '#7a9090');
+  R(ctx, vx + 4, 10, 30, 30, '#202c2c');
+  R(ctx, vx + 6, 12, 26, 26, '#5a6e6e');
+  const wx = vx + 19, wy = 25;
+  for (let k = 0; k < 4; k++) {
+    const a = tm * 0.5 + (k * Math.PI) / 4;
+    for (let r = -9; r <= 9; r += 1) R(ctx, Math.round(wx + Math.cos(a) * r), Math.round(wy + Math.sin(a) * r), 1, 1, '#c0d0d0');
+  }
+  R(ctx, wx - 2, wy - 2, 5, 5, '#2a3a3a');
+  R(ctx, vx + 30, 8, 3, 3, red ? (Math.floor(tm * 3) % 2 ? '#ff4a3c' : '#702020') : '#5cf2a0');
+  // väggskärmen visar kassakurvan
+  const sx = Math.round(W * 0.5) - 20;
+  V.wallScreen(ctx, sx, 7, 44, 26, 'chart', 5);
+  const h = st.hist;
+  if (h.length > 1) {
+    let lo = Infinity, hi = -Infinity;
+    for (const v of h) { lo = Math.min(lo, v); hi = Math.max(hi, v); }
+    const span = Math.max(1, hi - lo);
+    for (let i = 0; i < 40; i++) {
+      const v = h[Math.min(h.length - 1, Math.floor((i / 40) * h.length))];
+      R(ctx, sx + 2 + i, 29 - Math.round(((v - lo) / span) * 17), 1, 1, '#8aff9a');
+    }
+    R(ctx, sx + 2 + Math.floor((tm * 8) % 40), 8, 1, 21, 'rgba(255,255,255,.12)');
+  }
+  // myntstaplar: högre ju mer pengar (grovt log)
+  const stacks = st.money <= 0 ? 0 : Math.min(7, Math.max(1, Math.round(Math.log10(st.money + 10) - 2)));
+  const cx0 = sx + 56;
+  for (let i = 0; i < stacks; i++) {
+    const hh = 3 + (i % 3) * 3 + Math.min(6, i);
+    for (let k = 0; k < hh; k++) R(ctx, cx0 + i * 9, fy - 1 - k * 2, 7, 2, k % 2 ? '#ffd36a' : '#e8b848');
+    R(ctx, cx0 + i * 9, fy - hh * 2 - 1, 7, 1, '#fff2b0');
+  }
+  // revisorn vid skrivbordet
+  const dx = sx + 4;
+  F.desk2(ctx, dx, fy, 1, 4, 3);
+  F.chair2(ctx, dx, fy, '#3a6a5a');
+  person(ctx, dx + 3, fy, st.looks[0] || cfg.looks[0], 'type', tm, 1, true, 0.3);
+  // pengar sprutar när något säljer eller kvartalet summeras
+  for (const e of recent(['sold', 'launch', 'chart', 'done'], 3.2, tm)) {
+    const age = tm - e.t0;
+    for (let i = 0; i < 10; i++) {
+      const hh = V.hash(e.b.n * 9 + i);
+      const x = Math.round(cx0 + hh * 40);
+      const y = Math.round(fy - 6 - Math.sin(Math.min(1, age * 1.2) * Math.PI) * (10 + hh * 14) + Math.max(0, age - 0.8) * 8);
+      ctx.globalAlpha = Math.max(0, 1 - age / 3.2);
+      R(ctx, x, y, 3, 3, '#ffd36a');
+      R(ctx, x + 1, y + 1, 1, 1, '#fff2b0');
+    }
+    ctx.globalAlpha = 1;
+  }
+  darken(ctx, W, 0.04, '#7cffb0');
+}
+
 // ── Koncernen ──
 function drawGroup(ctx, W, tm, cfg) {
   const fy = H - 6;
@@ -869,7 +937,7 @@ function drawGroup(ctx, W, tm, cfg) {
   ctx.globalAlpha = 1;
   for (const e of recent(['party', 'anniv', 'fans', 'film', 'grpDone'], 4.6, tm)) confetti(ctx, W, tm - e.t0, e.b.n);
 }
-const DRAW = { studio: drawStudio, factory: drawFactory, engine: drawEngine, group: drawGroup, lab: drawLab, shop: drawShop, live: drawLive };
+const DRAW = { studio: drawStudio, factory: drawFactory, engine: drawEngine, group: drawGroup, lab: drawLab, shop: drawShop, live: drawLive, bank: drawBank };
 
 // ── Timer ──
 let timer = 0;

@@ -1,5 +1,6 @@
 import { $, esc, icon, t, tn, L, UI, act, regWin, bar, money, toast, errToast } from './core.js';
 import { sfx } from '../audio/sfx.js';
+import { sceneHTML } from './livescene.js';
 import { avatarImg } from '../render/people.js';
 import { SPECS, TRAITS, hire, fire, raise, train, canTrain, trainCost, trainWeeks, trainingSlots, trainingNow, skillCap, canHire, SKILLS, payroll, workers, growWeeksLeft, GROW_XP, bestGenres, genreKnow, GX_MAX, GX_STEP } from '../sim/people.js';
 import { GENRE, GENRES } from '../data/genres.js';
@@ -426,7 +427,7 @@ regWin({
     const trainNow = trainingNow(G);
     const mentor = workers(G).some((w) => w.trait === 'mentor');
     const big = G.staff.length > PAGE;
-    return `<div class="row wrap" style="gap:8px;margin-bottom:14px">
+    return `${sceneHTML('studio', G)}<div class="row wrap" style="gap:8px;margin-bottom:14px">
         <span class="chip">${icon('coffee')}${t('staff.avgMood')} ${Math.round(G.staff.reduce((s, x) => s + x.mood, 0) / G.staff.length)}</span>
         ${G.u.flags.training ? `<span class="chip">${icon('book')}${t('staff.trainSlots')} ${trainNow}/${trainingSlots(G)}</span>` : `<span class="chip faint">${icon('lock')}${t('staff.trainLocked')}</span>`}
       </div>
