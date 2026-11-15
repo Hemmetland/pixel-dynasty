@@ -84,6 +84,15 @@ const teamN = +(teamsArg && teamsArg.split('=')[1]) || +opt('teamn', 5);
 const opsArg = args.find((x) => x === '--ops' || x.startsWith('--ops='));
 const opsOn = !!opsArg;
 const opsN = +(opsArg && opsArg.split('=')[1]) || 4;
+// --shop=N: (med --store) när Butiksteam finns bildar botten ett team av de N senast anställda (utan grundaren) som sköter butikens kampanjer;
+// --shopb=0..2 budgeten och --shopa=0..2 djärvheten (standard 1 och 1)
+const shopArg = args.find((x) => x === '--shop' || x.startsWith('--shop='));
+const shopOn = !!shopArg;
+const shopN = +(shopArg && shopArg.split('=')[1]) || 4;
+// --camp: (med --store) botten kör samma kampanjer som butiksteamet gör (erbjudanden, Veckans spel, spelpaket) själv varannan vecka, utan team,
+// som jämförelse; --shopoff=deal,spot,bundle,theme stänger av sorter (gäller både --camp och --shop)
+const campOn = args.includes('--camp');
+const shopOff = opt('shopoff', '').split(',').filter(Boolean);
 // --hwteam=N: (med --hw) när Produktteam finns bildar botten ett team av de N senast anställda (utan grundaren) för varje hårdvarulinje
 // med en produkt på marknaden (--hwtl=pc,gpu väljer linjer, standard pc); teamet tar fram nästa generation, så botten gör inga egna designer för den linjen
 const hwtArg = args.find((x) => x === '--hwteam' || x.startsWith('--hwteam='));
@@ -318,7 +327,7 @@ function manage(G) {
   // forskning
   if (!casual || G.t % 16 === 0) for (const r of RESEARCH.slice().sort((a, b) => a.rp - b.rp)) {
     if (G.research.active.length >= S.researchSlots(G)) break;
-    if ((r.id === 'b_port' && !ports) || (r.id === 'b_publish' && !publish && !biz) || (r.id === 'b_merch' && !lic && !biz) || (r.id === 'b_biz' && !biz) || (r.id === 'b_acq' && !acq && !board) || (r.id === 'b_group' && !group && !board) || (r.id === 'b_board' && !board) || (r.id === 'b_store' && !store) || (r.cat === 'hw' && !hw) || (r.id === 'h_vr' && !vr) || (r.id === 'h_fab' && (!fab || !G.u.flags.hw_console))) continue;
+    if ((r.id === 'b_port' && !ports) || (r.id === 'b_publish' && !publish && !biz) || (r.id === 'b_merch' && !lic && !biz) || (r.id === 'b_biz' && !biz) || (r.id === 'b_acq' && !acq && !board) || (r.id === 'b_group' && !group && !board) || (r.id === 'b_board' && !board) || (r.id === 'b_store' && !store) || (r.id === 's_shop' && !shopOn) || (r.cat === 'hw' && !hw) || (r.id === 'h_vr' && !vr) || (r.id === 'h_fab' && (!fab || !G.u.flags.hw_console))) continue;
     if (noplat && PLAT_RES.has(r.id)) continue;
     if (S.canResearch(G, r.id) === true && r.rp <= G.rp) S.startResearch(G, r.id);
   }
@@ -349,6 +358,26 @@ function manage(G) {
       if (typeof tm === 'string') break;
       for (const x of free.sort((p, q) => q.hired - p.hired).slice(0, opsN)) S.addMember(G, tm.id, x.id);
       S.assignOps(G, tm.id, g.id);
+    }
+  }
+  // utan team: samma kampanjer som en spelare som tittar in varannan vecka
+  if (campOn && G.store && !G.store.paused && !shopOn) {
+    if (!G.store.sh) S.shopOf(G);
+    for (const k of shopOff) G.store.sh[k] = 0;
+    S.runCampaigns(G, G.store, null, 0);
+  }
+  // butiksteam: ett team som sköter kampanjerna
+  if (shopOn && G.u.flags.shopTeams && G.store && !S.shopTeamOf(G)) {
+    const free = G.staff.filter((x) => !x.isFounder && !S.teamOfStaff(G, x.id));
+    if (free.length >= shopN + 2 && S.seatCap(G) - S.outCount(G) >= shopN) {
+      const tm = S.createTeam(G);
+      if (typeof tm !== 'string') {
+        for (const x of free.sort((p, q) => q.hired - p.hired).slice(0, shopN)) S.addMember(G, tm.id, x.id);
+        S.assignShop(G, tm.id);
+        S.setShop(G, 'budget', +opt('shopb', 1));
+        S.setShop(G, 'aggro', +opt('shopa', 1));
+        for (const k of shopOff) S.setShop(G, k, 0);
+      }
     }
   }
   // forskningsteam: ett team per inriktning
@@ -634,6 +663,11 @@ if (hw && G.hw) {
   const m = (v) => '$' + (v / 1e6).toFixed(1) + 'M';
   console.log(`hw ${S.yearOf(H.t0)} rep ${Math.round(H.rep)} lab ${H.lab}${H.chief ? ' chief' : ''}; rev ${m(T.rev)} design ${m(T.design)} proto ${m(T.proto)} make ${m(T.make)} war ${m(T.war)} roy ${m(T.roy)} drv ${m(T.drv)} lab ${m(T.lab)} issue ${m(T.issue)} fab ${m(T.fab || 0)}${H.fab ? ` lvl ${H.fab.lvl} t0 ${S.yearOf(H.fab.t0 ?? G.t)}` : ""}; net ${m(S.hwNet(G))}`);
   for (const P of H.products) console.log(`  ${P.name} ${P.type} ${S.yearOf(P.tReady)}${P.t != null ? '/' + S.yearOf(P.t) : ''}${P.endT ? '-' + S.yearOf(P.endT) : ''} ${P.partner} score ${P.score0 ?? '-'} $${P.price} sold ${Math.round(P.sold).toLocaleString()} peak ${Math.round(P.peak)}/w rev ${m(P.rev)} dev ${m(P.dev)} make ${m(P.cost)} profit ${m(S.productProfit(P))}${P.plat ? ` lic ${m(P.lic || 0)} base ${Math.round(P.base || 0).toLocaleString()} weight ${S.platOf(G, P).weight.toFixed(1)} tier ${S.platOf(G, P).tier} games ${G.games.filter((g) => g.platform === P.plat).length} gameRev ${m(G.games.filter((g) => g.platform === P.plat).reduce((a, g) => a + g.revenue, 0))} fp ${P.fp || 0} bx ${P.bx || 0} exPaid ${m(P.exPaid || 0)}` : ''}`);
+}
+if (shopOn && G.store && G.store.sh) {
+  const P = G.store.sh;
+  const tm = S.shopTeamOf(G);
+  console.log(`shop: team ${tm ? S.membersOf(G, tm).length : 0} eff ${tm ? Math.round(S.shopEff(G, tm) * 100) : 0}% tm ${Math.round((G.store.tm || 0) * 100)}%; offers ${P.n.deal} spots ${P.n.spot} bundles ${P.n.bundle} themes ${P.n.theme}; fees $${Math.round(P.fee).toLocaleString()}; budget ${P.budget} aggro ${P.aggro}`);
 }
 if (board && G.gb) console.log(`board: bought ${G.gb.bought}, merged ${G.gb.merged}; reserve idx ${G.gb.res}; max subs ${S.acqMax(G)}; cap ${S.groupCap(G)}`);
 if (group || board) console.log(`group: stab ${S.stability(G)}; ops ${S.opsCount(G)}; load ${S.groupLoad(G)}/${S.groupCap(G)}; costSave ${Math.round(S.costSave(G) * 100)}%; promo ${(S.promoOwn(G) * 100).toFixed(1)}%; invested $${Math.round(G.stats.groupInv || 0).toLocaleString()}; ${S.ownedComps(G).map((c) => `${c.name} ${c.sub.mode}${c.sub.mode === 'int' ? ' ' + Math.round(c.sub.integ * 100) + '% b' + c.sub.budget : ''} staff ${Math.round(c.sub.staff)} share ${Math.round(S.shareOf(G, c) * 100)}%${c.sub.ceo ? ' ceo' : ''}`).join(', ')}`);

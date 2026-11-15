@@ -3055,5 +3055,112 @@ ok(!bad.length, `äldre sparning utan ett av ${paths.length} fält går att spel
   ok(GC.news.some((n) => n.key === 'news.bizReport'), 'klockan: en kvartalsrapport har kommit');
 }
 
+// ── Butiksteam: ett team sköter butikens kampanjer ──────────────────────────────────────────────
+{
+  const mk = () => {
+    const W = S.newGame({ studio: 'Shop', seed: 81 }); S.makeCompetitors(W); S.initWorld(W);
+    W.t = 48 * 24 + 14; W.money = 1e8; W.fans = 2e5; W.office.tier = 4;
+    for (let i = 0; i < 7; i++) { S.refreshCandidates(W); W.money += W.candidates[0].fee; S.hire(W, W.candidates[0].id); }
+    W.u.flags.store = true; W.u.flags.autoTeams = true;
+    W.games.length = 0;
+    const gm = (id, age, score, peak) => ({ id, title: id, platform: 'pc', genre: 'action', topic: 'space', scope: 'small', score, total: 2e6, t: W.t - age, tail: 1, priceAt: 30, weekly: [peak].concat(Array(age - 1).fill(3000)), revenue: 0, units: 0, fansGained: 0, ended: true });
+    W.games.push(gm('o1', 70, 7, 1e6), gm('o2', 60, 7, 1e6), gm('hit', 30, 9, 4e4), gm('c', 40, 8, 4e4), gm('d', 50, 8, 4e4), gm('e', 36, 8, 4e4));
+    const hw = W.games.find((x) => x.id === 'hit').weekly; hw[hw.length - 1] = 6e5; // ett spel som fortfarande säljer starkt: Veckans spel lönar sig
+    S.storeWeek(W);
+    W.stats.storeUsers = 3e6; W.store.lvl = 4; // butiksnivå 4
+    return W;
+  };
+  const G1 = mk();
+  const crew = G1.staff.filter((x) => !x.isFounder);
+  const T = S.createTeam(G1);
+  for (const x of crew.slice(0, 4)) S.addMember(G1, T.id, x.id);
+  ok(S.canShop(G1, T) === 'shopLocked' && typeof S.assignShop(G1, T.id) === 'string' && !S.shopOpen(G1), 'ett butiksteam kräver forskningen Butiksteam');
+  G1.u.flags.shopTeams = true;
+  ok(S.levelOf(G1) === 4 && S.seatCap(G1) === 6 && S.shopNeed(G1) === 5, 'butiksnivå 4 ger sex platser och ett behov på fem personer (' + S.seatCap(G1) + ')');
+  const GN0 = JSON.parse(JSON.stringify(G1)); delete GN0.store;
+  ok(S.canShop(GN0, S.teamsOf(GN0)[0]) === 'shopStore', 'utan en egen butik finns inget att sköta');
+  const w0 = S.workers(G1).length;
+  ok(S.assignShop(G1, T.id) === true && T.role === 'shop' && T.target === 'store' && T.members.every((id) => G1.staff.find((x) => x.id === id).away) && S.workers(G1).length === w0 - 4, 'teamet tar över butiken och är borta från dina projekt');
+  ok(S.leadOf(G1, T) !== null && S.shopTeamOf(G1) === T && S.outCount(G1) === 4, 'en arbetsledare utses och teamet sitter utanför huset');
+  const T2 = S.createTeam(G1);
+  for (const x of crew.slice(4, 6)) S.addMember(G1, T2.id, x.id);
+  ok(S.canShop(G1, T2) === 'shopTaken', 'bara ett team sköter butiken');
+  S.disbandTeam(G1, T2.id);
+  const inf = S.shopInfo(G1, T);
+  ok(inf.eff > 0 && inf.eff < 1 && inf.need === 5 && inf.n === 4 && Math.abs(inf.lift - S.SHOP_LIFT * inf.eff) < 1e-9, 'effekten följer hur många de är mot behovet (' + inf.eff.toFixed(2) + ')');
+  const B1 = G1.store;
+  const rng0 = G1.rng;
+  const cost0 = S.spotCost(G1, G1.games.find((x) => x.id === 'hit'));
+  S.shopWeek(G1);
+  ok(B1.tm === inf.eff && G1.rng === rng0, 'veckan sätter butikens kampanjlyft utan att röra slumptalen');
+  const cost1 = S.spotCost(G1, G1.games.find((x) => x.id === 'hit'));
+  ok(cost1 < cost0 && Math.abs(cost1 / cost0 - (1 - S.SHOP_FEE * inf.eff)) < 0.01, 'Veckans spel blir billigare med teamet (' + cost0 + ' -> ' + cost1 + ')');
+  // kampanjerna kommer av sig själva
+  const P = S.shopOf(G1);
+  ok(P.on === 1 && P.budget === 1 && P.aggro === 1 && S.setShop(G1, 'aggro', 2) === true && S.setShop(G1, 'aggro', 9) === false && P.aggro === 2 && S.setShop(G1, 'x', 1) === false, 'policyn kan sättas och begränsas');
+  S.setShop(G1, 'aggro', 1);
+  S.shopWeek(G1); G1.t++; S.storeWeek(G1);
+  ok(B1.spots.length >= 1 && B1.bundles.length === 1 && B1.deals.length >= 1, 'teamet satte igång Veckans spel, ett paket och erbjudanden (' + B1.spots.length + '/' + B1.bundles.length + '/' + B1.deals.length + ')');
+  ok(P.n.spot >= 1 && P.n.bundle === 1 && P.n.deal >= 1 && P.q.n >= 3 && P.fee > 0, 'och räknade dem och avgifterna');
+  ok(B1.deals.every((d) => { const g = G1.games.find((x) => x.id === d.id); return G1.t - g.t >= S.SHOP_DEAL_AGE && S.baseOf(G1, g) < 4e4; }) && !B1.deals.some((d) => B1.bundles.some((b) => b.ids.includes(d.id)) || B1.spots.some((x) => x.id === d.id)), 'erbjudanden går bara till äldre spel som tappat och aldrig till ett spel i ett paket eller i Veckans spel');
+  // lyftet: samma kampanj ger mer med teamet
+  const GA = mk(); const GB = mk();
+  for (const W of [GA, GB]) { S.startSpot(W, 'hit'); S.startDeal(W, 'o1', 1); W.t++; }
+  GB.store.tm = 1;
+  S.storeWeek(GA); S.storeWeek(GB);
+  const ra = GA.store.spots[0].inc;
+  const rb = GB.store.spots[0].inc;
+  ok(ra > 0 && Math.abs(rb / ra - (1 + S.SHOP_LIFT)) < 1e-6 && GB.store.deals[0].inc > GA.store.deals[0].inc, 'kampanjerna säljer ' + Math.round(S.SHOP_LIFT * 100) + ' % mer vid full effekt');
+  // av och budget
+  const G2 = mk();
+  const T3 = S.createTeam(G2); for (const x of G2.staff.filter((y) => !y.isFounder).slice(0, 5)) S.addMember(G2, T3.id, x.id);
+  G2.u.flags.shopTeams = true; S.assignShop(G2, T3.id);
+  S.setShop(G2, 'on', 0);
+  for (let i = 0; i < 4; i++) { S.shopWeek(G2); G2.t++; S.storeWeek(G2); }
+  ok(G2.store.spots.length === 0 && G2.store.deals.length === 0 && G2.store.bundles.length === 0 && G2.store.tm > 0, 'avstängt gör teamet inget men lyftet gäller ändå');
+  S.setShop(G2, 'on', 1);
+  G2.money = 1000; // under reserven: inga betalda kampanjer, men de gratis går
+  for (let i = 0; i < 4; i++) { S.shopWeek(G2); G2.t++; S.storeWeek(G2); G2.money = Math.min(G2.money, 1000); }
+  ok(G2.store.spots.length === 0 && S.shopOf(G2).n.spot === 0 && (G2.store.bundles.length === 1 || G2.store.deals.length >= 1), 'utan pengar utöver reserven betalar teamet inget, men gratis paket och erbjudanden går');
+  // väntande spelare stoppar nya erbjudanden
+  const G3 = mk();
+  const T4 = S.createTeam(G3); for (const x of G3.staff.filter((y) => !y.isFounder).slice(0, 5)) S.addMember(G3, T4.id, x.id);
+  G3.u.flags.shopTeams = true; S.assignShop(G3, T4.id);
+  S.setShop(G3, 'spot', 0); S.setShop(G3, 'bundle', 0);
+  G3.store.wait = 0.6;
+  for (let i = 0; i < 3; i++) { S.shopWeek(G3); G3.store.wait = 0.6; G3.t++; S.storeWeek(G3); G3.store.wait = 0.6; }
+  ok(G3.store.deals.length === 0 && S.shopOf(G3).n.deal === 0, 'när många redan väntar på nästa erbjudande sätts inga nya igång');
+  // temavecka: förbered den en gång, mot en avgift
+  const G4 = mk();
+  const T5 = S.createTeam(G4); for (const x of G4.staff.filter((y) => !y.isFounder).slice(0, 5)) S.addMember(G4, T5.id, x.id);
+  G4.u.flags.shopTeams = true; S.assignShop(G4, T5.id);
+  S.setShop(G4, 'spot', 0); S.setShop(G4, 'bundle', 0); S.setShop(G4, 'deal', 0);
+  G4.t = 48 * 24 + 10; // indievecka (små spel)
+  const m4 = G4.money;
+  S.shopWeek(G4);
+  const P4 = S.shopOf(G4);
+  ok(S.eventNow(G4).id === 'indie' && P4.prep && P4.prep.id === 'indie' && P4.prep.v > 0 && G4.money < m4 && P4.n.theme === 1, 'teamet förbereder temaveckan mot en avgift (' + Math.round(m4 - G4.money) + ')');
+  const mm = G4.money;
+  S.shopWeek(G4);
+  ok(G4.money === mm && P4.n.theme === 1, 'men bara en gång per temavecka');
+  const G5 = JSON.parse(JSON.stringify(G4));
+  G5.store.sh.prep = null; // samma vecka utan förberedelsen
+  S.storeWeek(G4); S.storeWeek(G5);
+  ok(G4.store.ev.inc > G5.store.ev.inc * 1.2, 'en förberedd temavecka säljer klart mer (' + Math.round(G4.store.ev.inc) + ' mot ' + Math.round(G5.store.ev.inc) + ')');
+  // kvartalsrapport
+  const G6 = JSON.parse(JSON.stringify(G1));
+  G6.t = 48 * 26 + 7; S.shopOf(G6).on = 0; S.shopOf(G6).q = { n: 3, fee: 4500 };
+  S.shopWeek(G6);
+  ok(G6.news[0].key === 'news.shopReport' && G6.news[0].vars.a === 3 && S.shopOf(G6).q.n === 0, 'en rapport per kvartal, sedan nollställd');
+  // teamet slutar
+  ok(S.endShop(G1, T.id) === true && T.role === null && G1.staff.filter((x) => T.members.includes(x.id)).every((x) => !x.away && !x.out), 'teamet slutar med butiken och är vanlig personal igen');
+  S.shopWeek(G1);
+  ok(G1.store.tm === 0, 'utan team försvinner lyftet');
+  // gammal sparning utan butiksteamets fält
+  const GO = JSON.parse(JSON.stringify(G2)); delete GO.store.sh; delete GO.store.tm;
+  for (let i = 0; i < 30; i++) { S.shopWeek(GO); GO.t++; S.storeWeek(GO); }
+  ok(Number.isFinite(GO.money) && GO.store.sh && GO.store.sh.on === 1, 'en sparning från före butiksteamet fortsätter som vanligt');
+}
+
 console.log(fails ? `\n${fails} FEL` : '\nAlla tester gick bra');
 process.exit(fails ? 1 : 0);

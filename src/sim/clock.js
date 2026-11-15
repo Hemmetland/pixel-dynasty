@@ -17,6 +17,7 @@ import { groupWeek, costSave } from './group.js';
 import { boardWeek } from './board.js';
 import { bizWeek } from './bizdept.js';
 import { storeWeek } from './store.js';
+import { shopWeek } from './shopteam.js';
 import { hwWeek } from './hardware.js';
 import { opsWeek } from './opsteam.js';
 import { hwTeamWeek } from './hwteam.js';
@@ -75,6 +76,7 @@ function weekly(G) {
   subWeek(G);
   groupWeek(G);
   boardWeek(G); // koncernstyrelsen och dotterbolagens händelser, efter veckans integration
+  shopWeek(G); // butiksteamet sätter igång veckans kampanjer före butikens vecka
   storeWeek(G);
   hwWeek(G);
   hwTeamWeek(G); // produktteamen underhåller och tar fram nästa generation efter veckans försäljning

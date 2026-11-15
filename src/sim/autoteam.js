@@ -57,7 +57,7 @@ export function canMission(G, team, kind, baseId) {
   if (mem.some((s) => s.trainUntil > G.t)) return 'training';
   // ett driftteam bygger bara expansioner till sitt eget spel
   if (team.role === 'ops' && (kind !== 'expansion' || baseId !== team.target)) return 'opsOnly';
-  if (team.role === 'hw' || team.role === 'res') return 'roleGame';
+  if (team.role === 'hw' || team.role === 'res' || team.role === 'shop') return 'roleGame';
   if (kind === 'new') return true;
   if (!eligibleBases(G, kind).some((g) => g.id === baseId)) return kind === 'sequel' && !G.u.flags.sequels ? 'noSequels' : 'base';
   return true;

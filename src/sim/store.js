@@ -185,7 +185,7 @@ function rollMonth(G, S) {
 }
 
 // Andelen av ett spels pc-försäljning som går genom butiken
-const via = (S, x) => (x.storeEx ? 1 : S.reach);
+export const via = (S, x) => (x.storeEx ? 1 : S.reach);
 
 // Reans försäljning av äldre pc-spel och portar en vecka, före rabattnivåns lyft: nyare spel säljer mer
 function saleBase(G, S) {
@@ -379,11 +379,19 @@ function levelWatch(G, S) {
 // Du lyfter fram ett av dina pc-spel i skyltfönstret i några veckor mot en avgift: spelet säljer extra (mer ju bättre det är) och
 // ett bra spel drar nya användare. Äldre spel får en bas som i rean, så att även en klassiker går att väcka.
 export const SPOT = { cost: 3000, share: 0.33, lift: 0.4, liftScore: 0.1, users: 0.0015, again: 12 };
+// Butiksteamet (shopteam.js) lyfter kampanjerna: S.tm (0 till 1) är teamets effekt den här veckan. Vid full effekt säljer erbjudanden,
+// Veckans spel, spelpaket och temaveckor så mycket mer, och Veckans spel kostar så mycket mindre. Ett förberett temaveckolyft (S.sh.prep) kommer ovanpå.
+export const SHOP_LIFT = 0.15;
+export const SHOP_FEE = 0.25;
+export const SHOP_THEME = 0.35;
+export const shopTm = (S) => (S && S.tm) || 0;
+const campMult = (S) => 1 + SHOP_LIFT * shopTm(S);
+const prepOf = (S, ev) => (S.sh && S.sh.prep && S.sh.prep.id === ev.id ? S.sh.prep : null);
 const spotLift = (g) => SPOT.lift + SPOT.liftScore * clamp(g.score - 5, 0, 4);
 // Vad en plats i skyltfönstret väntas ge i extra försäljning om spelet säljer som nu hela tiden (i verkligheten avtar det)
 export const spotValue = (G, g) => (baseOf(G, g) * spotLift(g) * via(G.store, g) * spotWeeks(G)) / (1 - OTHER_CUT);
 // Avgiften följer vad spelet säljer: en tredjedel av det väntade, aldrig under en grundavgift (från nivå 5 hälften)
-export const spotCost = (G, g) => Math.round((Math.max(SPOT.cost * yscale(G), SPOT.share * spotValue(G, g)) * (levelOf(G) >= 5 ? 0.5 : 1)) / 10) * 10;
+export const spotCost = (G, g) => Math.round((Math.max(SPOT.cost * yscale(G), SPOT.share * spotValue(G, g)) * (levelOf(G) >= 5 ? 0.5 : 1) * (1 - SHOP_FEE * shopTm(G.store))) / 10) * 10;
 const pcGame = (g) => isPcPlat(g.platform) && !g.expansionOf;
 export const spotsOf = (S) => S.spots || (S.spots = []);
 export function spotGames(G) {
@@ -446,6 +454,12 @@ export function dealNet(G, g, i) {
   return Math.max(0, (1 - c) * units - 1);
 }
 export const dealValue = (G, g, i) => (baseOf(G, g) * dealNet(G, g, i) * via(G.store, g) * DEAL_WEEKS) / (1 - OTHER_CUT);
+// Vad ett erbjudande kostar i väntan: spelarna lär sig vänta på nästa erbjudande (S.wait) och köper då något mindre av andra förlags och
+// koncernens spel i butiken. Det avtar med WAIT_DECAY, så hela kostnaden är väntan gånger de veckor den räknas, mot veckans intäkter därifrån.
+export function dealCost(G, i) {
+  const S = G.store;
+  return ((DEALS[i].wait * WAIT_FULL) / (1 - WAIT_DECAY)) * (((S.lm.ext || 0) + (S.lm.group || 0)) / 4);
+}
 // Spelen som kan få ett erbjudande eller ligga i ett paket: pc-spel som inte redan är med i ett, bästa försäljningen först
 const onSale = (S) => new Set([...dealsOf(S).map((x) => x.id), ...bundlesOf(S).flatMap((b) => b.ids)]);
 export function dealGames(G) {
@@ -564,11 +578,21 @@ export function eventFits(G, ev = eventNow(G)) {
 }
 
 // Vad ett spel säljer en vanlig vecka nu (senaste veckan, eller en bas för äldre spel som i rean)
-function baseOf(G, g) {
+export function baseOf(G, g) {
   const age = G.t - g.t;
   const w = g.weekly && g.weekly.length === age && age > 0 ? g.weekly[age - 1] : 0;
   const tail = age >= SALE_AGE && g.total > 0 ? (g.total * SALE_BASE) / (1 + age / (3 * WEEKS_PER_YEAR)) : 0;
   return Math.max(w, tail);
+}
+
+// Vad en temavecka väntas ge i extra försäljning över alla dess veckor, om dina passande spel säljer som nu hela tiden
+export function eventValue(G, ev = eventNow(G)) {
+  const S = G.store;
+  if (!ev || !S) return 0;
+  const weeks = ev.weeks[1] - ev.weeks[0] + 1;
+  let v = 0;
+  for (const g of eventFits(G, ev)) v += (baseOf(G, g) * ev.lift * eventBoost(G) * via(S, g) * weeks) / (1 - OTHER_CUT);
+  return v;
 }
 
 // Veckans extra försäljning: temaveckans lyft för passande spel och Veckans spel. Båda går in i dina spels intäkter i butiken.
@@ -577,9 +601,11 @@ function extraWeek(G, S) {
   const ev = eventNow(G);
   if (ev) {
     if (!S.ev || S.ev.id !== ev.id || G.t - S.ev.t0 > 3) S.ev = { id: ev.id, t0: G.t, inc: 0, n: 0 };
-    const boost = eventBoost(G);
+    const prep = prepOf(S, ev);
+    const boost = eventBoost(G) * (1 + (prep && G.t - prep.t0 <= 3 ? prep.v : 0));
     let v = 0;
     for (const g of eventFits(G, ev)) v += (baseOf(G, g) * ev.lift * boost * via(S, g)) / (1 - OTHER_CUT);
+    v *= campMult(S);
     out.evt = v;
     S.ev.inc += v;
     S.ev.n = Math.max(S.ev.n, eventFits(G, ev).length);
@@ -597,7 +623,7 @@ function extraWeek(G, S) {
       note(G, 'news.storeSpotEnd', { title: g.title, v: fmtMoney(sp.inc) }, 'good');
       continue;
     }
-    const v = (baseOf(G, g) * spotLift(g) * via(S, g)) / (1 - OTHER_CUT);
+    const v = (baseOf(G, g) * spotLift(g) * via(S, g) * campMult(S)) / (1 - OTHER_CUT);
     sp.inc += v;
     out.spot += v;
     S.sb = (S.sb || 0) + SPOT.users * clamp((g.score - 5) / 4, 0, 1.25);
@@ -613,7 +639,7 @@ function extraWeek(G, S) {
       note(G, 'news.storeDealEnd', { title: g.title, v: fmtMoney(d.inc) }, d.inc >= 1 ? 'good' : 'info', true);
       continue;
     }
-    const v = (baseOf(G, g) * dealNet(G, g, d.i) * via(S, g)) / (1 - OTHER_CUT);
+    const v = (baseOf(G, g) * dealNet(G, g, d.i) * via(S, g) * campMult(S)) / (1 - OTHER_CUT);
     d.inc += v;
     out.deal += v;
     S.sb = (S.sb || 0) + DEALS[d.i].users / DEAL_WEEKS;
@@ -628,7 +654,7 @@ function extraWeek(G, S) {
       note(G, 'news.storeBundleEnd', { v: fmtMoney(b.inc) }, b.inc >= 1 ? 'good' : 'info', true);
       continue;
     }
-    const v = (gs.reduce((a, g) => a + baseOf(G, g) * via(S, g), 0) * bundleNet(gs.length)) / (1 - OTHER_CUT);
+    const v = (gs.reduce((a, g) => a + baseOf(G, g) * via(S, g), 0) * bundleNet(gs.length) * campMult(S)) / (1 - OTHER_CUT);
     b.inc += v;
     out.bundle += v;
     S.sb = (S.sb || 0) + BUNDLE.users / BUNDLE.weeks;

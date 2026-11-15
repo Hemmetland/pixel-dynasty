@@ -57,7 +57,8 @@ export const capacity = (G) => TIERS[G.office.tier].desks + CAMPUS_DESKS * campu
 export const SEATS_PER_LEVEL = 3;
 export const seated = (G) => G.staff.filter((s) => !s.out).length;
 export const outCount = (G) => G.staff.length - seated(G);
-export const seatCap = (G) => SEATS_PER_LEVEL * (facLevel(G, 'server') + facLevel(G, 'lab') + (G.hw ? G.hw.lab || 0 : 0));
+// Butiken ger också platser åt butiksteamet: en nivå per två butiksnivåer (butiksnivå 2-3 en, 4-5 två, 6 tre)
+export const seatCap = (G) => SEATS_PER_LEVEL * (facLevel(G, 'server') + facLevel(G, 'lab') + (G.hw ? G.hw.lab || 0 : 0) + Math.floor(((G.store && G.store.lvl) || 0) / 2));
 
 export const FACILITIES = {
   coffee: { id: 'coffee', glyph: 'f_coffee', cost: 2500, rent: 90, name: { sv: 'Kaffehörna', en: 'Coffee Corner' },

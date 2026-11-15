@@ -10,6 +10,8 @@ import { autoOpen, canMission, eligibleBases, missionQuote, startMission, cancel
 import { opsOpen, opsInfo, opsNeed, canOps, assignOps, RUTIN_MAX } from '../sim/opsteam.js';
 import { hwTeamOpen, hwInfo, hwLines, canHwTeam, assignHw, HW_NEED } from '../sim/hwteam.js';
 import { resOpen, resInfo, canRes, assignRes, RES_FOCUS, RES_NEED, RES_RP } from '../sim/resteam.js';
+import { shopOpen, shopInfo, assignShop, canShop } from '../sim/shopteam.js';
+import { SHOP_LIFT, SHOP_FEE, SHOP_THEME } from '../sim/store.js';
 import { hrOpen, hrPlan, setHrPlan, setWant, hrOpenSeats, hrReserve, HR_MIN } from '../sim/hrdept.js';
 import { RCP_MAX, recipeKnow } from '../sim/score.js';
 import { HW_TEAM_MT, HW_TEAM_COST, HW_TEAM_TIME } from '../sim/hardware.js';
@@ -138,7 +140,7 @@ function crew(G, team) {
     ${mem.length < TEAM_SIZE ? `<div class="row wrap" style="margin-top:8px;gap:12px"><button class="btn sm ${S.addFor === team.id ? 'on' : ''}" data-act="tm-addopen" data-tid="${team.id}">${icon('plus')}${t('tm.add')}</button>${hrOpen(G) ? `<div class="row" style="gap:6px" data-tip="${esc(t('tm.wantTip'))}"><span class="faint" style="font-size:12px">${t('tm.want')}</span><button class="btn sm" data-act="tm-want" data-tid="${team.id}" data-d="-1">−</button><b class="num" style="min-width:26px;text-align:center">${team.want ? team.want : t('tm.wantOff')}</b><button class="btn sm" data-act="tm-want" data-tid="${team.id}" data-d="1">+</button></div>` : ''}</div>` : ''}${picker}
     ${mem.length ? `<div class="lbl" style="margin:12px 0 0">${t('tm.avg')}</div>${skills(G, teamAvg(G, team))}${teamGx(mem)}` : ''}
     ${roleBlock(G, team)}
-    ${team.role === 'ops' ? opsBlock(G, team) : team.role === 'hw' ? hwBlock(G, team) : team.role === 'res' ? resBlock(G, team) : `<div style="margin-top:12px;padding-top:10px;border-top:1px dashed var(--line)"><div class="lbl" style="margin:0 0 6px">${t('tm.course')}</div>${course}</div>${missionBlock(G, team)}`}
+    ${team.role === 'ops' ? opsBlock(G, team) : team.role === 'hw' ? hwBlock(G, team) : team.role === 'res' ? resBlock(G, team) : team.role === 'shop' ? shopBlock(G, team) : `<div style="margin-top:12px;padding-top:10px;border-top:1px dashed var(--line)"><div class="lbl" style="margin:0 0 6px">${t('tm.course')}</div>${course}</div>${missionBlock(G, team)}`}
   </div>`;
 }
 
@@ -147,7 +149,8 @@ function roleBlock(G, team) {
   const showOps = opsOpen(G) || team.role === 'ops';
   const showHw = hwTeamOpen(G) || team.role === 'hw';
   const showRes = resOpen(G) || team.role === 'res';
-  if (!showOps && !showHw && !showRes) return '';
+  const showShop = shopOpen(G) || team.role === 'shop';
+  if (!showOps && !showHw && !showRes && !showShop) return '';
   const picking = S.pick && S.pick.tid === team.id ? S.pick.kind : null;
   let pick = '';
   if (picking === 'ops') {
@@ -187,7 +190,7 @@ function roleBlock(G, team) {
   const none = !holds(team);
   const btn = (k, ic, on, tip, dis = '') => `<button class="btn sm ${on ? 'on' : ''}" data-act="tm-role" data-tid="${team.id}" data-k="${k}" ${dis} ${tip ? `data-tip="${esc(t(tip))}"` : ''}>${icon(ic)}${t('tm.role.' + k)}</button>`;
   return `<div style="margin-top:12px;padding-top:10px;border-top:1px dashed var(--line)"><div class="lbl" style="margin:0 0 6px">${t('tm.role')}</div>
-    <div class="row wrap" style="gap:6px">${btn('game', 'gamepad', none, '', team.mission && !none ? 'disabled' : '')}${showOps ? btn('ops', 'globe', team.role === 'ops', 'tm.role.opsTip') : ''}${showHw ? btn('hw', 'cpu', team.role === 'hw', 'tm.role.hwTip') : ''}${showRes ? btn('res', 'flask', team.role === 'res', 'tm.role.resTip') : ''}</div>${pick}</div>`;
+    <div class="row wrap" style="gap:6px">${btn('game', 'gamepad', none, '', team.mission && !none ? 'disabled' : '')}${showOps ? btn('ops', 'globe', team.role === 'ops', 'tm.role.opsTip') : ''}${showHw ? btn('hw', 'cpu', team.role === 'hw', 'tm.role.hwTip') : ''}${showRes ? btn('res', 'flask', team.role === 'res', 'tm.role.resTip') : ''}${showShop ? btn('shop', 'cart', team.role === 'shop', 'tm.role.shopTip', team.role !== 'shop' && canShop(G, team) !== true ? 'disabled' : '') : ''}</div>${pick}</div>`;
 }
 // Ett produktteam: vilken linje, hur väl det räcker till och vad det ger
 function hwBlock(G, team) {
@@ -233,6 +236,20 @@ function resBlock(G, team) {
       <div class="faint" style="font-size:12px;margin-top:2px" data-tip="${esc(t('tm.ops.rutinTip'))}">${t('tm.ops.rutin', { n: inf.rutin, m: RUTIN_MAX })}</div>
       ${gives}
       <div class="row" style="margin-top:8px"><span class="sp"></span><button class="btn sm" data-act="tm-endrole" data-tid="${team.id}" data-tip="${esc(t('tm.ops.endTip'))}">${t('tm.res.end')}</button></div></div></div>`;
+}
+// Ett butiksteam: hur väl det räcker till och vad det ger (kampanjerna ställer du in i fliken Egen butik)
+function shopBlock(G, team) {
+  const head = `<div class="lbl" style="margin:12px 0 6px">${t('tm.role.shop')}</div>`;
+  const inf = shopInfo(G, team);
+  const pct = Math.round(inf.eff * 100);
+  const gives = t('tm.shop.gives', { a: Math.round(SHOP_LIFT * inf.eff * 100), b: Math.round(SHOP_FEE * inf.eff * 100), c: Math.round(SHOP_THEME * inf.eff * 100) });
+  return `<div>${head}<div class="hint" style="margin:0 0 8px">${t('tm.shop.help')}</div>
+    <div class="sf-spot-row on" style="display:block"><div class="row" style="gap:8px"><b class="ell" style="flex:1;min-width:0">${t('tm.shop.on')}</b><span class="tag" style="--c:var(--good)" data-tip="${esc(t('tm.ops.effTip'))}">${t('tm.ops.eff', { n: pct })}</span></div>
+      <div style="margin:8px 0 4px">${bar(pct, 'var(--good)')}</div>
+      <div class="faint" style="font-size:12px">${t('tm.shop.need', { need: inf.need, n: inf.n })}</div>
+      <div class="faint" style="font-size:12px;margin-top:2px" data-tip="${esc(t('tm.ops.rutinTip'))}">${t('tm.ops.rutin', { n: inf.rutin, m: RUTIN_MAX })}</div>
+      <div class="muted" style="font-size:12px;margin-top:6px">${gives}</div>
+      <div class="row" style="margin-top:8px"><button class="btn sm" data-act="tm-shopstore">${icon('cart')}${t('tm.shop.open')}</button><span class="sp"></span><button class="btn sm" data-act="tm-endrole" data-tid="${team.id}" data-tip="${esc(t('tm.ops.endTip'))}">${t('tm.shop.end')}</button></div></div></div>`;
 }
 // Ett driftteam: vilket spel, hur väl det räcker till och vad det ger
 function opsBlock(G, team) {
@@ -610,8 +627,18 @@ act('tm-role', (el) => {
       if (typeof r === 'string') errToast(r);
     }
     S.pick = null;
+  } else if (k === 'shop') {
+    // butiksteamet har ingen lista att välja ur: ett klick räcker
+    const r = team.role === 'shop' ? true : assignShop(G, tid);
+    if (r === true) {
+      if (team.role === 'shop') sfx.play('research');
+    } else errToast(r);
+    S.pick = null;
   } else S.pick = S.pick && S.pick.tid === tid && S.pick.kind === k ? null : { tid, kind: k };
   UI.refresh();
+});
+act('tm-shopstore', () => {
+  UI.open('store');
 });
 act('tm-pickgame', (el) => {
   const r = assignOps(UI.app.G, +el.dataset.tid, +el.dataset.id);
