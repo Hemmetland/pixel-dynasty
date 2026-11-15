@@ -244,6 +244,7 @@ export function storeWeek(G) {
   let ext = 0;
   let gross = 0;
   let feat = 0; // dina spels extra försäljning av att synas i butiken (redan med i försäljningen)
+  let bestG = { id: 0, v: 0 }; // dagens bästa enskilda spel i butiken (för rekorden)
   // egna plattformar: den digitala delen av dina spel, och butikens del av andra förlags digitala försäljning
   const dig = digitalOf(G);
   const plat = platStore(G);
@@ -262,6 +263,7 @@ export function storeWeek(G) {
       const v = (w / (1 - OTHER_CUT)) * via(S, g);
       own += v * OTHER_CUT;
       gross += v;
+      if (v > bestG.v) bestG = { id: g.id, v };
       if (g.storeFeat) feat += (w * g.storeFeat) / (1 + g.storeFeat);
     }
     for (const p of g.ports || []) {
@@ -298,8 +300,8 @@ export function storeWeek(G) {
   }
   // temaveckor och Veckans spel: extra försäljning av dina pc-spel
   const ex = extraWeek(G, S);
-  own += ex.evt + ex.spot;
-  gross += ex.evt + ex.spot;
+  own += ex.evt + ex.spot + ex.deal + ex.bundle;
+  gross += ex.evt + ex.spot + ex.deal + ex.bundle;
   const c = storeCosts(G, S);
   gross += sale;
   const pay = gross * PAY_FEE;
@@ -339,6 +341,7 @@ export function storeWeek(G) {
   G.stats.storeUsers = Math.max(G.stats.storeUsers || 0, users);
   levelWatch(G, S);
   rankWatch(G, S);
+  recordWatch(G, S, inc, bestG);
   while (S.ms < MILESTONES.length && users >= MILESTONES[S.ms]) {
     note(G, 'news.storeUsers', { studio: G.studio, n: MILESTONES[S.ms] / 1e6 }, 'good');
     S.ms++;
@@ -414,6 +417,126 @@ export function startSpot(G, id) {
   return true;
 }
 
+// ── Erbjudanden och spelpaket ──
+// Ett erbjudande sänker priset på ett av dina pc-spel i DEAL_WEEKS veckor: fler köper, men till lägre pris, så pengarna går bara
+// upp när rabatten är lagom (mest vid hälften av priset, och mer för ett äldre spel som väcks till liv). Ju större rabatt desto fler
+// nya användare, men spelare som lär sig vänta på erbjudanden köper något mindre till fullpris (S.wait som i rean). Ett erbjudande
+// kostar ingenting, men ett spel kan få ett nytt först efter DEAL_AGAIN veckor. Med Autopilot sätter butiken själv ett erbjudande
+// på det äldre spel vars försäljning har sjunkit. Ett spelpaket samlar tre av dina spel till ett bra pris i några veckor.
+export const DEALS = [
+  { id: 'mild', cut: 0.25, users: 0.0006, wait: 0.004, ic: 'cart' },
+  { id: 'half', cut: 0.5, users: 0.0012, wait: 0.008, ic: 'cart' },
+  { id: 'clear', cut: 0.75, users: 0.0022, wait: 0.016, ic: 'cart' },
+];
+export const DEAL_WEEKS = 2;
+export const DEAL_AGAIN = 8;
+const DEAL_EPS = 1.3; // hur mycket fler exemplar ett nytt spel säljer av en lägre prislapp
+const DEAL_EPS_OLD = 1.6; // ... och ett äldre spel (äldre än ett halvår)
+const DEAL_MAX_UNITS = 4; // fler än så många gånger så många går inte att sälja
+const AUTO_DEAL_BELOW = 0.5; // Autopilot: ett spel vars vecka säljer under den andelen av toppveckan får ett erbjudande
+const AUTO_DEAL_AGE = 10;
+export const dealsOf = (S) => S.deals || (S.deals = []);
+export const dealSlots = (G) => (G.store && !G.store.paused ? 1 + (levelOf(G) >= 4 ? 1 : 0) : 0);
+export const autoDealOpen = (G) => levelOf(G) >= 3;
+// Så mycket mer pengar än en vanlig vecka erbjudandet ger (negativt blir noll: då ger det bara användare)
+export function dealNet(G, g, i) {
+  const c = DEALS[i].cut;
+  const eps = G.t - g.t >= SALE_AGE ? DEAL_EPS_OLD : DEAL_EPS;
+  const units = Math.min(DEAL_MAX_UNITS, Math.pow(1 / (1 - c), eps));
+  return Math.max(0, (1 - c) * units - 1);
+}
+export const dealValue = (G, g, i) => (baseOf(G, g) * dealNet(G, g, i) * via(G.store, g) * DEAL_WEEKS) / (1 - OTHER_CUT);
+// Spelen som kan få ett erbjudande eller ligga i ett paket: pc-spel som inte redan är med i ett, bästa försäljningen först
+const onSale = (S) => new Set([...dealsOf(S).map((x) => x.id), ...bundlesOf(S).flatMap((b) => b.ids)]);
+export function dealGames(G) {
+  const S = G.store;
+  const on = onSale(S);
+  return G.games.filter((g) => pcGame(g) && G.t - g.t >= 1 && !on.has(g.id)).sort((a, b) => baseOf(G, b) - baseOf(G, a) || b.score - a.score);
+}
+export function canDeal(G, id, i) {
+  const S = G.store;
+  if (!S || S.paused) return t('dist.err.paused');
+  if (!DEALS[i]) return false;
+  if (dealsOf(S).length >= dealSlots(G)) return t('dist.err.dealFull');
+  const g = G.games.find((x) => x.id === id);
+  if (!g || !pcGame(g) || G.t - g.t < 1 || onSale(S).has(id)) return t('dist.err.dealGame');
+  if (g.dealT !== undefined && G.t - g.dealT < DEAL_AGAIN) return t('dist.err.dealAgain', { n: DEAL_AGAIN - (G.t - g.dealT) });
+  return true;
+}
+function addDeal(G, g, i, auto) {
+  g.dealT = G.t;
+  dealsOf(G.store).push({ id: g.id, i, t0: G.t, inc: 0, auto: !!auto });
+  G.stats.storeDeals = (G.stats.storeDeals || 0) + 1;
+  note(G, auto ? 'news.storeDealAuto' : 'news.storeDealStart', { title: g.title, n: Math.round(DEALS[i].cut * 100) }, 'info', true);
+  emit('storeDeal', { game: g, i });
+}
+export function startDeal(G, id, i) {
+  const r = canDeal(G, id, i);
+  if (r !== true) return r;
+  addDeal(G, G.games.find((x) => x.id === id), i, false);
+  return true;
+}
+export function setAutoDeal(G, on) {
+  const S = G.store;
+  if (!S || !autoDealOpen(G)) return false;
+  S.autoDeal = !!on;
+  return true;
+}
+// Autopilot: det äldre spel vars försäljning har sjunkit mest får ett erbjudande med halva priset när det finns en ledig plats
+function autoDeals(G, S) {
+  if (!S.autoDeal || dealsOf(S).length >= dealSlots(G)) return;
+  let best = null;
+  let bv = 0;
+  for (const g of dealGames(G)) {
+    if (G.t - g.t < AUTO_DEAL_AGE || canDeal(G, g.id, 1) !== true) continue;
+    const peak = Math.max(1, ...(g.weekly || [0]));
+    const base = baseOf(G, g);
+    if (base <= 0 || base > peak * AUTO_DEAL_BELOW) continue;
+    const v = dealValue(G, g, 1);
+    if (v > bv) {
+      bv = v;
+      best = g;
+    }
+  }
+  if (best) addDeal(G, best, 1, true);
+}
+
+// Spelpaket: tre av dina pc-spel säljs ihop i BUNDLE.weeks veckor. Varje spel säljer extra (ett paket drar fler när fler spel är med)
+// och paketet ger nya användare och fans. Ett spel kan ligga i ett nytt paket först efter BUNDLE.again veckor.
+export const BUNDLE = { games: 3, weeks: 3, net: 0.3, synergy: 0.12, users: 0.004, fans: 25, again: 12, level: 3 };
+export const bundlesOf = (S) => S.bundles || (S.bundles = []);
+export const bundleOpen = (G) => !!G.store && !G.store.paused && levelOf(G) >= BUNDLE.level;
+export const bundleNet = (n) => BUNDLE.net * (1 + BUNDLE.synergy * (n - 1));
+export function bundleValue(G, ids) {
+  const S = G.store;
+  const gs = ids.map((id) => G.games.find((g) => g.id === id)).filter(Boolean);
+  return (gs.reduce((a, g) => a + baseOf(G, g) * via(S, g), 0) * bundleNet(gs.length) * BUNDLE.weeks) / (1 - OTHER_CUT);
+}
+export function bundleGames(G) {
+  return dealGames(G).filter((g) => g.bunT === undefined || G.t - g.bunT >= BUNDLE.again);
+}
+export function canBundle(G, ids) {
+  const S = G.store;
+  if (!S || S.paused) return t('dist.err.paused');
+  if (!bundleOpen(G)) return t('dist.err.bundleLvl');
+  if (bundlesOf(S).length >= 1) return t('dist.err.bundleFull');
+  if (!Array.isArray(ids) || new Set(ids).size !== BUNDLE.games) return t('dist.err.bundleN', { n: BUNDLE.games });
+  const ok = new Set(bundleGames(G).map((g) => g.id));
+  if (!ids.every((id) => ok.has(id))) return t('dist.err.bundleGame', { n: BUNDLE.again });
+  return true;
+}
+export function startBundle(G, ids) {
+  const r = canBundle(G, ids);
+  if (r !== true) return r;
+  const gs = ids.map((id) => G.games.find((g) => g.id === id));
+  for (const g of gs) g.bunT = G.t;
+  bundlesOf(G.store).push({ ids: ids.slice(), t0: G.t, inc: 0 });
+  G.stats.storeBundles = (G.stats.storeBundles || 0) + 1;
+  note(G, 'news.storeBundleStart', { titles: gs.map((g) => (typeof g.title === 'string' ? g.title : g.title.sv || '')).join(', ') }, 'info', true);
+  emit('storeBundle', { games: gs });
+  return true;
+}
+
 // ── Temaveckor ──
 export const eventWeek = (t) => t % WEEKS_PER_YEAR;
 export function eventNow(G) {
@@ -450,7 +573,7 @@ function baseOf(G, g) {
 
 // Veckans extra försäljning: temaveckans lyft för passande spel och Veckans spel. Båda går in i dina spels intäkter i butiken.
 function extraWeek(G, S) {
-  const out = { evt: 0, spot: 0 };
+  const out = { evt: 0, spot: 0, deal: 0, bundle: 0 };
   const ev = eventNow(G);
   if (ev) {
     if (!S.ev || S.ev.id !== ev.id || G.t - S.ev.t0 > 3) S.ev = { id: ev.id, t0: G.t, inc: 0, n: 0 };
@@ -481,7 +604,74 @@ function extraWeek(G, S) {
     keep.push(sp);
   }
   S.spots = keep;
+  autoDeals(G, S);
+  const dk = [];
+  for (const d of dealsOf(S)) {
+    const g = G.games.find((x) => x.id === d.id);
+    if (!g) continue;
+    if (G.t - d.t0 >= DEAL_WEEKS) {
+      note(G, 'news.storeDealEnd', { title: g.title, v: fmtMoney(d.inc) }, d.inc >= 1 ? 'good' : 'info', true);
+      continue;
+    }
+    const v = (baseOf(G, g) * dealNet(G, g, d.i) * via(S, g)) / (1 - OTHER_CUT);
+    d.inc += v;
+    out.deal += v;
+    S.sb = (S.sb || 0) + DEALS[d.i].users / DEAL_WEEKS;
+    S.wait = (S.wait || 0) + DEALS[d.i].wait / DEAL_WEEKS;
+    dk.push(d);
+  }
+  S.deals = dk;
+  const bk = [];
+  for (const b of bundlesOf(S)) {
+    const gs = b.ids.map((id) => G.games.find((x) => x.id === id)).filter(Boolean);
+    if (G.t - b.t0 >= BUNDLE.weeks || gs.length < 2) {
+      note(G, 'news.storeBundleEnd', { v: fmtMoney(b.inc) }, b.inc >= 1 ? 'good' : 'info', true);
+      continue;
+    }
+    const v = (gs.reduce((a, g) => a + baseOf(G, g) * via(S, g), 0) * bundleNet(gs.length)) / (1 - OTHER_CUT);
+    b.inc += v;
+    out.bundle += v;
+    S.sb = (S.sb || 0) + BUNDLE.users / BUNDLE.weeks;
+    G.fans += (BUNDLE.fans * gs.length) / BUNDLE.weeks;
+    bk.push(b);
+  }
+  S.bundles = bk;
   return out;
+}
+
+// ── Rekord ──
+// Butikens rekord: bästa veckan (intäkter) och bästa enskilda spelet en vecka (försäljning). Ett nytt rekord blir en nyhet först när det
+// slår det du sist fick höra om med REC_STEP, och aldrig oftare än var REC_GAP:e vecka, så att en växande butik inte rapporterar varje vecka.
+// Användarrekorden har sina egna milstolpar (se MILESTONES). Rekorden ligger i S.rec och saknas i äldre sparningar.
+export const REC_STEP = 1.25;
+export const REC_GAP = 12;
+const REC_AGE = 8; // butiken måste ha funnits så här länge innan något räknas som rekord
+export const recOf = (S) => S.rec || (S.rec = { week: { v: 0, t: 0, sh: 0, nt: -99 }, game: { v: 0, t: 0, id: 0, sh: 0, nt: -99 } });
+function recordWatch(G, S, week, game) {
+  if (G.t - S.t0 < REC_AGE) return;
+  const R = recOf(S);
+  const upd = (r, v, key, vars) => {
+    if (v <= 0) return;
+    if (v > r.v) {
+      r.v = v;
+      r.t = G.t;
+      if (key === 'game') r.id = game.id;
+    }
+    if (!r.sh) {
+      r.sh = r.v;
+      r.nt = G.t;
+    } else if (r.v >= r.sh * REC_STEP && G.t - r.nt >= REC_GAP) {
+      r.sh = r.v;
+      r.nt = G.t;
+      note(G, key === 'game' ? 'news.storeRecGame' : 'news.storeRecWeek', vars(), 'good', false, true);
+      emit('storeRecord', { kind: key });
+    }
+  };
+  upd(R.week, week, 'week', () => ({ v: fmtMoney(R.week.v) }));
+  if (game.id) {
+    const g = G.games.find((x) => x.id === game.id);
+    upd(R.game, game.v, 'game', () => ({ title: g ? g.title : '', v: fmtMoney(R.game.v) }));
+  }
 }
 
 // ── Önskelista ──

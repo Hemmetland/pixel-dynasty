@@ -935,6 +935,78 @@ ok(true, 'alla händelser körda');
   for (let i = 0; i < 60; i++) { GJ.t++; S.storeWeek(GJ); }
   ok(Number.isFinite(GJ.money) && GJ.store.lvl >= 1 && Array.isArray(GJ.store.spots), 'en butik från före de nya delarna fortsätter som vanligt');
 }
+// butikens erbjudanden, spelpaket och rekord
+{
+  const GD = S.newGame({ studio: 'D', seed: 33 }); S.makeCompetitors(GD); S.initWorld(GD);
+  GD.t = 48 * 30 + 14; GD.money = 1e8; GD.fans = 2e5; GD.u.flags.store = true;
+  GD.games.length = 0;
+  const rng0 = GD.rng;
+  S.storeWeek(GD);
+  const B = GD.store;
+  const mkg = (id, age, weekly = []) => ({ id, title: id, platform: 'pc', genre: 'action', topic: 'space', scope: 'large', score: 8, total: 2e6, t: GD.t - age, tail: 1, priceAt: 30, weekly, revenue: 0, units: 0, fansGained: 0, ended: true });
+  const old = mkg('old', 60), nw = mkg('nw', 8), cg = mkg('c', 70), dg = mkg('d', 80), eg = mkg('e', 90, [5e5].concat(Array(89).fill(100)));
+  GD.games.push(old, nw, cg, dg, eg);
+  const m0 = GD.money;
+  const nets = [0, 1, 2].map((i) => S.dealNet(GD, old, i));
+  ok(nets[1] > nets[0] && nets[0] > 0 && nets[2] === 0 && S.dealNet(GD, old, 1) > S.dealNet(GD, nw, 1), 'halva priset ger mest pengar, den största rabatten bara användare, och ett äldre spel vinner mer');
+  ok(S.dealSlots(GD) === 1 && S.canDeal(GD, 'old', 1) === true && S.dealValue(GD, old, 1) > S.dealValue(GD, old, 0), 'en plats, och värdet av halva priset är störst');
+  ok(S.startDeal(GD, 'old', 1) === true && GD.money === m0 && B.deals.length === 1, 'ett erbjudande kostar ingenting');
+  ok(typeof S.startDeal(GD, 'nw', 1) === 'string' && typeof S.canDeal(GD, 'old', 1) === 'string', 'en plats rymmer ett erbjudande');
+  const sb0 = B.sb;
+  GD.t++; S.storeWeek(GD);
+  ok(B.deals[0] && B.deals[0].inc > 0 && B.sb > sb0 * 0.99 && B.wait > 0, 'erbjudandet ger extra försäljning, användare och lite väntande spelare');
+  GD.t++; S.storeWeek(GD);
+  GD.t++; S.storeWeek(GD);
+  ok(B.deals.length === 0 && GD.news.some((n) => n.key === 'news.storeDealEnd'), 'efter två veckor är erbjudandet slut med en nyhet');
+  ok(typeof S.canDeal(GD, 'old', 1) === 'string', 'samma spel får vila');
+  GD.t += 8;
+  ok(S.canDeal(GD, 'old', 1) === true, 'efter åtta veckor går det igen');
+  ok(S.setAutoDeal(GD, true) === false && !B.autoDeal, 'Autopilot kräver butiksnivå 3');
+  GD.stats.storeUsers = 1.2e6;
+  ok(S.levelOf(GD) === 3 && S.setAutoDeal(GD, true) === true && B.autoDeal === true, 'Autopilot finns från nivå 3');
+  S.storeWeek(GD);
+  ok(B.deals.length === 1 && B.deals[0].id === 'e' && B.deals[0].auto && GD.news.some((n) => n.key === 'news.storeDealAuto'), 'Autopilot ger halva priset åt spelet vars försäljning har sjunkit (och bara det)');
+  for (let i = 0; i < 3; i++) { GD.t++; S.storeWeek(GD); }
+  ok(B.deals.every((d) => d.id !== 'e' || GD.t - d.t0 < 2), 'ett autoerbjudande tar slut som andra');
+  S.setAutoDeal(GD, false);
+  // spelpaket
+  GD.stats.storeUsers = 4e5;
+  ok(typeof S.canBundle(GD, ['old', 'c', 'd']) === 'string' && !S.bundleOpen(GD), 'spelpaket kräver butiksnivå 3');
+  GD.stats.storeUsers = 1.2e6;
+  ok(S.bundleOpen(GD) && typeof S.canBundle(GD, ['old', 'c']) === 'string' && typeof S.canBundle(GD, ['old', 'c', 'c']) === 'string', 'ett paket måste ha tre olika spel');
+  ok(S.bundleValue(GD, ['old', 'c', 'd']) > 0 && S.bundleNet(3) > S.bundleNet(2), 'ett paket väntas ge pengar och drar mer med fler spel');
+  ok(S.startBundle(GD, ['old', 'c', 'd']) === true && B.bundles.length === 1 && typeof S.canBundle(GD, ['nw', 'e', 'old']) === 'string', 'ett paket i taget');
+  const f0 = GD.fans;
+  GD.t++; S.storeWeek(GD);
+  ok(B.bundles[0] && B.bundles[0].inc > 0 && GD.fans > f0, 'paketet ger extra försäljning och fans');
+  GD.t++; S.storeWeek(GD); GD.t++; S.storeWeek(GD);
+  ok(B.bundles.length === 0 && GD.news.some((n) => n.key === 'news.storeBundleEnd'), 'efter tre veckor är paketet slut med en nyhet');
+  ok(!S.bundleGames(GD).some((g) => g.id === 'old') && typeof S.canBundle(GD, ['old', 'c', 'd']) === 'string', 'spelen i paketet får vila');
+  GD.t += 12;
+  ok(S.canBundle(GD, ['old', 'c', 'd']) === true, 'efter tolv veckor går de igen');
+  // rekord: en stadig butik följd av en toppvecka ger en nyhet, men inte om och om igen
+  const GR2 = S.newGame({ studio: 'R', seed: 34 }); S.makeCompetitors(GR2); S.initWorld(GR2);
+  GR2.t = 48 * 30 + 14; GR2.money = 1e8; GR2.fans = 2e5; GR2.u.flags.store = true; GR2.games.length = 0;
+  const rngR = GR2.rng;
+  S.storeWeek(GR2);
+  const hit = { id: 'hit', title: 'Hit', platform: 'pc', genre: 'action', topic: 'space', scope: 'large', score: 8, total: 5e7, t: GR2.t, tail: 1, priceAt: 30, weekly: [], revenue: 0, units: 0, fansGained: 0, ended: false };
+  GR2.games.push(hit);
+  const tick = (v) => { GR2.t++; hit.weekly.push(v); S.storeWeek(GR2); };
+  for (let i = 0; i < 26; i++) tick(1e5);
+  const R = S.recOf(GR2.store);
+  ok(R.week.v > 0 && R.week.sh > 0 && R.game.id === 'hit' && GR2.news.filter((n) => n.key === 'news.storeRecWeek').length <= 2, 'en butik som växer ger få rekordnyheter (högst en var tolfte vecka)');
+  GR2.news.length = 0;
+  R.week.sh = R.week.v; R.game.sh = R.game.v; R.week.nt = -99; R.game.nt = -99;
+  tick(2e6);
+  ok(GR2.news.some((n) => n.key === 'news.storeRecWeek' && n.big) && GR2.news.some((n) => n.key === 'news.storeRecGame'), 'en toppvecka ger rekordnyheter som händelsekort');
+  tick(4e6);
+  ok(GR2.news.filter((n) => n.key === 'news.storeRecWeek').length === 1, 'inte om och om igen inom tolv veckor');
+  ok(GD.rng === rng0 && GR2.rng === rngR, 'butikens nya delar rör inte slumpföljden');
+  const GO = JSON.parse(JSON.stringify(GD));
+  delete GO.store.deals; delete GO.store.bundles; delete GO.store.rec; delete GO.store.autoDeal;
+  for (let i = 0; i < 30; i++) { GO.t++; S.storeWeek(GO); }
+  ok(Number.isFinite(GO.money) && Array.isArray(GO.store.deals) && GO.store.rec, 'en butik från före erbjudandena fortsätter som vanligt');
+}
 // förlag: pitchar kommer ur fröet, förskott vid underskrift, två avtal åt gången, spelet släpps med ett betyg i intervallet
 {
   const GB = S.newGame({ studio: 'F', seed: 12 }); S.makeCompetitors(GB); S.initWorld(GB);

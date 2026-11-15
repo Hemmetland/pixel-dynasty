@@ -6,8 +6,10 @@ import { coverImg } from '../render/covers.js';
 import { LEVEL_NAMES, LEVEL_PERKS, STORE_EVENTS } from '../data/storeevents.js';
 import {
   LEVELS, levelOf, levelNext, spotSlots, spotWeeks, spotCost, spotsOf, spotGames, canSpot, startSpot, eventNow, eventNext, eventIn, eventFits,
-  wishNow, eventBoost,
+  wishNow, eventBoost, DEALS, DEAL_WEEKS, dealsOf, dealSlots, dealGames, dealValue, canDeal, startDeal, autoDealOpen, setAutoDeal, BUNDLE, bundlesOf,
+  bundleOpen, bundleGames, bundleValue, canBundle, startBundle, recOf,
 } from '../sim/store.js';
+import { dateOf } from '../sim/const.js';
 
 // Butikens roligare delar i Butik-fönstret: storleken (nivån), temaveckorna, skyltfönstret (ett spel du lyfter fram mot en avgift) och
 // önskelistan. Reglerna ligger i sim/store.js; här ligger bara korten och knappen som startar skyltfönstret.
@@ -88,6 +90,80 @@ export function wishCard(G) {
     <div class="hint">${w.n >= 100 ? t('dist.wish.now', { title: `<b>${esc(L(w.title))}</b>`, n: `<b class="num">${fmtNum(Math.round(w.n / 10) * 10)}</b>` }) : t('dist.wish.few', { title: `<b>${esc(L(w.title))}</b>` })}</div></div>`;
 }
 
+// Erbjudanden: spelen som har rabatt nu och de bästa kandidaterna med tre rabattnivåer (vad de väntas ge visas på knappen)
+export function dealCard(G, S) {
+  const slots = dealSlots(G);
+  const used = dealsOf(S);
+  const head = `<div class="row wrap" style="gap:8px;margin-bottom:6px">${icon('cart')}<div class="lbl">${t('dist.deal.title')}</div><span class="sp"></span><span class="faint" style="font-size:12px">${t('dist.deal.slots', { n: used.length, m: slots })}</span></div>`;
+  const on = used
+    .map((d) => {
+      const g = G.games.find((x) => x.id === d.id);
+      if (!g) return '';
+      const left = Math.max(0, DEAL_WEEKS - (G.t - d.t0));
+      return `<div class="sf-spot-row on">${cover(g, 32)}<div style="flex:1;min-width:0"><b class="ell">${esc(L(g.title))}</b> <span class="tag" style="--c:var(--hot)">${t('dist.deal.off', { n: Math.round(DEALS[d.i].cut * 100) })}</span>${d.auto ? ` <span class="tag" style="--c:var(--accent)" data-tip="${esc(t('dist.deal.auto1'))}">${icon('refresh')}</span>` : ''}
+        <div class="faint" style="font-size:12px;margin-top:3px">${t('dist.deal.left', { n: left, v: money(d.inc) })}</div></div></div>`;
+    })
+    .join('');
+  const free = slots - used.length;
+  const cand = free > 0 ? dealGames(G).slice(0, 3) : [];
+  const rows = cand
+    .map((g) => {
+      const btns = DEALS.map((D, i) => {
+        const ok = canDeal(G, g.id, i);
+        const v = dealValue(G, g, i);
+        return `<button class="btn sm sf-dbtn" data-act="sf-deal" data-id="${g.id}" data-i="${i}" ${ok === true ? '' : 'disabled'} data-tip="${esc(ok === true ? t('dist.deal.' + D.id) : ok)}"><b>${Math.round(D.cut * 100)} %</b><span class="faint">${v >= 1 ? t('dist.deal.gain', { v: money(v) }) : t('dist.deal.gain0')}</span></button>`;
+      }).join('');
+      return `<div class="sf-spot-row">${cover(g, 32)}<div style="flex:1;min-width:0"><b class="ell">${esc(L(g.title))}</b><div class="sf-dbtns">${btns}</div></div></div>`;
+    })
+    .join('');
+  const none = free > 0 && !cand.length ? `<p class="hint">${t('dist.deal.none')}</p>` : '';
+  const open = autoDealOpen(G);
+  const auto = `<div class="ltier autoseason ${S.autoDeal ? 'on' : ''}" style="margin-top:10px"><span class="rn-i" style="--c:${S.autoDeal ? 'var(--good)' : 'var(--muted)'}">${icon(open ? 'refresh' : 'lock')}</span><div style="flex:1;min-width:0"><b>${t('dist.deal.auto')}</b><div class="faint" style="font-size:11.5px">${open ? t('dist.deal.autoHelp') : t('dist.deal.autoLocked')}</div></div>
+    ${open ? `<button class="switch ${S.autoDeal ? 'on' : ''}" data-act="sf-deal-auto" role="switch" aria-checked="${S.autoDeal ? 'true' : 'false'}" aria-label="${esc(t('dist.deal.auto'))}"><i></i></button>` : ''}</div>`;
+  return `<div class="card sf-card sf-deal">${head}<p class="hint" style="margin:0 0 8px">${t('dist.deal.help')}</p>${on}${free > 0 && cand.length ? `<div class="lbl" style="margin:8px 0 4px">${t('dist.deal.pick')}</div>` : ''}${rows}${none}${auto}</div>`;
+}
+
+// Spelpaket: välj tre spel (valet finns bara i fönstret) och sälj dem ihop
+const BUN = new Set();
+export function bundleCard(G, S) {
+  const head = `<div class="row wrap" style="gap:8px;margin-bottom:6px">${icon('box')}<div class="lbl">${t('dist.bun.title')}</div></div>`;
+  if (!bundleOpen(G)) return `<div class="card sf-card sf-bun">${head}<p class="hint">${t('dist.bun.locked')}</p></div>`;
+  const cur = bundlesOf(S)[0];
+  if (cur) {
+    const gs = cur.ids.map((id) => G.games.find((x) => x.id === id)).filter(Boolean);
+    const left = Math.max(0, BUNDLE.weeks - (G.t - cur.t0));
+    return `<div class="card sf-card sf-bun on">${head}<div class="sf-covers">${gs.map((g) => cover(g, 44)).join('')}</div><div class="faint" style="font-size:12.5px;margin-top:6px">${gs.map((g) => esc(L(g.title))).join(' · ')}</div>
+      <div class="faint" style="font-size:12px;margin-top:4px">${t('dist.bun.on', { n: left, v: money(cur.inc) })}</div></div>`;
+  }
+  const cand = bundleGames(G).slice(0, 8);
+  for (const id of [...BUN]) if (!cand.some((g) => g.id === id)) BUN.delete(id);
+  if (cand.length < BUNDLE.games) return `<div class="card sf-card sf-bun">${head}<p class="hint">${t('dist.bun.help')}</p><p class="hint">${t('dist.bun.none')}</p></div>`;
+  const sel = [...BUN];
+  const ready = sel.length === BUNDLE.games;
+  const ok = ready ? canBundle(G, sel) : false;
+  const rows = cand
+    .map((g) => `<button class="sf-pick ${BUN.has(g.id) ? 'on' : ''}" data-act="sf-bun-pick" data-id="${g.id}">${cover(g, 28)}<span class="ell">${esc(L(g.title))}</span>${BUN.has(g.id) ? icon('check') : ''}</button>`)
+    .join('');
+  return `<div class="card sf-card sf-bun">${head}<p class="hint" style="margin:0 0 8px">${t('dist.bun.help')}</p>
+    <div class="lbl" style="margin:6px 0 4px">${t('dist.bun.pick', { n: sel.length, m: BUNDLE.games })}</div><div class="sf-picks">${rows}</div>
+    <div class="row wrap" style="gap:8px;margin-top:10px"><button class="btn primary sm" data-act="sf-bun-go" ${ready && ok === true ? '' : `disabled ${ready && ok !== true ? `data-tip="${esc(ok)}"` : ''}`}>${icon('box')}${t('dist.bun.go')}</button>${ready ? `<span class="faint" style="font-size:12px">${t('dist.bun.gain', { v: money(bundleValue(G, sel)) })}</span>` : ''}</div></div>`;
+}
+
+// Rekord: det bästa butiken har klarat. Nya rekord blir nyheter (sim/store.js, recordWatch).
+export function recCard(G, S) {
+  const R = recOf(S);
+  const gm = R.game.id ? G.games.find((x) => x.id === R.game.id) : null;
+  const row = (ic, k, v, sub) => `<div class="sf-rec-row"><span class="rn-i" style="--c:var(--gold)">${icon(ic)}</span><div style="flex:1;min-width:0"><div class="faint" style="font-size:11.5px">${t(k)}</div><b class="num">${v}</b>${sub ? ` <span class="faint" style="font-size:11.5px">${sub}</span>` : ''}</div></div>`;
+  const users = G.stats.storeUsers || 0;
+  const rows = [
+    row('user', 'dist.rec.users', fmtNum(Math.round(users))),
+    R.week.v > 0 ? row('money', 'dist.rec.week', money(R.week.v), dateOf(R.week.t).year) : '',
+    gm ? row('trophy', 'dist.rec.game', money(R.game.v), `${esc(L(gm.title))} · ${dateOf(R.game.t).year}`) : '',
+    G.stats.storeTops ? row('crown', 'dist.rec.tops', fmtNum(G.stats.storeTops)) : '',
+  ].join('');
+  return `<div class="card sf-card sf-rec" data-tip="${esc(t('dist.rec.tip'))}"><div class="row wrap" style="gap:8px;margin-bottom:6px">${icon('award')}<div class="lbl">${t('dist.rec.title')}</div></div>${rows}${R.week.v > 0 ? '' : `<p class="hint">${t('dist.rec.none')}</p>`}</div>`;
+}
+
 // Platsens förändring sedan förra veckan på topplistan: ▲ upp, ▼ ner, Ny
 export function rankTrend(r) {
   if (r.d === null || r.d === undefined) return `<span class="sh-tr new" data-tip="${esc(t('dist.rk.new'))}">${t('dist.rk.newShort')}</span>`;
@@ -99,5 +175,30 @@ act('sf-spot', (el) => {
   const r = startSpot(UI.app.G, +el.dataset.id);
   if (r === true) sfx.play('fanfare');
   else errToast(r);
+  UI.refresh();
+});
+act('sf-deal', (el) => {
+  const r = startDeal(UI.app.G, +el.dataset.id, +el.dataset.i);
+  if (r === true) sfx.play('coin');
+  else errToast(r);
+  UI.refresh();
+});
+act('sf-deal-auto', () => {
+  const G = UI.app.G;
+  setAutoDeal(G, !G.store.autoDeal);
+  UI.refresh();
+});
+act('sf-bun-pick', (el) => {
+  const id = +el.dataset.id;
+  if (BUN.has(id)) BUN.delete(id);
+  else if (BUN.size < BUNDLE.games) BUN.add(id);
+  UI.refresh();
+});
+act('sf-bun-go', () => {
+  const r = startBundle(UI.app.G, [...BUN]);
+  if (r === true) {
+    BUN.clear();
+    sfx.play('fanfare');
+  } else errToast(r);
   UI.refresh();
 });

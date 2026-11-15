@@ -3,7 +3,7 @@ import { coverImg } from '../render/covers.js';
 import { sfx } from '../audio/sfx.js';
 import { fmtNum } from '../core/util.js';
 import { yearOf } from '../sim/const.js';
-import { levelCard, eventBanner, spotCard, wishCard, rankTrend } from './store-fun.js';
+import { levelCard, eventBanner, spotCard, wishCard, dealCard, bundleCard, recCard, rankTrend } from './store-fun.js';
 import {
   OTHER_CUT, PAY_FEE, FEES, SUPPORT, ADS, SALES, canStore, storeUsers, discOf, reachTarget, storeScale, featOf, switchLeft,
   saleSeason, saleIn, saleOf, storeChart, setPolicy, setFee, setSupport, setAds, setExclusive, setPaused, setSale,
@@ -139,6 +139,8 @@ export function storeTab(G) {
     <p class="hint" style="margin-top:10px">${icon('cart')} ${t('dist.help', { pct: Math.round(OTHER_CUT * 100) })}</p>
     ${shelf(G, S)}
     <div class="sf-grid">${spotCard(G, S)}${wishCard(G)}</div>
+    <div class="sf-grid">${dealCard(G, S)}${bundleCard(G, S)}</div>
+    <div class="sf-grid">${recCard(G, S)}</div>
     <div class="lbl" style="margin:18px 0 8px">${t('dist.policy')}</div>
     <div class="dist-pol">${policyCard(G, S, 'closed')}${policyCard(G, S, 'open')}</div>
     ${wait > 0 ? `<p class="hint" style="margin-top:8px">${icon('clock')} ${tn('dist.switchWait', wait)}</p>` : open ? `<p class="hint" style="margin-top:8px">${t('dist.closeWarn')}</p>` : ''}

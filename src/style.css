@@ -1520,3 +1520,18 @@ input[type='range']::-moz-range-thumb { width: 18px; height: 18px; border-radius
 .es-rank .faint { font-size: 11.5px; min-width: 74px; text-align: right; }
 @media (max-width: 560px) { .es-rank { grid-template-columns: 16px minmax(0, 1fr) auto; } .es-rank .faint { display: none; } }
 
+/* ── Butiken: erbjudanden, spelpaket och rekord ── */
+.sf-dbtns { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 6px; margin-top: 5px; }
+.sf-dbtn { display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 1px; height: auto; min-height: 0; padding: 5px 4px; line-height: 1.2; white-space: normal; text-align: center; }
+.sf-dbtn .faint { font-size: 10.5px; }
+.sf-picks { display: grid; grid-template-columns: repeat(auto-fill, minmax(150px, 1fr)); gap: 6px; }
+.sf-pick { display: flex; align-items: center; gap: 8px; min-width: 0; padding: 6px 8px; border-radius: 10px; border: 1px solid var(--line); background: rgba(255, 255, 255, 0.03); color: inherit; font: inherit; font-size: 12.5px; cursor: pointer; text-align: left; }
+.sf-pick:hover { background: rgba(255, 255, 255, 0.07); }
+.sf-pick.on { border-color: var(--accent); background: color-mix(in srgb, var(--accent) 14%, transparent); }
+.sf-pick .ic { flex: none; width: 16px; height: 16px; color: var(--accent); margin-left: auto; }
+.sf-covers { display: flex; gap: 8px; flex-wrap: wrap; }
+.sf-bun.on { border-color: color-mix(in srgb, var(--gold) 45%, var(--line)); }
+.sf-rec-row { display: flex; align-items: center; gap: 10px; padding: 6px 0; min-width: 0; }
+.sf-rec-row + .sf-rec-row { border-top: 1px solid var(--line); }
+.sf-rec-row .rn-i { flex: none; }
+
