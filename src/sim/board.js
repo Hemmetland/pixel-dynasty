@@ -11,6 +11,7 @@ import { WEEKS_PER_MONTH, WEEKS_PER_YEAR } from './const.js';
 import { rentOf, facUpkeep } from './studio.js';
 import { payroll } from './people.js';
 import { note } from './news.js';
+import { beat } from './life.js';
 import { ownedComps, acqMax, canAcquire, acqPrice, compYearly, acquire } from './acquire.js';
 import { LOAD, STABLE_MIN, stability, subOf, groupCap, groupLoad, canIntegrate, integCost, investWeek, setMode, setSubBudget } from './group.js';
 
@@ -163,6 +164,7 @@ export function boardWeek(G) {
   if (G.t % (WEEKS_PER_MONTH * 3) === 11 && boardOpen(G) && ownedComps(G).length) {
     const b = boardOf(G);
     const rev = G.stats.subRev || 0;
+    beat(G, 'grpReport', { a: b.q.bought });
     note(G, 'news.boardReport', { v: fmtMoney(Math.max(0, rev - b.q.rev)), b: b.q.bought, i: b.q.merged, e: b.q.ev }, 'info');
     b.q = { rev, bought: 0, merged: 0, ev: 0 };
   }

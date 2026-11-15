@@ -7,6 +7,7 @@ import { yearOf, WEEKS_PER_YEAR } from './const.js';
 import { earn } from './studio.js';
 import { portRevenue } from './ports.js';
 import { note } from './news.js';
+import { beat } from './life.js';
 
 // Spelserier och licensaffärer: ett spel med minst en uppföljare är en serie. Med forskningen Licensavdelning kommer
 // erbjudanden från andra branscher för de serier som går bra: leksaker och prylar (förskott och royalty i två år),
@@ -136,6 +137,7 @@ export function acceptOffer(G, id) {
   if (K.fans) G.fans += G.fans * K.fans;
   if (K.hype) addHype(G, o.series, K.hype);
   F.deals.push(d);
+  beat(G, 'licDeal', { g: d.title || d.series });
   emit('frDeal', d);
   return true;
 }
@@ -162,6 +164,7 @@ function premiere(G, d, s) {
   G.stats.films = (G.stats.films || 0) + 1;
   G.stats.bestFilm = Math.max(G.stats.bestFilm || 0, q);
   note(G, q >= 7 ? 'news.filmGood' : q < 5 ? 'news.filmBad' : 'news.filmOk', { title: d.title, studio: d.partner, v: q.toFixed(1) }, q >= 7 ? 'good' : q < 5 ? 'bad' : 'info');
+  beat(G, 'film', { g: d.title, a: Math.round(q * 10) / 10, v: q >= 7 ? 0 : q < 5 ? 2 : 1 });
   emit('frFilm', d);
 }
 

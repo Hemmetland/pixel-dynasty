@@ -6,6 +6,7 @@ import { yearOf, wageIndex, WEEKS_PER_YEAR } from './const.js';
 import { spend, capacity, seated, facLevel, rentOf, facUpkeep, loanInterest, campusOf } from './studio.js';
 import { payroll } from './people.js';
 import { note } from './news.js';
+import { beat } from './life.js';
 import { ownPlatFor } from './hardware.js';
 
 // Koncernledning: dotterbolagen (uppköpta konkurrenter, se acquire.js) har en personalstyrka som avgör hur ofta och hur
@@ -191,6 +192,7 @@ export function groupWeek(G) {
     s.integ = over ? Math.max(0, s.integ - 0.01) : Math.min(1, s.integ + 1 / INTEG_WEEKS);
     if (s.integ >= 1 && !s.done) {
       s.done = true;
+      beat(G, 'grpDone', { g: c.name });
       note(G, 'news.integrated', { studio: c.name }, 'good');
     }
     // kulturkrock under integrationen: folk slutar och arbetet tar längre tid
@@ -198,6 +200,7 @@ export function groupWeek(G) {
       s.staff *= 0.9;
       c.strength = clamp(c.strength - 0.05, 0.45, 1.7);
       s.integ = Math.max(0, s.integ - 0.15);
+      beat(G, 'grpClash', { g: c.name });
       note(G, 'news.clash', { studio: c.name }, 'bad');
     }
   }
@@ -223,6 +226,7 @@ export function setMode(G, id, mode) {
     if (ok !== true) return ok;
     spend(G, integCost(G, c), 'integration');
     s.mode = 'int';
+    beat(G, 'grpInteg', { g: c.name });
     note(G, 'news.integrating', { studio: c.name }, 'info');
   } else {
     // tillbaka till självständigt: integrationen och budgeten släpps
@@ -252,6 +256,7 @@ export function setCeo(G, id, staffId) {
   G.staff = G.staff.filter((x) => x.id !== staffId);
   s.ceo = st;
   s.staff += 1;
+  beat(G, 'grpCeo', { g: c.name, staff: st });
   note(G, 'news.ceo', { name: st.name, studio: c.name }, 'info');
   emit('staffMoved', st);
   return true;

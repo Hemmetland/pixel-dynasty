@@ -89,6 +89,13 @@ const opsN = +(opsArg && opsArg.split('=')[1]) || 4;
 const shopArg = args.find((x) => x === '--shop' || x.startsWith('--shop='));
 const shopOn = !!shopArg;
 const shopN = +(shopArg && shopArg.split('=')[1]) || 4;
+// --eng: botten bygger egna spelmotorer själv (tar studions projektplats) när den bästa blivit för gammal och använder den bästa i sina spel;
+// --engteam=N: när Motorteam finns bildar botten ett team av de N senast anställda (utan grundaren) som bygger motorerna vid sidan om (standard 4);
+// --engb --engw --engs = teamets budget, när och storlek (0..2, standard 1). Utan någon av dem använder botten inga motorer.
+const engManual = args.includes('--eng');
+const engArg = args.find((x) => x === '--engteam' || x.startsWith('--engteam='));
+const engOn = !!engArg;
+const engN = +(engArg && engArg.split('=')[1]) || 4;
 // --camp: (med --store) botten kör samma kampanjer som butiksteamet gör (erbjudanden, Veckans spel, spelpaket) själv varannan vecka, utan team,
 // som jämförelse; --shopoff=deal,spot,bundle,theme stänger av sorter (gäller både --camp och --shop)
 const campOn = args.includes('--camp');
@@ -327,7 +334,7 @@ function manage(G) {
   // forskning
   if (!casual || G.t % 16 === 0) for (const r of RESEARCH.slice().sort((a, b) => a.rp - b.rp)) {
     if (G.research.active.length >= S.researchSlots(G)) break;
-    if ((r.id === 'b_port' && !ports) || (r.id === 'b_publish' && !publish && !biz) || (r.id === 'b_merch' && !lic && !biz) || (r.id === 'b_biz' && !biz) || (r.id === 'b_acq' && !acq && !board) || (r.id === 'b_group' && !group && !board) || (r.id === 'b_board' && !board) || (r.id === 'b_store' && !store) || (r.id === 's_shop' && !shopOn) || (r.cat === 'hw' && !hw) || (r.id === 'h_vr' && !vr) || (r.id === 'h_fab' && (!fab || !G.u.flags.hw_console))) continue;
+    if ((r.id === 'b_port' && !ports) || (r.id === 'b_publish' && !publish && !biz) || (r.id === 'b_merch' && !lic && !biz) || (r.id === 'b_biz' && !biz) || (r.id === 'b_acq' && !acq && !board) || (r.id === 'b_group' && !group && !board) || (r.id === 'b_board' && !board) || (r.id === 'b_store' && !store) || (r.id === 's_shop' && !shopOn) || (r.id === 's_eng' && !engOn) || (r.cat === 'hw' && !hw) || (r.id === 'h_vr' && !vr) || (r.id === 'h_fab' && (!fab || !G.u.flags.hw_console))) continue;
     if (noplat && PLAT_RES.has(r.id)) continue;
     if (S.canResearch(G, r.id) === true && r.rp <= G.rp) S.startResearch(G, r.id);
   }
@@ -365,6 +372,20 @@ function manage(G) {
     if (!G.store.sh) S.shopOf(G);
     for (const k of shopOff) G.store.sh[k] = 0;
     S.runCampaigns(G, G.store, null, 0);
+  }
+  // motorteam: ett team som bygger spelmotorer vid sidan om
+  if (engOn && G.u.flags.engTeams && G.u.flags.engines && !S.engTeamOf(G)) {
+    const free = G.staff.filter((x) => !x.isFounder && !S.teamOfStaff(G, x.id));
+    if (free.length >= engN + 2 && S.seatCap(G) - S.outCount(G) >= engN) {
+      const tm = S.createTeam(G);
+      if (typeof tm !== 'string') {
+        for (const x of free.sort((p, q) => q.hired - p.hired).slice(0, engN)) S.addMember(G, tm.id, x.id);
+        S.assignEng(G, tm.id);
+        S.setEng(G, 'budget', +opt('engb', 1));
+        S.setEng(G, 'when', +opt('engw', 1));
+        S.setEng(G, 'size', +opt('engs', 1));
+      }
+    }
   }
   // butiksteam: ett team som sköter kampanjerna
   if (shopOn && G.u.flags.shopTeams && G.store && !S.shopTeamOf(G)) {
@@ -556,9 +577,15 @@ function manage(G) {
   // lån vid behov
   if (G.money < 2000 && S.loanTotal(G) < S.loanLimit(G) * 0.6) S.takeLoan(G, S.loanLimit(G) - S.loanTotal(G));
   if (G.money > 200000 * S.moneyScale(year) && S.loanTotal(G) > 0) S.repayLoan(G, S.loanTotal(G));
+  // egen motor: när den bästa blivit för gammal (tar studions projektplats)
+  if (engManual && G.u.flags.engines && !G.job && S.bestRatio(G) < 0.8) {
+    const ids = S.pickFeats(G, S.engineNeed(year) * 1.1, Math.max(0, G.money * 0.05));
+    if (ids.length >= 2) S.buildEngine(G, 'Bot ' + (G.engines.length + 1), ids);
+  }
   // starta spel
   if (!G.job) {
     const cfg = chooseProject(G);
+    if ((engManual || engOn) && G.engines.length) cfg.engineId = G.engines.reduce((b, e) => (S.engineEff(e, S.yfOf(G.t)) > S.engineEff(b, S.yfOf(G.t)) ? e : b)).id;
     const r = S.startProject(G, cfg);
     if (typeof r === 'string' && verbose) console.log('start fail', r);
   }
@@ -674,6 +701,11 @@ if (hw && G.hw) {
   const m = (v) => '$' + (v / 1e6).toFixed(1) + 'M';
   console.log(`hw ${S.yearOf(H.t0)} rep ${Math.round(H.rep)} lab ${H.lab}${H.chief ? ' chief' : ''}; rev ${m(T.rev)} design ${m(T.design)} proto ${m(T.proto)} make ${m(T.make)} war ${m(T.war)} roy ${m(T.roy)} drv ${m(T.drv)} lab ${m(T.lab)} issue ${m(T.issue)} fab ${m(T.fab || 0)}${H.fab ? ` lvl ${H.fab.lvl} t0 ${S.yearOf(H.fab.t0 ?? G.t)}` : ""}; net ${m(S.hwNet(G))}`);
   for (const P of H.products) console.log(`  ${P.name} ${P.type} ${S.yearOf(P.tReady)}${P.t != null ? '/' + S.yearOf(P.t) : ''}${P.endT ? '-' + S.yearOf(P.endT) : ''} ${P.partner} score ${P.score0 ?? '-'} $${P.price} sold ${Math.round(P.sold).toLocaleString()} peak ${Math.round(P.peak)}/w rev ${m(P.rev)} dev ${m(P.dev)} make ${m(P.cost)} profit ${m(S.productProfit(P))}${P.plat ? ` lic ${m(P.lic || 0)} base ${Math.round(P.base || 0).toLocaleString()} weight ${S.platOf(G, P).weight.toFixed(1)} tier ${S.platOf(G, P).tier} games ${G.games.filter((g) => g.platform === P.plat).length} gameRev ${m(G.games.filter((g) => g.platform === P.plat).reduce((a, g) => a + g.revenue, 0))} fp ${P.fp || 0} bx ${P.bx || 0} exPaid ${m(P.exPaid || 0)}` : ''}`);
+}
+if ((engManual || engOn) && G.engines) {
+  const tm = S.engTeamOf(G);
+  const P = G.engp;
+  console.log(`eng: engines ${G.engines.length} best ratio ${Math.round(S.bestRatio(G) * 100)}%${tm ? `; team ${S.membersOf(G, tm).length} eff ${Math.round(S.engEff(G, tm) * 100)}% built ${tm.engN || 0}` : ''}${P ? `; auto ${P.n} fee $${Math.round(P.fee).toLocaleString()}` : ''}`);
 }
 if (shopOn && G.store && G.store.sh) {
   const P = G.store.sh;

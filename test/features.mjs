@@ -3297,5 +3297,174 @@ ok(!bad.length, `äldre sparning utan ett av ${paths.length} fält går att spel
   off();
 }
 
+// ── Motorteam: ett team bygger spelmotorer vid sidan om studions projekt ────────────────────────────
+{
+  const mk = () => {
+    const W = S.newGame({ studio: 'Eng', seed: 83 }); S.makeCompetitors(W); S.initWorld(W);
+    for (const r of RESEARCH) { W.research.done.push(r.id); S.applyUnlocks(W, r); }
+    delete W.u.flags.store; delete W.u.flags.engTeams;
+    W.t = 48 * 22 + 6; W.money = 1e8; W.fans = 1e5; W.office.tier = 4;
+    for (let i = 0; i < 9; i++) { S.refreshCandidates(W); W.money += W.candidates[0].fee; S.hire(W, W.candidates[0].id); }
+    S.buildFacility(W, 'lab');
+    return W;
+  };
+  const G1 = mk();
+  const crew = G1.staff.filter((x) => !x.isFounder);
+  const T = S.createTeam(G1);
+  for (const x of crew.slice(0, 5)) S.addMember(G1, T.id, x.id);
+  ok(S.canEng(G1, T) === 'engLocked' && typeof S.assignEng(G1, T.id) === 'string' && !S.engOpen(G1) && S.setEng(G1, 'on', 0) === false, 'ett motorteam kräver forskningen Motorteam');
+  G1.u.flags.engTeams = true;
+  ok(S.seatCap(G1) === 6 && S.engNeed(G1) === 8, 'verkstaden ger tre platser till och behovet följer tiden (' + S.seatCap(G1) + ' platser, behov ' + S.engNeed(G1) + ')');
+  const GN = JSON.parse(JSON.stringify(G1)); delete GN.u.flags.engines;
+  ok(S.canEng(GN, GN.teams[0]) === 'engWorkshop', 'utan en motorverkstad finns inget att bygga i');
+  const w0 = S.workers(G1).length;
+  ok(S.assignEng(G1, T.id) === true && T.role === 'eng' && T.target === 'engine' && T.members.every((id) => G1.staff.find((x) => x.id === id).away) && S.workers(G1).length === w0 - 5, 'teamet går ut i verkstaden och är borta från dina projekt');
+  ok(S.leadOf(G1, T) !== null && S.engTeamOf(G1) === T && S.outCount(G1) === 5, 'en arbetsledare utses och teamet sitter utanför huset');
+  const T2 = S.createTeam(G1);
+  for (const x of crew.slice(5, 7)) S.addMember(G1, T2.id, x.id);
+  ok(S.canEng(G1, T2) === 'engTaken', 'bara ett team bygger motorerna');
+  S.disbandTeam(G1, T2.id);
+  const inf = S.engInfo(G1, T);
+  ok(inf.eff > 0 && inf.eff < 1 && inf.need === 8 && inf.n === 5 && Math.abs(inf.bonus - S.ENG_BONUS * inf.eff) < 1e-9, 'effekten följer hur många de är mot behovet (' + inf.eff.toFixed(2) + ')');
+  // beställning
+  const got = [];
+  const off = onBus('life', (b) => got.push(b));
+  const done = [];
+  const off2 = onBus('engineDone', (e) => done.push(e));
+  const feats = G1.u.feats.slice(0, 4);
+  ok(S.canEngOrder(G1, T, [feats[0]]) === 'engFew' && S.canEngOrder(G1, null, feats) === 'engNoTeam', 'en motor kräver minst två delar och ett team');
+  const m0 = G1.money;
+  const rng0 = G1.rng;
+  ok(S.orderEngine(G1, 'Teammotor', feats) === true && T.ep && T.ep.name === 'Teammotor' && G1.money === m0 - S.engineCost(feats) && G1.rng === rng0, 'beställningen betalas direkt och rör inte slumptalen');
+  ok(S.orderEngine(G1, 'Två', feats) === 'engBusy' || typeof S.orderEngine(G1, 'Två', feats) === 'string', 'teamet bygger en motor i taget');
+  ok(!G1.job && got.some((b) => b.k === 'engStart' && b.g === 'Teammotor' && b.sc === 'eng'), 'studions projektplats är fri och bygget syns som en händelse');
+  // studion kan göra spel under tiden
+  const gr = S.startProject(G1, { title: 'Under tiden', topic: 'space', genre: 'action', platform: 'pc', scope: 'small', audience: 'everyone' });
+  ok(typeof gr === 'object' && G1.job && G1.job.kind === 'game', 'studion kan starta ett spel medan teamet bygger');
+  const st0 = S.lifeState(G1, 'eng');
+  ok(st0.open && st0.builds.length === 1 && st0.builds[0].by === 'team' && st0.builds[0].name === 'Teammotor' && st0.team && st0.team.n === 5 && st0.team.lead && st0.crew.length === 5 && st0.crew.filter((c) => c.lead).length === 1, 'ögonblicksbilden visar teamets bygge, teamet och arbetsledaren');
+  // veckorna
+  const need = T.ep.need;
+  let weeks = 0;
+  while (T.ep && weeks++ < 400) { G1.t++; S.engWeek(G1); }
+  const kinds = got.map((b) => b.k);
+  ok(!T.ep && done.length === 1 && T.engN === 1 && G1.engines.length === 1, 'motorn blev klar (' + weeks + ' veckor, bygget var ' + need + ' veckor vid full effekt)');
+  ok(kinds.includes('engHalf') && kinds.includes('engTest') && kinds.includes('engine') && kinds.indexOf('engHalf') < kinds.indexOf('engTest') && kinds.indexOf('engTest') < kinds.indexOf('engine'), 'halvvägs, provkörning och klar kommer som händelser i ordning');
+  const e = G1.engines[0];
+  const base = S.engineTech(feats);
+  ok(e.team === T.id && e.tech > base && Math.abs(e.tech - Math.round(base * (1 + S.ENG_BONUS * T.eff) * 10) / 10) < 0.11 && weeks > need, 'ett team som inte når full effekt bygger långsammare men får lite mer teknik (' + base + ' -> ' + e.tech + ')');
+  ok(G1.job && G1.job.kind === 'game' && G1.job.state === 'dev', 'spelet i studion är orört av bygget');
+  const sd = S.lifeState(G1, 'eng');
+  ok(sd.builds.length === 0 && sd.engines.length === 1 && sd.engines[0].team === true && sd.engines[0].ratio > 0, 'efteråt visas motorn och inget bygge');
+  // pågående bygge stannar under lägsta effekt
+  const G2 = mk(); G2.u.flags.engTeams = true;
+  const T3 = S.createTeam(G2);
+  for (const x of G2.staff.filter((y) => !y.isFounder).slice(0, 2)) S.addMember(G2, T3.id, x.id);
+  ok(S.assignEng(G2, T3.id) === true && S.engInfo(G2, T3).eff >= 0, 'ett litet team går också');
+  S.orderEngine(G2, 'Liten', G2.u.feats.slice(0, 3));
+  const wk = (T3.ep || {}).need;
+  for (let i = 0; i < 6; i++) { G2.t++; S.engWeek(G2); }
+  const eff2 = S.engInfo(G2, T3).eff;
+  ok(eff2 < 0.6 && (eff2 < S.ENG_ON ? T3.ep.w === 0 : T3.ep.w > 0 && T3.ep.w < 6 * 1.0001), 'bygget går i takt med effekten (' + eff2.toFixed(2) + ', ' + (T3.ep ? T3.ep.w.toFixed(1) : 'klart') + ' av ' + wk + ')');
+  // teamet byter motor själv
+  const G3 = mk(); G3.u.flags.engTeams = true;
+  const T4 = S.createTeam(G3);
+  for (const x of G3.staff.filter((y) => !y.isFounder).slice(0, 6)) S.addMember(G3, T4.id, x.id);
+  ok(S.assignEng(G3, T4.id) === true, 'ett större team');
+  const P = S.engPolicy(G3);
+  ok(P.on === 1 && P.when === 1 && P.size === 1 && P.budget === 1 && S.setEng(G3, 'size', 2) === true && S.setEng(G3, 'size', 9) === false && P.size === 2 && S.setEng(G3, 'x', 1) === false && S.setEng(G3, 'on', 0) === true && P.on === 0, 'policyn kan sättas och begränsas');
+  S.setEng(G3, 'size', 1);
+  const mm = G3.money;
+  G3.t++; S.engWeek(G3);
+  ok(!T4.ep && G3.money === mm && P.n === 0, 'avstängt bygger teamet ingen motor själv');
+  S.setEng(G3, 'on', 1);
+  G3.money = 1000; // under reserven: inga betalda motorer
+  G3.t++; S.engWeek(G3);
+  ok(!T4.ep && G3.money === 1000, 'utan pengar över reserven bygger teamet inget');
+  G3.money = 1e8;
+  const GBR = S.bestRatio(G3);
+  G3.t++; S.engWeek(G3);
+  ok(GBR === 0 && T4.ep && T4.ep.auto === true && P.n === 1 && P.fee === T4.ep.cost && G3.money === 1e8 - T4.ep.cost && T4.ep.cost <= 0.05 * 1e8 + 1, 'utan motor beställer teamet en själv inom budgeten (' + T4.ep.name + ' för ' + T4.ep.cost + ')');
+  ok(/^(Motor|Engine) 1$/.test(T4.ep.name), 'och ger den ett namn');
+  // budgeten begränsar
+  const G4 = mk(); G4.u.flags.engTeams = true;
+  const T5 = S.createTeam(G4); for (const x of G4.staff.filter((y) => !y.isFounder).slice(0, 6)) S.addMember(G4, T5.id, x.id);
+  S.assignEng(G4, T5.id);
+  S.setEng(G4, 'budget', 0);
+  const f2 = S.pickFeats(G4, 1e9, 0.02 * G4.money);
+  ok(S.engineCost(f2) <= 0.02 * G4.money + 1 && S.pickFeats(G4, 1e9, 10).length === 0, 'delarna väljs inom budgeten');
+  // sent: en bra motor ger ingen ny
+  const G5 = mk(); G5.u.flags.engTeams = true;
+  const T6 = S.createTeam(G5); for (const x of G5.staff.filter((y) => !y.isFounder).slice(0, 6)) S.addMember(G5, T6.id, x.id);
+  S.assignEng(G5, T6.id);
+  G5.engines.push({ id: G5.uid++, name: 'Gammal', feats: G5.u.feats.slice(), tech: 9999, built: S.yfOf(G5.t) });
+  G5.t++; S.engWeek(G5);
+  ok(S.bestRatio(G5) >= 1 && !T6.ep, 'har studion en motor som räcker bygger teamet ingen ny');
+  // avsluta
+  ok(S.endEng(G2, T3.id) === true && T3.role !== 'eng' && T3.ep === null && G2.staff.filter((x) => T3.members.includes(x.id)).every((x) => !x.away), 'teamet kan sluta med motorerna och är tillbaka i huset');
+  // gammal sparning
+  const GO = JSON.parse(JSON.stringify(G1)); delete GO.engp; GO.teams.forEach((x) => { delete x.eff; delete x.engW; delete x.engN; delete x.ep; });
+  ok(S.engPolicy(GO).on === 1 && (S.engWeek(GO), true), 'en gammal sparning utan motorteamets fält fortsätter som vanligt');
+  off(); off2();
+}
+// ── Livet i fler scener: koncern, butik, onlinespel och labb ─────────────────────────────────────
+{
+  const W = S.newGame({ studio: 'Scener', seed: 95 }); S.makeCompetitors(W); S.initWorld(W);
+  for (const r of RESEARCH) { W.research.done.push(r.id); S.applyUnlocks(W, r); }
+  W.t = 48 * 24 + 14; W.money = 1e9; W.fans = 5e5; W.office.tier = 4;
+  for (let i = 0; i < 8; i++) { S.refreshCandidates(W); W.money += W.candidates[0].fee; S.hire(W, W.candidates[0].id); }
+  const got = [];
+  const off = onBus('life', (b) => got.push(b));
+  const rng0 = W.rng;
+  // lab
+  const sl = S.lifeState(W, 'lab');
+  ok(sl.done > 0 && Array.isArray(sl.active) && typeof sl.lab === 'number' && typeof sl.teams === 'number', 'labbets ögonblicksbild har forskning, labbnivå och team');
+  // butik
+  const WS = S.newGame({ studio: 'Shop2', seed: 96 }); S.makeCompetitors(WS); S.initWorld(WS);
+  WS.t = 48 * 24 + 14; WS.money = 1e8; WS.fans = 2e5; WS.office.tier = 4;
+  for (let i = 0; i < 3; i++) { S.refreshCandidates(WS); WS.money += WS.candidates[0].fee; S.hire(WS, WS.candidates[0].id); }
+  WS.u.flags.store = true;
+  WS.games.length = 0;
+  const gm = (id, age, score, peak) => ({ id, title: id, platform: 'pc', genre: 'action', topic: 'space', scope: 'small', score, total: 2e6, t: WS.t - age, tail: 1, priceAt: 30, weekly: [peak].concat(Array(age - 1).fill(3000)), revenue: 0, units: 0, fansGained: 0, ended: true });
+  WS.games.push(gm('hit', 30, 9, 4e4), gm('c', 40, 8, 4e4), gm('d', 50, 8, 4e4), gm('e', 36, 8, 4e4), gm('f', 45, 8, 4e4));
+  S.storeWeek(WS);
+  WS.stats.storeUsers = 3e6; WS.store.lvl = 4;
+  const ss = S.lifeState(WS, 'store');
+  ok(ss.open && ss.lvl === 4 && ss.spots === 0 && ss.deals === 0 && ss.bundles === 0 && ss.ev === null && ss.team === null, 'butikens ögonblicksbild utan kampanjer');
+  S.startSpot(WS, 'hit'); S.startDeal(WS, 'c', 1); S.startBundle(WS, ['d', 'e', 'f']);
+  const se = S.lifeLog(WS, 'store').map((b) => b.k);
+  ok(se.includes('shopSpot') && se.includes('shopDeal') && se.includes('shopBundle'), 'kampanjerna syns som händelser (' + se.join() + ')');
+  const s2 = S.lifeState(WS, 'store');
+  ok(s2.spots === 1 && s2.deals === 1 && s2.bundles === 1, 'och i ögonblicksbilden');
+  // en nivå upp och miljonklubben
+  // koncern
+  const sg = S.lifeState(W, 'group');
+  ok(sg.open === !!W.u.flags.group && Array.isArray(sg.subs) && typeof sg.pub === 'number' && typeof sg.lic === 'number', 'koncernens ögonblicksbild har bolag, förlag och licenser');
+  const sv = S.lifeState(W, 'live');
+  ok(sv.open === false && sv.games.length === 0, 'onlinespelens ögonblicksbild är tom utan spel');
+  // onlinespel: lansering, innehållsuppdatering och säsong
+  const WO = S.newGame({ studio: 'Live', seed: 98 }); S.makeCompetitors(WO); S.initWorld(WO);
+  WO.t = 48 * 26; WO.money = 1e9; WO.fans = 5e5;
+  WO.games.push({ id: 7701, title: 'Online', t: WO.t - 20, score: 8, weekly: [1], total: 1e6, priceAt: 50, topic: 'fantasy', genre: 'rpg', platform: 'pc', scope: 'aaa', audience: 'everyone', revenue: 0, units: 0, insights: [], reviews: [], flags: [] });
+  S.launchLive(WO, WO.games[0]);
+  const lv = WO.games[0].live; lv.subs = 200000; lv.pot = 250000; lv.fresh = 50;
+  const lk = () => S.lifeLog(WO, 'live').map((b) => b.k);
+  ok(lk().includes('liveLaunch') && S.lifeLog(WO, 'live')[0].g === 'Online', 'ett onlinespel som lanseras syns som en händelse');
+  const sl2 = S.lifeState(WO, 'live');
+  ok(sl2.open && sl2.games.length === 1 && sl2.games[0].name === 'Online' && sl2.games[0].subs === 200000 && sl2.games[0].fresh === 50 && sl2.games[0].season === false, 'och i ögonblicksbilden (spelare, nyhetsvärde, säsong)');
+  WO.t += 20;
+  S.startLivePatch(WO, WO.games[0].id);
+  for (let i = 0; i < 12; i++) { WO.t++; S.liveWeek(WO); }
+  ok(lk().includes('livePatch'), 'en klar innehållsuppdatering syns (' + lk().join() + ')');
+  // forskning
+  const WR = S.newGame({ studio: 'Lab', seed: 99 }); S.makeCompetitors(WR); S.initWorld(WR);
+  WR.money = 1e8; WR.rp = 1e6;
+  const rid = RESEARCH.find((r) => S.canResearch(WR, r.id) === true);
+  ok(rid && S.startResearch(WR, rid.id) === true && S.lifeLog(WR, 'lab').some((b) => b.k === 'resStart' && b.sc === 'lab'), 'en påbörjad forskning syns som en händelse');
+  ok(S.lifeState(WR, 'lab').active.length === 1 && S.lifeState(WR, 'lab').active[0].pct === 0, 'och i labbets ögonblicksbild');
+  ok(W.rng === rng0, 'ögonblicksbilderna rör inte slumptalen');
+  off();
+}
+
 console.log(fails ? `\n${fails} FEL` : '\nAlla tester gick bra');
 process.exit(fails ? 1 : 0);

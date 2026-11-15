@@ -6,14 +6,15 @@
 // Bussen: emit('life', beat) för varje ny händelse. Scenerna lyssnar på den medan de är öppna och läser lifeState(G, 'dev' | 'hw')
 // för att visa rätt läge när de öppnas mitt i ett projekt. lifeLog(G, sc, sedanN) ger loggen och lifeText(beat) färdig text.
 //
-// beat = { n, t (G.t), k (sort), sc ('dev' | 'hw' | 'studio'), s (personalens id, 0 om ingen), who (förnamn), g (spelets eller
+// beat = { n, t (G.t), k (sort), sc ('dev' | 'studio' | 'hw' | 'eng' | ...), s (personalens id, 0 om ingen), who (förnamn), g (spelets eller
 // produktens namn), a (ett tal: antal, betyg eller enheter), v (textvariant) }
 import { emit } from '../core/bus.js';
 import { t, L } from '../core/i18n.js';
 import { hashStr } from '../core/rng.js';
 import { fmtFull } from '../core/util.js';
 import { workers, fatigueOver } from './people.js';
-import { TICKS_PER_WEEK, WEEKS_PER_YEAR } from './const.js';
+import { TICKS_PER_WEEK, WEEKS_PER_YEAR, yfOf, engineNeed, engineEff } from './const.js';
+import { membersOf, leadOf, teamName } from './teams.js';
 import { FACILITIES } from './studio.js'; // bara i lifeText (vid anrop), så importcykeln gör inget
 
 export const LIFE_MAX = 30; // så många händelser sparas
@@ -38,8 +39,47 @@ export const LIFE_KINDS = {
   sold: { sc: 'dev', v: 3, gap: 0 }, // första försäljningsveckan är klar (a = sålda exemplar)
   disc: { sc: 'dev', v: 2, gap: 0 }, // guld- eller platinaskiva
   contract: { sc: 'dev', v: 2, gap: 0 }, // ett uppdrag åt någon annan är klart (a = 1 lyckat, 0 misslyckat)
-  engine: { sc: 'dev', v: 2, gap: 0 }, // en egen spelmotor är klar
-  research: { sc: 'studio', v: 2, gap: 0 }, // labbet har klarat en forskning (g = namnet)
+  // motorverkstaden
+  engStart: { sc: 'eng', v: 2, gap: 0 }, // bygget av en motor börjar (g = namnet)
+  engHalf: { sc: 'eng', v: 2, gap: 0 }, // motorn halvvägs
+  engTest: { sc: 'eng', v: 2, gap: 0 }, // testkörning av motorn
+  engine: { sc: 'eng', v: 2, gap: 0 }, // en egen spelmotor är klar
+  research: { sc: 'lab', v: 2, gap: 0 }, // labbet har klarat en forskning (g = namnet)
+  // koncernen: köp, integration, styrelse, förlag och licenser
+  grpBuy: { sc: 'group', v: 2, gap: 0 }, // ett bolag köps (g = namnet)
+  grpSell: { sc: 'group', v: 2, gap: 0 }, // ett bolag säljs
+  grpInteg: { sc: 'group', v: 2, gap: 0 }, // integrationen av ett bolag börjar
+  grpDone: { sc: 'group', v: 2, gap: 0 }, // integrationen är klar
+  grpClash: { sc: 'group', v: 2, gap: 0 }, // kulturkrock under integrationen
+  grpCeo: { sc: 'group', v: 2, gap: 0 }, // en chef utses för ett bolag (who = chefen)
+  grpReport: { sc: 'group', v: 2, gap: 0 }, // styrelsemöte med kvartalsrapport (a = antal köp)
+  grpBiz: { sc: 'group', v: 2, gap: 0 }, // affärsavdelningens kvartal (a = antal avtal)
+  pubSign: { sc: 'group', v: 2, gap: 0 }, // avtal med ett förlag skrivs på (g = spelet)
+  pubOut: { sc: 'group', v: 3, gap: 0 }, // ett förlagsspel släpps (a = betyg)
+  licDeal: { sc: 'group', v: 2, gap: 0 }, // ett licensavtal skrivs på
+  film: { sc: 'group', v: 3, gap: 0 }, // filmpremiär (a = betyg)
+  // butiken
+  shopOpen: { sc: 'store', v: 2, gap: 0 },
+  shopDown: { sc: 'store', v: 2, gap: 0 }, // butiken ligger nere
+  shopUsers: { sc: 'store', v: 2, gap: 0 }, // en miljonmilstolpe (a = miljoner kunder)
+  shopLevel: { sc: 'store', v: 2, gap: 0 }, // en ny butiksnivå (a = nivån)
+  shopSpot: { sc: 'store', v: 2, gap: 0 }, // Veckans spel (g = spelet)
+  shopDeal: { sc: 'store', v: 2, gap: 0 }, // ett erbjudande (g = spelet, a = rabatt i procent)
+  shopBundle: { sc: 'store', v: 2, gap: 0 }, // ett spelpaket (a = antal spel)
+  shopTheme: { sc: 'store', v: 2, gap: 0 }, // en temavecka börjar (g = namnet)
+  shopRecord: { sc: 'store', v: 2, gap: 0 }, // rekord (v 0 ett spel, 1 en vecka)
+  shopTop: { sc: 'store', v: 2, gap: 0 }, // ett eget spel är etta i butiken
+  // onlinespel
+  liveLaunch: { sc: 'live', v: 2, gap: 0 }, // ett onlinespel går live (g = spelet)
+  livePatch: { sc: 'live', v: 2, gap: 0 }, // en uppdatering är ute
+  liveDown: { sc: 'live', v: 2, gap: 0 }, // avbrott (v 0 driftstopp, 1 överbelastning)
+  liveSeason: { sc: 'live', v: 2, gap: 0 }, // en säsong börjar
+  liveSeasonEnd: { sc: 'live', v: 2, gap: 0 }, // en säsong är slut (a = nya spelare, v 0 fler, 1 oförändrat)
+  liveExp: { sc: 'live', v: 2, gap: 0 }, // en expansion släpps
+  liveEvent: { sc: 'live', v: 2, gap: 0 }, // ett evenemang börjar
+  liveRegion: { sc: 'live', v: 2, gap: 0 }, // en ny region öppnas
+  // labbet
+  resStart: { sc: 'lab', v: 2, gap: 0 }, // en forskning börjar (g = namnet)
   pizza: { sc: 'dev', v: 2, gap: 12 }, // pizza till teamet under övertid
   // studion
   hired: { sc: 'studio', v: 3, gap: 0 },
@@ -96,7 +136,7 @@ export function lifeLog(G, sc, since = 0) {
   return LF.items.filter((b) => b.n > since && (!sc || b.sc === sc));
 }
 // Färdig text på spelarens språk
-const NUM_KINDS = new Set(['sold', 'hwParts', 'fans']); // stora tal skrivs med tusentalsavgränsare
+const NUM_KINDS = new Set(['sold', 'hwParts', 'fans', 'liveSeasonEnd']); // stora tal skrivs med tusentalsavgränsare
 export const lifeText = (b) => t(`life.${b.k}.${b.v}`, { who: b.who || t('life.someone'), g: b.k === 'built' && FACILITIES[b.g] ? L(FACILITIES[b.g].name) : b.g, a: NUM_KINDS.has(b.k) ? fmtFull(b.a) : b.a });
 
 // Veckovis: den som är mest utsliten under ett pågående projekt. (De andra händelserna skapas där de sker: dev.js, hardware.js,
@@ -138,6 +178,11 @@ export function lifeWeek(G) {
 // de sista 15 procenten av stapeln); crew = de som arbetar.
 export function lifeState(G, sc) {
   if (sc === 'hw') return hwState(G);
+  if (sc === 'eng') return engState(G);
+  if (sc === 'group') return groupState(G);
+  if (sc === 'store') return storeState(G);
+  if (sc === 'live') return liveState(G);
+  if (sc === 'lab') return labState(G);
   const J = G.job && G.job.kind === 'game' ? G.job : null;
   const crew = workers(G).map((w) => ({ id: w.id, name: lifeName(w), mood: Math.round(w.mood), fatigue: Math.round((w.fatigue || 0) * 10) / 10, trait: w.trait || null, away: !!w.away }));
   if (!J) return { active: false, phase: 0, pct: 0, bugs: 0, crunch: false, title: '', crew };
@@ -161,4 +206,63 @@ function hwState(G) {
     lab: H.lab || 0,
     crew,
   };
+}
+
+// eng: motorverkstaden. builds = pågående bygge (by 'studio' tar hela studions projektplats, by 'team' är motorteamets); team = motorteamet
+// (eff 0-1, lead = arbetsledarens förnamn); engines = studions motorer med teknik och hur nära tidens behov de är (ratio, 1 = precis nog)
+function engState(G) {
+  const J = G.job && G.job.kind === 'engine' ? G.job : null;
+  const team = G.teams ? G.teams.find((x) => x.role === 'eng') : null;
+  const mem = team ? membersOf(G, team) : [];
+  const lead = team ? leadOf(G, team) : null;
+  const yf = yfOf(G.t);
+  const need = engineNeed(Math.floor(yf));
+  const builds = [];
+  if (J) builds.push({ by: 'studio', name: J.name, pct: Math.min(1, J.ticks / Math.max(1, J.total)), feats: J.feats.length, cost: J.cost });
+  if (team && team.ep) builds.push({ by: 'team', name: team.ep.name, pct: Math.min(1, team.ep.w / Math.max(1, team.ep.need)), feats: team.ep.feats.length, cost: team.ep.cost });
+  return {
+    open: !!G.u.flags.engines,
+    builds,
+    team: team ? { id: team.id, name: L(teamName(team)), n: mem.length, eff: Math.round((team.eff || 0) * 100) / 100, lead: lead ? lifeName(lead) : '' } : null,
+    engines: G.engines.map((e) => ({ id: e.id, name: e.name, tech: e.tech, built: e.built, ratio: Math.round((engineEff(e, yf) / need) * 100) / 100, team: !!e.team })),
+    crew: mem.map((s) => ({ id: s.id, name: lifeName(s), lead: !!lead && lead.id === s.id })),
+  };
+}
+// group: koncernen. subs = ägda bolag (mode 'free' eller 'int', integ 0-1, ceo = chefens förnamn), pub = förlagsavtal på gång, lic = licensavtal på gång
+function groupState(G) {
+  const subs = (G.comps || []).filter((c) => c.owned).map((c) => ({ id: c.id, name: c.name, mode: c.sub ? c.sub.mode : 'free', integ: c.sub ? Math.round((c.sub.integ || 0) * 100) / 100 : 0, ceo: c.sub && c.sub.ceo ? lifeName(c.sub.ceo) : '' }));
+  return {
+    open: !!G.u.flags.group,
+    board: !!G.u.flags.groupBoard,
+    subs,
+    pub: G.pub ? G.pub.deals.filter((d) => !d.out).length : 0,
+    lic: G.fr ? G.fr.deals.filter((d) => !d.done).length : 0,
+  };
+}
+// store: den egna butiken. lvl 1-6, spots/deals/bundles = pågående kampanjer, ev = temavecka just nu (namn eller null), team = butiksteamets effekt (0-1) eller null
+function storeState(G) {
+  const S = G.store;
+  if (!S) return { open: false, lvl: 0, spots: 0, deals: 0, bundles: 0, ev: null, team: null, paused: false };
+  const shop = G.teams ? G.teams.find((x) => x.role === 'shop') : null;
+  return {
+    open: true,
+    lvl: S.lvl || 1,
+    spots: (S.spots || []).length,
+    deals: (S.deals || []).length,
+    bundles: (S.bundles || []).length,
+    ev: S.ev && !S.ev.done ? L(S.ev.name) || S.ev.id : null,
+    team: shop ? Math.round((S.tm || 0) * 100) / 100 : null,
+    paused: !!S.paused,
+  };
+}
+// live: onlinespelen. games = levande spel (subs = spelare, fresh 0-100 hur nytt innehållet är, down = avbrott på senare tid, season/patch/event/region pågår)
+function liveState(G) {
+  const games = G.games.filter((g) => g.live && !g.live.closed).map((g) => ({ id: g.id, name: L(g.title), subs: Math.round(g.live.subs || 0), fresh: Math.round(g.live.fresh || 0), season: !!g.live.season, patch: !!g.live.patch, event: !!(g.live.ev && g.live.ev.until > G.t), region: !!g.live.region, ops: !!G.teams && G.teams.some((x) => x.role === 'ops' && x.target === g.id) }));
+  return { open: games.length > 0, games, server: (G.office && G.office.fac && G.office.fac.server && G.office.fac.server.lvl) || 0 };
+}
+// lab: forskningen. active = pågående forskning (pct 0-1), done = antal klara, team = forskningsteamen
+function labState(G) {
+  const active = (G.research ? G.research.active : []).map((a) => ({ id: a.id, pct: Math.min(1, a.progress / Math.max(1, a.total)) }));
+  const lab = G.office && G.office.fac && G.office.fac.lab ? G.office.fac.lab.lvl : 0;
+  return { lab, active, done: G.research ? G.research.done.length : 0, teams: G.teams ? G.teams.filter((x) => x.role === 'res').length : 0 };
 }

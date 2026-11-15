@@ -5,6 +5,7 @@
 // inga egna nyheter. Allt är deterministiskt och drar inget ur G.rng.
 import { clamp, fmtMoney } from '../core/util.js';
 import { note } from './news.js';
+import { beat } from './life.js';
 import { burnOf } from './board.js';
 import { canPublish, pubOf, canSign, signPitch } from './publish.js';
 import { canFranchise, frOf, canAccept, acceptOffer } from './franchise.js';
@@ -58,6 +59,7 @@ export function bizWeek(G) {
     }
   }
   if (G.t % 12 === 5 && (b.q.signed || b.q.taken)) {
+    beat(G, 'grpBiz', { a: b.q.signed });
     note(G, 'news.bizReport', { a: b.q.signed, b: b.q.taken, v: fmtMoney(b.q.up) }, 'info');
     b.q = { signed: 0, taken: 0, up: 0 };
   }

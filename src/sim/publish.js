@@ -13,6 +13,7 @@ import { spend, earn } from './studio.js';
 import { forecast, curveFor } from './sales.js';
 import { randomTitle } from './market.js';
 import { note } from './news.js';
+import { beat } from './life.js';
 
 // Förlagsverksamhet: små studior skickar in spel (pitchar) som du kan ge ut. Du betalar ett förskott när du skriver
 // på och får förlagets andel av försäljningen när spelet släpps. Demon visar bara ett betygsintervall, så varje avtal
@@ -84,6 +85,7 @@ export function signPitch(G, id) {
   const p = P.pitches.splice(i, 1)[0];
   spend(G, p.advance, 'publishing');
   P.deals.push({ ...p, t0: G.t, rel: G.t + p.weeks, hype: 15, campaign: false, out: false });
+  beat(G, 'pubSign', { g: p.title });
   emit('pubSign', p);
   return true;
 }
@@ -113,6 +115,7 @@ function release(G, d) {
   G.stats.published = (G.stats.published || 0) + 1;
   G.stats.pubCost = (G.stats.pubCost || 0) + d.advance + (d.cost || 0);
   note(G, 'news.pubRelease', { title: d.title, studio: d.studio, v: d.score.toFixed(1) }, d.score >= 7.5 ? 'good' : d.score < 5.5 ? 'bad' : 'info');
+  beat(G, 'pubOut', { g: d.title, a: Math.round(d.score * 10) / 10, v: d.score >= 7.5 ? 0 : d.score >= 5.5 ? 1 : 2 });
   emit('pubRelease', d);
 }
 
