@@ -62,9 +62,14 @@ const STATE = {
     };
   },
   group: (G) => lifeState(G, 'group'),
+  lab: (G) => {
+    const l = lifeState(G, 'lab');
+    const staff = (G.staff || []).filter((x) => !x.away).map((x) => x.look);
+    return { ...l, looks: staff };
+  },
 };
-const TICK_SC = { studio: ['dev', 'studio'], factory: ['hw'], engine: ['eng'], group: ['group'] };
-const LOG_SC = { studio: 'dev', factory: 'hw', engine: 'eng', group: 'group' };
+const TICK_SC = { studio: ['dev', 'studio'], factory: ['hw'], engine: ['eng'], group: ['group'], lab: ['lab'] };
+const LOG_SC = { studio: 'dev', factory: 'hw', engine: 'eng', group: 'group', lab: 'lab' };
 function refresh(kind, cfg) {
   try {
     cfg.st = STATE[kind](cfg.G);
@@ -76,6 +81,7 @@ function caption(kind, cfg) {
   const st = cfg.st;
   if (kind === 'studio') return !st ? t('ls.studio') : st.active ? t('ls.studio.on', { title: st.title || '…' }) : st.report ? t('ls.studio.report') : t('ls.studio.idle');
   if (kind === 'engine') return st && st.active ? t('ls.engine.on', { name: st.name }) : st && st.team ? t('ls.engine.team', { team: st.team.name }) : t('ls.engine');
+  if (kind === 'lab') return st && st.active.length ? t('ls.lab.on', { n: st.active.length }) : t('ls.lab');
   if (kind === 'group') return st && st.subs.some((c) => c.mode === 'int') ? t('ls.group.int') : t('ls.group', { n: st ? st.subs.length : 0 });
   if (!st || !st.open) return t('ls.factory');
   return st.orders.length ? t('ls.factory.prod') : st.designing.length ? t('ls.factory.design') : t('ls.factory');
@@ -541,6 +547,76 @@ function drawEngine(ctx, W, tm, cfg) {
   darken(ctx, W, 0.05, '#7cf2ff');
 }
 
+// ── Forskningslabbet ──
+function drawLab(ctx, W, tm, cfg) {
+  const fy = H - 6;
+  const st = cfg.st || { lab: 0, active: [], done: 0, teams: 0, looks: [] };
+  const act = st.active;
+  const on = act.length > 0;
+  R(ctx, 0, 0, W, H, '#16303a');
+  for (let x = 0; x < W; x += 12) R(ctx, x, 0, 1, H - 12, '#1b3844');
+  R(ctx, 0, H - 12, W, 12, '#2a3a46');
+  R(ctx, 0, H - 12, W, 1, '#5a7686');
+  R(ctx, 0, H - 4, W, 1, '#1c2a34');
+  // bokhylla
+  R(ctx, 6, 6, 28, 30, '#3a2a20');
+  for (let r = 0; r < 3; r++) {
+    R(ctx, 7, 7 + r * 10, 26, 9, '#241a14');
+    for (let b = 0; b < 8; b++) R(ctx, 8 + b * 3, 8 + r * 10 + (b % 3), 2, 8 - (b % 3), ['#e8504a', '#4a90e0', '#f2c84a', '#6cc86a', '#b46bff'][(b + r) % 5]);
+  }
+  // tavlan med formler och en atom som snurrar
+  const bx = 42;
+  R(ctx, bx, 6, 56, 30, '#e9eefb');
+  R(ctx, bx - 1, 5, 58, 1, '#6a7488');
+  for (let i = 0; i < 4; i++) R(ctx, bx + 4, 10 + i * 5, 14 + ((i * 7) % 9), 1, '#5a6a9a');
+  const ax = bx + 40, ay = 21;
+  R(ctx, ax - 1, ay - 1, 3, 3, '#e8504a');
+  for (let o = 0; o < 3; o++) {
+    const a = tm * (on ? 2.2 : 0.6) + (o * Math.PI) / 3;
+    for (let k = 0; k < 2; k++) {
+      const q = a + k * Math.PI;
+      R(ctx, Math.round(ax + Math.cos(q) * 11 * Math.cos(o)), Math.round(ay + Math.sin(q) * 5 + Math.cos(q) * 6 * Math.sin(o)), 2, 2, '#4a90e0');
+    }
+  }
+  // provrör på väggen: ett per pågående forskning, de fylls när den närmar sig mål
+  const tubes = Math.max(1, Math.min(3, st.lab >= 3 ? 3 : st.lab >= 2 ? 2 : 1));
+  const tx0 = Math.round(W * 0.5) - 8;
+  for (let i = 0; i < tubes; i++) {
+    const x = tx0 + i * 9;
+    R(ctx, x, 8, 6, 22, '#0c1c24');
+    R(ctx, x, 8, 6, 1, '#7a98a8');
+    const a = act[i];
+    const lvl = a ? Math.max(1, Math.round(20 * a.pct)) : 0;
+    const col = ['#4de1d0', '#ff7ab8', '#ffd36a'][i % 3];
+    if (lvl) {
+      R(ctx, x + 1, 29 - lvl, 4, lvl, col);
+      R(ctx, x + 1, 29 - lvl, 4, 1, '#ffffff');
+      for (let b = 0; b < 2; b++) {
+        const p = (tm * 0.8 + b * 0.5 + i * 0.3) % 1;
+        R(ctx, x + 2 + b, Math.round(28 - p * lvl), 1, 1, '#ffffff');
+      }
+    }
+  }
+  // bänken med kolvar som bubblar och ångar medan forskningen pågår
+  const bench = Math.round(W * 0.5) + 28;
+  labBench(ctx, bench, fy, Math.max(1, Math.min(3, st.lab || 1)));
+  if (on) {
+    steam(ctx, bench + 5, fy - 22, tm, 3, 0.5, '#9fffe0');
+    steam(ctx, bench + 14, fy - 18, tm + 1, 2, 0.4, '#ffb0d8');
+  }
+  // teamet: en antecknar vid tavlan, en vid bänken, en granskar proverna
+  const lk = (i) => (st.looks && st.looks[i]) || cfg.looks[i];
+  person(ctx, bx + 24, fy + 1, lk(0), on ? 'notes' : 'stand', tm, 1, false, 0.2);
+  person(ctx, bench - 8, fy + 1, lk(1), on ? 'laptop' : 'stand', tm, 1, false, 0.9);
+  person(ctx, bench + 50, fy + 2, lk(2), 'talk', tm, -1, false, 1.4);
+  // klar forskning: glödlampa och konfetti
+  for (const e of recent(['research'], 4.6, tm)) {
+    bubble(ctx, bx + 28, fy - 24, 'bulb', tm - e.t0, 2.6, tm);
+    confetti(ctx, W, tm - e.t0, e.b.n);
+  }
+  darken(ctx, W, 0.04, '#7cffd8');
+}
+
 // ── Koncernen ──
 function drawGroup(ctx, W, tm, cfg) {
   const fy = H - 6;
@@ -637,7 +713,7 @@ function drawGroup(ctx, W, tm, cfg) {
   ctx.globalAlpha = 1;
   for (const e of recent(['party', 'anniv', 'fans', 'film', 'grpDone'], 4.6, tm)) confetti(ctx, W, tm - e.t0, e.b.n);
 }
-const DRAW = { studio: drawStudio, factory: drawFactory, engine: drawEngine, group: drawGroup };
+const DRAW = { studio: drawStudio, factory: drawFactory, engine: drawEngine, group: drawGroup, lab: drawLab };
 
 // ── Timer ──
 let timer = 0;

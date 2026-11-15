@@ -1909,6 +1909,8 @@ export const STRINGS = {
   'ls.engine': ['Motorrummet', 'The engine room'],
   'ls.engine.on': ['Bygger motorn {name}', 'Building the engine {name}'],
   'ls.engine.team': ['Motorteamet {team} väntar på nästa bygge', 'Engine team {team} waits for the next build'],
+  'ls.lab': ['Labbet väntar på nästa forskning', 'The lab waits for the next research'],
+  'ls.lab.on': ['Forskar på {n} saker', 'Researching {n} things'],
   'ls.group.int': ['Bolag byggs ihop med koncernen', 'Companies are merging into the group'],
   'ls.group': ['Koncernen: {n} dotterbolag', 'The group: {n} subsidiaries'],
   'ls.factory': ['Labbet och fabriken går för fullt', 'The lab and factory are running'],
