@@ -4,6 +4,7 @@ import { applyUnlocks } from './state.js';
 import { yearOf, moneyScale, TICKS_PER_WEEK } from './const.js';
 import { researchSlots, labMult, spend } from './studio.js';
 import { workers } from './people.js';
+import { beat } from './life.js';
 
 export const RP_RATE = 0.05;
 
@@ -71,6 +72,7 @@ export function researchTick(G) {
     G.research.done.push(a.id);
     applyUnlocks(G, r);
     G.stats.researched++;
+    beat(G, 'research', { g: r.name });
     emit('researched', r);
   }
   return gain;

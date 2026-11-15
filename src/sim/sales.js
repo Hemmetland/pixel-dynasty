@@ -7,6 +7,7 @@ import { SALES_TAIL } from './tempo.js';
 import { DIFFICULTY } from './state.js';
 import { earn } from './studio.js';
 import { platFit, techWeight } from './score.js';
+import { beat } from './life.js';
 
 // Försäljning per enhet och år. Bas och årlig tillväxt är de två reglagen för hur snabbt kassan växer.
 export const UNIT_REV_BASE = 400;
@@ -111,7 +112,10 @@ export function salesWeek(G) {
     const dfans = df < 0 ? Math.max(df, -G.fans * 0.01) : df;
     G.fans = Math.max(0, G.fans + dfans);
     g.fansGained += dfans;
-    if (w === 0) emit('sales', { game: g, rev });
+    if (w === 0) {
+      if (!g.auto) beat(G, 'sold', { g: g.title, a: Math.round(units), v: g.score >= 8 ? 0 : g.score >= 6 ? 1 : 2 });
+      emit('sales', { game: g, rev });
+    }
     if (w > 14 && rev < g.total * 0.0012 && !shut) g.ended = true;
   }
   if (weekRev > 0) emit('revenue', { amount: weekRev });

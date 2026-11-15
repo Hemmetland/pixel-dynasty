@@ -6,6 +6,7 @@ import { SCOPES, yearOf, moneyScale, TICKS_PER_WEEK } from './const.js';
 import { earn } from './studio.js';
 import { teamOutput } from './dev.js';
 import { t } from '../core/i18n.js';
+import { beat } from './life.js';
 
 export function makeContract(G) {
   const year = yearOf(G.t);
@@ -58,8 +59,12 @@ export function contractTick(G) {
       earn(G, J.c.reward, 'contracts');
       G.stats.contracts++;
       G.fans += 5;
+      beat(G, 'contract', { a: 1, v: 0 });
       emit('contractDone', { ok: true, c: J.c });
-    } else emit('contractDone', { ok: false, c: J.c });
+    } else {
+      beat(G, 'contract', { a: 0, v: 1 });
+      emit('contractDone', { ok: false, c: J.c });
+    }
     G.job = null;
   }
 }

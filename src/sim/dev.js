@@ -20,6 +20,7 @@ import { note } from './news.js';
 import { liveScopesFor, EXP_SCOPES, LIVE_DEV, canGoLive, launchLive, releaseExpansion } from './live.js';
 import { KIND, kindOf } from '../data/onlinekinds.js';
 import { takeSeriesHype } from './franchise.js';
+import { beat, lifePick } from './life.js';
 
 export const RP_RATE = 0.05;
 // Satser som beskriver "per projekt" skalas mot projektets längd (tempo) så att ett längre projekt inte tappar mer hype
@@ -102,7 +103,10 @@ export function setPhaseFocus(G, phase, raw) {
 }
 
 export function toggleCrunch(G) {
-  if (G.job) G.job.crunch = !G.job.crunch;
+  if (G.job) {
+    G.job.crunch = !G.job.crunch;
+    if (G.job.kind === 'game') beat(G, G.job.crunch ? 'crunch' : 'relax', { g: G.job.title });
+  }
 }
 
 // ── Marknadsföring ───────────────────────────────────────────────
@@ -139,6 +143,7 @@ export function launchMarketing(G, id) {
   J.marketing.push(id);
   const add = hypeGain(J.hype, MKT[id].hype * mktHypeMult(G));
   J.hype = Math.min(100, J.hype + add);
+  beat(G, 'ad', { g: J.title, a: Math.round(add) });
   emit('marketing', { id, add });
   return true;
 }
@@ -222,6 +227,7 @@ export function stepJob(G, J, ws, auto) {
       if (rnd(G) < rate - whole) nb++;
     }
     J.bugs += nb;
+    if (!auto && nb > 0) beat(G, 'bug', { staff: lifePick(G, out.ws, 'bug'), g: J.title, a: nb });
     // flytande poäng
     if (!auto && out.ws.length) {
       const nF = Math.min(out.ws.length, 1 + (rnd(G) < 0.5 ? 1 : 0));
@@ -238,20 +244,30 @@ export function stepJob(G, J, ws, auto) {
         const bonus = Math.round(w.design * 1.5);
         J.D += bonus;
         emit('float', { staff: w.id, kind: 'spark', amount: bonus });
+        beat(G, 'idea', { staff: w, g: J.title, a: bonus });
         emit('toast', { kind: 'good', text: t('toast.spark', { name: w.name.split(' ')[0] }) });
       }
     }
     J.ticks++;
+    if (!auto && J.ticks === Math.floor(J.devTicks / 4)) beat(G, 'quarter', { g: J.title });
+    if (!auto && J.ticks === Math.floor(J.devTicks / 2)) beat(G, 'half', { g: J.title });
+    if (!auto && J.ticks === Math.floor((J.devTicks * 3) / 4)) beat(G, 'almost', { g: J.title });
     J.hype *= Math.pow(0.9988, 1 / tempoOf(J));
     // fasbyte
     const phaseLen = J.devTicks / 3;
     if (J.ticks >= J.devTicks) {
       J.phase = 3;
-      if (!auto) emit('phase', { phase: 3, job: J });
+      if (!auto) {
+        emit('phase', { phase: 3, job: J });
+        beat(G, 'phase', { g: J.title, a: 3 });
+      }
     } else if (J.ticks >= phaseLen * (J.phase + 1)) {
       J.phase++;
       if (!auto && phaseCats(G, J.phase).length >= 2) G.pending.push({ type: 'phase', phase: J.phase, id: G.uid++ });
-      if (!auto) emit('phase', { phase: J.phase, job: J });
+      if (!auto) {
+        emit('phase', { phase: J.phase, job: J });
+        beat(G, 'phase', { g: J.title, a: J.phase });
+      }
     }
     // Slumphändelser under utveckling hanteras av clock (veckovis).
   } else {
@@ -262,6 +278,7 @@ export function stepJob(G, J, ws, auto) {
     const before = J.bugs;
     J.bugs = Math.max(0, J.bugs * Math.exp(-lambda) - (0.02 / tempoOf(J)) * out.n);
     const fixed = before - J.bugs;
+    if (!auto && fixed > 0.2 && out.ws.length) beat(G, 'fix', { staff: lifePick(G, out.ws, 'fix'), g: J.title, a: Math.max(1, Math.round(fixed)) });
     if (!auto && fixed > 0.2 && out.ws.length && rnd(G) < 0.5) emit('float', { staff: out.ws[rint(G, 0, out.ws.length - 1)].id, kind: 'fix', amount: Math.max(1, Math.round(fixed)) });
     J.polishDone++;
     if (J.polishDone >= J.polishTicks || J.bugs < 0.5) {
@@ -296,6 +313,7 @@ function finishDev(G) {
   J.rpGained += rpBonus;
   G.rp += rpBonus;
   G.pending.push({ type: 'report', id: G.uid++ });
+  beat(G, 'done', { g: J.title, a: Math.round(J.bugs) });
   emit('devDone', J);
 }
 
@@ -378,6 +396,7 @@ export function releaseGame(G) {
     serviceGames(G, w);
   }
   G.job = null;
+  beat(G, 'launch', { g: game.title, a: Math.round(game.score * 10) / 10, v: game.score >= 8 ? 0 : game.score >= 6 ? 1 : 2 });
   emit('released', game);
   return game;
 }

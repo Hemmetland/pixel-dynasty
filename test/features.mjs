@@ -5,6 +5,8 @@ import { EVENTS, EV } from '../src/data/events.js';
 import { exportCode, importCode, recordRun, loadHall, saveGame, loadGame, deleteSave, slotList, latestSlot, freeSlot, activeSlot, useSlot, hasSave, saveMeta, SLOTS } from '../src/core/store.js';
 import { PLATFORM, PLATFORMS } from '../src/data/platforms.js';
 import { STRINGS } from '../src/data/strings.js';
+import { on as onBus } from '../src/core/bus.js';
+import { setLang } from '../src/core/i18n.js';
 import { ACHIEVEMENTS } from '../src/data/achievements.js';
 import { weeklyOf } from '../src/core/weekly.js';
 import { identityName } from '../src/data/identity.js';
@@ -3160,6 +3162,139 @@ ok(!bad.length, `äldre sparning utan ett av ${paths.length} fält går att spel
   const GO = JSON.parse(JSON.stringify(G2)); delete GO.store.sh; delete GO.store.tm;
   for (let i = 0; i < 30; i++) { S.shopWeek(GO); GO.t++; S.storeWeek(GO); }
   ok(Number.isFinite(GO.money) && GO.store.sh && GO.store.sh.on === 1, 'en sparning från före butiksteamet fortsätter som vanligt');
+}
+
+// ── Livet i studion: händelser som scenerna visar ───────────────────────────────────────────────
+{
+  const W = S.newGame({ studio: 'Life', seed: 91 }); S.makeCompetitors(W); S.initWorld(W);
+  W.t = 48 * 5 + 5; W.money = 1e8; W.fans = 5e4; W.office.tier = 3;
+  const got = [];
+  const off = onBus('life', (b) => got.push(b));
+  ok(S.lifeLog(W).length === 0 && S.lifeState(W, 'dev').active === false, 'inget flöde innan något hänt');
+  for (let i = 0; i < 4; i++) { S.refreshCandidates(W); W.money += W.candidates[0].fee; S.hire(W, W.candidates[0].id); }
+  ok(got.length === 4 && got.every((b) => b.k === 'hired' && b.s && b.who && b.sc === 'studio') && W.life.items.length === 4, 'en anställning ger en händelse med namn (' + got.length + ')');
+  const st = S.lifeState(W, 'dev');
+  ok(!st.active && st.crew.length >= 4 && st.crew.every((c) => c.id && c.name), 'ögonblicksbilden visar besättningen även utan projekt');
+  // ett projekt
+  ok(S.startProject(W, { title: 'Liv', topic: 'space', genre: 'action', platform: 'pc', scope: 'small', audience: 'everyone' }) !== null, 'projekt startat');
+  const pct0 = S.lifeState(W, 'dev').pct;
+  let tt = 0;
+  while (W.job && W.job.state === 'dev' && tt++ < 4000) { W.pending.length = 0; S.stepTick(W); }
+  const kinds = new Set(got.map((b) => b.k));
+  ok(kinds.has('half') && kinds.has('done') && got.filter((b) => b.k === 'phase').map((b) => b.a).join() === '1,2,3', 'halvvägs, tre fasbyten och klart kommer som händelser (' + [...kinds].join(',') + ')');
+  ok(kinds.has('bug') && got.filter((b) => b.k === 'bug').every((b) => b.s && b.who && b.g === 'Liv' && b.a >= 1), 'buggar hittas av en namngiven person');
+  ok(S.lifeState(W, 'dev').pct === 1 && S.lifeState(W, 'dev').report === true && pct0 < 0.1, 'ögonblicksbilden följer projektet från start till rapport');
+  // utgivning
+  W.pending.length = 0;
+  const G0 = S.releaseGame(W);
+  const L = got.filter((b) => b.k === 'launch').pop();
+  ok(G0 && L && L.g === 'Liv' && L.a === Math.round(G0.score * 10) / 10 && L.v === (G0.score >= 8 ? 0 : G0.score >= 6 ? 1 : 2), 'släppet ger en händelse med betyget och en passande text');
+  // slumpen och loggen
+  const rng0 = W.rng;
+  W.tick = 1;
+  const b1 = S.beat(W, 'bug', { staff: W.staff[0], g: 'X', a: 1 });
+  const b2 = S.beat(W, 'bug', { staff: W.staff[0], g: 'X', a: 1 });
+  ok(b1 && b2 === null && W.rng === rng0, 'en tät ström dämpas och händelserna rör inte slumptalen');
+  for (let i = 0; i < 50; i++) S.beat(W, 'idea', { staff: W.staff[0], g: 'X' });
+  ok(W.life.items.length === S.LIFE_MAX && W.life.items[W.life.items.length - 1].n === W.life.n, 'loggen håller de ' + S.LIFE_MAX + ' senaste');
+  const last = W.life.n;
+  ok(S.lifeLog(W, 'dev', last - 3).length === 3 && S.lifeLog(W, 'hw').length === 0 && S.lifeLog(W, 'studio').length === 0, 'lifeLog filtrerar på scen och på löpnummer');
+  ok(S.beat(W, 'finns-inte') === null, 'okända sorter ignoreras');
+  // texter: alla sorter och varianter finns på båda språken
+  let miss = 0;
+  for (const [k, K] of Object.entries(S.LIFE_KINDS)) for (let v = 0; v < K.v; v++) { const e = STRINGS[`life.${k}.${v}`]; if (!e || !e[0] || !e[1]) { miss++; console.log('saknas', k, v); } }
+  ok(miss === 0 && STRINGS['life.someone'], 'alla händelsetexter finns på svenska och engelska');
+  const bt = { n: 1, t: 1, k: 'bug', sc: 'dev', s: 1, who: 'Lisa', g: 'Rymd', a: 2, v: 0 };
+  setLang('en'); const en = S.lifeText(bt); setLang('sv'); const sv = S.lifeText(bt);
+  ok(en === 'Lisa found a bug in Rymd.' && sv === 'Lisa hittade en bugg i Rymd.' && !/[{}]/.test(en + sv), 'lifeText ger färdig text i båda språken');
+  ok(S.lifeText({ ...bt, who: '', k: 'hired', v: 0 }).startsWith('Någon'), 'utan namn blir det Någon');
+  const fb = { n: 2, t: 1, k: 'built', sc: 'studio', s: 0, who: '', g: 'coffee', a: 0, v: 0 };
+  ok(/Kaffe/.test(S.lifeText(fb)), 'en anläggning visas med sitt namn på spelarens språk');
+  // en sparning från före flödet
+  const GO = JSON.parse(JSON.stringify(W)); delete GO.life;
+  ok(S.lifeLog(GO).length === 0 && S.beat(GO, 'idea', { staff: GO.staff[0] }) && GO.life.items.length === 1, 'en gammal sparning utan flödet fortsätter som vanligt');
+  // utmattning och övertid
+  const W2 = JSON.parse(JSON.stringify(W)); W2.life = { n: 0, last: {}, items: [] };
+  W2.job = null;
+  S.startProject(W2, { title: 'Sent', topic: 'space', genre: 'action', platform: 'pc', scope: 'small', audience: 'everyone' });
+  S.toggleCrunch(W2); S.toggleCrunch(W2);
+  ok(W2.life.items.map((b) => b.k).join() === 'crunch,relax', 'övertid på och av syns i flödet');
+  W2.staff.forEach((x) => { x.fatigue = 40; });
+  S.lifeWeek(W2);
+  ok(W2.life.items.some((b) => b.k === 'tired' && b.s), 'den som är mest utsliten får en egen händelse');
+  off();
+  // hårdvara: konstruktion, prov, leverans och lansering
+  const H = S.newGame({ studio: 'Hw', seed: 92 }); S.makeCompetitors(H); S.initWorld(H);
+  H.t = 48 * 30; H.money = 5e9; H.fans = 3e5;
+  Object.assign(H.u.flags, { hw: true, hw_gpu: true, hw_cpu: true, hw_pc: true, hw_lowpow: true, hw_handheld: true, hw_console: true, hw_devkit: true });
+  const hg = [];
+  const off2 = onBus('life', (b) => hg.push(b));
+  H.t++; S.hwWeek(H);
+  ok(S.lifeState(H, 'hw').open === true && S.lifeState(H, 'hw').designing.length === 0 && S.lifeState(H, 'dev').active === false, 'hårdvarans ögonblicksbild utan projekt');
+  ok(S.startDesign(H, { type: 'gpu', cls: 'mid', name: 'Nova Prime' }) === true && hg.some((b) => b.k === 'hwStart' && b.g === 'Nova Prime' && b.sc === 'hw'), 'en konstruktion ger en händelse');
+  const hs = S.lifeState(H, 'hw').designing[0];
+  ok(hs && hs.name === 'Nova Prime' && hs.type === 'gpu' && hs.pct === 0, 'ögonblicksbilden visar projektet på ritbordet');
+  const J = H.hw.projects[0];
+  for (let i = 0; i < 80 && J.state === 'design'; i++) { H.t++; S.hwWeek(H); }
+  ok(hg.some((b) => b.k === 'hwHalf') && hg.some((b) => b.k === 'hwProto' && b.a === (J.state === 'ready' ? 1 : 0) && b.v === (J.state === 'ready' ? 0 : 1)), 'halvvägs och provserien kommer som händelser (' + J.state + ')');
+  if (J.state === 'fail') S.resolveProto(H, J.id, 'ship');
+  ok(S.launch(H, J.id, { partner: 'meridian', units: 20000 }) === true, 'lanserad');
+  ok(S.lifeState(H, 'hw').orders.length >= 1 && S.lifeState(H, 'hw').prod.length === 1, 'en order och en produkt i tillverkning syns i ögonblicksbilden');
+  for (let i = 0; i < 40 && H.hw.products[0].state === 'prod'; i++) { H.t++; S.hwWeek(H); }
+  const pl = hg.find((b) => b.k === 'hwParts');
+  const lh = hg.find((b) => b.k === 'hwLaunch');
+  ok(pl && pl.a > 0 && pl.g === 'Nova Prime' && lh && lh.a > 0 && lh.v === (lh.a >= 7 ? 0 : lh.a >= 5.5 ? 1 : 2) && S.lifeState(H, 'hw').market === 1, 'leveransen till lagret och lanseringen syns (' + (pl && pl.a) + ' st, betyg ' + (lh && lh.a) + ')');
+  S.discontinue(H, H.hw.products[0].id);
+  ok(hg.some((b) => b.k === 'hwEnd'), 'att lägga ned en produkt syns');
+  ok(S.lifeLog(H, 'hw').length === hg.length && S.lifeLog(H, 'dev').length === 0, 'hårdvaruhändelserna hör till hårdvaruscenen');
+  off2();
+}
+
+// ── Livet i studion: det som händer runt spelen (jubileer, fest, gäster, pizza, fanbrev) ───────────────────────
+{
+  const W = S.newGame({ studio: 'Flavour', seed: 93 }); S.makeCompetitors(W); S.initWorld(W);
+  W.t = 48 * 5; W.money = 1e8; W.fans = 5000; W.office.tier = 3;
+  for (let i = 0; i < 3; i++) { S.refreshCandidates(W); W.money += W.candidates[0].fee; S.hire(W, W.candidates[0].id); }
+  const hired = W.staff.filter((x) => !x.isFounder);
+  hired[0].hired = W.t - 48; hired[1].hired = W.t - 96; hired[2].hired = W.t - 30;
+  const got = [];
+  const off = onBus('life', (b) => got.push(b));
+  const rng0 = W.rng;
+  S.lifeWeek(W);
+  const an = got.filter((b) => b.k === 'anniv');
+  ok(an.length >= 2 && an.some((b) => b.s === hired[0].id && b.a === 1) && an.some((b) => b.s === hired[1].id && b.a === 2) && !an.some((b) => b.s === hired[2].id), 'jubileer: den som varit här ett helt antal år firas (' + an.map((b) => b.who + ' ' + b.a).join(', ') + ')');
+  const gm = (id, age, score) => ({ id, title: id, platform: 'pc', genre: 'action', topic: 'space', scope: 'small', score, total: 1e6, t: W.t - age, tail: 1, priceAt: 30, weekly: [], revenue: 0, units: 0, fansGained: 0, ended: false });
+  W.games.push(gm('Fest', 2, 8.6), gm('Gast', 4, 7.7), gm('Svag', 2, 6), gm('Auto', 2, 9));
+  W.games[W.games.length - 1].auto = true;
+  got.length = 0;
+  S.lifeWeek(W);
+  ok(got.filter((b) => b.k === 'party').length === 1 && got.find((b) => b.k === 'party').g === 'Fest' && got.find((b) => b.k === 'party').a === 8.6, 'ett bra släpp ger fest veckan efter försäljningsstarten (inte för svaga eller självgående spel)');
+  ok(got.filter((b) => b.k === 'visitor').length === 1 && got.find((b) => b.k === 'visitor').g === 'Gast', 'och en gäst på besök fyra veckor efter släppet');
+  // fanbrev: ett per ny nivå, första veckan bara räknar
+  got.length = 0;
+  S.lifeWeek(W);
+  ok(!got.some((b) => b.k === 'fans'), 'fansen: inget brev utan ny nivå');
+  W.fans = 2e5;
+  S.lifeWeek(W);
+  const fb = got.find((b) => b.k === 'fans');
+  ok(fb && fb.a === 1e5 && /100 000/.test(S.lifeText(fb)), 'fansen: ett brev när en ny nivå nås, med tusentalsavgränsare (' + (fb && S.lifeText(fb)) + ')');
+  got.length = 0;
+  S.lifeWeek(W);
+  ok(!got.some((b) => b.k === 'fans'), 'men inte igen för samma nivå');
+  // pizza under övertid
+  W.job = null;
+  S.startProject(W, { title: 'Pizza', topic: 'space', genre: 'action', platform: 'pc', scope: 'small', audience: 'everyone' });
+  W.job.crunch = true;
+  got.length = 0;
+  for (let i = 0; i < 40; i++) { W.t++; W.tick = 0; S.lifeWeek(W); }
+  const pz = got.filter((b) => b.k === 'pizza');
+  ok(pz.length >= 2 && pz.length <= 20 && pz.every((b) => b.g === 'Pizza'), 'pizza under övertid, ungefär var fjärde vecka (' + pz.length + ' på 40)');
+  W.job.crunch = false;
+  got.length = 0;
+  for (let i = 0; i < 40; i++) { W.t++; S.lifeWeek(W); }
+  ok(!got.some((b) => b.k === 'pizza'), 'ingen pizza utan övertid');
+  ok(W.rng === rng0, 'det som händer runt spelen rör inte slumptalen');
+  off();
 }
 
 console.log(fails ? `\n${fails} FEL` : '\nAlla tester gick bra');

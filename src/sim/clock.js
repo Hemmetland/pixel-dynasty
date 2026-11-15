@@ -38,6 +38,7 @@ import { finishCourses, teamsWeek } from './teams.js';
 import { missionWeek } from './autoteam.js';
 import { rentOf, facUpkeep, loanInterest, spend } from './studio.js';
 import { note } from './news.js';
+import { beat, lifeWeek } from './life.js';
 
 // Ett tick = en fjärdedels vecka. Returnerar false om spelet väntar på spelaren.
 export function stepTick(G) {
@@ -45,7 +46,10 @@ export function stepTick(G) {
   const J = G.job;
   if (J) {
     if (J.kind === 'game') {
-      if (J.crunchTicks > 0 && --J.crunchTicks <= 0) J.crunch = false;
+      if (J.crunchTicks > 0 && --J.crunchTicks <= 0) {
+        J.crunch = false;
+        beat(G, 'relax', { g: J.title });
+      }
       devTick(G);
     } else if (J.kind === 'contract') contractTick(G);
     else if (J.kind === 'engine') engineTick(G);
@@ -87,6 +91,7 @@ function weekly(G) {
   esportsWeek(G);
   missionWeek(G); // sist: ett spel som släpps nu börjar sälja nästa vecka
   updateMood(G);
+  lifeWeek(G);
   rollDevEvent(G);
   const d = dateOf(G.t);
   // plattformsnyheter, en gång: veckan då plattformen kommer ut (lanseringen ligger alltid på en hel vecka)

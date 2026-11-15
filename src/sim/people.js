@@ -8,6 +8,7 @@ import { DIFFICULTY, nextId } from './state.js';
 import { tr } from './tr.js';
 import { capacity, seated, facLevel, spend, campusOf } from './studio.js';
 import { note } from './news.js';
+import { beat } from './life.js';
 
 export const SPECS = {
   designer: { d: 1.45, t: 0.75, s: 1, r: 0.9, name: { sv: 'Speldesigner', en: 'Game Designer' } },
@@ -144,6 +145,7 @@ export function hire(G, id) {
   delete st.fee;
   G.staff.push(st);
   G.stats.hires++;
+  beat(G, 'hired', { staff: st });
   emit('hired', st);
   return true;
 }
@@ -153,6 +155,7 @@ export function fire(G, id) {
   const sev = st.salary;
   spend(G, sev, 'severance');
   G.staff = G.staff.filter((s) => s.id !== id);
+  beat(G, 'left', { staff: st });
   emit('fired', st);
   return true;
 }
@@ -336,6 +339,7 @@ export function burnoutQuits(G) {
     if (!chance(G, p)) continue;
     G.staff = G.staff.filter((x) => x !== s);
     G.stats.quits = (G.stats.quits || 0) + 1;
+    beat(G, 'left', { staff: s });
     // utbränd av crunch, eller bara missnöjd (för lite trivsel)
     if (fatigueOver(s) > 0 || crunchActive(G)) note(G, 'news.quit', { name: s.name }, 'bad');
     else note(G, 'news.quitMood', { name: s.name }, 'bad');

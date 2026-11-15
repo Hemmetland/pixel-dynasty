@@ -4,6 +4,7 @@
 import { emit } from '../core/bus.js';
 import { fmtNum, fmtFull, fmtMoney } from '../core/util.js';
 import { note, milestone } from './news.js';
+import { beat } from './life.js';
 import { rivalYear, rivalMonth } from './rival.js';
 import { topSellers } from './market.js';
 import { curveFor, unitRev } from './sales.js';
@@ -75,6 +76,7 @@ export function chartWeek(G) {
       if (rank === 1) {
         S.no1 = (S.no1 || 0) + 1;
         note(G, 'news.chartTop', { title: g.title }, 'good');
+        beat(G, 'chart', { g: g.title, a: 1 });
         emit('chartTop', g);
       } else if (first) note(G, 'news.chartIn', { title: g.title, n: rank }, 'info', routine);
       else if (rank <= 3 && before > 3) note(G, 'news.chartClimb', { title: g.title, n: rank }, 'info', routine);
@@ -101,6 +103,7 @@ export function chartWeek(G) {
       if (i > (S.bestCert ?? -1)) milestone(G, 'hist.cert', { title: g.title, i });
       S.bestCert = Math.max(S.bestCert ?? -1, i);
       const item = note(G, 'news.cert', { title: g.title, cert: CERTS[i].name, n: fmtFull(CERTS[i].units) }, 'award', true, big);
+      if (big) beat(G, 'disc', { g: g.title, a: i });
       emit('cert', { game: g, cert: CERTS[i], i, big, item });
     }
     // studions mest sålda spel byter ägare
