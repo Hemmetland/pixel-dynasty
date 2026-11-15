@@ -1547,6 +1547,25 @@ input[type='range']::-moz-range-thumb { width: 18px; height: 18px; border-radius
 .es-rank .faint { font-size: 11.5px; min-width: 74px; text-align: right; }
 @media (max-width: 560px) { .es-rank { grid-template-columns: 16px minmax(0, 1fr) auto; } .es-rank .faint { display: none; } }
 
+/* ── Världen: rankingen, säsongen och finalen ── */
+.wd-weeks { display: grid; grid-template-columns: repeat(24, 1fr); gap: 2px; margin-top: 6px; }
+.wd-weeks i { height: 6px; border-radius: 2px; background: rgba(150, 172, 255, 0.14); }
+.wd-weeks i.on { background: var(--accent); }
+.wd-weeks i:nth-child(n + 23) { box-shadow: inset 0 -2px 0 var(--gold); }
+.wd-rank { display: grid; grid-template-columns: 18px minmax(0, 1fr) minmax(40px, 120px) 74px; align-items: center; gap: 8px; padding: 3px 0; font-size: 12.5px; }
+.wd-rank .n { color: var(--muted); font-weight: 700; text-align: right; }
+.wd-rank b { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.wd-rank .faint { font-size: 11.5px; text-align: right; }
+.wd-crown { color: var(--muted); font-size: 11px; font-weight: 700; white-space: nowrap; }
+.wd-crown.now { color: var(--gold); }
+.wd-crown .ic { width: 12px; height: 12px; vertical-align: -1px; }
+.wd-pb { height: 6px; border-radius: 3px; background: rgba(150, 172, 255, 0.12); overflow: hidden; }
+.wd-pb i { display: block; height: 100%; border-radius: 3px; background: var(--accent); }
+.lbl + .wd-rank .wd-pb i { background: var(--gold); }
+.wd-vss { display: grid; gap: 4px; margin-top: 8px; }
+.wd-vs { font-size: 13px; }
+@media (max-width: 560px) { .wd-rank { grid-template-columns: 16px minmax(0, 1fr) 60px; } .wd-rank .wd-pb { display: none; } .wd-weeks { gap: 1px; } }
+
 /* ── Butiken: erbjudanden, spelpaket och rekord ── */
 .sf-dbtns { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 6px; margin-top: 5px; }
 .sf-dbtn { display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 1px; height: auto; min-height: 0; padding: 5px 4px; line-height: 1.2; white-space: normal; text-align: center; }

@@ -9,6 +9,7 @@ import { engineTick } from './engines.js';
 import { salesWeek } from './sales.js';
 import { liveWeek } from './live.js';
 import { esportsWeek } from './esports.js';
+import { worldWeek } from './world.js';
 import { portWeek } from './ports.js';
 import { pubWeek } from './publish.js';
 import { frWeek } from './franchise.js';
@@ -91,6 +92,7 @@ function weekly(G) {
   opsWeek(G); // före liveWeek: driftteamens effekt gäller veckans spelare
   liveWeek(G);
   esportsWeek(G);
+  worldWeek(G); // onlinevärldens topplista och finaler, efter veckans e-sport
   missionWeek(G); // sist: ett spel som släpps nu börjar sälja nästa vecka
   updateMood(G);
   lifeWeek(G);

@@ -15,7 +15,7 @@ import { FRANCHISES, FRANCHISE, frTitle } from '../src/data/franchises.js';
 import { COMPETITORS } from '../src/data/names.js';
 import { TOPIC } from '../src/data/topics.js';
 import { GENRE } from '../src/data/genres.js';
-import { KINDS, KIND, ETYPES, kindOf, etypesOf } from '../src/data/onlinekinds.js';
+import { KINDS, KIND, ETYPES, kindOf, etypesOf, GUILDS, TEAM_A } from '../src/data/onlinekinds.js';
 let fails = 0;
 const ok = (c, m) => { if (!c) { fails++; console.log('FAIL', m); } else console.log('ok  ', m); };
 const G = S.newGame({ studio: 'T', seed: 7, difficulty: 'normal' });
@@ -3546,6 +3546,174 @@ ok(!bad.length, `äldre sparning utan ett av ${paths.length} fält går att spel
   for (const G of [G1, W]) for (const r of S.overviewRows(G)) if (r.state !== 'locked') { const e = STRINGS[r.line[0]]; if (!e || !e[0] || !e[1]) { miss++; console.log('saknas', r.line[0]); } }
   ok(miss === 0, 'radernas texter finns');
   ok(G1.rng !== undefined && W.rng === rng0, 'översikten rör inte slumptalen');
+}
+
+// ── Livespel i skala: världen med gillen, fejder och sända finaler ───────────────────────────────────
+{
+  const mkW = (kind = 'mmo', subs = 300000, year = 2012, seed = 0) => {
+    const GE = JSON.parse(JSON.stringify(G));
+    if (seed) GE.seed = seed;
+    GE.pending = []; GE.t = 48 * (year - 1980) + 5; GE.money = 1e9;
+    GE.games.push({ id: 8100, title: 'W', t: GE.t - 20, score: 8, weekly: [1], total: 1e6, priceAt: 50, topic: 'fantasy', genre: 'rpg', platform: 'pc', scope: 'aaa', audience: 'everyone', revenue: 0, units: 0, insights: [], reviews: [], flags: [] });
+    const g = GE.games[GE.games.length - 1];
+    S.launchLive(GE, g, kind);
+    g.live.subs = subs; g.live.pot = subs * 1.25;
+    return [GE, g];
+  };
+  const wk = (GE, n = 1) => { for (let i = 0; i < n; i++) { S.worldWeek(GE); GE.t++; } };
+  const toFinal = (GE, g) => { let n = 0; wk(GE); while (!g.live.world.fin && n++ < 40) wk(GE); return n; };
+  const guildNames = new Set(GUILDS);
+
+  // stegen följer spelarna, och under tvåtusen finns ingen värld
+  ok([1999, 2000, 19999, 20000, 150000, 800000, 3e6].map(S.worldTierOf).join() === '0,1,1,2,3,4,5' && S.WORLD_TIERS.length === 5, 'världen har fem steg som följer antalet spelare');
+  const [G0, g0] = mkW('mmo', 1500);
+  const before0 = JSON.stringify(g0.live);
+  const plan0 = S.worldPlan(G0, g0, 0);
+  S.worldAutoPick(G0, g0, null);
+  ok(JSON.stringify(g0.live) === before0 && !g0.live.world && Number.isFinite(plan0.cost) && plan0.cost > 0, 'förhandsvisningen läser bara och skapar ingen värld');
+  const rng0 = G0.rng;
+  wk(G0, 5);
+  ok(!g0.live.world && G0.rng === rng0, 'ett spel med för få spelare får ingen värld, och slumptalen är orörda');
+  ok(S.setWorldProd(G0, g0.id, 0) === false && S.setWorldAuto(G0, g0.id, true) === false, 'sändningen går inte att välja innan världen finns');
+
+  // en värld föds: rätt antal gillen, unika namn ur listan, och en nyhet
+  const [G1, g1] = mkW('mmo', 300000);
+  const rng1 = G1.rng;
+  wk(G1);
+  const W1 = g1.live.world;
+  ok(W1 && W1.tier === 3 && W1.guilds.length === 8 && new Set(W1.guilds.map((x) => x.name)).size === 8 && W1.guilds.every((x) => guildNames.has(x.name) && x.s >= 0.55 && x.s <= 1), 'ett spel med 300 000 spelare får åtta gillen med unika namn');
+  ok(G1.news.some((n) => n.key === 'world.news.born') && S.lifeLog(G1, 'live').some((b) => b.k === 'worldTier' && b.gid === g1.id && b.a === 3), 'världens födelse blir en nyhet och en scenhändelse för rätt spel');
+  wk(G1, 12);
+  const rk = S.worldLadder(W1);
+  ok(rk.every((x) => x.pts > 0) && rk.every((x, i) => !i || rk[i - 1].pts >= x.pts) && W1.lead === rk[0].name && W1.heat >= 0 && W1.heat <= 100, 'rankingen samlar poäng, är sorterad och ledaren är den med flest');
+  ok(G1.rng === rng1, 'världen rör aldrig spelets slumptal');
+  // samma frö ger samma värld, ett annat frö en annan
+  const [G2, g2] = mkW('mmo', 300000);
+  wk(G2, 13);
+  const [G3, g3] = mkW('mmo', 300000, 2012, 99);
+  wk(G3, 13);
+  ok(JSON.stringify(g2.live.world) === JSON.stringify(g1.live.world) && JSON.stringify(g3.live.world) !== JSON.stringify(g1.live.world), 'samma frö ger samma värld och ett annat frö en annan');
+  // ledarbyten höjer spänningen
+  const [G14, g14] = mkW('mmo', 300000);
+  wk(G14, 23);
+  ok(g14.live.world.swaps > 0 && g14.live.world.heat > 0 && S.lifeLog(G14, 'live').some((b) => b.k === 'worldLead' && b.gid === g14.id), 'ledarbyten räknas, höjer spänningen och blir scenhändelser');
+  // världen växer med spelarna och får fler gillen mitt i säsongen
+  g1.live.subs = 4e6;
+  wk(G1);
+  ok(W1.tier === 5 && W1.guilds.length === 12 && new Set(W1.guilds.map((x) => x.name)).size === 12 && G1.news.some((n) => n.key === 'world.news.grow'), 'stora spelartal ger hela världen med tolv gillen');
+  g1.live.subs = 1000;
+  wk(G1);
+  ok(W1.tier === 5 && W1.guilds.length === 12, 'världen krymper inte när spelarna går');
+
+  // finalen utan sändning: ingenting kostar eller ger pengar
+  const [G4, g4] = mkW('mmo', 300000);
+  const n4 = toFinal(G4, g4);
+  const W4 = g4.live.world;
+  ok(n4 === 24 && W4.fin && W4.fin.prod === -1 && W4.fin.cost === 0, 'finalen börjar efter 24 veckor, utan sändning om inget valts');
+  const top4 = S.worldLadder(W4).slice(0, 4).map((x) => x.name);
+  ok(W4.fin.semis[0][0] === top4[0] && W4.fin.semis[0][1] === top4[3] && W4.fin.semis[1][0] === top4[1] && W4.fin.semis[1][1] === top4[2] && W4.fin.final.every((x) => top4.includes(x)) && W4.fin.semis.map((s) => s[2]).includes(W4.fin.final[2]), 'de fyra bästa möts: ett mot fyra, två mot tre, och mästaren kommer ur finalen');
+  const sc4 = S.lifeState(G4, 'live').games[0].world;
+  ok(sc4 && sc4.final && sc4.final.round === 1 && sc4.final.semis.length === 2 && sc4.final.prod === -1 && sc4.guilds.length === 5 && sc4.noun === 'guild' && sc4.tier === 3 && sc4.week === 24, 'scenen får en final som pågår, semifinalerna först');
+  const money4 = G4.money, subs4 = g4.live.subs;
+  wk(G4);
+  const sc4b = S.lifeState(G4, 'live').games[0].world;
+  ok(sc4b.final && sc4b.final.round === 2 && sc4b.final.a === W4.fin.final[0] && sc4b.final.b === W4.fin.final[1], 'veckan efter spelas finalen');
+  const champ4 = W4.fin.final[2];
+  wk(G4);
+  ok(!W4.fin && W4.log.length === 1 && W4.log[0].champ === champ4 && W4.champ === champ4 && W4.n === 2 && W4.guilds.every((x) => x.pts === 0) && W4.guilds.find((x) => x.name === champ4).ti === 1 && G4.stats.worldFinals === 1, 'mästaren kröns, rankingen nollställs och säsongen räknas upp');
+  ok(G4.money === money4 && g4.live.subs === subs4 && W4.log[0].viewers === 0 && W4.log[0].roi === 0, 'utan sändning kostar finalen inget och ger inga pengar eller spelare');
+  ok(G4.news.some((n) => n.key === 'world.news.hint') && S.lifeLog(G4, 'live').some((b) => b.k === 'worldFinal' && b.v === 1) && S.lifeLog(G4, 'live').some((b) => b.k === 'worldChamp' && b.g === champ4 && b.v === 1 && b.gid === g4.id), 'första finalen utan sändning ger ett tips, och scenen får sina händelser');
+  toFinal(G4, g4); wk(G4, 2);
+  ok(G4.news.some((n) => n.key === 'world.news.quiet') && W4.log.length === 2 && W4.hint === 1, 'tipset kommer bara en gång');
+
+  // en sänd final: pengar ut och in, tittare, nya spelare, fans och e-sportscen
+  const [G5, g5] = mkW('mmo', 300000);
+  wk(G5);
+  ok(S.setWorldProd(G5, g5.id, 1) === true && S.setWorldProd(G5, g5.id, 2) === false && S.setWorldProd(G5, g5.id, 3) === false && S.setWorldProd(G5, g5.id, 0.5) === false, 'studio går i kungariket men hela världen kräver kontinenten');
+  const rng5 = G5.rng;
+  let n5 = 0;
+  while (!g5.live.world.fin && n5++ < 40) wk(G5);
+  const F5 = g5.live.world.fin;
+  ok(F5.prod === 1 && F5.cost > 0 && F5.plan.viewers > 0 && F5.viewers > 0, 'en vald sändning betalas när finalen börjar och första omgången sänds direkt');
+  const subs5 = g5.live.subs, fans5 = G5.fans, rev5 = g5.live.rev;
+  wk(G5, 2);
+  const L5 = g5.live, W5 = L5.world, R5 = W5.log[0];
+  ok(R5.prod === 1 && R5.viewers > 1000 && R5.sponsors > 0 && R5.newPlayers > 0 && R5.roi > 0 && L5.subs > subs5 && G5.fans > fans5 && L5.rev > rev5, 'en sänd final ger tittare, sponsorer, nya spelare och fans');
+  ok(L5.esp && L5.esp.scene > 0 && L5.eLift > 1 && G5.stats.worldViewers > 0 && G5.month.breakdown.esports !== undefined && G5.news.some((n) => n.key === 'world.news.final'), 'sändningen lyfter e-sportscenen och blir en egen post i ekonomin och en nyhet');
+  ok(L5.pot - 300000 * 1.25 <= 0.05 * 300000 * 1.25 + 1 && G5.rng === rng5, 'en del av de nya spelarna stannar (högst en liten andel) och slumptalen är orörda');
+  ok(W5.prod === 1 && S.worldPlan(G5, g5, 1).viewers > S.worldPlan(G5, g5, 0).viewers * 1.1, 'valet består och en större sändning drar fler tittare');
+
+  // pengarna räcker inte: ingen sändning, och ingenting dras
+  const [G6, g6] = mkW('mmo', 300000);
+  wk(G6); S.setWorldProd(G6, g6.id, 1);
+  G6.money = 100;
+  toFinal(G6, g6);
+  ok(g6.live.world.fin.prod === -1 && G6.money === 100, 'när kassan inte räcker sänds inget och ingenting dras');
+
+  // Auto: väljer det som ger mest kvar, och inget om det inte lönar sig eller kassan är för liten
+  const [G7, g7] = mkW('mmo', 4e6, 2018);
+  wk(G7);
+  const W7 = g7.live.world;
+  ok(S.setWorldAuto(G7, g7.id, true) === true && W7.auto && S.worldAutoPick(G7, g7, W7) === 2, 'Auto väljer hela världen i ett stort spel med gott om pengar');
+  const nets = [0, 1, 2].map((p) => S.worldPlan(G7, g7, p).net);
+  ok(nets[2] > nets[1] && nets[1] > nets[0] && nets.every((x) => x > 0), 'i hela världen lönar den största sändningen sig bäst');
+  G7.money = S.worldPlan(G7, g7, 0).cost * 2;
+  ok(S.worldAutoPick(G7, g7, W7) === -1, 'Auto sänder inget när kassan inte räcker till flera sändningar');
+  const [G8, g8] = mkW('mmo', 30000, 2008);
+  wk(G8);
+  const pl8 = [0, 1].map((p) => S.worldPlan(G8, g8, p));
+  ok(S.worldAutoPick(G8, g8, g8.live.world) === 0 && pl8[0].net > 0 && pl8[0].roi > pl8[1].roi, 'i ett litet landskap är egen kanal det som lönar sig');
+  ok(S.setWorldProd(G8, g8.id, 1) === true && g8.live.world.auto === false && g8.live.world.prod === 1, 'att välja sändning själv stänger av Auto');
+  const pl9 = S.worldPlan(G8, g8, -1);
+  ok(pl9.viewers === 0 && pl9.cost === 0 && pl9.roi === 0, 'ingen sändning betyder noll av allt');
+
+  // fejder: samma två gillen i final flera gånger i rad
+  const [G10, g10] = mkW('mmo', 300000);
+  wk(G10);
+  const W10 = g10.live.world;
+  S.setWorldProd(G10, g10.id, 0);
+  let feudSeen = 0;
+  for (let season = 0; season < 4; season++) {
+    W10.guilds.forEach((x, i) => { x.s = i < 2 ? 1 : 0.5; });
+    let g = 0;
+    while (!W10.fin && g++ < 40) wk(G10);
+    wk(G10, 2);
+    if (W10.feud && W10.feud.n >= 2) feudSeen = Math.max(feudSeen, W10.feud.n);
+  }
+  ok(feudSeen >= 2 && S.lifeLog(G10, 'live').some((b) => b.k === 'worldFeud' && b.a === 2), 'två gillen som möts i final igen blir ärkefiender, med en scenhändelse');
+  ok(W10.n === 5 && W10.log.length === 4 && W10.guilds.length === 8 && new Set(W10.guilds.map((x) => x.name)).size === 8, 'efter flera säsonger finns alla gillen kvar utan dubbletter');
+  const heatNow = W10.heat;
+  ok(heatNow > 10 && heatNow <= 100, 'en fejd håller spänningen uppe (' + Math.round(heatNow) + ')');
+
+  // gillen byts ut med tiden, och en mästare återanvänds inte som nytt namn medan den finns i historiken
+  const [G11, g11] = mkW('mmo', 300000);
+  wk(G11);
+  const W11 = g11.live.world;
+  const start11 = W11.guilds.map((x) => x.name);
+  for (let season = 0; season < 8; season++) { let g = 0; while (!W11.fin && g++ < 40) wk(G11); wk(G11, 2); }
+  const now11 = W11.guilds.map((x) => x.name);
+  ok(now11.length === 8 && new Set(now11).size === 8 && now11.some((n) => !start11.includes(n)) && W11.guilds.every((x) => x.s >= 0.5 && x.s <= 1), 'efter åtta säsonger har några gillen bytts ut och formen håller sig i gränserna');
+
+  // lagsporter har lag, inte gillen
+  const [G12, g12] = mkW('arena', 300000);
+  wk(G12);
+  const W12 = g12.live.world;
+  ok(S.worldNounOf('arena') === 'team' && S.worldNounOf('mmo') === 'guild' && W12.guilds.every((x) => TEAM_A.some((a) => x.name.startsWith(a + ' '))) && S.lifeState(G12, 'live').games[0].world.noun === 'team', 'ett arenaspel har lag med lagnamn');
+
+  // sparningar: en gammal sparning utan värld får en nästa vecka, och en sparning med värld läses tillbaka
+  const G13 = JSON.parse(JSON.stringify(G1));
+  const g13 = G13.games.find((x) => x.id === 8100);
+  delete g13.live.world;
+  g13.live.subs = 300000;
+  wk(G13);
+  ok(g13.live.world && g13.live.world.tier === 3, 'en gammal sparning får sin värld igen');
+  ok(JSON.stringify(JSON.parse(JSON.stringify(W5))) === JSON.stringify(W5), 'världen går att spara och läsa tillbaka');
+
+  // texter på båda språken för alla händelser
+  let missW = 0;
+  for (const k of ['worldTier', 'worldLead', 'worldFeud', 'worldFinal', 'worldChamp']) for (let v = 0; v < S.LIFE_KINDS[k].v; v++) { const e = STRINGS[`life.${k}.${v}`]; if (!e || !e[0] || !e[1]) { missW++; console.log('saknas', k, v); } }
+  for (const k of Object.keys(STRINGS).filter((x) => x.startsWith('world.'))) if (!STRINGS[k][0] || !STRINGS[k][1]) { missW++; console.log('saknas', k); }
+  ok(missW === 0 && S.lifeText(S.lifeLog(G4, 'live').find((b) => b.k === 'worldChamp')).includes(champ4), 'alla texter i världen finns på båda språken');
 }
 
 console.log(fails ? `\n${fails} FEL` : '\nAlla tester gick bra');

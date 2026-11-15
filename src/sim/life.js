@@ -6,7 +6,7 @@
 // Bussen: emit('life', beat) för varje ny händelse. Scenerna lyssnar på den medan de är öppna och läser lifeState(G, 'dev' | 'hw')
 // för att visa rätt läge när de öppnas mitt i ett projekt. lifeLog(G, sc, sedanN) ger loggen och lifeText(beat) färdig text.
 //
-// beat = { n, t (G.t), k (sort), sc ('dev' | 'studio' | 'hw' | 'eng' | ...), s (personalens id, 0 om ingen), who (förnamn), g (spelets eller
+// beat = { n, t (G.t), k (sort), sc ('dev' | 'studio' | 'hw' | 'eng' | ...), gid (onlinespelets id, annars 0), s (personalens id, 0 om ingen), who (förnamn), g (spelets eller
 // produktens namn), a (ett tal: antal, betyg eller enheter), v (textvariant) }
 import { emit } from '../core/bus.js';
 import { t, L } from '../core/i18n.js';
@@ -78,6 +78,12 @@ export const LIFE_KINDS = {
   liveExp: { sc: 'live', v: 2, gap: 0 }, // en expansion släpps
   liveEvent: { sc: 'live', v: 2, gap: 0 }, // ett evenemang börjar
   liveRegion: { sc: 'live', v: 2, gap: 0 }, // en ny region öppnas
+  // onlinevärlden (world.js): gillen på topplistan, fejder och sända finaler. gid = onlinespelets id
+  worldTier: { sc: 'live', v: 2, gap: 0 }, // världen växer ett steg (g = stegets namn, a = 1-5)
+  worldLead: { sc: 'live', v: 2, gap: 8 }, // ett gille tar ledningen på topplistan (g = gillet, a = veckor in i säsongen)
+  worldFeud: { sc: 'live', v: 2, gap: 0 }, // två gillen möts i final igen: en fejd (g = "A – B", a = antal finaler)
+  worldFinal: { sc: 'live', v: 2, gap: 0 }, // finalen börjar (g = spelet, a = sändningen -1 ingen, 0 egen kanal, 1 studio, 2 hela världen, v 0 sänds, 1 sänds inte)
+  worldChamp: { sc: 'live', v: 2, gap: 0 }, // mästaren kröns (g = gillet, a = tittare, v 0 sänds, 1 sänds inte)
   // labbet
   resStart: { sc: 'lab', v: 2, gap: 0 }, // en forskning börjar (g = namnet)
   pizza: { sc: 'dev', v: 2, gap: 12 }, // pizza till teamet under övertid
@@ -122,7 +128,7 @@ export function beat(G, k, d = {}) {
   LF.last[k] = now;
   const n = ++LF.n;
   const s = d.staff || null;
-  const item = { n, t: G.t, k, sc: K.sc, s: s ? s.id : 0, who: lifeName(s), g: d.g ? (typeof d.g === 'object' ? L(d.g) : String(d.g)) : '', a: d.a == null ? 0 : d.a, v: d.v != null ? Math.max(0, Math.min(K.v - 1, d.v)) : hashStr(`${G.seed || 0}:life:${k}:${n}`) % K.v };
+  const item = { n, t: G.t, k, sc: K.sc, gid: d.gid || 0, s: s ? s.id : 0, who: lifeName(s), g: d.g ? (typeof d.g === 'object' ? L(d.g) : String(d.g)) : '', a: d.a == null ? 0 : d.a, v: d.v != null ? Math.max(0, Math.min(K.v - 1, d.v)) : hashStr(`${G.seed || 0}:life:${k}:${n}`) % K.v };
   LF.items.push(item);
   if (LF.items.length > LIFE_MAX) LF.items.shift();
   emit('life', item);
@@ -136,7 +142,7 @@ export function lifeLog(G, sc, since = 0) {
   return LF.items.filter((b) => b.n > since && (!sc || b.sc === sc));
 }
 // Färdig text på spelarens språk
-const NUM_KINDS = new Set(['sold', 'hwParts', 'fans', 'liveSeasonEnd']); // stora tal skrivs med tusentalsavgränsare
+const NUM_KINDS = new Set(['sold', 'hwParts', 'fans', 'liveSeasonEnd', 'worldChamp']); // stora tal skrivs med tusentalsavgränsare
 export const lifeText = (b) => t(`life.${b.k}.${b.v}`, { who: b.who || t('life.someone'), g: b.k === 'built' && FACILITIES[b.g] ? L(FACILITIES[b.g].name) : b.g, a: NUM_KINDS.has(b.k) ? fmtFull(b.a) : b.a });
 
 // Veckovis: den som är mest utsliten under ett pågående projekt. (De andra händelserna skapas där de sker: dev.js, hardware.js,
@@ -255,10 +261,37 @@ function storeState(G) {
     paused: !!S.paused,
   };
 }
-// live: onlinespelen. games = levande spel (subs = spelare, fresh 0-100 hur nytt innehållet är, down = avbrott på senare tid, season/patch/event/region pågår)
+// live: onlinespelen. games = levande spel (subs = spelare, fresh 0-100 hur nytt innehållet är, down = avbrott på senare tid, season/patch/event/region pågår,
+// world = onlinevärlden eller null innan den har en topplista, se worldScene)
 function liveState(G) {
-  const games = G.games.filter((g) => g.live && !g.live.closed).map((g) => ({ id: g.id, name: L(g.title), subs: Math.round(g.live.subs || 0), fresh: Math.round(g.live.fresh || 0), season: !!g.live.season, patch: !!g.live.patch, event: !!(g.live.ev && g.live.ev.until > G.t), region: !!g.live.region, ops: !!G.teams && G.teams.some((x) => x.role === 'ops' && x.target === g.id) }));
+  const games = G.games.filter((g) => g.live && !g.live.closed).map((g) => ({ id: g.id, name: L(g.title), subs: Math.round(g.live.subs || 0), fresh: Math.round(g.live.fresh || 0), season: !!g.live.season, patch: !!g.live.patch, event: !!(g.live.ev && g.live.ev.until > G.t), region: !!g.live.region, ops: !!G.teams && G.teams.some((x) => x.role === 'ops' && x.target === g.id), world: worldScene(G, g) }));
   return { open: games.length > 0, games, server: (G.office && G.office.fac && G.office.fac.server && G.office.fac.server.lvl) || 0 };
+}
+// Onlinevärlden för en scen (world.js): tier 1-5 (liten by ... hela världen), week/weeks = hur långt säsongen kommit, heat 0-100 (spänningen),
+// lead = gillet som leder, count = antal gillen, guilds = de fem främsta (name, pts, fame, ti = titlar), noun 'guild' eller 'team' (lagsporter),
+// feud = två gillen som mött varandra i final flera gånger i rad ({a, b, n}) eller null, champ = senaste mästaren, prod = vald sändning (-1 av,
+// 0 egen kanal, 1 studio, 2 hela världen, auto = Auto väljer). final = null eller en final som pågår: round 1 (semifinaler: semis = [[a, b, vinnare], ...])
+// eller 2 (finalen: a, b), prod = sändningen finalen har (-1 sänds inte), viewers = tittare hittills.
+function worldScene(G, g) {
+  const W = g.live.world;
+  if (!W || !W.tier) return null;
+  const rank = [...W.guilds].sort((a, b) => b.pts - a.pts || b.fame - a.fame || (a.name < b.name ? -1 : a.name > b.name ? 1 : 0));
+  const F = W.fin;
+  return {
+    tier: W.tier,
+    n: W.n,
+    week: Math.min(24, G.t - W.t0),
+    weeks: 24,
+    heat: Math.round(W.heat),
+    lead: W.lead,
+    count: W.guilds.length,
+    noun: ['sports', 'shooter', 'arena'].includes(g.live.kind) ? 'team' : 'guild',
+    guilds: rank.slice(0, 5).map((x) => ({ name: x.name, pts: Math.round(x.pts), fame: x.fame, ti: x.ti })),
+    feud: W.feud && W.feud.n >= 2 ? { a: W.feud.a, b: W.feud.b, n: W.feud.n } : null,
+    champ: W.champ,
+    prod: W.auto ? 'auto' : W.prod,
+    final: F ? { round: F.w >= 2 ? 2 : 1, prod: F.prod, a: F.final[0], b: F.final[1], semis: F.semis.map((x) => [...x]), viewers: Math.round(F.viewers) } : null,
+  };
 }
 // lab: forskningen. active = pågående forskning (pct 0-1), done = antal klara, team = forskningsteamen
 function labState(G) {

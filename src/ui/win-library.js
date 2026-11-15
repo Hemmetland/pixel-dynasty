@@ -1,5 +1,6 @@
 import { $, esc, icon, t, tn, L, L as pick, UI, act, regWin, money, errToast, bar } from './core.js';
 import { sceneHTML } from './livescene.js';
+import { worldCard } from './world-card.js';
 import { sfx } from '../audio/sfx.js';
 import { glyphImg } from '../render/glyphs.js';
 import { coverImg } from '../render/covers.js';
@@ -408,6 +409,7 @@ function livePanel(G, g) {
     ${outlook(G, g)}
     <div class="lbl" style="margin:16px 0 4px">${t(f2p ? 'live.chartPlayers' : 'live.chart')}</div>${subsChart(G, g)}
     ${seasonPanel(G, g)}
+    ${worldCard(G, g)}
     ${esportPanel(G, g)}
     ${rivalList(G, g)}
     ${regionPanel(G, g)}

@@ -41,29 +41,29 @@ export const MKTS = [
   { id: 'campaign', cost: 6000, share: 0.2, mult: 1.2, ic: 'megaphone' },
   { id: 'global', cost: 30000, share: 0.7, mult: 1.5, ic: 'rocket' },
 ];
-const OUT0 = 20000; // utomstående som ett medelstort event drar i en modern tid, med ett spel på 50 000 spelare
-const OUT_REF = 50000;
+export const OUT0 = 20000; // utomstående som ett medelstort event drar i en modern tid, med ett spel på 50 000 spelare
+export const OUT_REF = 50000;
 // Utomstående når ett tak: dubbelt så mycket satsat ger långt ifrån dubbelt så många. x = satsningen i förhållande till en
 // normal (1 = Prispeng 2, egen sändning, ingen marknadsföring); taket är SAT_MAX gånger det normala.
 const SAT_C = 2.2;
 
-const reachGain = (x) => (1 - Math.exp(-x / SAT_C)) / (1 - Math.exp(-1 / SAT_C));
+export const reachGain = (x) => (1 - Math.exp(-x / SAT_C)) / (1 - Math.exp(-1 / SAT_C));
 const PRIZE_EXP = 0.6;
-const SPONSOR = 0.12; // sponsorintäkt per tittare, andel av ett månadspris
-const CONV_SCALE = 0.7; // sortens chans att göra en utomstående till spelare, justerad så att e-sport är en bra men inte dominerande affär
-const RETAIN = 0.15; // andel av de nya spelarna som stannar (höjer spelarpotentialen)
-const RETAIN_MAX = 0.05; // så mycket kan e-sporten höja spelets potential i sammanlagt
-const VALUE_MONTHS = 4; // så många månader räknas en ny spelare in i förväntad avkastning
+export const SPONSOR = 0.12; // sponsorintäkt per tittare, andel av ett månadspris
+export const CONV_SCALE = 0.7; // sortens chans att göra en utomstående till spelare, justerad så att e-sport är en bra men inte dominerande affär
+export const RETAIN = 0.15; // andel av de nya spelarna som stannar (höjer spelarpotentialen)
+export const RETAIN_MAX = 0.05; // så mycket kan e-sporten höja spelets potential i sammanlagt
+export const VALUE_MONTHS = 4; // så många månader räknas en ny spelare in i förväntad avkastning
 const SCENE_GAIN = 10;
 const SCENE_DECAY = 0.25;
 const SCENE_LIFT = 0.03; // e-sportscenen på 100 ger så mycket fler spelare i grunden
 const TRAD_STEP = 0.05;
 const TRAD_MAX = 0.25;
-const FAN_PER_VIEWER = 0.004;
+export const FAN_PER_VIEWER = 0.004;
 const LOG_MAX = 12;
 export const eraReach = (year) => clamp(0.15 + 0.1 * (year - 2000), 0.15, 2.6);
 // Prisnivån jämfört med år 2000 (kostnaderna ovan är i år-2000-dollar)
-const scaleOf = (year) => moneyScale(year) / moneyScale(2000);
+export const scaleOf = (year) => moneyScale(year) / moneyScale(2000);
 const hash01 = (G, s) => hashStr((G.seed || 0) + ':esp:' + s) / 4294967296;
 const fmtN = (n) => Math.round(n).toLocaleString('en-US').replace(/,/g, ' ');
 
