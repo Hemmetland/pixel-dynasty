@@ -1535,3 +1535,17 @@ input[type='range']::-moz-range-thumb { width: 18px; height: 18px; border-radius
 .sf-rec-row + .sf-rec-row { border-top: 1px solid var(--line); }
 .sf-rec-row .rn-i { flex: none; }
 
+
+/* Erbjudanden, spelpaket och rekord: egen accentfärg per kort; rabattknapparna är neutrala kort med färgad rabatt */
+.sf-deal { --c: var(--hot); } .sf-bun { --c: var(--accent); } .sf-rec { --c: var(--gold); }
+.sf-spot-row .btn.sf-dbtn:not([disabled]) { background: rgba(255, 255, 255, 0.05); color: var(--text); font-weight: 600; box-shadow: none; border: 1px solid color-mix(in srgb, var(--t, var(--gold)) 45%, var(--line)); padding: 5px 4px; }
+.sf-spot-row .btn.sf-dbtn:not([disabled]):hover { background: color-mix(in srgb, var(--t, var(--gold)) 16%, transparent); filter: none; }
+.sf-dbtn b { font-size: 15px; color: var(--t, var(--gold)); }
+.sf-dbtn:nth-child(1) { --t: #8fd3ff; } .sf-dbtn:nth-child(2) { --t: var(--gold); } .sf-dbtn:nth-child(3) { --t: var(--hot); }
+.sf-dbtn .faint { color: var(--muted); text-align: center; line-height: 1.2; }
+.sf-deal .sf-spot-row.on, .sf-bun.on { border-color: color-mix(in srgb, var(--c) 45%, var(--line)); }
+.sf-picks .sf-pick.on { border-color: var(--accent); }
+.sf-covers > * { border-radius: 8px; box-shadow: 0 4px 10px -4px #000; }
+.sf-rec-row { padding: 8px 4px; }
+.sf-rec-row b.num { font-size: 18px; }
+.sf-rec-row .rn-i { width: 34px; height: 34px; }
