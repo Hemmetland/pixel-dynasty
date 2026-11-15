@@ -44,7 +44,12 @@ async function run(mode, known) {
     if (!kept.modal || kept.cur || !kept.go) errors.push(`fail ${label}: prompt lost after Esc/M/N ` + JSON.stringify(kept));
     const hasAuto = known ? !!(await page.$('[data-act="p-auto"]')) : !(await page.$('[data-act="p-auto"]'));
     if (!hasAuto) errors.push(`fail ${label}: knappen "Följ idealet framöver" ${known ? 'saknas' : 'visas trots okänt ideal'}`);
-    await page.click(known ? '[data-act="p-ideal"]' : '[data-act="p-go"]').catch(() => {});
+    // i läget Jag väljer provas knappen Följ idealet framöver, annars Använd idealet eller Kör igång
+    await page.click(known ? (mode === 'manual' ? '[data-act="p-auto"]' : '[data-act="p-ideal"]') : '[data-act="p-go"]').catch(() => {});
+    if (known && mode === 'manual') {
+      const sw = await page.evaluate(() => ({ pf: window.__pd.settings.pfocus, saved: JSON.parse(localStorage.getItem('pixel-dynasty-settings-v1')).pfocus }));
+      if (sw.pf !== 'auto' || sw.saved !== 'auto') errors.push(`fail ${label}: Följ idealet framöver sätter inte auto ` + JSON.stringify(sw));
+    }
     await page.waitForTimeout(300);
   }
   const t0 = await page.evaluate(() => { window.__pd.turbo = 10; return window.__pd.G.t; });
