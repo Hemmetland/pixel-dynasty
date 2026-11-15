@@ -14,7 +14,6 @@ import * as F from '../render/furniture.js';
 import * as V from '../render/props2.js';
 import { HW_TYPES } from '../data/hardware.js';
 import { lifeState, lifeLog, lifeText } from '../sim/life.js';
-import { ownedComps } from '../sim/acquire.js';
 import { hashStr } from '../core/rng.js';
 
 const R = V.R;
@@ -54,13 +53,18 @@ const STATE = {
   studio: (G) => lifeState(G, 'dev'),
   factory: (G) => lifeState(G, 'hw'),
   engine: (G) => {
-    const J = G.job && G.job.kind === 'engine' ? G.job : null;
-    return { active: !!J, pct: J ? Math.min(1, J.ticks / Math.max(1, J.total)) : 0, name: J ? J.name : '', parts: J ? J.feats.length : 0, built: (G.engines || []).length };
+    const e = lifeState(G, 'eng');
+    const b = e.builds[0];
+    const byId = new Map((G.staff || []).map((x) => [x.id, x]));
+    return {
+      active: !!b, pct: b ? b.pct : 0, name: b ? b.name : '', parts: b ? b.feats : 0, built: e.engines.length, team: e.team,
+      crew: e.crew.map((c) => byId.get(c.id)).filter(Boolean).map((x) => x.look),
+    };
   },
-  group: (G) => ({ subs: ownedComps(G).map((c) => ({ id: c.id, name: c.name })) }),
+  group: (G) => lifeState(G, 'group'),
 };
-const TICK_SC = { studio: ['dev', 'studio'], factory: ['hw'], engine: ['dev'], group: ['studio'] };
-const LOG_SC = { studio: 'dev', factory: 'hw', engine: 'dev', group: 'studio' };
+const TICK_SC = { studio: ['dev', 'studio'], factory: ['hw'], engine: ['eng'], group: ['group'] };
+const LOG_SC = { studio: 'dev', factory: 'hw', engine: 'eng', group: 'group' };
 function refresh(kind, cfg) {
   try {
     cfg.st = STATE[kind](cfg.G);
@@ -71,8 +75,8 @@ function refresh(kind, cfg) {
 function caption(kind, cfg) {
   const st = cfg.st;
   if (kind === 'studio') return !st ? t('ls.studio') : st.active ? t('ls.studio.on', { title: st.title || '…' }) : st.report ? t('ls.studio.report') : t('ls.studio.idle');
-  if (kind === 'engine') return st && st.active ? t('ls.engine.on', { name: st.name }) : t('ls.engine');
-  if (kind === 'group') return t('ls.group', { n: st ? st.subs.length : 0 });
+  if (kind === 'engine') return st && st.active ? t('ls.engine.on', { name: st.name }) : st && st.team ? t('ls.engine.team', { team: st.team.name }) : t('ls.engine');
+  if (kind === 'group') return st && st.subs.some((c) => c.mode === 'int') ? t('ls.group.int') : t('ls.group', { n: st ? st.subs.length : 0 });
   if (!st || !st.open) return t('ls.factory');
   return st.orders.length ? t('ls.factory.prod') : st.designing.length ? t('ls.factory.design') : t('ls.factory');
 }
@@ -523,14 +527,16 @@ function drawEngine(ctx, W, tm, cfg) {
     for (let u = 0; u < 8; u++) if (Math.floor(tm * (on ? 6 : 1.5) + u * 1.7 + r) % 3 === 0) R(ctx, rx + 10, fy - 36 + u * 4, 1, 1, '#5cf2a0');
   }
   // teamet: någon pekar på tavlan, en skriver, en står med laptop, en tittar på maskinen
-  const crew = (cfg.G.staff || []).filter((s) => !s.away).map((s) => s.look);
-  const lk = (i) => crew[i] || cfg.looks[i];
+  const own = (st.crew || []).concat((cfg.G.staff || []).filter((s) => !s.away).map((s) => s.look));
+  const lk = (i) => own[i] || cfg.looks[i];
   person(ctx, 8 + bw + 8, fy + 1, lk(0), on ? 'present' : 'stand', tm, -1);
   F.desk2(ctx, cx - 70 < 80 ? 76 : cx - 70, fy, 1, 3, 2);
   F.chair2(ctx, (cx - 70 < 80 ? 76 : cx - 70) , fy, '#3a6a5a');
   person(ctx, (cx - 70 < 80 ? 76 : cx - 70) + 3, fy, lk(1), on ? 'type' : 'sitIdle', tm, 1, true, 0.3);
   person(ctx, W - 82, fy + 2, lk(2), on ? 'laptop' : 'stand', tm, 1, false, 0.7);
   person(ctx, cx + 36, fy + 3, lk(3), 'notes', tm, -1, false, 1.1);
+  // testkörning: alla serverracken blinkar grönt
+  if (recent(['engTest'], 3, tm).length) for (let r = 0; r < 2; r++) for (let u = 0; u < 8; u++) if (Math.floor(tm * 8 + u) % 2) R(ctx, W - 62 + r * 18 + 10, fy - 36 + u * 4, 1, 1, '#9affc0');
   for (const e of recent(['engine'], 4.6, tm)) confetti(ctx, W, tm - e.t0, e.b.n);
   darken(ctx, W, 0.05, '#7cf2ff');
 }
@@ -554,10 +560,13 @@ function drawGroup(ctx, W, tm, cfg) {
   // koncernens torn: huvudkontoret i mitten och ett torn per dotterbolag, med lampor som blinkar
   const towers = [{ big: true }, ...subs.slice(0, 6).map((c, i) => ({ c, i }))];
   const tw = 14;
-  const span = Math.min(W - 120, towers.length * (tw + 8));
-  const tx0 = Math.round(W * 0.5 - span / 2);
+  // tornen står till vänster om bordet så att mötet inte skymmer dem (tätare om det är många eller smalt)
+  const room = Math.max(40, Math.round(W * 0.5 - 32) - 12);
+  const step = Math.max(9, Math.min(tw + 8, Math.floor((room - tw) / Math.max(1, towers.length - 1))));
+  const tx0 = 6;
+  const span = step * (towers.length - 1) + tw;
   towers.forEach((tr, k) => {
-    const bx = tx0 + k * (tw + 8);
+    const bx = tx0 + k * step;
     const bh = tr.big ? 38 : 20 + Math.floor(V.hash((tr.c ? tr.c.id : 1) * 7) * 12);
     R(ctx, bx, 40 - bh, tw, bh, tr.big ? '#27336a' : '#1d2850');
     R(ctx, bx, 40 - bh, tw, 1, '#5a6ab0');
@@ -565,7 +574,29 @@ function drawGroup(ctx, W, tm, cfg) {
     for (let y = 40 - bh + 3; y < 38; y += 4) for (let x = bx + 2; x < bx + tw - 2; x += 4) if (Math.floor(tm * 0.3 + x + y) % 7) R(ctx, x, y, 2, 2, tr.big ? '#ffe9a8' : '#e8c880');
     R(ctx, bx + Math.floor(tw / 2), 40 - bh - 3, 1, 3, '#8a94aa');
     R(ctx, bx + Math.floor(tw / 2), 40 - bh - 4, 1, 1, Math.floor(tm * 2 + k) % 2 ? '#ff5050' : '#702020');
+    const c = tr.c;
+    if (c && c.mode === 'int') {
+      // integrationen pågår: byggställning som fylls på, och en gul lampa som blinkar
+      const sh = Math.round(bh * Math.max(0.15, c.integ));
+      for (let y = 40 - sh; y < 40; y += 4) R(ctx, bx - 2, y, tw + 4, 1, '#c9a24a');
+      R(ctx, bx - 2, 40 - sh, 1, sh, '#c9a24a');
+      R(ctx, bx + tw + 1, 40 - sh, 1, sh, '#c9a24a');
+      if (Math.floor(tm * 3 + k) % 2) R(ctx, bx + tw + 1, 40 - sh - 2, 2, 2, '#ffd36a');
+    } else if (c && c.ceo) {
+      // egen chef: en liten flagga på taket
+      R(ctx, bx + 2, 40 - bh - 6, 1, 6, '#aab4c8');
+      R(ctx, bx + 3, 40 - bh - 6 + (Math.floor(tm * 2 + k) % 2), 4, 3, '#4de1d0');
+    }
+    if (c && recent(['grpClash'], 2.5, tm).length && Math.floor(tm * 8 + k) % 3 === 0) R(ctx, bx, 40 - bh, tw, bh, 'rgba(255,80,80,.35)');
   });
+  // nytt köp: guldregn över staden
+  for (const e of recent(['grpBuy', 'grpDone', 'pubSign', 'licDeal'], 3.6, tm)) {
+    const age = tm - e.t0;
+    for (let i = 0; i < 14; i++) {
+      const hh = V.hash(e.b.n * 13 + i);
+      R(ctx, Math.round(tx0 + hh * span), Math.round(4 + age * 12 * (0.5 + V.hash(i + 9)) % 34), 2, 2, i % 2 ? '#ffd36a' : '#fff2b0');
+    }
+  }
   // helikopter över staden
   const hxx = Math.round(((tm * 10) % (W + 60)) - 30);
   R(ctx, hxx, 10, 8, 3, '#3a4258');
@@ -580,12 +611,14 @@ function drawGroup(ctx, W, tm, cfg) {
   // styrelserummet: skärmen med stigande kurva, bordet och mötet
   const scx = W - 52;
   V.wallScreen(ctx, scx, 6, 38, 22, 'chart', 3);
+  if (recent(['grpReport', 'grpBiz'], 3, tm).length && Math.floor(tm * 4) % 2) R(ctx, scx - 1, 5, 40, 1, '#ffe27a');
   for (let i = 0; i < 34; i++) R(ctx, scx + 2 + i, 24 - Math.round(i * 0.45 + Math.sin(i * 0.5 + tm) * 1.2), 1, 1, '#8aff9a');
   const tbx = Math.round(W * 0.5 - 32);
   const seats = [tbx + 6, tbx + 22, tbx + 38, tbx + 54];
   const crew = (cfg.G.staff || []).map((s) => s.look);
   seats.forEach((sx, i) => {
-    const pose = Math.floor((tm + i * 2.3) / 5) % 3 === 0 ? 'talk' : 'stand';
+    const mtg = recent(['grpReport'], 6, tm).length;
+    const pose = mtg || Math.floor((tm + i * 2.3) / 5) % 3 === 0 ? 'talk' : 'stand';
     person(ctx, sx, fy - 1, crew[i] || cfg.looks[i], pose, tm, i % 2 ? -1 : 1, false, i * 0.5);
   });
   F.meetingTable(ctx, tbx, fy + 1, 64);
@@ -596,13 +629,13 @@ function drawGroup(ctx, W, tm, cfg) {
   const coins = Math.min(8, 2 + subs.length);
   for (let i = 0; i < coins; i++) {
     const p = (tm * 0.35 + i / coins) % 1;
-    const bx = tx0 + (i % Math.max(1, towers.length)) * (tw + 8) + 6;
+    const bx = tx0 + (i % Math.max(1, towers.length)) * step + 6;
     ctx.globalAlpha = Math.min(1, (1 - p) * 2);
     R(ctx, bx, Math.round(36 - p * 26), 3, 3, '#ffd36a');
     R(ctx, bx + 1, Math.round(36 - p * 26) + 1, 1, 1, '#fff2b0');
   }
   ctx.globalAlpha = 1;
-  for (const e of recent(['party', 'anniv', 'fans'], 4.6, tm)) confetti(ctx, W, tm - e.t0, e.b.n);
+  for (const e of recent(['party', 'anniv', 'fans', 'film', 'grpDone'], 4.6, tm)) confetti(ctx, W, tm - e.t0, e.b.n);
 }
 const DRAW = { studio: drawStudio, factory: drawFactory, engine: drawEngine, group: drawGroup };
 

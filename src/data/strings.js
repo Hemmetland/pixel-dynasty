@@ -1908,6 +1908,8 @@ export const STRINGS = {
   'ls.factory.design': ['Labbet ritar nya produkter', 'The lab is designing new products'],
   'ls.engine': ['Motorrummet', 'The engine room'],
   'ls.engine.on': ['Bygger motorn {name}', 'Building the engine {name}'],
+  'ls.engine.team': ['Motorteamet {team} väntar på nästa bygge', 'Engine team {team} waits for the next build'],
+  'ls.group.int': ['Bolag byggs ihop med koncernen', 'Companies are merging into the group'],
   'ls.group': ['Koncernen: {n} dotterbolag', 'The group: {n} subsidiaries'],
   'ls.factory': ['Labbet och fabriken går för fullt', 'The lab and factory are running'],
   'ng.pants': ['Byxor', 'Trousers'],
