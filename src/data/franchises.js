@@ -45,7 +45,7 @@ export const FRANCHISES = [
   F('Activate Interactive', 'skatemaster', 'Skate Master', 'casual', 'sports', 1999),
   F('Activate Interactive', 'crashwombat', 'Crash Wombat', 'action', 'abstract', 1996),
   F('Activate Interactive', 'guitarzero', 'Guitar Zero', 'casual', 'music', 2005),
-  F('Activate Interactive', 'warzonish', 'Warzone Arena', 'shooter', 'survival', 2019),
+  F('Activate Interactive', 'warzonish', 'Warfront Arena', 'shooter', 'survival', 2019),
   // Epoch Games: motorer, byggen och slagfält
   F('Epoch Games', 'fortknight', 'Fortknight', 'shooter', 'survival', 2017),
   F('Epoch Games', 'gearsofpeace', 'Gears of Peace', 'shooter', 'aliens', 2006),
