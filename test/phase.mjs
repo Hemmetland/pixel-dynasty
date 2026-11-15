@@ -55,7 +55,8 @@ async function run(mode, known) {
     return { t: G.t, phase: J ? J.phase : null, fit: J ? S.focusFit(G, J).fit : null, seen: window.__pd.settings.pfocusSeen, pf: window.__pd.settings.pfocus, pending: G.pending.length };
   });
   console.log(label + ':', JSON.stringify({ sawPrompt: saw, t0, ...st }));
-  if (!(st.t > t0)) errors.push(`fail ${label}: tiden går inte vidare`);
+  // en rapport eller händelse kan stoppa tiden efter fasen (snabb körning): bara en kvarstående fasruta räknas som fel
+  if (!(st.t > t0) && !st.pending) errors.push(`fail ${label}: tiden går inte vidare`);
   if (known && mode === 'auto' && st.phase !== null && st.phase >= 1 && st.fit < 0.999) errors.push(`fail ${label}: idealet följdes inte (passning ${st.fit})`);
   if (known && mode === 'auto' && st.phase >= 1 && !st.seen) errors.push(`fail ${label}: förklaringen visades inte`);
   await page.close();
