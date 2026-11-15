@@ -1,6 +1,7 @@
 import { $, $$, icon, t, UI, act, placeToasts } from './core.js';
 import { on } from '../core/bus.js';
 import { canUpgradeOffice } from '../sim/studio.js';
+import { teamsOpen } from '../sim/teams.js';
 
 const STEPS = [
   { id: 'welcome', icon: 'star', target: null, when: (G) => !G.job && G.games.length === 0, done: (G) => !!G.job || G.games.length > 0 },
@@ -11,6 +12,7 @@ const STEPS = [
   { id: 'again', icon: 'rocket', target: 'wizard', when: (G) => G.games.length >= 1 && !G.job && G.research.active.length > 0, done: (G) => !!G.job },
   { id: 'team', icon: 'team', target: 'staff', when: (G) => G.games.length >= 2 && G.staff.length < 3 && G.money > 9000, done: (G) => G.staff.length >= 3 },
   { id: 'studio', icon: 'building', target: 'studio', when: (G) => G.office.tier === 0 && canUpgradeOffice(G) === true, done: (G) => G.office.tier >= 1 },
+  { id: 'auto', icon: 'sliders', target: 'overview', when: (G) => G.games.length >= 4 && teamsOpen(G) && ['autoTeams', 'opsTeams', 'hwTeams', 'resTeams', 'shopTeams', 'engTeams', 'hrAuto', 'groupBoard', 'bizAuto'].some((k) => G.u.flags[k]), done: (G) => !!G.flags.overviewSeen },
   { id: 'contracts', icon: 'hammer', target: 'contracts', when: (G) => !G.job && G.money < 5000 && G.contracts.length > 0, done: (G) => !!G.job || G.money > 12000 },
 ];
 

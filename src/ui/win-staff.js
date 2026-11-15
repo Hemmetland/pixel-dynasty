@@ -403,6 +403,11 @@ function pager(G) {
   return `<div class="row" style="justify-content:center;gap:10px;margin-top:14px"><button class="btn sm" data-act="s-page" data-id="-1" ${S.page <= 0 ? 'disabled' : ''}>${icon('arrow')}</button><span class="chip">${t('staff.page', { n: S.page + 1, m: pages })}</span><button class="btn sm" data-act="s-page" data-id="1" ${S.page >= pages - 1 ? 'disabled' : ''}>${icon('arrow')}</button></div>`;
 }
 
+// Öppnar personalfönstret på fliken Team (från översikten)
+export function showTeams() {
+  S.tab = 'groups';
+  UI.open('staff');
+}
 regWin({
   id: 'staff',
   icon: 'team',

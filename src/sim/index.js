@@ -43,3 +43,4 @@ export * from './campus.js';
 export * from './hrdept.js';
 export * from './life.js';
 export * from './engteam.js';
+export * from './overview.js';

@@ -16,6 +16,7 @@ import { canResearch } from '../sim/research.js';
 import { canHw } from '../sim/hardware.js';
 import { canStore } from '../sim/store.js';
 import { canAcquireAny, ownedComps } from '../sim/acquire.js';
+import { teamsOpen } from '../sim/teams.js';
 import { hwDecisions } from './win-hardware.js';
 import { lang } from '../core/i18n.js';
 import { fmtNum, clamp } from '../core/util.js';
@@ -46,6 +47,7 @@ const DOCK = [
   { id: 'market', ic: 'chart', k: 'dock.market' },
   { id: 'finance', ic: 'bank', k: 'dock.finance' },
   { id: 'group', ic: 'network', k: 'dock.group', when: (G) => hasGroup(G) },
+  { id: 'overview', ic: 'sliders', k: 'dock.overview', when: (G) => teamsOpen(G) },
   { id: 'contracts', ic: 'hammer', k: 'dock.work', sep: true },
 ];
 

@@ -8,5 +8,6 @@ import './win-finance.js';
 import './win-library.js';
 import './win-work.js';
 import './win-misc.js';
+import './win-overview.js';
 import './win-hardware.js';
 import './slots.js';

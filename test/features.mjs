@@ -3466,5 +3466,87 @@ ok(!bad.length, `äldre sparning utan ett av ${paths.length} fält går att spel
   off();
 }
 
+// ── Översikt och handledning: vad sköter sig självt och vad är nästa steg ───────────────────────────
+{
+  const W = S.newGame({ studio: 'Over', seed: 101 }); S.makeCompetitors(W); S.initWorld(W);
+  const rng0 = W.rng;
+  const rows0 = S.overviewRows(W);
+  ok(rows0.length === 9 && rows0.every((r) => r.state === 'locked' && !r.open && r.need && r.need.id && r.need.name.sv), 'i början är alla områden låsta och pekar på forskningen som öppnar dem');
+  ok(S.overviewSummary(W).open === 0 && S.overviewTodo(W).length === 0 && S.nextSteps(W).map((x) => x.id).join() === 'create', 'inget väntar och nästa steg är att göra ett spel');
+  ok(!W.gb && !W.bz && !W.hr && !W.engp && W.rng === rng0, 'översikten läser bara: inga policyer skapas och slumptalen är orörda');
+  const need = Object.fromEntries(rows0.map((r) => [r.id, r.need.id]));
+  ok(need.eng === 's_eng' && need.board && need.biz && need.hr, 'varje område har en forskning som öppnar det (' + Object.values(need).join(',') + ')');
+  // allt upplåst men inget igång
+  const G1 = S.newGame({ studio: 'Over2', seed: 102 }); S.makeCompetitors(G1); S.initWorld(G1);
+  for (const r of RESEARCH) { G1.research.done.push(r.id); S.applyUnlocks(G1, r); }
+  G1.t = 48 * 24 + 6; G1.money = 1e8; G1.fans = 2e5; G1.office.tier = 4;
+  for (let i = 0; i < 9; i++) { S.refreshCandidates(G1); G1.money += G1.candidates[0].fee; S.hire(G1, G1.candidates[0].id); }
+  delete G1.u.flags.store;
+  S.buildFacility(G1, 'lab');
+  const idleRows = S.overviewRows(G1);
+  ok(idleRows.every((r) => r.open && r.state === 'idle') && S.overviewSummary(G1).auto === 0, 'upplåst men inte igång ger raden Inte igång överallt (' + idleRows.map((r) => r.id + ':' + r.state).join(' ') + ')');
+  ok(!G1.gb && !G1.bz && !G1.hr && !G1.engp, 'inte ens med allt upplåst skapas några policyer av att titta');
+  // spelteam
+  const crew = G1.staff.filter((x) => !x.isFounder);
+  const T = S.createTeam(G1);
+  for (const x of crew.slice(0, 4)) S.addMember(G1, T.id, x.id);
+  ok(S.areaRow(G1, 'games').line[0] === 'ov.games.idle' && S.areaRow(G1, 'games').n === 1, 'ett spelteam utan uppdrag räknas men sköter inget');
+  T.repeat = true;
+  const gr = S.areaRow(G1, 'games');
+  ok(gr.state === 'auto' && gr.line[0] === 'ov.games.auto' && gr.line[1].n === 1 && gr.line[1].r === 1, 'ett team som fortsätter själv sköter sig självt');
+  // motorteam
+  const T2 = S.createTeam(G1);
+  for (const x of crew.slice(4, 9)) S.addMember(G1, T2.id, x.id);
+  ok(S.assignEng(G1, T2.id) === true, 'motorteam bildat');
+  const er = S.areaRow(G1, 'eng');
+  ok(er.state === 'auto' && er.line[0] === 'ov.eng.watch' && er.eff > 0 && er.n === 1, 'ett motorteam som bevakar motorerna sköter sig självt');
+  S.setEng(G1, 'on', 0);
+  ok(S.areaRow(G1, 'eng').state === 'idle' && S.areaRow(G1, 'eng').line[0] === 'ov.eng.off', 'avstängt visas det som inte igång');
+  S.setEng(G1, 'on', 1);
+  S.orderEngine(G1, 'Visad', G1.u.feats.slice(0, 4));
+  ok(S.areaRow(G1, 'eng').line[0] === 'ov.eng.build' && S.areaRow(G1, 'eng').line[1].name === 'Visad' && S.areaRow(G1, 'eng').line[1].n === 0, 'ett pågående bygge visas med namn och procent');
+  // butik, personalavdelning, styrelse och affärsavdelning
+  ok(S.areaRow(G1, 'shop').line[0] === 'ov.shop.nostore', 'butiksteam utan butik: öppna butiken först');
+  ok(S.areaRow(G1, 'hr').line[0] === 'ov.hr.idle', 'personalavdelningen utan plan är inte igång');
+  S.setHrPlan(G1, 2, 5);
+  ok(S.areaRow(G1, 'hr').state === 'auto' && S.areaRow(G1, 'hr').line[1].b === 2 && S.areaRow(G1, 'hr').line[1].s === 5, 'med en plan sköter avdelningen sig själv');
+  ok(S.areaRow(G1, 'board').state === 'idle' && !G1.gb, 'styrelsen utan påslagna val är inte igång, och att titta skapar ingen policy');
+  S.setBoard(G1, 'buy', 1);
+  const br = S.areaRow(G1, 'board');
+  ok(br.state === 'auto' && br.next && 'act' in br.next && 'why' in br.next, 'påslagen styrelse visar sitt nästa steg');
+  ok(S.areaRow(G1, 'biz').state === 'idle', 'affärsavdelningen utan påslagna val är inte igång');
+  S.setBiz(G1, 'pub', 1);
+  ok(S.areaRow(G1, 'biz').state === 'auto', 'påslagen avdelning sköter sig själv');
+  ok(S.overviewSummary(G1).auto >= 5 && S.overviewSummary(G1).open === 9, 'sammanfattningen räknar områden som sköter sig av dem som är upplåsta (' + S.overviewSummary(G1).auto + ' av 9)');
+  // det som väntar på dig
+  ok(!S.overviewTodo(G1).some((x) => x.k === 'ov.todo.cash'), 'med gott om pengar väntar ingen kassavarning');
+  G1.money = 100;
+  G1.games.push({ id: 5, title: 'Gammalt', score: 7, t: G1.t - 40, weekly: [1], total: 1, platform: 'pc', genre: 'action', topic: 'space', scope: 'small', revenue: 0, units: 0 });
+  const td = S.overviewTodo(G1);
+  ok(td.some((x) => x.k === 'ov.todo.cash' && x.p.n === 0 && x.win === 'finance'), 'trång kassa varnas för när något sköter sig självt');
+  ok(td.some((x) => x.k === 'ov.todo.idle') && td.length <= 5, 'inget spel på gång och inget uppdrag syns (högst fem rader)');
+  // ett team som inte räcker till
+  const G2 = JSON.parse(JSON.stringify(G1));
+  const t2 = G2.teams.find((x) => x.role === 'eng');
+  t2.members = t2.members.slice(0, 2);
+  ok(S.teamEff(G2, t2) < 0.3 && S.overviewTodo(G2).some((x) => x.k === 'ov.todo.low' && x.p.m === 2 && typeof x.p.team === 'string'), 'ett team som klarar mindre än 30 % hamnar bland det som väntar på dig');
+  // nästa steg följer läget
+  const ids = (W2) => S.nextSteps(W2).map((x) => x.id);
+  const G3 = S.newGame({ studio: 'Steps', seed: 103 }); S.makeCompetitors(G3); S.initWorld(G3);
+  G3.money = 1e5;
+  S.startProject(G3, { title: 'Steg', topic: 'space', genre: 'action', platform: 'pc', scope: 'small', audience: 'everyone' });
+  ok(ids(G3).join() === 'dev', 'under det första spelet är nästa steg att följa utvecklingen');
+  G3.job = null; G3.games.push({ id: 1, title: 'A', score: 7, t: G3.t - 5, weekly: [1], total: 1, platform: 'pc', genre: 'action', topic: 'space', scope: 'small', revenue: 0, units: 0 });
+  ok(ids(G3)[0] === 'research' && ids(G3).length <= 3, 'efter första spelet: forska, och högst tre förslag');
+  G3.flags.overviewSeen = 0;
+  const allFlags = S.GUIDE_STEPS.every((id) => STRINGS[`guide.next.${id}.h`] && STRINGS[`guide.next.${id}.b`] && STRINGS[`guide.next.${id}.h`][1] && STRINGS[`guide.next.${id}.b`][1]);
+  ok(allFlags && S.AREAS.every((a) => STRINGS['ov.a.' + a.id] && STRINGS['ov.d.' + a.id]), 'alla steg och områden har texter på båda språken');
+  // rader med alla tillstånd har texter
+  let miss = 0;
+  for (const G of [G1, W]) for (const r of S.overviewRows(G)) if (r.state !== 'locked') { const e = STRINGS[r.line[0]]; if (!e || !e[0] || !e[1]) { miss++; console.log('saknas', r.line[0]); } }
+  ok(miss === 0, 'radernas texter finns');
+  ok(G1.rng !== undefined && W.rng === rng0, 'översikten rör inte slumptalen');
+}
+
 console.log(fails ? `\n${fails} FEL` : '\nAlla tester gick bra');
 process.exit(fails ? 1 : 0);

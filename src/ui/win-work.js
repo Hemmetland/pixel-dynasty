@@ -25,6 +25,11 @@ export function showEngines() {
   K.tab = 'engines';
   UI.open('contracts');
 }
+// Öppnar fönstret på fliken Förlag
+export function showPublish() {
+  K.tab = 'publish';
+  UI.open('contracts');
+}
 
 function contractsTab(G) {
   if (!G.contracts.length) return `<div class="empty">${icon('hammer')}<div>${t('work.none')}</div></div>`;
