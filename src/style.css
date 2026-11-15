@@ -1568,3 +1568,12 @@ input[type='range']::-moz-range-thumb { width: 18px; height: 18px; border-radius
 .sf-rec-row { padding: 8px 4px; }
 .sf-rec-row b.num { font-size: 18px; }
 .sf-rec-row .rn-i { width: 34px; height: 34px; }
+
+/* Teamkortet: huvudet ur spelets figur i en rund ram (figuren är en sprite, huvudet sitter längst upp) */
+.tm-av { width: 30px; height: 30px; box-shadow: inset 0 0 0 1px rgba(150, 172, 255, 0.25); }
+.tm-av img { width: 48px; max-width: none; height: 68px; margin: 0 0 0 -14px; image-rendering: pixelated; }
+.tm-chip { padding-right: 8px; }
+.tmcard { position: relative; overflow: hidden; }
+.tmcard::before { content: ''; position: absolute; left: 0; right: 0; top: 0; height: 3px; background: linear-gradient(90deg, transparent, var(--fans, #ff6aa8), transparent); opacity: 0.7; }
+.tm-chip.lead { background: color-mix(in srgb, var(--gold) 12%, transparent); box-shadow: 0 0 12px -4px var(--gold); }
+.tmcard .hint .ic { vertical-align: -2px; }
