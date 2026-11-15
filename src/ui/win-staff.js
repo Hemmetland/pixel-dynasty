@@ -1,11 +1,12 @@
 import { $, esc, icon, t, tn, L, UI, act, regWin, bar, money, toast, errToast } from './core.js';
 import { sfx } from '../audio/sfx.js';
 import { avatarImg } from '../render/people.js';
-import { SPECS, TRAITS, hire, fire, raise, train, canTrain, trainCost, trainWeeks, trainingSlots, trainingNow, skillCap, canHire, SKILLS, payroll } from '../sim/people.js';
+import { SPECS, TRAITS, hire, fire, raise, train, canTrain, trainCost, trainWeeks, trainingSlots, trainingNow, skillCap, canHire, SKILLS, payroll, workers, growWeeksLeft, GROW_XP } from '../sim/people.js';
+import { TEAM_MAX, TEAM_SIZE, teamsOf, teamName, membersOf, teamOfStaff, teamsOpen, createTeam, disbandTeam, addMember, removeMember, courseInfo, canTrainTeam, trainTeam, teamAvg } from '../sim/teams.js';
 import { capacity } from '../sim/studio.js';
 import { dateOf } from '../sim/const.js';
 
-const S = { tab: 'team', trainFor: null, fireFor: null };
+const S = { tab: 'team', trainFor: null, fireFor: null, addFor: null, disbandFor: null };
 const SK = { design: ['bulb', 'var(--design)'], tech: ['cpu', 'var(--tech)'], speed: ['rocket', 'var(--warn)'], research: ['flask', 'var(--rp)'] };
 
 const skills = (G, s) => {
@@ -14,8 +15,11 @@ const skills = (G, s) => {
 };
 const moodInfo = (m) => (m >= 62 ? ['var(--good)', 'staff.moodHigh'] : m >= 38 ? ['var(--warn)', 'staff.moodMid'] : ['var(--bug)', 'staff.moodLow']);
 
-function teamCard(G, s) {
+function teamCard(G, s, mentor) {
   const [mc, mt] = moodInfo(s.mood);
+  const grp = teamOfStaff(G, s.id);
+  const grew = s.growSkill && s.lastGrow != null && G.t - s.lastGrow <= 12 ? `<span class="chip c" style="--c:var(--good)" data-tip="${esc(t('staff.grewTip', { skill: t('skill.' + s.growSkill) }))}">${icon('trend')}${t('staff.grew', { skill: t('skill.' + s.growSkill) })}</span>` : '';
+  const expTip = t('staff.expTip', { n: growWeeksLeft(G, s, mentor) }) + (G.job ? '' : ' ' + t('staff.expIdle'));
   const training = s.trainUntil > G.t;
   const spec = SPECS[s.spec];
   const tr = canTrain(G, s);
@@ -29,11 +33,12 @@ function teamCard(G, s) {
       <div class="sc-av">${avatarImg(s.look, 3, training ? 'stand' : 'stand')}</div>
       <div style="flex:1;min-width:0">
         <div class="row" style="gap:8px"><b class="h3" style="overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${esc(s.name)}</b>${s.isFounder ? `<span class="tag" style="--c:var(--gold)">${t('staff.founder')}</span>` : ''}</div>
-        <div class="row wrap" style="gap:6px;margin-top:5px"><span class="chip">${s.isFounder ? t('staff.founderRole') : L(spec.name)}</span>${trait}${training ? `<span class="chip c" style="--c:var(--rp)">${icon('book')}${t('staff.training')} · ${Math.max(1, s.trainUntil - G.t)}${t('ui.weeksShort')}</span>` : ''}</div>
+        <div class="row wrap" style="gap:6px;margin-top:5px"><span class="chip">${s.isFounder ? t('staff.founderRole') : L(spec.name)}</span>${trait}${grp ? `<span class="chip" data-tip="${esc(t('staff.inTeam', { team: L(teamName(grp)) }))}">${icon('team')}${esc(L(teamName(grp)))}</span>` : ''}${grew}${training ? `<span class="chip c" style="--c:var(--rp)">${icon('book')}${t('staff.training')} · ${Math.max(1, s.trainUntil - G.t)}${t('ui.weeksShort')}</span>` : ''}</div>
       </div>
       <div class="sc-mood" style="--c:${mc}" data-tip="${t(mt)}"><span class="md"></span>${Math.round(s.mood)}</div>
     </div>
     ${skills(G, s)}
+    <div class="sk-exp" data-tip="${esc(expTip)}"><span class="faint">${t('staff.exp')}</span>${bar(((s.xp || 0) / GROW_XP) * 100, 'var(--good)', 'thin')}</div>
     <div class="faint" style="font-size:11.5px;margin-top:8px">${tn('staff.tenure', s.games, { y: dateOf(s.hired).year })}</div>
     <div class="row" style="margin-top:6px;gap:6px">
       <span class="muted" style="font-size:12px">${s.isFounder ? t('staff.noSalary') : money(s.salary) + t('ui.perMonth')}</span><span class="sp"></span>
@@ -58,6 +63,49 @@ function candCard(G, c) {
   </div>`;
 }
 
+// ── Team ─────────────────────────────────────────────────────────
+function crew(G, team) {
+  const mem = membersOf(G, team);
+  const info = courseInfo(G, team);
+  const ok = canTrainTeam(G, team);
+  const onCourse = mem.filter((s) => s.trainGroup === 'T' + team.id && s.trainUntil > G.t);
+  const free = G.staff.filter((s) => !teamOfStaff(G, s.id));
+  const chips = mem
+    .map((s) => `<span class="tm-chip ${s.trainUntil > G.t ? 'away' : ''}"><span class="tm-av">${avatarImg(s.look, 2)}</span><span class="ell">${esc(s.name)}</span><button class="tm-x" data-act="tm-rm" data-tid="${team.id}" data-id="${s.id}" aria-label="${esc(t('tm.remove'))}" data-tip="${esc(t('tm.remove'))}">${icon('x')}</button></span>`)
+    .join('');
+  const picker =
+    S.addFor === team.id
+      ? `<div class="tm-pick">${free.length ? free.map((s) => `<button class="tm-chip add" data-act="tm-add" data-tid="${team.id}" data-id="${s.id}"><span class="tm-av">${avatarImg(s.look, 2)}</span><span class="ell">${esc(s.name)}</span>${icon('plus')}</button>`).join('') : `<span class="faint" style="font-size:12px">${t('tm.noFree')}</span>`}</div>`
+      : '';
+  let course;
+  if (onCourse.length) {
+    const left = Math.max(1, Math.max(...onCourse.map((s) => s.trainUntil - G.t)));
+    course = `<div class="row wrap" style="gap:8px"><span class="chip c" style="--c:var(--rp)">${icon('book')}${t('tm.onCourse', { skill: t('skill.' + onCourse[0].trainSkill), n: left })}</span></div>`;
+  } else if (ok === true) {
+    course = `<div class="trainrow">${SKILLS.map((k) => `<button class="btn sm" data-act="tm-train" data-tid="${team.id}" data-k="${k}" style="--c:${SK[k][1]}">${icon(SK[k][0])}${t('skill.' + k)} <span class="muted">+${3}–${6 + (G.u.flags.training2 ? 2 : 0)}</span></button>`).join('')}</div>
+      <div class="muted num" style="font-size:12px;margin-top:6px">${t('tm.courseInfo', { n: info.ready.length, cost: money(info.cost), save: money(info.alone - info.cost), w: info.weeks })}</div>
+      ${info.ready.length < info.mem.length ? `<div class="faint" style="font-size:11.5px;margin-top:3px">${t('tm.someOut', { n: info.mem.length - info.ready.length })}</div>` : ''}`;
+  } else course = `<div class="hint" style="margin:0">${icon(ok === 'locked' ? 'lock' : 'info')} ${t('tm.err.' + ok)}</div>`;
+  return `<div class="scard card tmcard">
+    <div class="row" style="gap:10px;margin-bottom:8px"><span class="rn-i" style="--c:var(--fans)">${icon('team')}</span><div style="flex:1;min-width:0"><b class="h3 ell">${esc(L(teamName(team)))}</b><div class="faint" style="font-size:12px">${t('tm.members', { n: mem.length, m: TEAM_SIZE })}</div></div>
+      <button class="btn sm danger" data-act="tm-disband" data-tid="${team.id}" data-tip="${esc(t('tm.disband'))}">${S.disbandFor === team.id ? t('tm.confirm') : icon('x')}</button></div>
+    <div class="tm-mem">${chips || `<span class="faint" style="font-size:12px">${t('tm.empty')}</span>`}</div>
+    ${mem.length < TEAM_SIZE ? `<div class="row" style="margin-top:8px"><button class="btn sm ${S.addFor === team.id ? 'on' : ''}" data-act="tm-addopen" data-tid="${team.id}">${icon('plus')}${t('tm.add')}</button></div>` : ''}${picker}
+    ${mem.length ? `<div class="lbl" style="margin:12px 0 0">${t('tm.avg')}</div>${skills(G, teamAvg(G, team))}` : ''}
+    <div style="margin-top:12px;padding-top:10px;border-top:1px dashed var(--line)"><div class="lbl" style="margin:0 0 6px">${t('tm.course')}</div>${course}</div>
+  </div>`;
+}
+function groupsView(G) {
+  const teams = teamsOf(G);
+  return `<div class="hint" style="margin-bottom:12px">${icon('info')} ${t('tm.help')}</div>
+    <div class="row wrap" style="gap:8px;margin-bottom:14px">
+      ${G.u.flags.training ? `<span class="chip">${icon('book')}${t('staff.trainSlots')} ${trainingNow(G)}/${trainingSlots(G)}</span>` : `<span class="chip faint">${icon('lock')}${t('staff.trainLocked')}</span>`}
+      <span class="sp"></span>
+      <button class="btn primary" data-act="tm-new" ${teams.length >= TEAM_MAX ? 'disabled' : ''} data-tip="${teams.length >= TEAM_MAX ? esc(t('tm.max', { n: TEAM_MAX })) : ''}">${icon('plus')}${t('tm.new')}</button>
+    </div>
+    ${teams.length ? `<div class="grid sgrid">${teams.map((x) => crew(G, x)).join('')}</div>` : `<div class="hint">${t('tm.none')}</div>`}`;
+}
+
 regWin({
   id: 'staff',
   icon: 'team',
@@ -65,7 +113,7 @@ regWin({
   size: 'xl',
   title: () => t('staff.title'),
   sub: (G) => `${G.staff.length}/${capacity(G)} ${t('staff.desks')} · ${t('staff.payroll')} ${money(payroll(G))}${t('ui.perMonth')}`,
-  headExtra: () => `<div class="tabs"><button class="tab ${S.tab === 'team' ? 'on' : ''}" data-act="s-tab" data-id="team">${icon('team')}${t('staff.tabTeam')}</button><button class="tab ${S.tab === 'hire' ? 'on' : ''}" data-act="s-tab" data-id="hire">${icon('plus')}${t('staff.tabHire')}</button></div>`,
+  headExtra: (G) => `<div class="tabs"><button class="tab ${S.tab === 'team' ? 'on' : ''}" data-act="s-tab" data-id="team">${icon('user')}${t('staff.tabTeam')}</button>${G && teamsOpen(G) ? `<button class="tab ${S.tab === 'groups' ? 'on' : ''}" data-act="s-tab" data-id="groups">${icon('team')}${t('staff.tabGroups')}</button>` : ''}<button class="tab ${S.tab === 'hire' ? 'on' : ''}" data-act="s-tab" data-id="hire">${icon('plus')}${t('staff.tabHire')}</button></div>`,
   render(G, arg) {
     if (arg && arg.focus) {
       S.tab = 'team';
@@ -78,14 +126,18 @@ regWin({
         <div class="grid sgrid">${G.candidates.map((c) => candCard(G, c)).join('')}</div>
         ${G.staff.length >= capacity(G) ? `<div class="hint" style="margin-top:14px;color:var(--warn)">${icon('building')} ${t('staff.full')}</div>` : ''}`;
     }
+    if (S.tab === 'groups' && teamsOpen(G)) return groupsView(G);
     const trainNow = trainingNow(G);
+    const mentor = workers(G).some((w) => w.trait === 'mentor');
     return `<div class="row wrap" style="gap:8px;margin-bottom:14px">
         <span class="chip">${icon('coffee')}${t('staff.avgMood')} ${Math.round(G.staff.reduce((s, x) => s + x.mood, 0) / G.staff.length)}</span>
         ${G.u.flags.training ? `<span class="chip">${icon('book')}${t('staff.trainSlots')} ${trainNow}/${trainingSlots(G)}</span>` : `<span class="chip faint">${icon('lock')}${t('staff.trainLocked')}</span>`}
       </div>
-      <div class="grid sgrid">${G.staff.map((s) => teamCard(G, s)).join('')}</div>`;
+      <div class="grid sgrid">${G.staff.map((s) => teamCard(G, s, mentor)).join('')}</div>`;
   },
   onClose() {
+    S.addFor = null;
+    S.disbandFor = null;
     S.trainFor = null;
     S.fireFor = null;
     S.focus = null;
@@ -140,5 +192,53 @@ act('s-train', (el) => {
     sfx.play('research');
     S.trainFor = null;
   } else errToast(r);
+  UI.refresh();
+});
+
+act('tm-new', () => {
+  const G = UI.app.G;
+  const r = createTeam(G);
+  if (typeof r === 'string') errToast(r);
+  else {
+    S.addFor = r.id;
+    sfx.play('coin');
+  }
+  UI.refresh();
+});
+act('tm-addopen', (el) => {
+  const id = +el.dataset.tid;
+  S.addFor = S.addFor === id ? null : id;
+  UI.refresh();
+});
+act('tm-add', (el) => {
+  const r = addMember(UI.app.G, +el.dataset.tid, +el.dataset.id);
+  if (typeof r === 'string') errToast(r);
+  UI.refresh();
+});
+act('tm-rm', (el) => {
+  removeMember(UI.app.G, +el.dataset.tid, +el.dataset.id);
+  UI.refresh();
+});
+act('tm-disband', (el) => {
+  const id = +el.dataset.tid;
+  if (S.disbandFor !== id) {
+    S.disbandFor = id;
+    UI.refresh();
+    setTimeout(() => {
+      if (S.disbandFor === id) {
+        S.disbandFor = null;
+        UI.refresh();
+      }
+    }, 3000);
+    return;
+  }
+  disbandTeam(UI.app.G, id);
+  S.disbandFor = null;
+  UI.refresh();
+});
+act('tm-train', (el) => {
+  const r = trainTeam(UI.app.G, +el.dataset.tid, el.dataset.k);
+  if (r === true) sfx.play('research');
+  else errToast(r);
   UI.refresh();
 });

@@ -178,12 +178,14 @@ export function trainWeeks(G) {
   return Math.max(2, 4 - facLevel(G, 'training')) * TRAIN_TEMPO;
 }
 export const TRAIN_COOLDOWN = 8 * TRAIN_TEMPO;
+// Antal kursplatser som används: ett helt team på samma kurs (trainGroup) tar bara en plats.
 export function trainingNow(G) {
-  return G.staff.filter((s) => s.trainUntil > G.t).length;
+  return new Set(G.staff.filter((s) => s.trainUntil > G.t).map((s) => s.trainGroup || 's' + s.id)).size;
 }
 export function canTrain(G, st) {
   if (!G.u.flags.training) return 'locked';
   if (st.trainUntil > G.t) return 'busy';
+  if (st.away) return 'away';
   if (G.t - st.lastTrain < TRAIN_COOLDOWN) return 'cooldown';
   if (trainingNow(G) >= trainingSlots(G)) return 'slots';
   return true;
@@ -215,6 +217,58 @@ export function finishTraining(G, st) {
   emit('trained', { st, skill: sk, gain });
 }
 
+// ── Växa av arbete ───────────────────────────────────────────────
+// Den som arbetar blir bättre av det: varje vecka med ett pågående projekt samlar en medarbetare erfarenhet (xp), och för varje
+// GROW_XP blir en färdighet ett steg högre. Färdigheten väljs efter yrkesrollen (en programmerare lär sig mest av teknik), farten
+// beror på humör, på om en mentor finns i teamet och på hur nära taket personen redan är (ju mer man kan, desto långsammare går det).
+// Lönen följer med uppåt. Slumpen kommer från en hash av fröet, aldrig från G.rng.
+export const SKILL_NAMES = { design: { sv: 'Design', en: 'Design' }, tech: { sv: 'Teknik', en: 'Tech' }, speed: { sv: 'Tempo', en: 'Speed' }, research: { sv: 'Forskning', en: 'Research' } };
+export const GROW_XP = 60;
+export function growRate(G, st, mentor) {
+  const cap = skillCap(G);
+  const room = clamp(1 - Math.max(st.design, st.tech, st.speed, st.research) / cap, 0, 1);
+  return (0.4 + 0.9 * room) * moodMult(st) * (mentor && st.trait !== 'mentor' ? 1.15 : 1);
+}
+// Veckor av arbete till nästa steg, med dagens fart (för visning).
+export function growWeeksLeft(G, st, mentor) {
+  return Math.max(1, Math.ceil((GROW_XP - (st.xp || 0)) / Math.max(0.05, growRate(G, st, mentor))));
+}
+export function growSkill(G, st) {
+  const sp = SPECS[st.spec] || SPECS.allround;
+  const w = [sp.d, sp.t, sp.s * 0.9, sp.r * 0.8];
+  const sum = w.reduce((a, b) => a + b, 0);
+  let x = (hashStr(`${G.seed || 0}:grow:${st.id}:${st.grown || 0}`) / 4294967296) * sum;
+  for (let i = 0; i < 4; i++) {
+    x -= w[i];
+    if (x < 0) return SKILLS[i];
+  }
+  return SKILLS[0];
+}
+export function growWeek(G) {
+  // den som är ute på uppdrag med ett självgående team arbetar också (och lär sig av det)
+  const ws = G.staff.filter((s) => s.trainUntil <= G.t && (G.job || s.away));
+  if (!ws.length) return;
+  const mentor = ws.some((w) => w.trait === 'mentor');
+  const cap = skillCap(G);
+  for (const st of ws) {
+    st.xp = (st.xp || 0) + growRate(G, st, mentor);
+    if (st.xp < GROW_XP) continue;
+    const sk = growSkill(G, st);
+    if (st[sk] >= cap) {
+      st.xp = GROW_XP;
+      continue;
+    }
+    st.xp -= GROW_XP;
+    const before = wageOf(G, st);
+    st[sk]++;
+    st.grown = (st.grown || 0) + 1;
+    st.lastGrow = G.t;
+    st.growSkill = sk;
+    if (!st.isFounder) st.salary += wageOf(G, st) - before;
+    if (st[sk] >= 50 && st[sk] % 25 === 0) note(G, 'news.staffGrow', { name: st.name, skill: SKILL_NAMES[sk], v: st[sk] }, 'good', true);
+  }
+}
+
 // ── Humör ────────────────────────────────────────────────────────
 export function moodTarget(G) {
   const fac = facLevel(G, 'coffee') * 4 + facLevel(G, 'gameroom') * 6;
@@ -226,7 +280,7 @@ export function updateMood(G) {
   const crunch = crunching ? 12 : 0;
   for (const s of G.staff) {
     const tr_ = s.trait === 'steady' ? 6 : 0;
-    const busy = crunching && s.trainUntil <= G.t;
+    const busy = crunching && s.trainUntil <= G.t && !s.away;
     if (busy || s.fatigue) s.fatigue = clamp((s.fatigue || 0) + (busy ? (s.trait === 'nightowl' ? 0.6 : 1) : -FATIGUE_REST), 0, FATIGUE_MAX);
     s.mood = clamp(s.mood + (target + tr_ - crunch - 2 * fatigueOver(s) - s.mood) * 0.12, 5, 100);
   }
@@ -265,8 +319,9 @@ export function burnoutQuits(G) {
 }
 
 // Aktiva arbetare: alla som inte är på kurs.
+// (de som är ute på ett uppdrag med ett självgående team, s.away, jobbar inte med spelarens projekt)
 export function workers(G) {
-  return G.staff.filter((s) => s.trainUntil <= G.t);
+  return G.staff.filter((s) => s.trainUntil <= G.t && !s.away);
 }
 
 // Medarbetare som stannar: en nyhet efter 3, 5, 10 och 20 år i studion (varje månad kollas det) och efter 10 och 25 spel
