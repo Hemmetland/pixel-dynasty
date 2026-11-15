@@ -2,6 +2,8 @@ export * from './const.js';
 export * from './tempo.js';
 export * from './state.js';
 export * from './people.js';
+export * from './teams.js';
+export * from './autoteam.js';
 export * from './studio.js';
 export * from './research.js';
 export * from './dev.js';

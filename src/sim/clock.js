@@ -26,7 +26,9 @@ import { expoOffer } from './expo.js';
 import { identityWatch } from './legacy.js';
 import { checkGoals } from './goals.js';
 import { headlineWatch } from './headlines.js';
-import { finishTraining, refreshCandidates, payroll, updateMood, burnoutQuits, serviceYears } from './people.js';
+import { refreshCandidates, payroll, updateMood, burnoutQuits, serviceYears, growWeek } from './people.js';
+import { finishCourses, teamsWeek } from './teams.js';
+import { missionWeek } from './autoteam.js';
 import { rentOf, facUpkeep, loanInterest, spend } from './studio.js';
 import { note } from './news.js';
 
@@ -53,7 +55,9 @@ export function stepTick(G) {
 }
 
 function weekly(G) {
-  for (const s of G.staff) if (s.trainSkill && s.trainUntil <= G.t) finishTraining(G, s);
+  finishCourses(G);
+  teamsWeek(G);
+  growWeek(G);
   salesWeek(G);
   portWeek(G);
   chartWeek(G);
@@ -67,6 +71,7 @@ function weekly(G) {
   hwWeek(G);
   liveWeek(G);
   esportsWeek(G);
+  missionWeek(G); // sist: ett spel som släpps nu börjar sälja nästa vecka
   updateMood(G);
   rollDevEvent(G);
   const d = dateOf(G.t);

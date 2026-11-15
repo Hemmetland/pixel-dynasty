@@ -37,6 +37,14 @@ export function baseHype(G) {
 
 export function startProject(G, cfg) {
   if (G.job) return t('err.busy');
+  const job = buildJob(G, cfg, workers(G).length);
+  if (typeof job === 'string') return job;
+  G.job = job;
+  emit('jobStart', job);
+  return job;
+}
+// Bygger ett spelprojekt (eller ger ett felmeddelande). Används också av självgående team (autoteam.js), som inte sätter G.job.
+export function buildJob(G, cfg, crewSize) {
   // Expansion till ett onlinespel: samma tema, genrer, plattform och målgrupp som grundspelet
   const base = cfg.expansionOf ? G.games.find((g) => g.id === cfg.expansionOf && g.live && !g.live.closed) : null;
   if (cfg.expansionOf && !base) return t('err.liveGone');
@@ -79,13 +87,11 @@ export function startProject(G, cfg) {
     crunch: false,
     cost: 0,
     rpGained: 0,
-    team: workers(G).length,
+    team: crewSize,
     log: [],
     events: 0,
     state: 'dev',
   };
-  G.job = job;
-  emit('jobStart', job);
   return job;
 }
 
@@ -141,9 +147,9 @@ export function launchMarketing(G, id) {
 function engineOf(G, J) {
   return J.engineId ? G.engines.find((e) => e.id === J.engineId) : null;
 }
-export function teamOutput(G, J, mixD) {
+export function teamOutput(G, J, mixD, crew) {
   const sc = SCOPES[J.scope];
-  const ws = workers(G).slice().sort((a, b) => b.design + b.tech - (a.design + a.tech));
+  const ws = (crew || workers(G)).slice().sort((a, b) => b.design + b.tech - (a.design + a.tech));
   let d = 0;
   let t_ = 0;
   let fix = 0;
@@ -157,6 +163,7 @@ export function teamOutput(G, J, mixD) {
     if (w.trait === 'nightowl' && J.crunch) eff *= 1.15;
     if (hasMentor && w.trait !== 'mentor') eff *= 1.05;
     if (J.crunch) eff *= 1.25;
+    if (J.autoMult) eff *= J.autoMult;
     d += w.design * eff * (0.35 + 1.3 * mixD);
     t_ += w.tech * eff * (0.35 + 1.3 * (1 - mixD));
     fix += w.tech * eff;
@@ -167,6 +174,11 @@ export function teamOutput(G, J, mixD) {
 export function devTick(G) {
   const J = G.job;
   if (!J || J.kind !== 'game' || J.state !== 'dev') return;
+  stepJob(G, J, workers(G), false);
+}
+// Ett utvecklingstick för projektet J med medarbetarna ws. auto = ett självgående teams projekt: samma räkning, men utan
+// slump ur G.rng, utan val, flytande siffror och ljud, och när det är klart returneras true i stället för att spelaren får en rapport.
+export function stepJob(G, J, ws, auto) {
   const diff = DIFFICULTY[G.difficulty];
   const yf = yfOf(G.t);
   const eng = engineOf(G, J);
@@ -178,7 +190,7 @@ export function devTick(G) {
     let mixD = 0;
     for (const c of cats) mixD += ((foc[c] || 0) / 100) * CAT[c].dMix;
     if (!cats.length) mixD = 0.5;
-    const out = teamOutput(G, J, mixD);
+    const out = teamOutput(G, J, mixD, ws);
     J.D += out.d;
     J.T += out.t * em;
     // buggar
@@ -186,14 +198,21 @@ export function devTick(G) {
     const bugBase = (SCOPES[J.scope].bugs / J.devTicks) * 1.05 * diff.bugs * bugMult(G) * Math.pow(Math.max(1, out.n) / SCOPES[J.scope].team, 0.35);
     const perfect = out.ws.filter((w) => w.trait === 'perfectionist').length / Math.max(1, out.n);
     const crunchB = J.crunch ? 1.35 : 1;
-    const rate = bugBase * (1.15 - 0.5 * engShare) * (1 - 0.3 * perfect) * crunchB * (0.8 + 0.4 * (1 - mixD)) * (eng ? 1 - 0.08 * Math.min(1.3, engineMult(eng, yf) - 1) : 1) * (opt ? 0.85 : 1);
+    const rate = bugBase * (J.autoBug || 1) * (1.15 - 0.5 * engShare) * (1 - 0.3 * perfect) * crunchB * (0.8 + 0.4 * (1 - mixD)) * (eng ? 1 - 0.08 * Math.min(1.3, engineMult(eng, yf) - 1) : 1) * (opt ? 0.85 : 1);
     let nb = 0;
-    const whole = Math.floor(rate);
-    nb += whole;
-    if (rnd(G) < rate - whole) nb++;
+    if (auto) {
+      // utan slump: brutna buggar samlas i J.bugAcc tills de blir hela
+      J.bugAcc = (J.bugAcc || 0) + rate;
+      nb = Math.floor(J.bugAcc);
+      J.bugAcc -= nb;
+    } else {
+      const whole = Math.floor(rate);
+      nb += whole;
+      if (rnd(G) < rate - whole) nb++;
+    }
     J.bugs += nb;
     // flytande poäng
-    if (out.ws.length) {
+    if (!auto && out.ws.length) {
       const nF = Math.min(out.ws.length, 1 + (rnd(G) < 0.5 ? 1 : 0));
       for (let i = 0; i < nF; i++) {
         const w = out.ws[rint(G, 0, out.ws.length - 1)];
@@ -203,7 +222,7 @@ export function devTick(G) {
       if (nb > 0) emit('float', { staff: out.ws[rint(G, 0, out.ws.length - 1)].id, kind: 'bug', amount: nb });
     }
     // gnistan
-    for (const w of out.ws) {
+    for (const w of auto ? [] : out.ws) {
       if (w.trait === 'spark' && chance(G, 0.006)) {
         const bonus = Math.round(w.design * 1.5);
         J.D += bonus;
@@ -217,25 +236,29 @@ export function devTick(G) {
     const phaseLen = J.devTicks / 3;
     if (J.ticks >= J.devTicks) {
       J.phase = 3;
-      emit('phase', { phase: 3, job: J });
+      if (!auto) emit('phase', { phase: 3, job: J });
     } else if (J.ticks >= phaseLen * (J.phase + 1)) {
       J.phase++;
-      if (phaseCats(G, J.phase).length >= 2) G.pending.push({ type: 'phase', phase: J.phase, id: G.uid++ });
-      emit('phase', { phase: J.phase, job: J });
+      if (!auto && phaseCats(G, J.phase).length >= 2) G.pending.push({ type: 'phase', phase: J.phase, id: G.uid++ });
+      if (!auto) emit('phase', { phase: J.phase, job: J });
     }
     // Slumphändelser under utveckling hanteras av clock (veckovis).
   } else {
     // Polish / QA
-    const out = teamOutput(G, J, 0.2);
+    const out = teamOutput(G, J, 0.2, ws);
     const par = parPerTick(G, J);
     const lambda = (0.05 / tempoOf(J)) * Math.sqrt(clamp(out.fix / par, 0.2, 6)) * qaFixMult(G);
     const before = J.bugs;
     J.bugs = Math.max(0, J.bugs * Math.exp(-lambda) - (0.02 / tempoOf(J)) * out.n);
     const fixed = before - J.bugs;
-    if (fixed > 0.2 && out.ws.length && rnd(G) < 0.5) emit('float', { staff: out.ws[rint(G, 0, out.ws.length - 1)].id, kind: 'fix', amount: Math.max(1, Math.round(fixed)) });
+    if (!auto && fixed > 0.2 && out.ws.length && rnd(G) < 0.5) emit('float', { staff: out.ws[rint(G, 0, out.ws.length - 1)].id, kind: 'fix', amount: Math.max(1, Math.round(fixed)) });
     J.polishDone++;
-    if (J.polishDone >= J.polishTicks || J.bugs < 0.5) finishDev(G);
+    if (J.polishDone >= J.polishTicks || J.bugs < 0.5) {
+      if (auto) return true;
+      finishDev(G);
+    }
   }
+  return false;
 }
 
 export function shipNow(G) {
@@ -296,6 +319,7 @@ export function releaseGame(G) {
     revenue: 0, units: 0, weekly: [], ended: false, fansGained: 0, patched: false,
     novel: isNovel(G, J),
   };
+  if (J.auto) game.auto = J.auto; // gjort av ett självgående team (autoteam.js)
   const prev = J.sequelOf ? G.games.find((g) => g.id === J.sequelOf) : null;
   G.games.push(game);
   G.know.combos[J.topic + '|' + J.genre] = Math.round(compatOf(J.topic, J.genre));
@@ -332,10 +356,11 @@ export function releaseGame(G) {
     else note(G, 'news.release', v, 'info', true);
   }
   // erfarenhet till teamet
-  for (const w of workers(G)) {
+  for (const w of J.crew ? G.staff.filter((x) => J.crew.includes(x.id)) : workers(G)) {
     const skill = ['design', 'tech', 'speed', 'research'][rint(G, 0, 3)];
-    w[skill] += rnd(G) < 0.55 ? 1 : 0;
-    if (rnd(G) < 0.5) w[w.spec === 'coder' ? 'tech' : 'design'] += 1;
+    // (en del av erfarenheten kommer nu av arbetet vecka för vecka, se growWeek i people.js)
+    w[skill] += rnd(G) < 0.1 ? 1 : 0;
+    if (rnd(G) < 0.1) w[w.spec === 'coder' ? 'tech' : 'design'] += 1;
     w.games++;
     serviceGames(G, w);
   }
