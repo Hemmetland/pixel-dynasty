@@ -166,6 +166,27 @@ export function raise(G, id) {
 
 // ── Utbildning ───────────────────────────────────────────────────
 export const SKILLS = ['design', 'tech', 'speed', 'research'];
+
+// Genrekunskap: varje spel en medarbetare varit med om i en genre ger mer rutin i just den genren (s.gx[genre], högst GX_MAX).
+// Rutinen syns som tempo i projekt i samma genre: den som aldrig gjort genren jobbar med GX_BASE, den som gjort fem spel i den med
+// GX_BASE + GX_STEP × 5. Det kommer ovanpå färdigheterna, så skicklighet och erfarenhet behövs båda. Går medarbetaren tar rutinen med sig.
+export const GX_MAX = 5;
+export const GX_BASE = 0.978;
+export const GX_STEP = 0.016;
+export const genreKnow = (s, genre) => Math.min(GX_MAX, (s.gx && s.gx[genre]) || 0);
+// Rutin i spelets genrer (en genreblandning kräver båda: 62 % första genren, 38 % andra)
+export const knowOf = (s, genre, genre2) => (genre2 ? 0.62 * genreKnow(s, genre) + 0.38 * genreKnow(s, genre2) : genreKnow(s, genre));
+export const knowMult = (k) => GX_BASE + GX_STEP * k;
+export function learnGenre(s, genre, genre2) {
+  s.gx = s.gx || {};
+  for (const g of genre2 ? [genre, genre2] : [genre]) s.gx[g] = Math.min(GX_MAX, (s.gx[g] || 0) + 1);
+}
+// Genrerna en medarbetare kan bäst, störst först: [[genre, nivå 1..GX_MAX], ...]
+export const bestGenres = (s, n = 2) =>
+  Object.entries(s.gx || {})
+    .filter(([, v]) => v >= 1)
+    .sort((a, b) => b[1] - a[1] || (a[0] < b[0] ? -1 : 1))
+    .slice(0, n);
 export const skillCap = (G) => 60 + G.perk.skillCap + (yearOf(G.t) - 1980) * 2.2;
 export function trainCost(G, st) {
   return Math.round((350 + (st.design + st.tech + st.speed + st.research) * 4) * wageIndex(yearOf(G.t)));

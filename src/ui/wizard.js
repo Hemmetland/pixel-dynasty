@@ -88,7 +88,7 @@ const COMPAT_COL = { 4: 'var(--good)', 3: 'var(--accent)', 2: 'var(--warn)', 1: 
 export function teamReadiness(G, cfg) {
   const year = yearOf(G.t);
   const sc = SCOPES[cfg.scope];
-  const out = teamOutput(G, { scope: cfg.scope, crunch: false }, 0.5);
+  const out = teamOutput(G, { scope: cfg.scope, crunch: false, genre: cfg.genre, genre2: cfg.genre2 }, 0.5);
   const eng = cfg.engineId ? G.engines.find((e) => e.id === cfg.engineId) : null;
   const em = engineMult(eng, yfOf(G.t), engineCap(G, cfg));
   const par = sc.par * techMult(PLATFORM[cfg.platform], year);
@@ -314,7 +314,16 @@ function summary(G) {
       <div class="row"><span class="lbl">${t('wiz.readiness')}</span><span class="sp"></span><b style="color:${VCOL[vk]}">${t(vtxt)}</b></div>
       ${bar(clamp((rd.r / 2) * 100, 4, 100), VCOL[vk], 'tall')}
       <div class="hint" style="margin-top:6px">${t('wiz.readyHelp')}</div>
-    </div>`;
+    </div>
+    ${recipeBox(G)}`;
+}
+// Receptet (tema, genrer, fokus, målgrupp) är det andra benet av betyget: det visar vad du vet om matchningen innan du startar
+function recipeBox(G) {
+  if (!W.topic || !W.genre) return '';
+  const k = !W.genre2 ? G.know.combos[W.topic + '|' + W.genre] : null;
+  const col = k ? COMPAT_COL[Math.round(k)] : 'var(--muted)';
+  const txt = k ? t('compat.' + Math.round(k)) : t(W.genre2 ? 'wiz.recipeBlend' : 'wiz.recipeUnk');
+  return `<div class="ready" style="--c:${col}"><div class="row"><span class="lbl">${t('wiz.recipe')}</span><span class="sp"></span><b style="color:${col}">${txt}</b></div><div class="hint" style="margin-top:6px">${t('wiz.recipeHelp')}</div></div>`;
 }
 
 const STEPS = ['wiz.s1', 'wiz.s2', 'wiz.s3'];

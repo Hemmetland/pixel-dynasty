@@ -8,7 +8,7 @@ import { MKT } from '../data/research.js';
 import { SCOPES, yearOf, yfOf, moneyScale, engineMult, TICKS_PER_WEEK } from './const.js';
 import { SCOPE_TEMPO } from './tempo.js';
 import { DIFFICULTY } from './state.js';
-import { workers, moodMult, fatigueMult, serviceGames } from './people.js';
+import { workers, moodMult, fatigueMult, serviceGames, knowOf, knowMult, learnGenre } from './people.js';
 import { bugMult, qaFixMult, mktCostMult, mktHypeMult, serverMult, labMult, spend } from './studio.js';
 import { phaseCats, normFocus, startFocus, evaluate, compatOf, parPerTick, isNovel } from './score.js';
 import { startSales, forecast } from './sales.js';
@@ -153,6 +153,7 @@ export function teamOutput(G, J, mixD, crew) {
   let d = 0;
   let t_ = 0;
   let fix = 0;
+  let kx = 0;
   const hasMentor = ws.some((w) => w.trait === 'mentor');
   ws.forEach((w, i) => {
     // Fler händer ger avtagande nytta (samordning) och mindre utanför projektets idealstorlek.
@@ -164,11 +165,17 @@ export function teamOutput(G, J, mixD, crew) {
     if (hasMentor && w.trait !== 'mentor') eff *= 1.05;
     if (J.crunch) eff *= 1.25;
     if (J.autoMult) eff *= J.autoMult;
+    // rutin i genren (genrekunskap, se people.js); utan genre (kontrakt) räknas den inte
+    if (J.genre) {
+      const k = knowOf(w, J.genre, J.genre2);
+      kx += k;
+      eff *= knowMult(k);
+    }
     d += w.design * eff * (0.35 + 1.3 * mixD);
     t_ += w.tech * eff * (0.35 + 1.3 * (1 - mixD));
     fix += w.tech * eff;
   });
-  return { d, t: t_, fix, n: ws.length, ws };
+  return { d, t: t_, fix, n: ws.length, ws, kavg: ws.length ? kx / ws.length : 0 };
 }
 
 export function devTick(G) {
@@ -193,6 +200,9 @@ export function stepJob(G, J, ws, auto) {
     const out = teamOutput(G, J, mixD, ws);
     J.D += out.d;
     J.T += out.t * em;
+    // teamets snittrutin i genren över hela utvecklingen (betygsrapporten visar den)
+    J.kn = (J.kn || 0) + out.kavg;
+    J.knN = (J.knN || 0) + 1;
     // buggar
     const engShare = J.phase === 0 ? (foc.engine || 0) / 100 : 0;
     const bugBase = (SCOPES[J.scope].bugs / J.devTicks) * 1.05 * diff.bugs * bugMult(G) * Math.pow(Math.max(1, out.n) / SCOPES[J.scope].team, 0.35);
@@ -362,6 +372,7 @@ export function releaseGame(G) {
     w[skill] += rnd(G) < 0.1 ? 1 : 0;
     if (rnd(G) < 0.1) w[w.spec === 'coder' ? 'tech' : 'design'] += 1;
     w.games++;
+    learnGenre(w, J.genre, J.genre2);
     serviceGames(G, w);
   }
   G.job = null;

@@ -1,7 +1,8 @@
 import { $, esc, icon, t, tn, L, UI, act, regWin, bar, money, toast, errToast } from './core.js';
 import { sfx } from '../audio/sfx.js';
 import { avatarImg } from '../render/people.js';
-import { SPECS, TRAITS, hire, fire, raise, train, canTrain, trainCost, trainWeeks, trainingSlots, trainingNow, skillCap, canHire, SKILLS, payroll, workers, growWeeksLeft, GROW_XP } from '../sim/people.js';
+import { SPECS, TRAITS, hire, fire, raise, train, canTrain, trainCost, trainWeeks, trainingSlots, trainingNow, skillCap, canHire, SKILLS, payroll, workers, growWeeksLeft, GROW_XP, bestGenres, genreKnow, GX_MAX, GX_STEP } from '../sim/people.js';
+import { GENRE, GENRES } from '../data/genres.js';
 import { TEAM_MAX, TEAM_SIZE, holds, endRole, teamsOf, teamName, membersOf, teamOfStaff, teamsOpen, createTeam, disbandTeam, addMember, removeMember, courseInfo, canTrainTeam, trainTeam, teamAvg, leadOf, setLead } from '../sim/teams.js';
 import { capacity, seated, outCount, seatCap } from '../sim/studio.js';
 import { autoOpen, canMission, eligibleBases, missionQuote, startMission, cancelMission, missionProgress, missionWeeksLeft, samspel, SAMSPEL_MAX, MISSION_KINDS, MISSION_MIN } from '../sim/autoteam.js';
@@ -20,6 +21,18 @@ const skills = (G, s) => {
   return `<div class="skills">${SKILLS.map((k) => `<div class="sk" style="--c:${SK[k][1]}" data-tip="${t('skill.' + k + '.tip')}"><span class="si">${icon(SK[k][0])}</span><div style="flex:1;min-width:0"><span class="sk-n">${t('skill.' + k)}</span>${bar((s[k] / cap) * 100, SK[k][1], 'thin')}</div><b class="num">${s[k]}</b></div>`).join('')}</div>`;
 };
 const moodInfo = (m) => (m >= 62 ? ['var(--good)', 'staff.moodHigh'] : m >= 38 ? ['var(--warn)', 'staff.moodMid'] : ['var(--bug)', 'staff.moodLow']);
+
+// Genrekunskap: de genrer en medarbetare (eller ett teams snitt) kan bäst, med stjärnor (1–2 spel en, 3–4 två, 5 tre)
+const gxStars = (k) => '★'.repeat(Math.max(1, Math.ceil(k / 2)));
+const gxChip = (g, k, tip) => `<span class="chip c" style="--c:${GENRE[g].color}" data-tip="${esc(tip)}">${esc(L(GENRE[g].name))} ${gxStars(k)}</span>`;
+const gxRow = (s) => {
+  const best = bestGenres(s, 3);
+  return best.length ? `<div class="row wrap" style="gap:6px;margin-top:8px"><span class="faint" style="font-size:11.5px">${t('staff.gx')}</span>${best.map(([g, k]) => gxChip(g, k, t('staff.gxTip', { genre: L(GENRE[g].name), n: k, p: Math.round(GX_STEP * GX_MAX * 100) }))).join('')}</div>` : '';
+};
+const teamGx = (mem) => {
+  const best = GENRES.map((ge) => [ge.id, mem.reduce((a, s) => a + genreKnow(s, ge.id), 0) / mem.length]).filter(([, v]) => v >= 0.8).sort((a, b) => b[1] - a[1]).slice(0, 3);
+  return best.length ? `<div class="row wrap" style="gap:6px;margin-top:10px"><span class="faint" style="font-size:11.5px">${t('tm.gx')}</span>${best.map(([g, v]) => gxChip(g, v, t('tm.gxTip', { genre: L(GENRE[g].name), n: v.toFixed(1) }))).join('')}</div>` : '';
+};
 
 function teamCard(G, s, mentor) {
   const [mc, mt] = moodInfo(s.mood);
@@ -45,6 +58,7 @@ function teamCard(G, s, mentor) {
     </div>
     ${skills(G, s)}
     <div class="sk-exp" data-tip="${esc(expTip)}"><span class="faint">${t('staff.exp')}</span>${bar(((s.xp || 0) / GROW_XP) * 100, 'var(--good)', 'thin')}</div>
+    ${gxRow(s)}
     <div class="faint" style="font-size:11.5px;margin-top:8px">${tn('staff.tenure', s.games, { y: dateOf(s.hired).year })}</div>
     <div class="row" style="margin-top:6px;gap:6px">
       <span class="muted" style="font-size:12px">${s.isFounder ? t('staff.noSalary') : money(s.salary) + t('ui.perMonth')}</span><span class="sp"></span>
@@ -99,7 +113,7 @@ function crew(G, team) {
     <div class="tm-mem">${chips || `<span class="faint" style="font-size:12px">${t('tm.empty')}</span>`}</div>
     ${mem.length ? `<div class="faint" style="font-size:11.5px;margin-top:6px">${lead ? t('tm.leadIs', { name: esc(lead.name) }) : t('tm.leadNone')}</div>` : ''}
     ${mem.length < TEAM_SIZE ? `<div class="row" style="margin-top:8px"><button class="btn sm ${S.addFor === team.id ? 'on' : ''}" data-act="tm-addopen" data-tid="${team.id}">${icon('plus')}${t('tm.add')}</button></div>` : ''}${picker}
-    ${mem.length ? `<div class="lbl" style="margin:12px 0 0">${t('tm.avg')}</div>${skills(G, teamAvg(G, team))}` : ''}
+    ${mem.length ? `<div class="lbl" style="margin:12px 0 0">${t('tm.avg')}</div>${skills(G, teamAvg(G, team))}${teamGx(mem)}` : ''}
     ${roleBlock(G, team)}
     ${team.role === 'ops' ? opsBlock(G, team) : team.role === 'hw' ? hwBlock(G, team) : `<div style="margin-top:12px;padding-top:10px;border-top:1px dashed var(--line)"><div class="lbl" style="margin:0 0 6px">${t('tm.course')}</div>${course}</div>${missionBlock(G, team)}`}
   </div>`;

@@ -52,8 +52,15 @@ while (G.job && guard++ < 6000) {
   S.stepTick(G);
 }
 ok(G.job && G.job.state === 'report', 'spel klart för recension');
+const crew0 = S.workers(G).map((w) => w.id);
 const g = S.releaseGame(G);
 ok(g && g.score > 0 && g.total > 0, 'släpp spel: betyg ' + g.score + ' prognos ' + Math.round(g.total));
+ok(crew0.length > 0 && G.staff.filter((w) => crew0.includes(w.id)).every((w) => w.gx && w.gx.rpg === 1 && w.gx.adventure === 1), 'varje medarbetare i projektet får rutin i båda genrerna (genrekunskap)');
+{
+  const lg = S.scoreLegs(g.parts, g.scope);
+  ok(lg.craft >= 0 && lg.craft <= 100 && lg.recipe >= 0 && lg.recipe <= 100 && ['craft', 'recipe', 'none'].includes(lg.weak), 'betygets två ben ger tal 0 till 100 och pekar ut det svagaste');
+  ok(g.parts.know >= 0 && g.parts.know <= S.GX_MAX && g.insights.every((x) => x.k !== 'know' || x.v === g.parts.know), 'rapporten bär teamets snittrutin i genren');
+}
 for (let i = 0; i < 200; i++) { if (G.pending.length) G.pending.shift(); S.stepTick(G); }
 ok(g.revenue > 0 && g.units > 0, 'försäljning rullar: ' + Math.round(g.revenue));
 ok(S.patchGame(G, g.id) === true || g.bugs < 3 || g.ended, 'patch');
@@ -2660,5 +2667,41 @@ ok(!bad.length, `äldre sparning utan ett av ${paths.length} fält går att spel
   ok(gol.live.subs > 0 && gol.live.eLift === undefined && S.kindOfGame(gol).id === 'mmo' && S.liveFactors(GOl, gol).esports === 1, 'gamla onlinespel utan e-sport och sort räknas som MMO utan e-sportlyft');
   ok(S.esportPlan(GOl, gol, 'race', 2, 0, 0).viewers > 0 && !gol.live.esp, 'förhandsvisningen skapar inget i spelet');
 }
+// ── Genrekunskap och betygets två ben ────────────────────────────
+{
+  const GX = S.newGame({ studio: 'GX', seed: 21, difficulty: 'normal' });
+  S.makeCompetitors(GX); S.initWorld(GX);
+  const w = GX.staff[0];
+  ok(S.genreKnow(w, 'rpg') === 0 && S.knowMult(0) === S.GX_BASE, 'ingen rutin från början: grundtempot');
+  S.learnGenre(w, 'rpg', null);
+  ok(S.genreKnow(w, 'rpg') === 1 && S.genreKnow(w, 'action') === 0, 'ett spel ger ett steg i just den genren');
+  for (let i = 0; i < 12; i++) S.learnGenre(w, 'rpg', 'action');
+  ok(S.genreKnow(w, 'rpg') === S.GX_MAX && S.genreKnow(w, 'action') === S.GX_MAX, 'rutinen har tak och en blandning lär ut båda genrerna');
+  ok(S.knowMult(S.GX_MAX) > S.knowMult(1) && S.knowMult(S.GX_MAX) / S.knowMult(0) < 1.1, 'rutinen ger högst några procent mer tempo');
+  const bg = S.bestGenres(w, 3);
+  ok(bg.length === 2 && bg[0][1] === S.GX_MAX, 'bestGenres listar bara genrer med rutin');
+  // samma medarbetare, med och utan rutin: bara projekt i genren märker skillnaden, kontrakt (utan genre) inte
+  const J = { scope: 'medium', crunch: false, genre: 'rpg', genre2: null };
+  const withK = S.teamOutput(GX, J, 0.5, [w]);
+  const w2 = { ...w, gx: {} };
+  const noK = S.teamOutput(GX, J, 0.5, [w2]);
+  ok(Math.abs(withK.d / noK.d - S.knowMult(S.GX_MAX) / S.knowMult(0)) < 1e-9 && withK.kavg === S.GX_MAX && noK.kavg === 0, 'ett team med rutin i genren jobbar snabbare i den');
+  const c1 = S.teamOutput(GX, { scope: 'medium', crunch: false }, 0.5, [w]);
+  const c2 = S.teamOutput(GX, { scope: 'medium', crunch: false }, 0.5, [w2]);
+  ok(c1.d === c2.d && c1.t === c2.t, 'utan genre (kontrakt) spelar rutinen ingen roll');
+  // två ben: ett perfekt recept med svagt team och tvärtom
+  const base = { r: 1, s0: 5.7, mCompat: 1, mFit: 1.02, mAud: 1, mPlat: 1, mVr: 1, mBug: 1, mFresh: 1, mSeq: 1 };
+  const weakTeam = S.scoreLegs(base, 'large');
+  ok(weakTeam.recipe === 100 && weakTeam.craft === 57 && weakTeam.weak === 'craft', 'perfekt recept men svagt team: teamet begränsar');
+  const weakRecipe = S.scoreLegs({ ...base, r: 3.5, s0: 9.5, mCompat: 0.8, mFit: 0.8, mAud: 0.9 }, 'large');
+  ok(weakRecipe.craft === 95 && weakRecipe.recipe < 40 && weakRecipe.weak === 'recipe', 'starkt team men dåligt recept: receptet begränsar');
+  const both = S.scoreLegs({ ...base, r: 4, s0: 9.7 }, 'aaa');
+  ok(both.craft >= 95 && both.recipe === 100 && both.weak === 'none', 'bådas toppnivå ger inget att vinna');
+  // båda behövs: samma recept och team ger aldrig toppbetyg om ett av benen saknas (jämför råbetyget)
+  const raw = (p, sc) => S.softCap(p.s0 * p.mCompat * p.mFit * p.mAud * p.mPlat * p.mVr * p.mBug * p.mFresh * p.mSeq, S.SCOPE_CAP[sc]);
+  const top = { ...base, s0: 9.7, r: 4 };
+  ok(raw(top, 'aaa') > 9.5 && raw({ ...top, mCompat: 0.8, mFit: 0.8, mAud: 0.9 }, 'aaa') < 7 && raw({ ...top, s0: 5.7 }, 'aaa') < 6.5, 'toppbetyg kräver både recept och team');
+}
+
 console.log(fails ? `\n${fails} FEL` : '\nAlla tester gick bra');
 process.exit(fails ? 1 : 0);

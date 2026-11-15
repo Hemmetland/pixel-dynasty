@@ -8,7 +8,7 @@ import { CAT } from '../data/categories.js';
 import { PLATFORM, PLATFORMS } from '../data/platforms.js';
 import { REVIEWERS } from '../data/reviews.js';
 import { EV } from '../data/events.js';
-import { reviewTexts, phaseCats, idealFocus, SCOPE_CAP, softCap } from '../sim/score.js';
+import { reviewTexts, phaseCats, idealFocus, SCOPE_CAP, softCap, scoreLegs } from '../sim/score.js';
 import { setPhaseFocus } from '../sim/dev.js';
 import { resolveEvent, previewFx, fxBlockReason } from '../sim/events.js';
 import { AWARD_CATS } from '../sim/awards.js';
@@ -151,7 +151,7 @@ function reportPrompt(app, G, p, finish) {
         <div class="rp-score" id="rp-score" style="--c:${scoreColor(total)}"><div class="ring"><svg viewBox="0 0 100 100"><circle cx="50" cy="50" r="44" class="r0"/><circle cx="50" cy="50" r="44" class="r1" id="rp-ring" stroke-dasharray="276.5" stroke-dashoffset="276.5"/></svg><div class="big num" id="rp-avg">–</div></div><div class="stamp" id="rp-stamp">${t(outlook)}</div>${record ? `<div class="rp-rec">${icon('star')}${t('rep.record')}</div>` : ''}</div>
       </div>
       <div class="revs">${cards}</div>
-      <div class="rp-notes" id="rp-notes"><div class="lbl" style="margin-bottom:8px">${t('rep.notes')}</div><div class="ins">${ins}</div>${learned}</div>
+      <div class="rp-notes" id="rp-notes">${legsBlock(rep, J)}<div class="lbl" style="margin-bottom:8px">${t('rep.notes')}</div><div class="ins">${ins}</div>${learned}</div>
       <div class="win-foot"><button class="btn ghost" data-act="rp-skip" id="rp-skip">${icon('fast')}${t('rep.skip')}</button><span class="sp"></span><button class="btn gold lg" data-act="rp-release" id="rp-release" disabled>${icon('rocket')}${t('rep.release')}</button></div>
     </div>`,
     (el) => {
@@ -222,6 +222,22 @@ function reportPrompt(app, G, p, finish) {
 // Studioanteckningar för ett utvärderat projekt eller ett släppt spel (spelet bär flags, insights, parts och scope).
 export const studioNotes = (rep, J) => scopeNote(rep, J) + (rep.insights || []).map((x) => insightRow(x, rep, J)).join('');
 
+// Betygets två ben i klartext: teamets kunnande sätter taket, receptet avgör hur mycket av det som når fram (se scoreLegs i score.js)
+export function legsBlock(rep, J) {
+  if (!rep.parts || rep.parts.s0 == null || rep.parts.mCompat == null) return '';
+  const lg = scoreLegs(rep.parts, J.scope);
+  const col = (v) => (v >= 85 ? 'var(--good)' : v >= 60 ? 'var(--accent)' : v >= 40 ? 'var(--warn)' : 'var(--bug)');
+  const know = rep.parts.know ? ' ' + t('legs.know', { n: rep.parts.know.toFixed(1) }) : '';
+  const leg = (k, v, extra) => `<div class="leg" data-leg="${k}" style="--c:${col(v)}">
+      <div class="row"><b>${t('legs.' + k)}</b><span class="sp"></span><span class="num lv">${t('legs.of', { v })}</span></div>
+      ${bar(v, col(v), 'tall')}
+      <p class="hint">${t('legs.' + k + 'Hint')}${extra || ''}</p>
+    </div>`;
+  return `<div class="legs card"><div class="lbl">${t('legs.title')}</div>
+    <div class="legs-g">${leg('craft', lg.craft, know)}${leg('recipe', lg.recipe)}</div>
+    <p class="legs-adv">${icon(lg.weak === 'none' ? 'star' : 'info')}<span>${t('legs.adv.' + lg.weak)}</span></p></div>`;
+}
+
 // Storleken som förklaring: taket slog i, teamet har vuxit ur storleken, eller den var för ambitiös
 function scopeNote(rep, J) {
   const sc = SCOPES[J.scope];
@@ -245,7 +261,7 @@ function scopeNote(rep, J) {
 
 function insightRow(x, rep, J) {
   const lvl = x.level > 0 ? 'good' : x.level < 0 ? 'bad' : 'ok';
-  const ic = { compat: 'sparkle', focus: 'sliders', design: 'bulb', tech: 'cpu', bugs: 'bug', platform: 'gamepad', audience: 'user', vr: 'vr' }[x.k];
+  const ic = { compat: 'sparkle', focus: 'sliders', design: 'bulb', tech: 'cpu', bugs: 'bug', platform: 'gamepad', audience: 'user', vr: 'vr', know: 'team' }[x.k];
   let txt = '';
   if (x.k === 'compat') txt = t('ins.compat.' + lvl, { v: t('compat.' + Math.round(x.v)) });
   else if (x.k === 'focus') {
@@ -256,6 +272,7 @@ function insightRow(x, rep, J) {
   else if (x.k === 'platform') txt = t('ins.platform.' + lvl);
   else if (x.k === 'audience') txt = t('ins.audience.' + lvl);
   else if (x.k === 'vr') txt = t('ins.vr.' + lvl);
+  else if (x.k === 'know') txt = t('ins.know.' + lvl, { n: x.v.toFixed(1) });
   void rep;
   return `<div class="in ${lvl}"><span class="ii">${icon(ic)}</span><span>${txt}</span></div>`;
 }

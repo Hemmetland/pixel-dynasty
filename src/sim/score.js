@@ -179,6 +179,8 @@ export function evaluate(G, job) {
   const bugRatio = job.bugs / SCOPES[job.scope].bugs;
   const mBug = 1 - 0.25 * (1 - Math.exp(-0.9 * bugRatio));
   const rep = freshness(G, job);
+  // teamets snittrutin i genren under utvecklingen (0 till 5); räknades redan in i D och T, här bara för förklaringen
+  const know = job.knN ? job.kn / job.knN : 0;
   const mFresh = 1 - Math.min(0.14, rep * 0.05);
   const prev = job.sequelOf ? G.games.find((g) => g.id === job.sequelOf) : null;
   const mSeq = prev ? seqFatigue(prev) : 1;
@@ -212,6 +214,7 @@ export function evaluate(G, job) {
     fresh: rep >= 2 ? -1 : isNovel(G, job) ? 1 : 0,
     // uppföljaren jämförs med föregångaren
     sequel: prev ? (score >= prev.score && score >= 6 ? 1 : score <= prev.score - 0.5 ? -1 : 0) : 0,
+    know: job.knN ? (know >= 3 ? 1 : know < 0.5 && G.games.length >= 4 ? -1 : 0) : 0,
   };
   for (const [k, v] of Object.entries(fl)) if (v) flags.push({ k, v, w: Math.abs(v) });
   const insights = [
@@ -225,6 +228,7 @@ export function evaluate(G, job) {
     ...(vr ? [{ k: 'vr', level: vr, v: mVr }] : []),
   ];
   insights.find((i) => i.k === 'bugs').level = fl.bugs;
+  if (fl.know) insights.push({ k: 'know', level: fl.know, v: know });
 
   return {
     score: clamp(score, 1, 10),
@@ -232,9 +236,32 @@ export function evaluate(G, job) {
     reviews,
     flags,
     insights,
-    parts: { rd, rt, r, s0, compat, mCompat, fit: ff.fit, mFit, mAud, mPlat, mVr, mBug, mFresh, mSeq, bugRatio, par, parTotal, rep, year },
+    parts: { rd, rt, r, s0, know, compat, mCompat, fit: ff.fit, mFit, mAud, mPlat, mVr, mBug, mFresh, mSeq, bugRatio, par, parTotal, rep, year },
     ff,
   };
+}
+
+// ── Betygets två ben ─────────────────────────────────────────────
+// Betyget kommer av två saker som båda måste vara bra. Teamets kunnande (s0: färdigheter, erfarenhet i genren och arbetsledare mot vad
+// spelet kräver) sätter hur högt spelet kan nå. Receptet (tema, genrer, fokus och målgrupp) avgör hur mycket av det som når fram:
+// ett perfekt recept ger ingenting om teamet inte hänger med, och ett skickligt team går till spillo på ett dåligt recept.
+export const RECIPE_LO = 0.8 * 0.8 * 0.84; // sämsta recept: dålig ämnesmatchning, fel fokus, fel målgrupp
+export const RECIPE_HI = 1.02; // bästa recept
+export const recipeMult = (p) => p.mCompat * p.mFit * p.mAud;
+export const recipeRating = (p) => Math.round(clamp((recipeMult(p) - RECIPE_LO) / (RECIPE_HI - RECIPE_LO), 0, 1) * 100);
+export const craftRating = (p) => Math.round(clamp(p.s0 * 10, 0, 100));
+// Båda benen som tal 0–100, vad de två skulle ge om de lyftes (betyget före buggar och upprepning ligger kvar), och vilket som begränsar mest
+export function scoreLegs(p, scope) {
+  const cap = SCOPE_CAP[scope] || 10;
+  const other = (p.mPlat ?? 1) * (p.mVr ?? 1) * (p.mBug ?? 1) * (p.mFresh ?? 1) * (p.mSeq ?? 1);
+  const at = (s0, rm) => softCap(s0 * rm * other, cap);
+  const now = at(p.s0, recipeMult(p));
+  const recipeGain = at(p.s0, RECIPE_HI) - now;
+  const craftGain = at(10 * (1 - Math.exp(-0.85 * p.r * 1.25)), recipeMult(p)) - now;
+  const recipe = recipeRating(p);
+  const craft = craftRating(p);
+  const weak = recipeGain < 0.15 && craftGain < 0.15 ? 'none' : recipeGain >= craftGain ? 'recipe' : 'craft';
+  return { recipe, craft, recipeGain, craftGain, weak };
 }
 
 // Skriv recensionstexter (språkberoende, så de byggs vid visning). Valen är stabila per spel men varierar mellan spel och recensenter.

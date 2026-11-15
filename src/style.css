@@ -807,6 +807,13 @@ input[type='range']::-moz-range-thumb { width: 18px; height: 18px; border-radius
 .rv-t p { margin: 6px 0 0; font-size: 12.5px; color: var(--muted); line-height: 1.45; font-style: italic; }
 .rp-notes { padding: 6px 24px 18px; opacity: 0; transition: 0.6s var(--ease); }
 .rp-notes.show { opacity: 1; }
+.legs { margin: 4px 0 14px; padding: 12px 14px; }
+.legs-g { display: grid; grid-template-columns: repeat(auto-fit, minmax(min(260px, 100%), 1fr)); gap: 14px; margin-top: 8px; }
+.leg .row b { font-size: 13.5px; }
+.leg .lv { font: 700 15px var(--disp); color: var(--c); }
+.leg .hint { margin: 6px 0 0; font-size: 12px; line-height: 1.4; }
+.legs-adv { display: flex; gap: 8px; align-items: flex-start; margin: 12px 0 0; font-size: 13px; line-height: 1.4; color: var(--muted); }
+.legs-adv .ic { width: 15px; height: 15px; flex: none; margin-top: 2px; color: var(--accent); }
 .ins { display: grid; grid-template-columns: repeat(auto-fit, minmax(min(300px, 100%), 1fr)); gap: 7px; }
 .hall-row { border-left: 3px solid var(--c); }
 .hall-n { font-size: 20px; min-width: 26px; text-align: center; color: var(--c); }

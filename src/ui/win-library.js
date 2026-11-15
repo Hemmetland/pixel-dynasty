@@ -17,7 +17,7 @@ import { MONTHS } from './core.js';
 import { fmtNum, fmtFull } from '../core/util.js';
 import { lang } from '../core/i18n.js';
 import { openSequel } from './wizard.js';
-import { studioNotes } from './prompts.js';
+import { studioNotes, legsBlock } from './prompts.js';
 import { crowdNote } from './crowd.js';
 import { openExpansion } from './wizard.js';
 import { CERTS, certOf, certCounts, nextCert, totalUnits, records } from '../sim/charts.js';
@@ -613,6 +613,7 @@ function detailView(G, id) {
     ${portsPanel(G, g)}
     <div class="grid" style="grid-template-columns:repeat(auto-fit,minmax(240px,1fr));margin-top:16px">${texts.map((r, i) => `<div class="rev show" style="--c:${REVIEWERS[i].color}"><div class="rv-h"><div class="rv-av">${icon(['cpu', 'book', 'heart', 'skull'][i])}</div><div style="flex:1"><b>${L(REVIEWERS[i].name)}</b></div><div class="rv-s num" style="color:${scoreColor(r.score)}">${r.score.toFixed(1)}</div></div><div class="rv-t"><b>${esc(r.headline)}</b>${r.detail ? `<p>${esc(r.detail)}</p>` : ''}</div></div>`).join('')}</div>
     ${fansCard(G, g)}
+    ${g.insights?.length ? `<div style="margin-top:16px">${legsBlock(g, g)}</div>` : ''}
     ${g.insights?.length ? `<div class="card" style="margin-top:16px"><div class="lbl" style="margin-bottom:8px">${t('rep.notes')}</div><div class="ins">${studioNotes(g, g)}${crowdNote(G, g, true)}</div></div>` : ''}
     <div class="row wrap" style="gap:10px;margin-top:16px">
       ${G.u.flags.sequels ? `<button class="btn primary" data-act="lib-seq" data-id="${g.id}" ${G.job ? 'disabled' : ''}>${icon('film')}${t('lib.sequel')}</button>` : `<span class="hint">${icon('lock')} ${t('lib.seqLocked')}</span>`}
