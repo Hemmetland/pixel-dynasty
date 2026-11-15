@@ -1,7 +1,7 @@
 import { emit } from '../core/bus.js';
 import { t } from '../core/i18n.js';
 import { yearOf, WEEKS_PER_YEAR } from './const.js';
-import { spend, earn } from './studio.js';
+import { spend, earn, campusOf } from './studio.js';
 import { curveFor } from './sales.js';
 import { note } from './news.js';
 import { BASE_SHARE, STABLE_MIN, stability, subOf, shareOf } from './group.js';
@@ -12,6 +12,8 @@ import { BASE_SHARE, STABLE_MIN, stability, subOf, shareOf } from './group.js';
 // Några konkurrenter blir alltid kvar (ACQ_MAX). Ett köp kräver en stabil ekonomi, och ett dotterbolag kan säljas igen.
 // Styrningen av dotterbolagen (personal, integration, budget, VD och synergier) finns i group.js.
 export const ACQ_MAX = 4;
+// Ett campus ger plats åt fler dotterbolag: ett till för vartannat hus (högst åtta)
+export const acqMax = (G) => ACQ_MAX + Math.floor(campusOf(G) / 2);
 export const SUB_SHARE = BASE_SHARE;
 export const SELL = 0.8; // ett dotterbolag säljs för den andelen av vad det skulle kosta att köpa
 const PRICE_YEARS = 4; // år av försäljning som värderas
@@ -39,7 +41,7 @@ export function canAcquire(G, id) {
   const c = (G.comps || []).find((x) => x.id === id);
   if (!c) return 'gone';
   if (c.owned) return 'owned';
-  if (ownedComps(G).length >= ACQ_MAX) return 'max';
+  if (ownedComps(G).length >= acqMax(G)) return 'max';
   if (stability(G) < STABLE_MIN) return 'unstable';
   if (G.money < acqPrice(G, c)) return 'money';
   return true;
@@ -47,7 +49,7 @@ export function canAcquire(G, id) {
 
 export function acquire(G, id) {
   const ok = canAcquire(G, id);
-  if (ok !== true) return ok === 'money' ? t('err.money') : ok === 'max' ? t('acq.max', { n: ACQ_MAX }) : ok === 'unstable' ? t('acq.unstable', { n: STABLE_MIN }) : false;
+  if (ok !== true) return ok === 'money' ? t('err.money') : ok === 'max' ? t('acq.max', { n: acqMax(G) }) : ok === 'unstable' ? t('acq.unstable', { n: STABLE_MIN }) : false;
   const c = G.comps.find((x) => x.id === id);
   const price = acqPrice(G, c);
   spend(G, price, 'acquisitions');

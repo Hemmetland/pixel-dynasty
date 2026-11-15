@@ -2,7 +2,8 @@ import { esc, icon, t, UI, act, bar, money, errToast } from './core.js';
 import { sfx } from '../audio/sfx.js';
 import { dateOf } from '../sim/const.js';
 import { lang } from '../core/i18n.js';
-import { ACQ_MAX, SELL, canAcquireAny, ownedComps, subIncome, sellPrice, divest } from '../sim/acquire.js';
+import { SELL, acqMax, acqPrice, canAcquireAny, ownedComps, subIncome, sellPrice, divest } from '../sim/acquire.js';
+import { BOARD_MONTHS, boardOpen, boardOf, boardNext, boardReserve, setBoard } from '../sim/board.js';
 import {
   BUDGETS, SHARE_PUB, INTEG_WEEKS, LOAD, OPS_MIN, STABLE_MIN, TECH, STORE, PROMO, PROMO_OWN, COST, COST_MAX,
   canGroup, subOf, stabilityParts, operations, synergies, groupCap, groupLoad, overloaded, shareOf, ceoRating, ceoCandidates,
@@ -58,6 +59,29 @@ function synCard(G) {
 
 function seg(items, cur, actName, id, tip, dis) {
   return `<div class="seg wrap-seg">${items.map((label, i) => `<button class="${cur === i ? 'on' : ''}" data-act="${actName}" data-id="${id}" data-i="${i}" ${tip ? `data-tip="${esc(tip(i))}"` : ''} ${dis && dis(i) ? 'disabled' : ''}>${label}</button>`).join('')}</div>`;
+}
+
+// Koncernstyrelsen: vad den får göra, reserven i kassan och nästa steg (eller varför den väntar)
+function boardCard(G) {
+  if (!boardOpen(G)) return canGroup(G) ? `<p class="hint" style="margin-top:12px">${t('board.needResearch')}</p>` : '';
+  const b = boardOf(G);
+  const nx = boardNext(G);
+  const st = nx.act === 'buy'
+    ? t('board.st.buy', { studio: esc(nx.c.name), v: money(acqPrice(G, nx.c)) })
+    : nx.act === 'integ'
+      ? t('board.st.integ', { studio: esc(nx.c.name) })
+      : t(`board.st.${nx.why}`, { n: nx.why === 'ops' ? OPS_MIN : STABLE_MIN, v: money(nx.need) });
+  const onOff = [t('board.off'), t('board.on')];
+  const blk = (label, ctl) => `<div><div class="lbl" style="margin-bottom:6px">${label}</div>${ctl}</div>`;
+  const ctl = `<div class="grp-ctl">
+    ${blk(t('board.buy'), seg(onOff, b.buy, 'gb-set', 'buy', () => t('board.buyTip')))}
+    ${blk(t('board.integ'), seg(onOff, b.integ, 'gb-set', 'integ', () => t('board.integTip')))}
+    ${blk(t('board.budget'), seg([t('board.manual'), t('board.auto')], b.budget, 'gb-set', 'budget', () => t('board.budgetTip')))}
+    ${blk(t('board.reserve'), seg(BOARD_MONTHS.map((n) => t('board.months', { n })), b.res, 'gb-set', 'res', () => t('board.reserveTip', { v: money(boardReserve(G)) })))}
+  </div>`;
+  const tot = b.bought || b.merged ? `<p class="hint" style="margin-top:4px">${t('board.totals', { b: b.bought, i: b.merged })}</p>` : '';
+  return `<div class="card" style="margin-top:14px"><div class="row wrap" style="gap:8px">${icon('crown')}<b>${t('board.title')}</b></div>
+    <p class="hint" style="margin:6px 0 10px">${t('board.help')}</p>${ctl}<p class="hint" style="margin-top:10px"><b>${st}</b></p>${tot}</div>`;
 }
 
 function confirmRow(kind, id, label, warn) {
@@ -119,12 +143,17 @@ export function groupTab(G) {
   const grp = canGroup(G);
   return `<p class="hint" style="margin-bottom:12px">${icon('crown')} ${t('grp.help')}${grp ? '' : ` ${t('grp.needResearch')}`}</p>
     ${deps(G)}
+    ${grp ? boardCard(G) : ''}
     ${grp ? synCard(G) : ''}
-    <div class="lbl" style="margin:18px 0 8px">${t('acq.head', { n: subs.length, max: ACQ_MAX, v: money(subIncome(G)) })}</div>
+    <div class="lbl" style="margin:18px 0 8px">${t('acq.head', { n: subs.length, max: acqMax(G), v: money(subIncome(G)) })}</div>
     ${subs.length ? `<div class="col" style="gap:10px">${subs.map((c) => subCard(G, c)).join('')}</div>` : `<p class="hint">${t('grp.none')}</p>`}`;
 }
 
 const G_ = () => UI.app.G;
+act('gb-set', (el) => {
+  if (setBoard(G_(), el.dataset.id, +el.dataset.i)) sfx.play('click');
+  UI.refresh();
+});
 act('grp-mode', (el) => {
   const id = +el.dataset.id;
   const c = ownedComps(G_()).find((x) => x.id === id);

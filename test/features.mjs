@@ -2877,5 +2877,94 @@ ok(!bad.length, `äldre sparning utan ett av ${paths.length} fält går att spel
   ok(S.crowding(W, x, W.t).own === 30, 'släpp äldre än 48 veckor räknas inte');
 }
 
+// ── Koncernstyrelsen: köp, sammanslagning, budget, reserv, rapport och händelser ──────────────────
+{
+  const mk = () => {
+    const W = S.newGame({ studio: 'B', seed: 33 }); S.makeCompetitors(W); S.initWorld(W);
+    while (S.yearOf(W.t) < 2007) { W.money = 1e9; W.pending.length = 0; S.stepTick(W); }
+    W.office.tier = 5; W.money = 3e9; W.fans = 1e6;
+    W.u.flags.acquire = true; W.u.flags.group = true; W.u.flags.publish = true;
+    return W;
+  };
+  const month = (G) => { G.t = G.t - (G.t % 4) + 5; S.boardWeek(G); };
+  const W = mk();
+  const burn = () => S.payroll(W) + S.rentOf(W) + S.facUpkeep(W);
+  ok(!S.boardOpen(W) && S.setBoard(W, 'buy', 1) === false, 'styrelsen kräver forskningen');
+  W.u.flags.groupBoard = true;
+  ok(S.boardNext(W).why === 'off', 'inget påslaget: styrelsen väntar på instruktioner');
+  ok(S.setBoard(W, 'buy', 1) === true && S.setBoard(W, 'res', 9) === true && S.boardOf(W).res === 2 && S.setBoard(W, 'nonsense', 1) === false, 'policyn kan sättas och begränsas');
+  // reserven: 24 månader kräver mer i kassan än 6
+  const cheap = Math.min(...W.comps.map((c) => S.acqPrice(W, c)));
+  W.money = cheap + 8 * burn();
+  const n2 = S.boardNext(W);
+  ok(!n2.act && n2.why === 'cash' && n2.need > W.money, 'reserven på 24 månader: styrelsen väntar på kassan');
+  S.setBoard(W, 'res', 0);
+  ok(S.boardNext(W).act === 'buy', 'reserven på 6 månader: samma kassa räcker');
+  S.setBoard(W, 'res', 1);
+  W.money = 3e9;
+  // ett köp i månaden, aldrig fler bolag än ledningen får äga
+  const r0 = W.rng;
+  month(W);
+  ok(S.ownedComps(W).length === 1 && S.boardOf(W).bought === 1, 'ett köp den första månaden (' + S.ownedComps(W).length + ')');
+  for (let i = 0; i < 6; i++) month(W);
+  ok(S.ownedComps(W).length === S.acqMax(W) && S.acqMax(W) === S.ACQ_MAX && S.boardNext(W).why === 'full', 'styrelsen stannar vid taket på ' + S.ACQ_MAX + ' bolag');
+  // sammanslagning, ett bolag i månaden, och ledningens kapacitet räcker (4 av 4)
+  S.setBoard(W, 'integ', 1);
+  month(W);
+  ok(S.ownedComps(W).filter((c) => c.sub.mode === 'int').length === 1 && S.boardOf(W).merged === 1, 'en sammanslagning den första månaden');
+  for (let i = 0; i < 5; i++) month(W);
+  ok(S.ownedComps(W).every((c) => c.sub.mode === 'int') && !S.overloaded(W), 'alla fyra slås ihop och ledningen räcker (' + S.groupLoad(W) + '/' + S.groupCap(W) + ')');
+  ok(S.boardNext(W).why === 'none' || S.boardNext(W).why === 'full', 'inget mer att göra när alla är sammanslagna');
+  // campus ger plats åt ett bolag till och en halv ledningsplats per hus
+  W.office.campus = 2;
+  ok(S.acqMax(W) === S.ACQ_MAX + 1 && S.groupCap(W) === 5, 'två campushus: ett bolag till (' + S.acqMax(W) + ') och ledning ' + S.groupCap(W));
+  month(W); month(W);
+  ok(S.ownedComps(W).length === 5 && S.ownedComps(W).every((c) => c.sub.mode === 'int') && !S.overloaded(W), 'femte bolaget köps och slås ihop inom kapaciteten');
+  ok(W.rng === r0, 'styrelsen drar inget ur slumptalsföljden');
+  // ledningen full: köp stannar innan den överbelastas
+  W.office.tier = 3; W.office.campus = 0;
+  ok(S.overloaded(W) === true, 'ett mindre kontor överbelastar ledningen');
+  // budgeten på auto: satsa med god marginal, spara bara när kassan är trång, annars normal
+  W.office.tier = 5; W.office.campus = 2;
+  S.setBoard(W, 'budget', 1);
+  W.money = 3e9; month(W);
+  ok(S.ownedComps(W).every((c) => c.sub.budget === 2), 'god marginal: alla satsar');
+  W.money = burn() * 2; month(W);
+  ok(S.ownedComps(W).every((c) => c.sub.budget === 0), 'trång kassa: bolagen sparar');
+  W.money = burn() * 4; month(W);
+  ok(S.ownedComps(W).every((c) => c.sub.budget === 0), 'det tar en bit till innan de slutar spara (ingen fladdrande budget)');
+  W.money = burn() * 8; month(W);
+  ok(S.ownedComps(W).every((c) => c.sub.budget === 1), 'under reserven plus satsningen: normal budget');
+  // kvartalsrapporten
+  W.t = 12 * 30 + 11;
+  S.boardWeek(W);
+  ok(W.news[0].key === 'news.boardReport' && W.news[0].t === W.t && W.news[0].vars.b >= 5 && W.gb.q.bought === 0, 'en rapport per kvartal med köp och sammanslagningar, sedan nollställd');
+  // händelser: deterministiska, små och inom gränserna
+  W.money = 3e9;
+  const A = JSON.parse(JSON.stringify(W)); const B = JSON.parse(JSON.stringify(W));
+  for (const G of [A, B]) { for (let i = 0; i < 500; i++) { G.t = i * 4 + 1; G.money = Math.max(G.money, 3e9); S.boardWeek(G); } }
+  const kinds = new Set(A.news.filter((n) => /^news\.sub/.test(n.key)).map((n) => n.key));
+  ok(JSON.stringify(A.news) === JSON.stringify(B.news) && JSON.stringify(A.comps) === JSON.stringify(B.comps), 'samma frö ger samma händelser');
+  ok(kinds.has('news.subHit') && kinds.has('news.subTalent') && (kinds.has('news.subPoach') || kinds.has('news.subPoachHeld')) && kinds.has('news.subScandal'), 'alla slags händelser förekommer (' + [...kinds].join(', ') + ')');
+  ok(S.ownedComps(A).every((c) => c.strength >= 0.45 && c.strength <= 1.7 && c.sub.staff >= 4 && Number.isFinite(c.sub.staff)), 'händelserna håller sig inom gränserna');
+  // gammal sparning utan styrelsens fält, och spelet går vidare efter sparning
+  const old = JSON.parse(JSON.stringify(mk())); old.u.flags.groupBoard = true; delete old.gb;
+  ok(S.boardOf(old).buy === 0 && S.boardOf(old).res === 1 && S.boardNext(old).why === 'off', 'sparning utan styrelsen fungerar');
+  const GJ = JSON.parse(JSON.stringify(W));
+  for (let i = 0; i < 48; i++) { GJ.pending.length = 0; S.stepTick(GJ); }
+  ok(Number.isFinite(GJ.money) && S.ownedComps(GJ).length === 5 && GJ.gb.buy === 1, 'styrelsen finns kvar efter sparning');
+}
+{
+  // via spelets klocka: styrelsen sköter uppköp och sammanslagning på egen hand
+  const W = S.newGame({ studio: 'C', seed: 34 }); S.makeCompetitors(W); S.initWorld(W);
+  while (S.yearOf(W.t) < 2007) { W.money = 1e9; W.pending.length = 0; S.stepTick(W); }
+  W.office.tier = 5; W.u.flags.acquire = true; W.u.flags.group = true; W.u.flags.publish = true; W.u.flags.groupBoard = true;
+  for (const k of ['buy', 'integ', 'budget']) S.setBoard(W, k, 1);
+  for (let i = 0; i < 48 * 4 * 2; i++) { W.pending.length = 0; W.money = Math.max(W.money, 2e9); S.stepTick(W); }
+  ok(S.ownedComps(W).length >= 3 && W.gb.bought >= 3 && W.gb.merged >= 2, 'klockan: ' + W.gb.bought + ' köp och ' + W.gb.merged + ' sammanslagningar på två år');
+  ok(W.news.some((n) => n.key === 'news.boardReport'), 'klockan: en kvartalsrapport har kommit');
+  ok(!S.overloaded(W), 'klockan: ledningen är inte överbelastad');
+}
+
 console.log(fails ? `\n${fails} FEL` : '\nAlla tester gick bra');
 process.exit(fails ? 1 : 0);

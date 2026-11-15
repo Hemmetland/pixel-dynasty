@@ -51,6 +51,8 @@ const acq = args.includes('--acq');
 // --group: integrerar dotterbolagen när ledningen har plats och kassan räcker tre gånger om, satsar när kassan räcker till
 // fyra års satsning, och gör den skickligaste anställda till VD när kontoret är fullt
 const group = args.includes('--group');
+// --board: forskar Koncernstyrelsen och låter den köpa, slå ihop och styra budgeten (i stället för --acq och --group; --boardres=0..2 reserven)
+const board = args.includes('--board');
 // --store: bygger en egen butik och öppnar den för andra förlag (--store=closed håller den sluten och gör bara pc-spel,
 // --store=ex med exklusiva spel, --pc bara pc-spel när butiken finns, --fee=0.1 avgiften, --sale=0..3 reans rabattnivå)
 const storeArg = args.find((x) => x === '--store' || x.startsWith('--store='));
@@ -314,7 +316,7 @@ function manage(G) {
   // forskning
   if (!casual || G.t % 16 === 0) for (const r of RESEARCH.slice().sort((a, b) => a.rp - b.rp)) {
     if (G.research.active.length >= S.researchSlots(G)) break;
-    if ((r.id === 'b_port' && !ports) || (r.id === 'b_publish' && !publish) || (r.id === 'b_merch' && !lic) || (r.id === 'b_acq' && !acq) || (r.id === 'b_group' && !group) || (r.id === 'b_store' && !store) || (r.cat === 'hw' && !hw) || (r.id === 'h_vr' && !vr) || (r.id === 'h_fab' && (!fab || !G.u.flags.hw_console))) continue;
+    if ((r.id === 'b_port' && !ports) || (r.id === 'b_publish' && !publish) || (r.id === 'b_merch' && !lic) || (r.id === 'b_acq' && !acq && !board) || (r.id === 'b_group' && !group && !board) || (r.id === 'b_board' && !board) || (r.id === 'b_store' && !store) || (r.cat === 'hw' && !hw) || (r.id === 'h_vr' && !vr) || (r.id === 'h_fab' && (!fab || !G.u.flags.hw_console))) continue;
     if (noplat && PLAT_RES.has(r.id)) continue;
     if (S.canResearch(G, r.id) === true && r.rp <= G.rp) S.startResearch(G, r.id);
   }
@@ -423,6 +425,11 @@ function manage(G) {
       const price = S.acqPrice(G, c);
       if (S.acquire(G, c.id) === true && verbose) console.log(`  acquire ${year}: ${c.name} $${price} yearly $${Math.round(S.compYearly(G, c))}`);
     }
+  }
+  // koncernstyrelsen: allt påslaget
+  if (board && S.boardOpen(G)) {
+    for (const k of ['buy', 'integ', 'budget']) S.setBoard(G, k, 1);
+    S.setBoard(G, 'res', +opt('boardres', 1));
   }
   // koncernledning
   if (group && S.canGroup(G)) {
@@ -624,8 +631,9 @@ if (hw && G.hw) {
   console.log(`hw ${S.yearOf(H.t0)} rep ${Math.round(H.rep)} lab ${H.lab}${H.chief ? ' chief' : ''}; rev ${m(T.rev)} design ${m(T.design)} proto ${m(T.proto)} make ${m(T.make)} war ${m(T.war)} roy ${m(T.roy)} drv ${m(T.drv)} lab ${m(T.lab)} issue ${m(T.issue)} fab ${m(T.fab || 0)}${H.fab ? ` lvl ${H.fab.lvl} t0 ${S.yearOf(H.fab.t0 ?? G.t)}` : ""}; net ${m(S.hwNet(G))}`);
   for (const P of H.products) console.log(`  ${P.name} ${P.type} ${S.yearOf(P.tReady)}${P.t != null ? '/' + S.yearOf(P.t) : ''}${P.endT ? '-' + S.yearOf(P.endT) : ''} ${P.partner} score ${P.score0 ?? '-'} $${P.price} sold ${Math.round(P.sold).toLocaleString()} peak ${Math.round(P.peak)}/w rev ${m(P.rev)} dev ${m(P.dev)} make ${m(P.cost)} profit ${m(S.productProfit(P))}${P.plat ? ` lic ${m(P.lic || 0)} base ${Math.round(P.base || 0).toLocaleString()} weight ${S.platOf(G, P).weight.toFixed(1)} tier ${S.platOf(G, P).tier} games ${G.games.filter((g) => g.platform === P.plat).length} gameRev ${m(G.games.filter((g) => g.platform === P.plat).reduce((a, g) => a + g.revenue, 0))} fp ${P.fp || 0} bx ${P.bx || 0} exPaid ${m(P.exPaid || 0)}` : ''}`);
 }
-if (group) console.log(`group: stab ${S.stability(G)}; ops ${S.opsCount(G)}; load ${S.groupLoad(G)}/${S.groupCap(G)}; costSave ${Math.round(S.costSave(G) * 100)}%; promo ${(S.promoOwn(G) * 100).toFixed(1)}%; invested $${Math.round(G.stats.groupInv || 0).toLocaleString()}; ${S.ownedComps(G).map((c) => `${c.name} ${c.sub.mode}${c.sub.mode === 'int' ? ' ' + Math.round(c.sub.integ * 100) + '% b' + c.sub.budget : ''} staff ${Math.round(c.sub.staff)} share ${Math.round(S.shareOf(G, c) * 100)}%${c.sub.ceo ? ' ceo' : ''}`).join(', ')}`);
-if (acq) console.log(`owned ${S.ownedComps(G).length}; paid $${Math.round(S.ownedComps(G).reduce((a, c) => a + c.paid, 0)).toLocaleString()}; earned $${Math.round(S.subIncome(G)).toLocaleString()}; ${S.ownedComps(G).map((c) => `${c.name} ${S.yearOf(c.ownedT)} $${Math.round(c.paid / 1e6)}M -> $${Math.round(c.subRev / 1e6)}M`).join(', ')}`);
+if (board && G.gb) console.log(`board: bought ${G.gb.bought}, merged ${G.gb.merged}; reserve idx ${G.gb.res}; max subs ${S.acqMax(G)}; cap ${S.groupCap(G)}`);
+if (group || board) console.log(`group: stab ${S.stability(G)}; ops ${S.opsCount(G)}; load ${S.groupLoad(G)}/${S.groupCap(G)}; costSave ${Math.round(S.costSave(G) * 100)}%; promo ${(S.promoOwn(G) * 100).toFixed(1)}%; invested $${Math.round(G.stats.groupInv || 0).toLocaleString()}; ${S.ownedComps(G).map((c) => `${c.name} ${c.sub.mode}${c.sub.mode === 'int' ? ' ' + Math.round(c.sub.integ * 100) + '% b' + c.sub.budget : ''} staff ${Math.round(c.sub.staff)} share ${Math.round(S.shareOf(G, c) * 100)}%${c.sub.ceo ? ' ceo' : ''}`).join(', ')}`);
+if (acq || board) console.log(`owned ${S.ownedComps(G).length}; paid $${Math.round(S.ownedComps(G).reduce((a, c) => a + c.paid, 0)).toLocaleString()}; earned $${Math.round(S.subIncome(G)).toLocaleString()}; ${S.ownedComps(G).map((c) => `${c.name} ${S.yearOf(c.ownedT)} $${Math.round(c.paid / 1e6)}M -> $${Math.round(c.subRev / 1e6)}M`).join(', ')}`);
 if (lic) {
   const F = S.frOf(G);
   const films = F.deals.filter((d) => d.kind === 'film' && d.done);

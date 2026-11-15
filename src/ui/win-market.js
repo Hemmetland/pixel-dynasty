@@ -19,7 +19,7 @@ import { awardStandings, GALA_FIELD, AWARD_CATS } from '../sim/awards.js';
 import { storeTab } from './store-tab.js';
 import { groupTab } from './group-tab.js';
 import { STABLE_MIN, stability } from '../sim/group.js';
-import { ACQ_MAX, SUB_SHARE, canAcquireAny, ownedComps, compYearly, acqPrice, canAcquire, acquire, subIncome } from '../sim/acquire.js';
+import { acqMax, SUB_SHARE, canAcquireAny, ownedComps, compYearly, acqPrice, canAcquire, acquire, subIncome } from '../sim/acquire.js';
 
 const M = { tab: 'plat' };
 
@@ -174,7 +174,7 @@ function rivalsTab(G) {
   const own = owned.length;
   const top = Math.max(1, rank[0].rev);
   const head = canAcquireAny(G)
-    ? `<p class="hint" style="margin-bottom:10px">${icon('crown')} ${t('acq.head', { n: own, max: ACQ_MAX, v: money(subIncome(G)) })} ${t('acq.help', { pct: Math.round(SUB_SHARE * 100) })}</p>`
+    ? `<p class="hint" style="margin-bottom:10px">${icon('crown')} ${t('acq.head', { n: own, max: acqMax(G), v: money(subIncome(G)) })} ${t('acq.help', { pct: Math.round(SUB_SHARE * 100) })}</p>`
     : yearOf(G.t) >= 1998 ? `<p class="hint" style="margin-bottom:10px">${icon('lock')} ${t('acq.locked')}</p>` : '';
   const lastOf = (c) => G.market.releases.filter((r) => r.comp === c.id).slice(-1)[0];
   const share = (r) => `<div class="rv-str share" style="width:150px">${bar((r.rev / top) * 100, r.color, 'thin')}<div class="faint" style="font-size:11px;margin-top:3px">${t('mkt.rank.share', { n: pctShare(r.share) })} · ${money(r.rev)}</div></div>`;

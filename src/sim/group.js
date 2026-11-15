@@ -3,7 +3,7 @@ import { hashStr, seeded } from '../core/rng.js';
 import { emit } from '../core/bus.js';
 import { PLATFORM, potential } from '../data/platforms.js';
 import { yearOf, wageIndex, WEEKS_PER_YEAR } from './const.js';
-import { spend, capacity, seated, facLevel, rentOf, facUpkeep, loanInterest } from './studio.js';
+import { spend, capacity, seated, facLevel, rentOf, facUpkeep, loanInterest, campusOf } from './studio.js';
 import { payroll } from './people.js';
 import { note } from './news.js';
 import { ownPlatFor } from './hardware.js';
@@ -98,7 +98,8 @@ export function synergies(G) {
 }
 
 // ── Ledningens kapacitet ──
-export const groupCap = (G) => Math.max(1, G.office.tier - 2) + (canGroup(G) ? 1 : 0);
+// ... och varje campushus ger ledningen en halv plats till
+export const groupCap = (G) => Math.max(1, G.office.tier - 2) + (canGroup(G) ? 1 : 0) + 0.5 * campusOf(G);
 export const loadOf = (c) => (!c.sub || c.sub.mode === 'free' ? LOAD.free : c.sub.ceo ? LOAD.ceo : LOAD.int);
 export const groupLoad = (G) => owned(G).reduce((a, c) => a + loadOf(c), 0);
 export const overloaded = (G) => groupLoad(G) > groupCap(G) + 1e-9;

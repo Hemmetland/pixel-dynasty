@@ -14,6 +14,7 @@ import { pubWeek } from './publish.js';
 import { frWeek } from './franchise.js';
 import { subWeek } from './acquire.js';
 import { groupWeek, costSave } from './group.js';
+import { boardWeek } from './board.js';
 import { storeWeek } from './store.js';
 import { hwWeek } from './hardware.js';
 import { opsWeek } from './opsteam.js';
@@ -71,6 +72,7 @@ function weekly(G) {
   frWeek(G);
   subWeek(G);
   groupWeek(G);
+  boardWeek(G); // koncernstyrelsen och dotterbolagens händelser, efter veckans integration
   storeWeek(G);
   hwWeek(G);
   hwTeamWeek(G); // produktteamen underhåller och tar fram nästa generation efter veckans försäljning
