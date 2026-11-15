@@ -71,6 +71,11 @@ const vr = args.includes('--vr');
 // full och flyttar produkter dit när kapaciteten räcker
 const fab = args.includes('--fab');
 const PLAT_RES = new Set(['h_lowpow', 'h_soc', 'h_handheld', 'h_devkit', 'h_console', 'h_backcompat', 'h_vr']);
+// --teams=N: när Självgående team finns bildar botten ett team av de N senast anställda (utan grundaren) som kör uppdrag på egen hand
+// (--teamn=N antal, standard 5; --teamrep=0 stänger av fortsättning, --teamtrain=0 stänger av kurser mellan uppdragen)
+const teamsArg = args.find((x) => x === '--teams' || x.startsWith('--teams='));
+const teamsOn = !!teamsArg;
+const teamN = +(teamsArg && teamsArg.split('=')[1]) || +opt('teamn', 5);
 // --bd: skriv ut årets pengar per kategori (för balansarbete)
 const bd = args.includes('--bd');
 const acc = {};
@@ -277,6 +282,17 @@ function manage(G) {
     if (G.research.active.length >= S.researchSlots(G)) break;
     if (r.cat === 'hw' && !hw) continue;
     if (S.canResearch(G, r.id) === true && G.money > S.researchCost(G, r.id).money * 5) S.startResearch(G, r.id);
+  }
+  // självgående team
+  if (teamsOn && G.u.flags.autoTeams) {
+    let tm = S.teamsOf(G)[0];
+    const free = G.staff.filter((x) => !x.isFounder && !S.teamOfStaff(G, x.id));
+    if (!tm && free.length >= teamN + 2) {
+      tm = S.createTeam(G);
+      for (const x of free.sort((p, q) => q.hired - p.hired).slice(0, teamN)) S.addMember(G, tm.id, x.id);
+      tm.repeat = opt('teamrep', '1') !== '0';
+      tm.autoTrain = opt('teamtrain', '1') !== '0';
+    }
   }
   // porteringar: bästa väntade betyg gånger plattformens storlek, bara för spel med betyg 7+
   if (ports && G.u.flags.ports && !G.port) {
@@ -525,6 +541,11 @@ if (lic) {
   const F = S.frOf(G);
   const films = F.deals.filter((d) => d.kind === 'film' && d.done);
   console.log(`series ${S.seriesList(G).length}; licensing $${Math.round(S.licIncome(G)).toLocaleString()}; deals ${F.deals.length} (${['merch', 'comic', 'film'].map((k) => k + ' ' + F.deals.filter((d) => d.kind === k).length).join(', ')}); films ${films.map((d) => d.q).join(' ')}`);
+}
+if (teamsOn) {
+  const au = G.games.filter((g) => g.auto);
+  const tm = S.teamsOf(G)[0];
+  console.log(`teams: ${au.length} games, revenue $${Math.round(au.reduce((a, g) => a + g.revenue, 0) / 1e6)}M, mean score ${au.length ? (au.reduce((a, g) => a + g.score, 0) / au.length).toFixed(2) : '-'}, samspel ${tm ? S.samspel(tm) : '-'}`);
 }
 if (ports) {
   const pr = G.games.flatMap((g) => g.ports || []);

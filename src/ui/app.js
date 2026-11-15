@@ -27,7 +27,7 @@ const CARD_BOTTOM = 290;
 
 // händelsekortets färg och rubrik efter nyhetens slag, och vilket fönster Visa-knappen öppnar
 const EV_KIND = { award: 'award', bad: 'warning', platform: 'platform' };
-const GO = [[/^news\.(lowCash|debt)$/, 'finance'], [/^news\.hw/, 'hardware'], [/^(live|esp)\./, 'library'], [/^news\.(quit|quitMood|clash)$/, 'staff'], [/^news\.platform$/, 'market'], [/^news\.store(Level|Top|Spot|Event|Wish|Deal|Bundle|Rec)/, 'store']];
+const GO = [[/^news\.(lowCash|debt)$/, 'finance'], [/^news\.hw/, 'hardware'], [/^(live|esp)\./, 'library'], [/^news\.(quit|quitMood|clash|trained|teamTrained|staffGrow|missionDone|missionLost)$/, 'staff'], [/^news\.platform$/, 'market'], [/^news\.store(Level|Top|Spot|Event|Wish|Deal|Bundle|Rec)/, 'store']];
 const goOf = (key) => (GO.find(([re]) => re.test(key)) || [0, 'news'])[1];
 
 export const app = {
@@ -214,10 +214,11 @@ export const app = {
     });
     on('chartTop', () => this.mode === 'play' && sc.confetti(50));
     on('released', (g) => {
-      sc.celebrateNow(3.5);
+      // ett självgående teams spel firas bara om det blev riktigt bra
+      if (!g.auto || g.score >= 8) sc.celebrateNow(3.5);
       if (g.score >= 8) sc.confetti(110);
       if (g.score >= 9) sc.fireworks(5);
-      sfx.play(g.score >= 8 ? 'fanfare' : 'release');
+      if (!g.auto || g.score >= 8) sfx.play(g.score >= 8 ? 'fanfare' : 'release');
       checkAchievements(this.G);
       checkGoals(this.G);
     });

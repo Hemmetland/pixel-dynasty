@@ -1007,6 +1007,193 @@ ok(true, 'alla händelser körda');
   for (let i = 0; i < 30; i++) { GO.t++; S.storeWeek(GO); }
   ok(Number.isFinite(GO.money) && Array.isArray(GO.store.deals) && GO.store.rec, 'en butik från före erbjudandena fortsätter som vanligt');
 }
+// personalens tillväxt, team och kurs för hela teamet
+{
+  const GT = S.newGame({ studio: 'T', seed: 41 }); S.makeCompetitors(GT); S.initWorld(GT);
+  GT.t = 48 * 12; GT.money = 5e7; GT.u.flags.training = true; GT.office.tier = 3;
+  for (let i = 0; i < 5; i++) { S.refreshCandidates(GT); GT.money += GT.candidates[0].fee; S.hire(GT, GT.candidates[0].id); }
+  const rngT = GT.rng;
+  const [, a, b, c] = GT.staff;
+  const sum = (x) => x.design + x.tech + x.speed + x.research;
+  // växa av arbete
+  const xp0 = a.xp || 0;
+  S.growWeek(GT);
+  ok((a.xp || 0) === xp0, 'utan ett pågående projekt samlas ingen erfarenhet');
+  GT.job = { kind: 'game', state: 'dev', crunch: false };
+  S.growWeek(GT);
+  ok(a.xp > xp0 && S.growWeeksLeft(GT, a, false) > 1, 'med ett projekt samlar medarbetaren erfarenhet');
+  const m0 = a.mood; a.mood = 100; const fast = S.growRate(GT, a, false); a.mood = 20; const slow = S.growRate(GT, a, false); a.mood = m0;
+  ok(fast > slow && S.growRate(GT, { ...a, trait: null }, true) > S.growRate(GT, { ...a, trait: null }, false) && S.growRate(GT, { ...a, trait: 'mentor' }, true) === S.growRate(GT, { ...a, trait: 'mentor' }, false), 'trivsel och en mentor gör att man lär sig fortare (men inte mentorn själv)');
+  const lo = { ...a, design: 10, tech: 10, speed: 10, research: 10 }, hi = { ...a, design: 90, tech: 90, speed: 90, research: 90 };
+  ok(S.growRate(GT, lo, false) > S.growRate(GT, hi, false), 'ju närmare taket, desto långsammare');
+  a.xp = S.GROW_XP - 0.01;
+  const tot0 = sum(a), sal0 = a.salary;
+  S.growWeek(GT);
+  ok(sum(a) === tot0 + 1 && a.salary > sal0 && a.lastGrow === GT.t && S.SKILLS.includes(a.growSkill) && a.grown === 1 && a.xp < 5, 'ett steg ger +1 i en färdighet, lite högre lön och ett märke');
+  ok(S.growSkill(GT, a) === S.growSkill(GT, a), 'färdigheten väljs av fröet, inte av slumpen');
+  const picks = { design: 0, tech: 0, speed: 0, research: 0 };
+  for (let i = 0; i < 400; i++) picks[S.growSkill(GT, { id: i, spec: 'coder', grown: 0 })]++;
+  ok(picks.tech > picks.design && picks.tech > picks.research, 'en programmerare lär sig mest av teknik');
+  b.trainUntil = GT.t + 5; b.xp = 0;
+  S.growWeek(GT);
+  ok(b.xp === 0, 'den som är på kurs samlar ingen erfarenhet');
+  b.trainUntil = -1;
+  c.design = c.tech = c.speed = c.research = Math.ceil(S.skillCap(GT)); c.xp = S.GROW_XP;
+  const tc = sum(c);
+  S.growWeek(GT);
+  ok(sum(c) === tc && c.xp === S.GROW_XP, 'ingen växer över taket');
+  ok(GT.rng === rngT, 'tillväxten rör inte slumpföljden');
+  GT.job = null;
+  // team
+  const T1 = S.createTeam(GT);
+  ok(T1.id === 1 && S.teamsOf(GT).length === 1 && S.teamsOpen(GT), 'ett team skapas');
+  ok(S.addMember(GT, T1.id, a.id) === true && S.addMember(GT, T1.id, b.id) === true && S.addMember(GT, T1.id, c.id) === true && S.membersOf(GT, T1).length === 3, 'personal läggs till');
+  const T2 = S.createTeam(GT);
+  ok(S.addMember(GT, T2.id, c.id) === true && T1.members.length === 2 && T2.members.includes(c.id) && S.teamOfStaff(GT, c.id) === T2, 'en person är med i ett team i taget');
+  ok(S.addMember(GT, T1.id, c.id) === true && T2.members.length === 0, 'och flyttas dit man lägger till');
+  ok(S.teamName(T1).sv !== S.teamName(T2).sv, 'teamen får olika namn');
+  for (let i = 0; i < 4; i++) S.createTeam(GT);
+  ok(typeof S.createTeam(GT) === 'string' && S.teamsOf(GT).length === S.TEAM_MAX, 'högst ' + S.TEAM_MAX + ' team');
+  S.disbandTeam(GT, T2.id); S.disbandTeam(GT, 3); S.disbandTeam(GT, 4); S.disbandTeam(GT, 5); S.disbandTeam(GT, 6);
+  ok(S.teamsOf(GT).length === 1 && S.teamsOf(GT)[0] === T1, 'ett team kan lösas upp');
+  for (let i = 0; i < 12; i++) GT.staff.push({ ...a, id: 900 + i, name: 'X' + i, trainUntil: -1, trainSkill: null, lastTrain: -99, trait: null });
+  let full = true;
+  for (let i = 0; i < 12; i++) full = S.addMember(GT, T1.id, 900 + i);
+  ok(T1.members.length === S.TEAM_SIZE && typeof full === 'string', 'ett team rymmer högst ' + S.TEAM_SIZE);
+  S.removeMember(GT, T1.id, 908); S.removeMember(GT, T1.id, 909);
+  GT.staff = GT.staff.filter((x) => x.id !== 903);
+  S.teamsWeek(GT);
+  ok(!T1.members.includes(903) && T1.members.length === S.TEAM_SIZE - 2, 'den som slutar försvinner ur teamet');
+  ok(GT.rng === rngT, 'teamen rör inte slumpföljden');
+  // hel kurs: en kursplats, en fjärdedel billigare
+  const slots = S.trainingSlots(GT);
+  const info = S.courseInfo(GT, T1);
+  ok(S.canTrainTeam(GT, T1) === true && info.ready.length === T1.members.length && info.cost === Math.round(info.alone * S.TEAM_DISCOUNT) && info.cost < info.alone, 'teamkursen kostar mindre än kurser var för sig');
+  const mo = GT.money;
+  const before = new Map(GT.staff.map((x) => [x.id, x.design]));
+  ok(S.trainTeam(GT, T1.id, 'design') === true && GT.money === mo - info.cost, 'teamet går kursen och betalar rabatterat');
+  const onGroup = GT.staff.filter((x) => x.trainGroup === 'T' + T1.id);
+  ok(onGroup.length === info.ready.length && S.trainingNow(GT) === 1 && slots >= 1, 'hela teamet tar bara en kursplats');
+  ok(S.canTrainTeam(GT, T1) === 'busy' && S.workers(GT).every((w) => !onGroup.includes(w)), 'teamet är borta från arbetet under kursen');
+  const outsider = GT.staff.find((x) => !T1.members.includes(x.id) && !x.isFounder);
+  ok(slots > 1 || S.canTrain(GT, outsider) === 'slots', 'platsen är upptagen för andra om det bara finns en');
+  GT.news.length = 0;
+  GT.t = Math.max(...onGroup.map((x) => x.trainUntil));
+  S.finishCourses(GT);
+  ok(onGroup.every((x) => !x.trainSkill && !x.trainGroup && x.design > before.get(x.id)), 'alla i teamet blev bättre och är tillbaka');
+  const nn = GT.news.filter((x) => x.key === 'news.teamTrained');
+  ok(nn.length === 1 && nn[0].vars.n === onGroup.length && GT.news.every((x) => x.key !== 'news.trained'), 'en nyhet för hela kursen (inte en per person)');
+  ok(S.canTrainTeam(GT, T1) === 'cooldown' && S.trainingNow(GT) === 0, 'efter kursen behöver de vila, och platsen är ledig igen');
+  // en enskild kurs fungerar som förut (och ger en rad i krönikan)
+  const lone = GT.staff.find((x) => !x.isFounder && !T1.members.includes(x.id));
+  GT.t += 40;
+  ok(S.train(GT, lone.id, 'tech') === true && S.trainingNow(GT) === 1 && !lone.trainGroup, 'en enskild kurs tar en plats');
+  GT.t = lone.trainUntil; S.finishCourses(GT);
+  ok(GT.news.some((x) => x.key === 'news.trained' && x.vars.name === lone.name), 'en enskild kurs blir en rad i krönikan');
+  ok(S.canTrainTeam({ ...GT, u: { ...GT.u, flags: {} } }, T1) === 'locked', 'kurser för team kräver Utbildning');
+  const GOLD = JSON.parse(JSON.stringify(GT)); delete GOLD.teams; delete GOLD.teamSeq;
+  for (const x of GOLD.staff) { delete x.trainGroup; delete x.xp; delete x.grown; delete x.lastGrow; delete x.growSkill; }
+  GOLD.job = { kind: 'game', state: 'dev', crunch: false };
+  for (let i = 0; i < 60; i++) { GOLD.t++; S.finishCourses(GOLD); S.teamsWeek(GOLD); S.growWeek(GOLD); }
+  ok(S.teamsOf(GOLD).length === 0 && !S.teamsOpen({ ...GOLD, staff: GOLD.staff.slice(0, 2) }) && GOLD.staff.every((x) => Number.isFinite(x.design + x.xp)), 'en sparning från före teamen fortsätter som vanligt');
+}
+// självgående team: arbetsledare, uppdrag (uppföljare, expansion, nytt spel), erfarenhet och släpp
+{
+  const GA = S.newGame({ studio: 'A', seed: 51 }); S.makeCompetitors(GA); S.initWorld(GA);
+  GA.t = 48 * 24; GA.money = 5e7; GA.fans = 80000; GA.office.tier = 4; GA.u.flags.training = true;
+  GA.u.scopes = ['small', 'medium', 'large', 'aaa'];
+  for (const x of ['fantasy', 'space']) if (!GA.u.topics.includes(x)) GA.u.topics.push(x);
+  for (const x of ['rpg', 'action']) if (!GA.u.genres.includes(x)) GA.u.genres.push(x);
+  for (let i = 0; i < 9; i++) { S.refreshCandidates(GA); GA.money += GA.candidates[0].fee; S.hire(GA, GA.candidates[0].id); }
+  const mk = (id, title, score, age, extra = {}) => ({ id, title, platform: 'pc', genre: 'rpg', topic: 'fantasy', scope: 'large', audience: 'everyone', score, total: 3e6, t: GA.t - age, tail: 1, priceAt: 30, weekly: [1], revenue: 5e6, units: 1e5, fansGained: 0, ended: true, chain: 1, insights: [], reviews: [], flags: [], ...extra });
+  GA.games.push(mk(9101, 'Drakens Dal', 8.6, 90), mk(9102, 'Rymdbyggarna', 7.4, 60), mk(9103, 'Skräpet', 4.2, 40));
+  GA.games.push(mk(9104, 'Onlinevärlden', 8, 50));
+  S.launchLive(GA, GA.games[GA.games.length - 1], 'mmo');
+  GA.games[GA.games.length - 1].live.subs = 200000; GA.games[GA.games.length - 1].live.pot = 250000;
+  const T = S.createTeam(GA);
+  T.autoTrain = false;
+  const crew = GA.staff.filter((x) => !x.isFounder);
+  for (const x of crew.slice(0, 2)) S.addMember(GA, T.id, x.id);
+  ok(typeof S.startMission(GA, T.id, 'new') === 'string' && S.canMission(GA, T, 'new') === 'autoLocked', 'uppdrag kräver forskningen Självgående team');
+  GA.u.flags.autoTeams = true; GA.u.flags.sequels = true;
+  ok(S.canMission(GA, T, 'new') === 'smallMission', 'minst tre personer');
+  S.addMember(GA, T.id, crew[2].id); S.addMember(GA, T.id, crew[3].id); S.addMember(GA, T.id, crew[4].id);
+  ok(S.canMission(GA, T, 'new') === true && S.canMission(GA, T, 'sequel', 9101) === true && S.canMission(GA, T, 'expansion', 9104) === true, 'alla tre uppdragen går att starta');
+  ok(S.canMission(GA, T, 'sequel', 9103) === 'base' && S.canMission(GA, T, 'expansion', 9101) === 'base', 'bara spel som gått bra får en uppföljare, bara onlinespel en expansion');
+  const T2 = S.createTeam(GA);
+  S.addMember(GA, T2.id, GA.staff[0].id);
+  ok(S.canMission(GA, T2, 'new') === 'smallMission' || S.canMission(GA, T2, 'new') === 'founder', 'grundaren kan inte vara med');
+  S.addMember(GA, T2.id, crew[5].id); S.addMember(GA, T2.id, crew[6].id);
+  ok(S.canMission(GA, T2, 'new') === 'founder', 'grundaren behövs i studion');
+  S.disbandTeam(GA, T2.id);
+  // arbetsledare
+  ok(S.leadOf(GA, T) === null && S.setLead(GA, T.id, crew[1].id) === true && S.leadOf(GA, T).id === crew[1].id && S.setLead(GA, T.id, crew[1].id) === true && S.leadOf(GA, T) === null, 'en arbetsledare utses och tas bort');
+  const plan = S.planMission(GA, T, 'sequel', 9101);
+  ok(plan.sequelOf === 9101 && plan.genre === 'rpg' && plan.topic === 'fantasy' && plan.title === 'Drakens Dal 2' && plan.platform === 'pc', 'en uppföljare ärver tema, genre och plattform och får nästa nummer');
+  const pe = S.planMission(GA, T, 'expansion', 9104);
+  ok(pe.expansionOf === 9104 && pe.title.startsWith('Onlinevärlden: ') && S.EXP_SCOPES.includes(pe.scope), 'en expansion får grundspelets namn och en tillåten storlek');
+  const pn = S.planMission(GA, T, 'new');
+  ok(pn.topic && pn.genre && pn.scope === 'medium' && pn.title, 'ett nytt spel får tema, genre, namn och en storlek som passar teamets fem');
+  const q = S.missionQuote(GA, T, 'sequel', 9101);
+  ok(q && q.cost > 0 && q.weeks > 0, 'uppdraget har en budget och en längd som visas i förväg');
+  // starta
+  const rng0 = GA.rng, mo = GA.money, w0 = S.workers(GA).length;
+  ok(S.startMission(GA, T.id, 'sequel', 9101) === true && T.mission && GA.money === mo - q.cost, 'uppdraget startar och budgeten betalas');
+  ok(S.leadOf(GA, T) !== null && T.members.every((id) => GA.staff.find((x) => x.id === id).away) && S.workers(GA).length === w0 - 5, 'teamet utser en ledare och är borta från spelarens projekt');
+  ok(GA.rng === rng0, 'att planera och starta ett uppdrag rör inte slumpföljden');
+  ok(S.canMission(GA, T, 'new') === 'onMission' && S.canTrainTeam(GA, T) === 'mission' && typeof S.addMember(GA, T.id, crew[7].id) === 'string' && typeof S.removeMember(GA, T.id, crew[3].id) === 'string', 'under ett uppdrag går teamet inte på kurs och kan inte ändras');
+  ok(S.canTrain(GA, GA.staff.find((x) => x.id === crew[0].id)) === 'away', 'den som är ute på uppdrag kan inte skickas på enskild kurs');
+  // framsteg
+  const g0 = GA.games.length, xp0 = GA.staff.find((x) => x.id === crew[0].id).xp || 0;
+  for (let i = 0; i < 40; i++) { if (GA.pending.length) GA.pending.length = 0; S.stepTick(GA); }
+  ok(S.missionProgress(T.mission) > 0 && S.missionProgress(T.mission) < 1 && S.missionWeeksLeft(T.mission) >= 1, 'uppdraget går framåt vecka för vecka');
+  ok((GA.staff.find((x) => x.id === crew[0].id).xp || 0) !== xp0 || GA.staff.find((x) => x.id === crew[0].id).grown > 0, 'den som är ute på uppdrag lär sig av arbetet');
+  let guard = 0;
+  while (T.mission && guard++ < 4000) { if (GA.pending.length) GA.pending.length = 0; S.stepTick(GA); }
+  const made = GA.games.find((x) => x.auto === T.id);
+  ok(!T.mission && GA.games.length === g0 + 1 && made && made.sequelOf === 9101 && made.score > 0 && made.team === 5, 'spelet släpps av teamet utan att spelaren gör något');
+  ok(T.exp === 1 && T.best === made.score && T.games.includes(made.id) && S.samspel(T) === 1 && GA.news.some((n) => n.key === 'news.missionDone'), 'teamet får samspel och en nyhet om släppet');
+  ok(GA.staff.every((x) => !x.away) && S.workers(GA).length === w0 && Number.isFinite(GA.money), 'alla är tillbaka i arbetet efteråt');
+  for (let i = 0; i < 40; i++) { if (GA.pending.length) GA.pending.length = 0; S.stepTick(GA); }
+  ok(made.revenue > 0 && Number.isFinite(made.revenue), 'spelet säljer som vilket spel som helst');
+  // expansion och nytt spel
+  GA.games.find((x) => x.id === 9104).live.exps.length = 0;
+  ok(S.startMission(GA, T.id, 'expansion', 9104) === true, 'en expansion kan startas');
+  const l0 = GA.games.find((x) => x.id === 9104).live;
+  guard = 0;
+  while (T.mission && guard++ < 4000) { if (GA.pending.length) GA.pending.length = 0; S.stepTick(GA); }
+  const ex = GA.games.find((x) => x.expansionOf === 9104);
+  ok(ex && ex.auto === T.id && l0.exps.includes(ex.id) && GA.news.some((n) => n.key === 'live.news.expansion'), 'expansionen släpps till onlinespelet');
+  ok(S.samspel(T) === 2, 'samspelet växer för varje spel');
+  // automatiskt nästa uppdrag och kurs mellan uppdragen
+  T.repeat = true; T.autoTrain = false;
+  const before = GA.games.length;
+  guard = 0;
+  while (GA.games.length < before + 2 && guard++ < 6000) { if (GA.pending.length) GA.pending.length = 0; S.stepTick(GA); }
+  ok(GA.games.length >= before + 2 && GA.games.filter((x) => x.auto === T.id).length >= 4, 'ett team som fortsätter själv tar nästa uppdrag och släpper fler spel');
+  const nm = S.nextMission(GA, T);
+  ok(['expansion', 'sequel', 'new'].includes(nm[0]), 'nästa uppdrag väljs av teamet');
+  T.repeat = false; T.autoTrain = true;
+  while (T.mission && guard++ < 9000) { if (GA.pending.length) GA.pending.length = 0; S.stepTick(GA); }
+  for (let i = 0; i < 60 && !GA.staff.some((x) => x.trainGroup); i++) { for (let k = 0; k < 4; k++) { if (GA.pending.length) GA.pending.length = 0; S.stepTick(GA); } }
+  ok(GA.staff.some((x) => x.trainGroup === 'T' + T.id && x.trainSkill), 'ett team utan uppdrag går själv en kurs när det är dags');
+  // avbryta och lösa upp
+  for (const x of GA.staff) { x.trainUntil = -1; x.trainSkill = null; x.trainGroup = null; x.lastTrain = -99; }
+  ok(S.startMission(GA, T.id, 'new') === true && S.cancelMission(GA, T.id) === true && !T.mission && GA.staff.every((x) => !x.away), 'ett avbrutet uppdrag släpper medarbetarna');
+  S.startMission(GA, T.id, 'new');
+  ok(S.disbandTeam(GA, T.id) === true && GA.staff.every((x) => !x.away), 'att lösa upp teamet avbryter uppdraget');
+  // för få kvar
+  const T3 = S.createTeam(GA);
+  const four = GA.staff.filter((x) => !x.isFounder).slice(0, 3);
+  for (const x of four) S.addMember(GA, T3.id, x.id);
+  S.startMission(GA, T3.id, 'new');
+  GA.staff = GA.staff.filter((x) => x.id !== four[0].id && x.id !== four[1].id);
+  S.teamsWeek(GA); S.missionWeek(GA);
+  ok(!T3.mission && GA.news.some((n) => n.key === 'news.missionLost') && GA.staff.every((x) => !x.away), 'blir det för få kvar avbryts uppdraget med en nyhet');
+  const GO2 = JSON.parse(JSON.stringify(GA)); delete GO2.teams;
+  for (let i = 0; i < 20; i++) { GO2.t++; S.missionWeek(GO2); }
+  ok(Number.isFinite(GO2.money), 'en sparning från före de självgående teamen fortsätter som vanligt');
+}
 // förlag: pitchar kommer ur fröet, förskott vid underskrift, två avtal åt gången, spelet släpps med ett betyg i intervallet
 {
   const GB = S.newGame({ studio: 'F', seed: 12 }); S.makeCompetitors(GB); S.initWorld(GB);
