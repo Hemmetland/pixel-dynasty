@@ -6,7 +6,7 @@ import { yearOf, wageIndex, WEEKS_PER_YEAR } from './const.js';
 import { TRAIN_TEMPO } from './tempo.js';
 import { DIFFICULTY, nextId } from './state.js';
 import { tr } from './tr.js';
-import { capacity, seated, facLevel, spend } from './studio.js';
+import { capacity, seated, facLevel, spend, campusOf } from './studio.js';
 import { note } from './news.js';
 
 export const SPECS = {
@@ -121,7 +121,7 @@ export function makeCandidate(G, q = 0) {
 }
 
 export function refreshCandidates(G) {
-  const n = 3 + (G.u.flags.hr1 ? 1 : 0) + (G.u.flags.hr2 ? 1 : 0);
+  const n = 3 + (G.u.flags.hr1 ? 1 : 0) + (G.u.flags.hr2 ? 1 : 0) + 2 * campusOf(G); // varje campushus har en egen rekryteringsavdelning
   G.candidates = [];
   for (let i = 0; i < n; i++) {
     const elite = G.u.flags.hr2 && i === n - 1 && chance(G, 0.6);

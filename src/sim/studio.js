@@ -34,7 +34,23 @@ export const TIERS = [
 ];
 export const tierOf = (G) => TIERS[G.office.tier];
 export const office = tierOf;
-export const capacity = (G) => TIERS[G.office.tier].desks;
+// Campus: när Dynastitornet är fullt kan studion bygga fler hus bredvid (se campus.js). Varje hus ger CAMPUS_DESKS skrivbord och
+// kostar hyra. Husen syns bredvid tornet, men personalen i dem sitter inte i scenen.
+export const CAMPUS_MAX = 8;
+export const CAMPUS_DESKS = 30;
+export const CAMPUS = [
+  { cost: 20e6, rent: 60000, fans: 200000 },
+  { cost: 26e6, rent: 63000, fans: 260000 },
+  { cost: 34e6, rent: 66000, fans: 330000 },
+  { cost: 44e6, rent: 69000, fans: 410000 },
+  { cost: 58e6, rent: 72000, fans: 500000 },
+  { cost: 76e6, rent: 75000, fans: 600000 },
+  { cost: 100e6, rent: 78000, fans: 720000 },
+  { cost: 130e6, rent: 81000, fans: 850000 },
+];
+export const campusOf = (G) => Math.min(CAMPUS_MAX, (G.office && G.office.campus) || 0);
+export const campusRent = (G) => CAMPUS.slice(0, campusOf(G)).reduce((a, c) => a + c.rent, 0);
+export const capacity = (G) => TIERS[G.office.tier].desks + CAMPUS_DESKS * campusOf(G);
 // Personal som är ute på en uppgift utanför huset (s.out: driftteam i serverrummet, produktteam i hårdvarulabbet, forskning i
 // forskningslabbet) sitter inte vid ett skrivbord i studion och räknas inte mot skrivborden. De har egna platser: SEATS_PER_LEVEL
 // per nivå av serverrummet, hårdvarulabbet och forskningslabbet. Det går alltså att anställa ersättare till dem som flyttat ut.
@@ -141,7 +157,7 @@ export function upgradeOffice(G) {
   return true;
 }
 export function rentOf(G) {
-  return Math.round(tierOf(G).rent * moneyScale(yearOf(G.t)) * 0.8);
+  return Math.round((tierOf(G).rent + campusRent(G)) * moneyScale(yearOf(G.t)) * 0.8);
 }
 
 // Effektgetters

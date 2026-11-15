@@ -8,6 +8,7 @@ import { PLATFORM } from '../data/platforms.js';
 import { dateOf, yearOf, TICKS_PER_WEEK } from '../sim/const.js';
 import { rpPerWeek } from '../sim/research.js';
 import { canUpgradeOffice, capacity, seated, outCount, tierOf, nextTier, officeReqs } from '../sim/studio.js';
+import { campusOpen, campusNext, campusReqs } from '../sim/campus.js';
 import { canHire, workers, teamFatigue, FATIGUE_MAX, FATIGUE_GRACE } from '../sim/people.js';
 import { canLicense } from '../sim/actions.js';
 import { RESEARCH, RES } from '../data/research.js';
@@ -377,6 +378,13 @@ function goalOf(G) {
     if (!miss) return { id: 'o' + nx.id + 'ok', ic: 'building', c: 'var(--gold)', name: t('pn.goalNm', { name: L(nx.name) }), sub: t('pn.goalReady'), pct: 100, go: 'studio', tip: t('studio.reqReady') };
     const why = REQ[miss.id][2];
     return { id: 'o' + nx.id + miss.id, ic: 'building', c: 'var(--gold)', name: t('pn.goalNm', { name: L(nx.name) }), sub: `${t('pn.req.' + miss.id)} ${reqValue(miss)}`, pct: reqPct(miss), go: 'studio', tip: t(why) };
+  }
+  const nc = campusOpen(G) ? campusNext(G) : null;
+  if (nc) {
+    const miss = campusReqs(G, nc).find((r) => !r.ok);
+    const name = t('pn.goalNm', { name: t('campus.house', { n: nc.n }) });
+    if (!miss) return { id: 'c' + nc.n + 'ok', ic: 'building', c: 'var(--gold)', name, sub: t('pn.goalReady'), pct: 100, go: 'studio', tip: t('studio.reqReady') };
+    return { id: 'c' + nc.n + miss.id, ic: 'building', c: 'var(--gold)', name, sub: `${t('pn.req.' + miss.id)} ${reqValue(miss)}`, pct: reqPct(miss), go: 'studio', tip: t(REQ[miss.id][2]) };
   }
   const na = ACHIEVEMENTS.find((a) => !G.ach.includes(a.id));
   if (na) return { id: 'a' + na.id, ic: 'target', c: 'var(--gold)', name: t('pn.goalNm', { name: L(na.name) }), sub: L(na.desc), pct: 0, go: 'achievements', tip: t('pn.goalTip', { x: G.ach.length, y: ACHIEVEMENTS.length }) };

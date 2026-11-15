@@ -1,6 +1,9 @@
 import { icon, t, tn, L, UI, act, regWin, money, toast, errToast, bar } from './core.js';
 import { buildingPreview, eraOf } from '../render/building.js';
 import { FACILITIES, FAC_IDS, FAC_MAX, OFFICE_AVG_N, facLevel, facCost, facCount, tierOf, nextTier, officeReqs, canUpgradeOffice, upgradeOffice, buildFacility, rentOf, facUpkeep } from '../sim/studio.js';
+import { campusOpen, campusNext, campusReqs, canCampus, buildCampus, campusOf, CAMPUS_MAX, CAMPUS_DESKS } from '../sim/campus.js';
+import { capacity, campusRent } from '../sim/studio.js';
+import { teamMax } from '../sim/teams.js';
 import { RESEARCH } from '../data/research.js';
 import { yearOf } from '../sim/const.js';
 import { fmtNum, fmtScore } from '../core/util.js';
@@ -39,12 +42,38 @@ function reqRow(r) {
     ${bar(reqPct(r), r.ok ? 'var(--good)' : 'var(--warn)', 'thin')}
   </div>`;
 }
-function reqBlock(G, nx) {
-  const reqs = officeReqs(G, nx);
+function reqBlock(G, nx, reqs = officeReqs(G, nx)) {
   const left = reqs.filter((r) => !r.ok).length;
   return `<div class="reqs">
     <div class="row"><span class="lbl">${t('studio.reqTitle')}</span><span class="sp"></span><span class="tag" style="--c:${left ? 'var(--warn)' : 'var(--good)'}">${left ? t('studio.reqLeft', { n: left }) : t('studio.reqDone')}</span></div>
     ${reqs.map(reqRow).join('')}
+  </div>`;
+}
+
+// Campus: när Dynastitornet står och forskningen är klar kan huset byggas ut med fler hus bredvid
+function campusCard(G) {
+  const n = campusOf(G);
+  const nx = campusNext(G);
+  const rs = RESEARCH.find((x) => (x.unlock.flags || []).includes('campus'));
+  const pips = `<span class="pips" style="--c:var(--gold)">${Array.from({ length: CAMPUS_MAX }, (_, i) => `<i class="${i < n ? 'on' : ''}"></i>`).join('')}</span>`;
+  let body;
+  if (!G.u.flags.campus) body = `<div class="hint">${icon('lock')} ${t('studio.needRes', { name: rs ? `<b>${L(rs.name)}</b>` : '?' })}</div>`;
+  else if (!campusOpen(G)) body = `<div class="hint">${icon('building')} ${t('campus.needTower')}</div>`;
+  else if (!nx) body = `<span class="tag" style="--c:var(--good)">${t('campus.max')}</span>`;
+  else {
+    const up = canCampus(G);
+    body = `<div class="lbl" style="margin:6px 0">${t('campus.next', { n: nx.n })}</div>
+      <div class="row wrap" style="gap:6px;margin:6px 0 10px"><span class="chip">${icon('team')}+${nx.desks} ${t('staff.desks')}</span><span class="chip">${icon('money')}${money(nx.rent)}${t('ui.perMonth')}</span></div>
+      ${reqBlock(G, nx, campusReqs(G, nx))}
+      <button class="btn gold block lg" data-act="st-campus" ${up === true ? '' : 'disabled'}>${icon('hammer')}${t('campus.build', { n: nx.n })} · ${money(nx.cost)}</button>
+      <div class="hint" style="margin-top:8px;text-align:center">${up === true ? t('studio.reqReady') : t('studio.reqBlocked')}</div>`;
+  }
+  return `<div class="card" style="padding:14px 16px">
+    <div class="row"><div class="lbl">${t('campus.title')}</div><span class="sp"></span>${pips}</div>
+    <div class="h2" style="margin:4px 0">${t('campus.houses', { n, m: CAMPUS_MAX })}</div>
+    <div class="hint">${t('campus.help', { desks: CAMPUS_DESKS })}</div>
+    ${n ? `<div class="row wrap" style="gap:6px;margin-top:10px"><span class="chip">${icon('team')}${capacity(G)} ${t('staff.desks')}</span><span class="chip">${icon('team')}${teamMax(G)} ${t('campus.teams')}</span><span class="chip">${icon('money')}${money(Math.round(campusRent(G) * 0.8))}${t('ui.perMonth')}</span></div>` : ''}
+    <div style="margin-top:12px">${body}</div>
   </div>`;
 }
 
@@ -102,7 +131,7 @@ regWin({
               ${reqBlock(G, nx)}
               <button class="btn gold block lg" data-act="st-up" ${up === true ? '' : 'disabled'}>${icon('hammer')}${t('studio.expand')} · ${money(nx.cost)}</button>
               <div class="hint" style="margin-top:8px;text-align:center">${up === true ? t('studio.reqReady') : t('studio.reqBlocked')}</div></div>
-          </div>` : `<div class="card"><div class="empty">${icon('crown')}<div>${t('studio.top')}</div></div></div>`}
+          </div>` : `<div class="card"><div class="empty">${icon('crown')}<div>${t('studio.top')}</div></div></div>${campusCard(G)}`}
         </div>
         <div><div class="lbl" style="margin-bottom:10px">${t('studio.facilities')}</div><div class="grid" style="grid-template-columns:repeat(auto-fit,minmax(270px,1fr))">${FAC_IDS.map((id) => facCard(G, id)).join('')}</div></div>
       </div>`;
@@ -114,6 +143,13 @@ act('st-up', () => {
   if (upgradeOffice(G)) {
     toast(t('toast.office', { name: `<b>${L(tierOf(G).name)}</b>` }), 'good', 7000);
     UI.close(true);
+  }
+});
+act('st-campus', () => {
+  const G = UI.app.G;
+  if (buildCampus(G)) {
+    toast(t('toast.campus', { n: `<b>${campusOf(G)}</b>`, desks: capacity(G) }), 'good', 7000);
+    UI.refresh();
   }
 });
 act('st-fac', (el) => {

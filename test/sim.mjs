@@ -95,6 +95,15 @@ const resFoci = opt('resf', 'recipe,tech').split(',');
 // --resw=weak: teamet tas ur de svagaste i design och teknik (standard: de senast anställda)
 const resWeak = opt('resw', 'new') === 'weak';
 const resHire = opt('resw', 'new') === 'hire';
+// --campus: botten bygger ett campushus så fort kraven är uppfyllda och kassan räcker 1,8 gånger om (efter Dynastitornet)
+const campusOn = args.includes('--campus');
+// --hr=N: när Personalavdelningen finns anger botten planen N spelteam (--hrs=storlek, standard 5). Botten anställer själv bara medan det finns
+// färre än --hrkeep (standard 20) ordinarie medarbetare utan team, så att skrivborden räcker till teamen
+const hrArg = args.find((x) => x === '--hr' || x.startsWith('--hr='));
+const hrOn = !!hrArg;
+const hrN = +(hrArg && hrArg.split('=')[1]) || 6;
+const hrSize = +opt('hrs', 5);
+const hrKeep = +opt('hrkeep', 20);
 // --bd: skriv ut årets pengar per kategori (för balansarbete)
 const bd = args.includes('--bd');
 const acc = {};
@@ -367,6 +376,12 @@ function manage(G) {
       S.assignRes(G, tm.id, f);
     }
   }
+  // campus och personalavdelning
+  if (campusOn && S.campusOpen(G) && S.canCampus(G) === true && G.money > S.campusNext(G).cost * 1.8) {
+    const n = S.campusNext(G);
+    if (S.buildCampus(G) === true && verbose) console.log(`  campus ${year}: house ${n.n} $${n.cost} desks ${S.capacity(G)} staff ${G.staff.length}`);
+  }
+  if (hrOn && G.u.flags.hrAuto && (!G.hr || G.hr.teams !== hrN || G.hr.size !== hrSize)) S.setHrPlan(G, hrN, hrSize);
   // porteringar: bästa väntade betyg gånger plattformens storlek, bara för spel med betyg 7+
   if (ports && G.u.flags.ports && !G.port) {
     let best = null;
@@ -443,8 +458,9 @@ function manage(G) {
   }
   // personal
   const burn = S.payroll(G) + S.rentOf(G);
+  const freeN = G.staff.filter((x) => !x.isFounder && !S.teamOfStaff(G, x.id)).length;
   for (const c of G.candidates.slice().sort((a, b) => (b.design + b.tech) - (a.design + a.tech))) {
-    if (!S.canHire(G)) break;
+    if (!S.canHire(G) || (hrOn && G.u.flags.hrAuto && freeN >= hrKeep)) break;
     if (G.money > c.fee + (burn + c.salary) * (casual ? 14 : 8) + 5000) { S.hire(G, c.id); break; }
   }
   // kontor
@@ -627,6 +643,11 @@ if (hwtOn && G.hw) {
 if (resOn) {
   const rt = S.teamsOf(G).filter((x) => x.role === 'res');
   console.log(`res teams: ${rt.length}, ${rt.map((x) => x.target + ' rutin ' + S.resRutin(x) + ' eff ' + Math.round(S.resEff(G, x) * 100)).join(', ')}, recipe level ${S.recipeLevel(G)} (${Math.round(G.rcp || 0)} pts), rp/week extra ${Math.round((G.resRp || 0) * S.TICKS_PER_WEEK)}`);
+}
+if (campusOn || hrOn) {
+  const tms = S.teamsOf(G);
+  const au = G.games.filter((g) => g.auto);
+  console.log(`campus: ${S.campusOf(G)} houses, desks ${S.capacity(G)}, staff ${G.staff.length}, teams ${tms.length} (hr ${S.hrTeams(G).length}), team games ${au.length}, team revenue $${Math.round(au.reduce((a, g) => a + g.revenue, 0) / 1e6)}M, hr hired ${G.hr ? G.hr.hired : 0}, payroll $${Math.round(S.payroll(G)).toLocaleString()}/mo, rent $${Math.round(S.rentOf(G)).toLocaleString()}/mo`);
 }
 if (opsOn) {
   const ot = S.teamsOf(G).filter((x) => x.role === 'ops');

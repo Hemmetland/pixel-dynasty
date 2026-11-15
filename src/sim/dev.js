@@ -341,6 +341,7 @@ export function releaseGame(G) {
   // konkurrenter i samma genre eller tema runt släppet tar köpare (eller ett lugnt fönster ger lite extra)
   const cr = crowding(G, game);
   game.crowd = cr.mult;
+  if (cr.sat < 0.995) game.sat = { n: cr.own, v: Math.round(cr.sat * 100) / 100 };
   game.crowdBy = cr.rivals.slice(0, 3).map((r) => ({ studio: r.studio, title: r.title, future: r.future }));
   startSales(G, game);
   hwRelease(G, game);

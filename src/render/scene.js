@@ -13,6 +13,7 @@ import { TOPIC } from '../data/topics.js';
 import { drawCat } from './props.js';
 import { FRONT } from './tier5-rooms.js';
 import { yearOf, dateOf } from '../sim/const.js';
+import { campusFill } from '../sim/campus.js';
 import { lang } from '../core/i18n.js';
 import { glMethods } from './gl/scene-gl.js';
 import { HW_TYPES } from '../data/hardware.js';
@@ -622,7 +623,7 @@ export class Scene {
     if (!G || !this.L) return;
     this.time += dt;
     const d = dateOf(G.t);
-    this.world.update(dt, { speed: this.speed, paused: this.paused, month: d.month, reduced: this.reduced, todLock: this.todLock, weatherLock: this.weatherLock, brands: hwBrands(G), buyers: hwBuyers(G), buzz: gameBuzz(G), fab: G.hw?.fab?.lvl || 0 });
+    this.world.update(dt, { speed: this.speed, paused: this.paused, month: d.month, reduced: this.reduced, todLock: this.todLock, weatherLock: this.weatherLock, brands: hwBrands(G), buyers: hwBuyers(G), buzz: gameBuzz(G), fab: G.hw?.fab?.lvl || 0, campus: G.office.campus || 0, campusFill: campusFill(G) });
     this.updateActors(dt);
     this.updateCat(dt);
     this.updateFx(dt);

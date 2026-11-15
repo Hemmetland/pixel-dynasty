@@ -7,6 +7,8 @@ import { tr } from './tr.js';
 import { SKILL_NAMES, trainCost, trainWeeks, trainingSlots, trainingNow, finishTraining, TRAIN_COOLDOWN, SKILLS } from './people.js';
 
 export const TEAM_MAX = 6;
+// Fler team får plats i ett större studio: fyra till per campushus (campus.js)
+export const teamMax = (G) => TEAM_MAX + 4 * Math.min(8, (G.office && G.office.campus) || 0);
 export const TEAM_SIZE = 12;
 export const TEAM_DISCOUNT = 0.75;
 export const TEAM_NAMES = [
@@ -67,7 +69,7 @@ export function setLead(G, id, sid) {
 
 export function createTeam(G) {
   const list = (G.teams = G.teams || []);
-  if (list.length >= TEAM_MAX) return tr(G, 'err.teamMax');
+  if (list.length >= teamMax(G)) return tr(G, 'err.teamMax');
   let n = 0;
   while (list.some((x) => x.n === n)) n++;
   G.teamSeq = (G.teamSeq || 0) + 1;
@@ -85,6 +87,8 @@ export function disbandTeam(G, id) {
     if (!deskFree(G, out.length)) return tr(G, 'tm.err.noDesk');
     setOut(out, false);
   }
+  // ett team som personalavdelningen bildat och som läggs ner minskar planen, annars bildas det på nytt nästa vecka
+  if (team.hr && G.hr) G.hr.teams = Math.max(0, G.hr.teams - 1);
   G.teams = G.teams.filter((x) => x !== team);
   return true;
 }

@@ -101,6 +101,8 @@ export class World {
     this.nextBird = 6;
     this.fab = 0; // den egna fabrikens nivå (0 = ingen), syns bakom huset till höger
     this.bldHalf = 212; // husets halva bredd (se Scene.rebuildLayout); fabriken står mellan huset och bildkanten
+    this.campus = 0; // antal campushus (0–8), syns till vänster om huset
+    this.campusFill = 0; // hur stor del av campushusens skrivbord som är besatta (0–1), styr de tända fönstren
   }
 
   resize(W, H, groundY) {
@@ -203,6 +205,8 @@ export class World {
     if (o.todLock != null) this.tod = o.todLock;
     this.month = o.month ?? 0;
     this.fab = o.fab || 0;
+    this.campus = o.campus || 0;
+    this.campusFill = o.campusFill || 0;
     for (const c of this.clouds) {
       c.x += c.v * dt * 0.6;
       if (c.x > this.W + 80) {
@@ -455,6 +459,7 @@ export class World {
   // Stadssilhuett + träd + mark bakom byggnaden (ritas på objektlagret)
   drawBackdrop(ctx) {
     if (this.backdrop) {
+      this.drawCampus(ctx, false);
       this.drawFactory(ctx, false);
       return;
     }
@@ -470,6 +475,7 @@ export class World {
     hz.addColorStop(1, 'rgba(210,225,255,0.22)');
     ctx.fillStyle = hz;
     ctx.fillRect(0, gy - 60, this.W, 60);
+    this.drawCampus(ctx, false);
     this.drawFactory(ctx, false);
   }
   drawLitWindows(ctx, night) {
@@ -477,8 +483,86 @@ export class World {
     const gy = this.groundY;
     ctx.globalAlpha = clamp(night * 1.2, 0, 1);
     if (!this.backdrop) for (let i = 0; i < this.layers.length; i++) ctx.drawImage(this.layers[i].lit, 0, gy - this.layers[i].H - 6 + i * 4);
+    this.drawCampus(ctx, true);
     this.drawFactory(ctx, true);
     ctx.globalAlpha = 1;
+  }
+
+  // Campus: upp till åtta hus på båda sidor om huset (varannat till vänster, varannat till höger; står fabriken till höger hamnar alla till
+  // vänster), två eller tre rader djupt (främre, mellersta och bakre, allt högre och dunklare bakåt). Fönstren tänds i förhållande till
+  // hur många som sitter där.
+  campusLayout() {
+    const xl = Math.round(this.W / 2 - this.bldHalf);
+    const xr = Math.round(this.W / 2 + this.bldHalf);
+    const out = [];
+    const rows = this.fab ? 3 : 2;
+    const OFF = [0, 12, 6];
+    for (let i = 0; i < Math.min(8, this.campus); i++) {
+      const left = this.fab ? true : i % 2 === 0;
+      const k = this.fab ? i : i >> 1;
+      const row = k % rows;
+      const col = (k / rows) | 0;
+      const w = 24;
+      const x = left ? xl - 26 - (col + 1) * 24 + OFF[row] : xr + 14 + col * 24 - OFF[row];
+      const h = [32 + col * 6, 50 + col * 6, 66 + col * 6][row];
+      out.push({ i, row, x, w, h, floors: Math.floor((h - 4) / 9) });
+    }
+    return out;
+  }
+  drawCampus(ctx, lit) {
+    if (!this.campus) return;
+    const gy = this.groundY;
+    const R = (x, y, w, h, c) => {
+      ctx.fillStyle = c;
+      ctx.fillRect(x, y, w, h);
+    };
+    const PAL = [
+      { wall: '#a9b4cd', shade: '#8995b3', glass: '#2e3b5a', edge: '#d8deea', hi: '#5d7fb8', garden: '#4f9a58' },
+      { wall: '#97a2bd', shade: '#7b87a6', glass: '#2c3856', edge: '#c4cce0', hi: '#506f9f', garden: '#46874f' },
+      { wall: '#8691ad', shade: '#6e7a98', glass: '#29334f', edge: '#b4bdd2', hi: '#4a6692', garden: '#3f7448' },
+    ];
+    const hs = this.campusLayout();
+    // bakre raden först, främre sist
+    for (const row of [2, 1, 0]) {
+      for (const b of hs) {
+        if (b.row !== row) continue;
+        if (b.x + b.w < -2 || b.x > this.W) continue;
+        const top = gy - b.h;
+        const c = PAL[row];
+        if (!lit) {
+          R(b.x, top, b.w, b.h, c.wall);
+          R(b.x + b.w - 3, top, 3, b.h, c.shade);
+          R(b.x, top, b.w, 2, c.edge);
+          // taket: trädgård och en luftbehandling
+          R(b.x + 2, top - 3, 10, 3, c.garden);
+          R(b.x + 3, top - 4, 4, 1, '#6fba70');
+          R(b.x + 14, top - 4, 6, 4, '#c8ccd8');
+          R(b.x + 15, top - 3, 4, 1, '#8a8ea4');
+          // fönsterband
+          for (let f = 0; f < b.floors; f++) {
+            const wy = top + 4 + f * 9;
+            R(b.x + 1, wy, b.w - 4, 6, c.glass);
+            for (let k = 0; k < 3; k++) R(b.x + 1 + k * 6 + 5, wy, 1, 6, c.wall);
+            R(b.x + 1, wy, b.w - 4, 1, c.hi);
+          }
+          if (row === 0) {
+            R(b.x + 8, gy - 8, 8, 8, '#3a4260');
+            R(b.x + 11, gy - 8, 2, 8, '#5a6486');
+            R(b.x + 8, gy - 10, 8, 2, '#2fb8a8'); // skylt i studions färg
+          }
+        } else {
+          const fill = clamp(this.campusFill, 0.15, 1);
+          for (let f = 0; f < b.floors; f++) {
+            const wy = top + 4 + f * 9;
+            for (let k = 0; k < 3; k++) {
+              if ((((b.i + 1) * 131 + f * 37 + k * 17) % 100) / 100 >= fill) continue;
+              R(b.x + 1 + k * 6, wy + 1, 5, 4, k % 3 === 1 ? '#bfe8ff' : '#ffd27a');
+            }
+          }
+          if (row === 0) R(b.x + 9, gy - 7, 6, 7, '#ffe6a8');
+        }
+      }
+    }
   }
 
   // Den egna fabriken: en hall med sågtandstak per nivå och en skorsten per hall, strax utanför den första gatlyktan
@@ -656,8 +740,12 @@ export class World {
     const spring = this.month >= 2 && this.month <= 4;
     // gatuträd som skulle stå framför fabriken och dess skylt ritas inte
     const fab = this.fab ? this.fabLayout() : null;
+    const camp = this.campus ? this.campusLayout() : [];
+    const cx0 = camp.length ? Math.min(...camp.map((b) => b.x)) - 14 : 0;
+    const cx1 = camp.length ? Math.max(...camp.map((b) => b.x + b.w)) + 14 : 0;
     for (const x of this.treeX || []) {
       if (fab && x > fab.x0 - 14 && x < fab.x1 + 14) continue;
+      if (camp.length && x > cx0 && x < cx1) continue;
       ctx.fillStyle = '#5a3a22';
       ctx.fillRect(x - 1, gy - 22, 3, 22);
       ctx.fillStyle = '#7a5232';

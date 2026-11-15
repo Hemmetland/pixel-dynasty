@@ -19,6 +19,7 @@ import { hwWeek } from './hardware.js';
 import { opsWeek } from './opsteam.js';
 import { hwTeamWeek } from './hwteam.js';
 import { resWeek } from './resteam.js';
+import { hrWeek } from './hrdept.js';
 import { chartWeek, rankYear } from './charts.js';
 import { fanWeek } from './fans.js';
 import { storyWeek } from './news.js';
@@ -73,6 +74,7 @@ function weekly(G) {
   storeWeek(G);
   hwWeek(G);
   hwTeamWeek(G); // produktteamen underhåller och tar fram nästa generation efter veckans försäljning
+  hrWeek(G); // personalavdelningen: nya team och anställningar innan veckans uppdrag startar
   resWeek(G); // forskningsteamen: veckans receptkunskap och forskningspoäng till researchTick
   opsWeek(G); // före liveWeek: driftteamens effekt gäller veckans spelare
   liveWeek(G);

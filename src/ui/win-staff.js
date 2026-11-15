@@ -3,19 +3,40 @@ import { sfx } from '../audio/sfx.js';
 import { avatarImg } from '../render/people.js';
 import { SPECS, TRAITS, hire, fire, raise, train, canTrain, trainCost, trainWeeks, trainingSlots, trainingNow, skillCap, canHire, SKILLS, payroll, workers, growWeeksLeft, GROW_XP, bestGenres, genreKnow, GX_MAX, GX_STEP } from '../sim/people.js';
 import { GENRE, GENRES } from '../data/genres.js';
-import { TEAM_MAX, TEAM_SIZE, holds, endRole, teamsOf, teamName, membersOf, teamOfStaff, teamsOpen, createTeam, disbandTeam, addMember, removeMember, courseInfo, canTrainTeam, trainTeam, teamAvg, leadOf, setLead } from '../sim/teams.js';
+import { TEAM_SIZE, teamMax, holds, endRole, teamsOf, teamName, membersOf, teamOfStaff, teamsOpen, createTeam, disbandTeam, addMember, removeMember, courseInfo, canTrainTeam, trainTeam, teamAvg, leadOf, setLead } from '../sim/teams.js';
 import { capacity, seated, outCount, seatCap, RES_TECH } from '../sim/studio.js';
+import { clamp } from '../core/util.js';
 import { autoOpen, canMission, eligibleBases, missionQuote, startMission, cancelMission, missionProgress, missionWeeksLeft, samspel, SAMSPEL_MAX, MISSION_KINDS, MISSION_MIN } from '../sim/autoteam.js';
 import { opsOpen, opsInfo, opsNeed, canOps, assignOps, RUTIN_MAX } from '../sim/opsteam.js';
 import { hwTeamOpen, hwInfo, hwLines, canHwTeam, assignHw, HW_NEED } from '../sim/hwteam.js';
 import { resOpen, resInfo, canRes, assignRes, RES_FOCUS, RES_NEED, RES_RP } from '../sim/resteam.js';
+import { hrOpen, hrPlan, setHrPlan, setWant, hrOpenSeats, hrReserve, HR_MIN } from '../sim/hrdept.js';
 import { RCP_MAX, recipeKnow } from '../sim/score.js';
 import { HW_TEAM_MT, HW_TEAM_COST, HW_TEAM_TIME } from '../sim/hardware.js';
 import { liveGames, TM_DECAY, TM_OUTAGE, TM_COST, TM_RENO } from '../sim/live.js';
 import { SCOPES } from '../sim/const.js';
 import { dateOf } from '../sim/const.js';
 
-const S = { tab: 'team', trainFor: null, fireFor: null, addFor: null, disbandFor: null, mk: {}, cancelFor: null, pick: null };
+const S = { tab: 'team', trainFor: null, fireFor: null, addFor: null, disbandFor: null, mk: {}, cancelFor: null, pick: null, page: 0, filter: 'all', sort: 'hired', openTeam: null };
+// Stora studios: personallistan visas i sidor med filter och sortering, teamlistan som kompakta rader (ett team i taget öppet)
+export const PAGE = 24;
+export const COMPACT_TEAMS = 6;
+const FILTERS = ['all', 'free', 'team', 'out', 'sad'];
+const SORTS = ['hired', 'skill', 'mood', 'salary'];
+const skillSum = (s) => s.design + s.tech + s.speed + s.research;
+const FILTER_FN = {
+  all: () => true,
+  free: (G, s) => !s.isFounder && !teamOfStaff(G, s.id),
+  team: (G, s) => !!teamOfStaff(G, s.id),
+  out: (G, s) => !!s.out,
+  sad: (G, s) => s.mood < 50,
+};
+const SORT_FN = {
+  hired: null,
+  skill: (a, b) => skillSum(b) - skillSum(a),
+  mood: (a, b) => a.mood - b.mood,
+  salary: (a, b) => b.salary - a.salary,
+};
 const SK = { design: ['bulb', 'var(--design)'], tech: ['cpu', 'var(--tech)'], speed: ['rocket', 'var(--warn)'], research: ['flask', 'var(--rp)'] };
 
 const skills = (G, s) => {
@@ -98,7 +119,7 @@ function crew(G, team) {
     .join('');
   const picker =
     S.addFor === team.id
-      ? `<div class="tm-pick">${free.length ? free.map((s) => `<button class="tm-chip add" data-act="tm-add" data-tid="${team.id}" data-id="${s.id}"><span class="tm-av">${avatarImg(s.look, 2)}</span><span class="ell">${esc(s.name)}</span>${icon('plus')}</button>`).join('') : `<span class="faint" style="font-size:12px">${t('tm.noFree')}</span>`}</div>`
+      ? `<div class="tm-pick">${free.length ? free.slice(0, 12).map((s) => `<button class="tm-chip add" data-act="tm-add" data-tid="${team.id}" data-id="${s.id}"><span class="tm-av">${avatarImg(s.look, 2)}</span><span class="ell">${esc(s.name)}</span>${icon('plus')}</button>`).join('') : `<span class="faint" style="font-size:12px">${t('tm.noFree')}</span>`}</div>`
       : '';
   let course;
   if (onCourse.length) {
@@ -110,11 +131,11 @@ function crew(G, team) {
       ${info.ready.length < info.mem.length ? `<div class="faint" style="font-size:11.5px;margin-top:3px">${t('tm.someOut', { n: info.mem.length - info.ready.length })}</div>` : ''}`;
   } else course = `<div class="hint" style="margin:0">${icon(ok === 'locked' ? 'lock' : 'info')} ${t('tm.err.' + ok)}</div>`;
   return `<div class="scard card tmcard">
-    <div class="row" style="gap:10px;margin-bottom:8px"><span class="rn-i" style="--c:var(--fans)">${icon('team')}</span><div style="flex:1;min-width:0"><b class="h3 ell">${esc(L(teamName(team)))}</b><div class="faint" style="font-size:12px">${t('tm.members', { n: mem.length, m: TEAM_SIZE })}</div></div>
+    <div class="row" style="gap:10px;margin-bottom:8px"><span class="rn-i" style="--c:var(--fans)">${icon('team')}</span><div style="flex:1;min-width:0"><b class="h3 ell">${esc(L(teamName(team)))}${team.hr ? ` <span class="tag" style="--c:var(--good)">${t('hr.tag')}</span>` : ''}</b><div class="faint" style="font-size:12px">${t('tm.members', { n: mem.length, m: TEAM_SIZE })}</div></div>
       <button class="btn sm danger" data-act="tm-disband" data-tid="${team.id}" data-tip="${esc(t('tm.disband'))}">${S.disbandFor === team.id ? t('tm.confirm') : icon('x')}</button></div>
     <div class="tm-mem">${chips || `<span class="faint" style="font-size:12px">${t('tm.empty')}</span>`}</div>
     ${mem.length ? `<div class="faint" style="font-size:11.5px;margin-top:6px">${lead ? t('tm.leadIs', { name: esc(lead.name) }) : t('tm.leadNone')}</div>` : ''}
-    ${mem.length < TEAM_SIZE ? `<div class="row" style="margin-top:8px"><button class="btn sm ${S.addFor === team.id ? 'on' : ''}" data-act="tm-addopen" data-tid="${team.id}">${icon('plus')}${t('tm.add')}</button></div>` : ''}${picker}
+    ${mem.length < TEAM_SIZE ? `<div class="row wrap" style="margin-top:8px;gap:12px"><button class="btn sm ${S.addFor === team.id ? 'on' : ''}" data-act="tm-addopen" data-tid="${team.id}">${icon('plus')}${t('tm.add')}</button>${hrOpen(G) ? `<div class="row" style="gap:6px" data-tip="${esc(t('tm.wantTip'))}"><span class="faint" style="font-size:12px">${t('tm.want')}</span><button class="btn sm" data-act="tm-want" data-tid="${team.id}" data-d="-1">−</button><b class="num" style="min-width:26px;text-align:center">${team.want ? team.want : t('tm.wantOff')}</b><button class="btn sm" data-act="tm-want" data-tid="${team.id}" data-d="1">+</button></div>` : ''}</div>` : ''}${picker}
     ${mem.length ? `<div class="lbl" style="margin:12px 0 0">${t('tm.avg')}</div>${skills(G, teamAvg(G, team))}${teamGx(mem)}` : ''}
     ${roleBlock(G, team)}
     ${team.role === 'ops' ? opsBlock(G, team) : team.role === 'hw' ? hwBlock(G, team) : team.role === 'res' ? resBlock(G, team) : `<div style="margin-top:12px;padding-top:10px;border-top:1px dashed var(--line)"><div class="lbl" style="margin:0 0 6px">${t('tm.course')}</div>${course}</div>${missionBlock(G, team)}`}
@@ -230,15 +251,49 @@ function opsBlock(G, team) {
     ${autoOpen(G) ? toggleRow('tm-repeat', team.id, !!team.repeat, t('tm.ops.repeat'), t('tm.ops.repeatHelp')) : ''}
     ${team.mission ? missionBlock(G, team) : ''}</div>`;
 }
+// Personalavdelningen: planen (antal spelteam och storlek) och läget
+function stepper(act, key, val, label, tip) {
+  return `<div class="row" style="gap:6px"><span class="faint" style="font-size:12px" ${tip ? `data-tip="${esc(tip)}"` : ''}>${label}</span><button class="btn sm" data-act="${act}" data-k="${key}" data-d="-1">−</button><b class="num" style="min-width:26px;text-align:center">${val}</b><button class="btn sm" data-act="${act}" data-k="${key}" data-d="1">+</button></div>`;
+}
+function hrPanel(G) {
+  if (!hrOpen(G)) return '';
+  const p = hrPlan(G);
+  const open = hrOpenSeats(G);
+  const desks = capacity(G) - seated(G);
+  const cash = G.money >= hrReserve(G);
+  const status = !p.teams && !open ? t('hr.off') : open ? t('hr.open', { n: open }) : t('hr.full');
+  const warn = open && desks <= 0 ? t('hr.noDesks') : open && !cash ? t('hr.noCash', { v: money(Math.round(hrReserve(G))) }) : '';
+  return `<div class="card hrcard" style="padding:12px 14px;margin-bottom:14px">
+    <div class="row" style="gap:10px;margin-bottom:6px"><span class="rn-i" style="--c:var(--good)">${icon('team')}</span><div style="flex:1;min-width:0"><b class="h3">${t('hr.title')}</b><div class="faint" style="font-size:12px">${status}</div></div><span class="chip">${icon('team')}${t('hr.hired', { n: p.hired || 0 })}</span></div>
+    <div class="hint" style="margin:0 0 8px">${t('hr.help')}</div>
+    <div class="row wrap" style="gap:16px">${stepper('hr-plan', 'teams', p.teams, t('hr.teams'), t('hr.teamsTip'))}${stepper('hr-plan', 'size', p.size, t('hr.size'), t('hr.sizeTip', { min: HR_MIN, max: TEAM_SIZE }))}</div>
+    ${warn ? `<div class="hint" style="margin:8px 0 0;color:var(--warn)">${icon('info')} ${warn}</div>` : ''}
+  </div>`;
+}
+// Ett kompakt team (stora studios): namn, storlek, uppgift och läge på en rad
+function teamRow(G, team) {
+  const mem = membersOf(G, team);
+  const m = team.mission;
+  const what = team.role ? t('tm.role.' + team.role) : m ? t('tm.mis.running', { title: esc(m.J.title) }) : t('tm.idle');
+  const want = team.want && team.want > mem.length ? ` / ${team.want}` : '';
+  return `<div class="card tmrow" style="padding:10px 12px"><div class="row" style="gap:10px"><span class="rn-i" style="--c:var(--fans)">${icon('team')}</span><div style="flex:1;min-width:0"><b class="ell">${esc(L(teamName(team)))}</b>${team.hr ? ` <span class="tag" style="--c:var(--good)">${t('hr.tag')}</span>` : ''}<div class="faint ell" style="font-size:12px">${what}</div></div>
+    <span class="chip">${icon('team')}${mem.length}${want}</span>${m ? `<div style="width:70px">${bar(missionProgress(m) * 100, 'var(--good)', 'thin')}</div>` : ''}<button class="btn sm" data-act="tm-open" data-tid="${team.id}">${t('tm.open')}</button></div></div>`;
+}
 function groupsView(G) {
   const teams = teamsOf(G);
+  const compact = teams.length > COMPACT_TEAMS;
+  const MAXT = teamMax(G);
   return `<div class="hint" style="margin-bottom:12px">${icon('info')} ${t('tm.help')}</div>
+    ${hrPanel(G)}
     <div class="row wrap" style="gap:8px;margin-bottom:14px">
       ${G.u.flags.training ? `<span class="chip">${icon('book')}${t('staff.trainSlots')} ${trainingNow(G)}/${trainingSlots(G)}</span>` : `<span class="chip faint">${icon('lock')}${t('staff.trainLocked')}</span>`}
       <span class="sp"></span>
-      <button class="btn primary" data-act="tm-new" ${teams.length >= TEAM_MAX ? 'disabled' : ''} data-tip="${teams.length >= TEAM_MAX ? esc(t('tm.max', { n: TEAM_MAX })) : ''}">${icon('plus')}${t('tm.new')}</button>
+      <span class="chip">${icon('team')}${t('tm.count', { n: teams.length, m: MAXT })}</span>
+      <button class="btn primary" data-act="tm-new" ${teams.length >= MAXT ? 'disabled' : ''} data-tip="${teams.length >= MAXT ? esc(t('tm.max', { n: MAXT })) : ''}">${icon('plus')}${t('tm.new')}</button>
     </div>
-    ${teams.length ? `<div class="grid sgrid">${teams.map((x) => crew(G, x)).join('')}</div>` : `<div class="hint">${t('tm.none')}</div>`}`;
+    ${teams.length ? (compact
+      ? `<div class="col" style="gap:8px">${teams.map((x) => (S.openTeam === x.id ? `<div class="grid sgrid" style="grid-template-columns:1fr"><div><button class="btn sm" data-act="tm-open" data-tid="${x.id}" style="margin-bottom:8px">${icon('arrow')}${t('tm.close')}</button>${crew(G, x)}</div></div>` : teamRow(G, x))).join('')}</div>`
+      : `<div class="grid sgrid">${teams.map((x) => crew(G, x)).join('')}</div>`) : `<div class="hint">${t('tm.none')}</div>`}`;
 }
 
 // Uppdrag för ett självgående team: välj sort (och spel), starta, följ framstegen
@@ -285,6 +340,33 @@ function missionBlock(G, team) {
   return `<div style="margin-top:12px;padding-top:10px;border-top:1px dashed var(--line)">${head}${body}${stats}${toggles}</div>`;
 }
 
+// Filtrerad och sorterad personallista och aktuell sida (alla på en sida när studion är liten)
+function pageOf(G) {
+  let list = G.staff.slice();
+  if (list.length <= PAGE) return { list, pages: 1 };
+  const f = FILTER_FN[S.filter] || FILTER_FN.all;
+  list = list.filter((x) => f(G, x));
+  if (SORT_FN[S.sort]) list.sort(SORT_FN[S.sort]);
+  else list.reverse();
+  const pages = Math.max(1, Math.ceil(list.length / PAGE));
+  if (S.focus) {
+    const i = list.findIndex((x) => x.id === S.focus);
+    if (i >= 0) S.page = Math.floor(i / PAGE);
+  }
+  S.page = clamp(S.page, 0, pages - 1);
+  return { list: list.slice(S.page * PAGE, S.page * PAGE + PAGE), pages, total: list.length };
+}
+function staffBar(G) {
+  const cnt = (k) => G.staff.filter((x) => FILTER_FN[k](G, x)).length;
+  return `<div class="row wrap" style="gap:6px;margin-bottom:8px">${FILTERS.map((k) => `<button class="btn sm ${S.filter === k ? 'on' : ''}" data-act="s-filter" data-id="${k}">${t('staff.f.' + k)} <b class="num">${cnt(k)}</b></button>`).join('')}</div>
+    <div class="row wrap" style="gap:6px;margin-bottom:14px"><span class="faint" style="font-size:12px">${t('staff.sortBy')}</span>${SORTS.map((k) => `<button class="btn sm ${S.sort === k ? 'on' : ''}" data-act="s-sort" data-id="${k}">${t('staff.s.' + k)}</button>`).join('')}</div>`;
+}
+function pager(G) {
+  const { pages, total } = pageOf(G);
+  if (pages <= 1) return `<div class="faint" style="text-align:center;margin-top:12px;font-size:12px">${t('staff.shown', { n: total })}</div>`;
+  return `<div class="row" style="justify-content:center;gap:10px;margin-top:14px"><button class="btn sm" data-act="s-page" data-id="-1" ${S.page <= 0 ? 'disabled' : ''}>${icon('arrow')}</button><span class="chip">${t('staff.page', { n: S.page + 1, m: pages })}</span><button class="btn sm" data-act="s-page" data-id="1" ${S.page >= pages - 1 ? 'disabled' : ''}>${icon('arrow')}</button></div>`;
+}
+
 regWin({
   id: 'staff',
   icon: 'team',
@@ -308,11 +390,14 @@ regWin({
     if (S.tab === 'groups' && teamsOpen(G)) return groupsView(G);
     const trainNow = trainingNow(G);
     const mentor = workers(G).some((w) => w.trait === 'mentor');
+    const big = G.staff.length > PAGE;
     return `<div class="row wrap" style="gap:8px;margin-bottom:14px">
         <span class="chip">${icon('coffee')}${t('staff.avgMood')} ${Math.round(G.staff.reduce((s, x) => s + x.mood, 0) / G.staff.length)}</span>
         ${G.u.flags.training ? `<span class="chip">${icon('book')}${t('staff.trainSlots')} ${trainNow}/${trainingSlots(G)}</span>` : `<span class="chip faint">${icon('lock')}${t('staff.trainLocked')}</span>`}
       </div>
-      <div class="grid sgrid">${G.staff.map((s) => teamCard(G, s, mentor)).join('')}</div>`;
+      ${big ? staffBar(G) : ''}
+      <div class="grid sgrid">${pageOf(G).list.map((s) => teamCard(G, s, mentor)).join('')}</div>
+      ${big ? pager(G) : ''}`;
   },
   onClose() {
     S.addFor = null;
@@ -376,6 +461,44 @@ act('s-train', (el) => {
   UI.refresh();
 });
 
+act('s-filter', (el) => {
+  S.filter = el.dataset.id;
+  S.page = 0;
+  UI.refresh();
+});
+act('s-sort', (el) => {
+  S.sort = el.dataset.id;
+  S.page = 0;
+  UI.refresh();
+});
+act('s-page', (el) => {
+  S.page += +el.dataset.id;
+  UI.refresh();
+});
+act('tm-open', (el) => {
+  const id = +el.dataset.tid;
+  S.openTeam = S.openTeam === id ? null : id;
+  UI.refresh();
+});
+act('hr-plan', (el) => {
+  const G = UI.app.G;
+  const p = hrPlan(G);
+  const d = +el.dataset.d;
+  if (el.dataset.k === 'teams') setHrPlan(G, p.teams + d, p.size);
+  else setHrPlan(G, p.teams, p.size + d);
+  UI.refresh();
+});
+act('tm-want', (el) => {
+  const G = UI.app.G;
+  const team = teamsOf(G).find((x) => x.id === +el.dataset.tid);
+  if (!team) return;
+  const cur = team.want || 0;
+  const d = +el.dataset.d;
+  // från av går första steget till minst storleken teamet redan har (och HR_MIN), nedåt från HR_MIN stänger av
+  const next = d > 0 ? (cur ? cur + 1 : Math.max(HR_MIN, team.members.length + 1)) : cur <= HR_MIN ? 0 : cur - 1;
+  setWant(G, team.id, next);
+  UI.refresh();
+});
 act('tm-new', () => {
   const G = UI.app.G;
   const r = createTeam(G);

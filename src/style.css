@@ -343,6 +343,7 @@ button.pn-c:hover { background: rgba(150, 172, 255, 0.13); border-color: var(--l
 .tab { padding: 7px 14px; border-radius: 9px; font-weight: 700; font-size: 13px; color: var(--muted); white-space: nowrap; display: flex; gap: 7px; align-items: center; }
 .tab:hover { color: var(--text); }
 .tab.on { background: rgba(77, 225, 208, 0.16); color: var(--accent); box-shadow: inset 0 0 0 1px rgba(77, 225, 208, 0.3); }
+.btn.on { background: rgba(77, 225, 208, 0.16); color: var(--accent); box-shadow: inset 0 0 0 1px rgba(77, 225, 208, 0.35); }
 .tab .n { background: var(--hot); color: #fff; border-radius: 9px; font-size: 10.5px; padding: 0 6px; line-height: 16px; }
 .grid { display: grid; gap: 12px; }
 .row { display: flex; align-items: center; gap: 10px; }

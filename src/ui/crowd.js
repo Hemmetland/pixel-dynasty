@@ -27,7 +27,8 @@ export function crowdChip(G, J) {
   const T = G.t + n;
   const cr = crowding(G, J, T);
   const quiet = cr.mult > 1;
-  const tip = (quiet ? t('crowd.tipQuiet', { v: crowdPct(cr.mult) }) : t('crowd.tipBusy', { v: crowdPct(cr.mult) }) + '<br>' + cr.rivals.slice(0, 4).map((r) => '· ' + rivalLine(r, T)).join('<br>')) + '<br><span class="faint">' + t('crowd.tipWhen', { n }) + (J.phase === 3 ? ' ' + t('crowd.tipMove') : '') + '</span>';
+  const own = cr.sat < 0.995 ? '<br>' + t('crowd.own', { n: cr.own, v: crowdPct(cr.sat) }) : '';
+  const tip = (quiet ? t('crowd.tipQuiet', { v: crowdPct(cr.mult) }) : t('crowd.tipBusy', { v: crowdPct(cr.mult) }) + '<br>' + cr.rivals.slice(0, 4).map((r) => '· ' + rivalLine(r, T)).join('<br>')) + own + '<br><span class="faint">' + t('crowd.tipWhen', { n }) + (J.phase === 3 ? ' ' + t('crowd.tipMove') : '') + '</span>';
   return `<span class="chip c" style="--c:${quiet ? 'var(--good)' : cr.mult < 0.95 ? 'var(--bug)' : 'var(--warn)'}" data-tip="${esc(tip)}">${icon(quiet ? 'leaf' : 'team')}${t(quiet ? 'crowd.quiet' : 'crowd.busy')} ${crowdPct(cr.mult)}</span>`;
 }
 
@@ -44,8 +45,15 @@ export function crowdNote(G, x, released) {
     mult = cr.mult;
     list = cr.rivals.slice(0, 2).map((r) => rivalLine(r, G.t)).join('; ');
   }
-  if (mult === 1 && !list) return '';
-  const lvl = mult > 1 ? 'good' : mult < 0.95 ? 'bad' : 'ok';
-  const txt = mult > 1 ? t('ins.crowd.quiet', { v: `<b>${crowdPct(mult)}</b>` }) : t('ins.crowd.busy', { list, v: `<b>${crowdPct(mult)}</b>` });
-  return `<div class="in ${lvl}"><span class="ii">${icon(mult > 1 ? 'leaf' : 'team')}</span><span>${txt}</span></div>`;
+  const sat = released ? x.sat : null;
+  const live = released ? null : crowding(G, x, G.t);
+  const satV = sat ? sat.v : live && live.sat < 0.995 ? live.sat : null;
+  const satN = sat ? sat.n : live ? live.own : 0;
+  const satRow = satV != null ? `<div class="in bad"><span class="ii">${icon('team')}</span><span>${t('ins.crowd.own', { n: satN, v: `<b>${crowdPct(satV).replace('−', '')}</b>` })}</span></div>` : '';
+  // rivalernas del av trängseln: det som finns kvar när mättnaden räknats bort
+  const rivalMult = satV != null ? mult / satV : mult;
+  if (rivalMult === 1 && !list) return satRow;
+  const lvl = rivalMult > 1 ? 'good' : rivalMult < 0.95 ? 'bad' : 'ok';
+  const txt = rivalMult > 1 ? t('ins.crowd.quiet', { v: `<b>${crowdPct(rivalMult)}</b>` }) : t('ins.crowd.busy', { list, v: `<b>${crowdPct(rivalMult)}</b>` });
+  return `<div class="in ${lvl}"><span class="ii">${icon(rivalMult > 1 ? 'leaf' : 'team')}</span><span>${txt}</span></div>${satRow}`;
 }

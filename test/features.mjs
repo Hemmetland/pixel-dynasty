@@ -2790,5 +2790,92 @@ ok(!bad.length, `äldre sparning utan ett av ${paths.length} fält går att spel
   ok(raw(top, 'aaa') > 9.5 && raw({ ...top, mCompat: 0.8, mFit: 0.8, mAud: 0.9 }, 'aaa') < 7 && raw({ ...top, s0: 5.7 }, 'aaa') < 6.5, 'toppbetyg kräver både recept och team');
 }
 
+// ── Campus, personalavdelning och marknadens mättnad ─────────────────────────────────
+{
+  const mk = (tier = 5) => {
+    const W = S.newGame({ studio: 'C', seed: 91 }); S.makeCompetitors(W); S.initWorld(W);
+    W.t = 48 * 26 + 3; W.money = 4e9; W.fans = 3e6; W.office.tier = tier;
+    for (let i = 0; i < 36; i++) { S.refreshCandidates(W); const c = W.candidates[0]; W.money += c.fee; if (S.canHire(W)) S.hire(W, c.id); }
+    return W;
+  };
+  const W = mk();
+  // forskning och torn krävs
+  ok(S.canCampus(W) === 'locked' && S.buildCampus(W) === false, 'campus kräver forskningen');
+  W.u.flags.campus = true;
+  const Wlow = mk(3); Wlow.u.flags.campus = true;
+  ok(S.canCampus(Wlow) === 'locked', 'campus kräver Dynastitornet');
+  ok(S.canCampus(W) === 'avg', 'campus kräver snittbetyg 7,8 (har inga spel än)');
+  W.games = Array.from({ length: 4 }, (_, i) => ({ id: 900 + i, score: 8.4, revenue: 0, t: W.t - 100 - i }));
+  const cap0 = S.capacity(W), rent0 = S.rentOf(W), seed0 = W.candidates.length;
+  ok(S.canCampus(W) === true, 'alla krav uppfyllda ger true');
+  ok(S.buildCampus(W) === true && S.campusOf(W) === 1 && S.capacity(W) === cap0 + S.CAMPUS_DESKS, 'ett campushus ger ' + S.CAMPUS_DESKS + ' skrivbord');
+  ok(S.rentOf(W) > rent0 && S.teamMax(W) === S.TEAM_MAX + 4, 'hyran växer och fyra team till får plats');
+  S.refreshCandidates(W);
+  ok(W.candidates.length >= seed0 + 2, 'ett campushus ger två kandidater till varje månad');
+  ok(S.canCampus(W) === 'staff', 'nästa hus kräver att det förra är nästan fullt');
+  // fyll huset, bygg alla
+  for (let n = 1; n < S.CAMPUS_MAX; n++) {
+    while (S.canHire(W)) { S.refreshCandidates(W); const c = W.candidates[0]; W.money += c.fee; if (S.hire(W, c.id) !== true) break; }
+    W.fans = 3e6; W.money = 4e9;
+    ok(S.buildCampus(W) === true, 'hus ' + (n + 1) + ' byggs');
+  }
+  ok(S.campusOf(W) === S.CAMPUS_MAX && S.canCampus(W) === 'max' && S.campusNext(W) === null && S.capacity(W) === 36 + S.CAMPUS_MAX * S.CAMPUS_DESKS, 'åtta hus ger ' + (36 + S.CAMPUS_MAX * S.CAMPUS_DESKS) + ' skrivbord och sedan är det slut');
+  ok(S.teamMax(W) === S.TEAM_MAX + 4 * S.CAMPUS_MAX, 'teamgränsen växer med campus');
+  ok(S.campusFill(W) > 0.8 && S.campusFill(W) <= 1, 'campushusen är nästan fyllda (' + S.campusFill(W).toFixed(2) + ')');
+  // gammal sparning utan campusfältet
+  const old = JSON.parse(JSON.stringify(mk())); delete old.office.campus; delete old.hr;
+  ok(S.campusOf(old) === 0 && S.capacity(old) === 36 && S.teamMax(old) === S.TEAM_MAX, 'sparning utan campus fungerar (0 hus)');
+}
+{
+  // personalavdelningen: planen bildar team och anställer, utan att dra ur slumpen eller röra ordinarie personal
+  const W = S.newGame({ studio: 'H', seed: 92 }); S.makeCompetitors(W); S.initWorld(W);
+  W.t = 48 * 24 + 3; W.money = 4e9; W.fans = 1e6; W.office.tier = 5; W.office.campus = 2;
+  for (let i = 0; i < 12; i++) { S.refreshCandidates(W); const c = W.candidates[0]; W.money += c.fee; S.hire(W, c.id); }
+  const regular = W.staff.map((x) => x.id);
+  ok(S.setHrPlan(W, 3, 5) === false && !S.hrOpen(W), 'personalavdelningen kräver forskningen');
+  W.u.flags.hrAuto = true; W.u.flags.autoTeams = true;
+  ok(S.setHrPlan(W, 99, 99) === true && S.hrPlan(W).teams === S.teamMax(W) && S.hrPlan(W).size === S.TEAM_SIZE, 'planen begränsas av teamgränsen och teamstorleken');
+  ok(S.setHrPlan(W, 3, 5) === true && S.hrPlan(W).teams === 3 && S.hrPlan(W).size === 5, 'plan: tre team om fem');
+  const staffBefore = W.staff.length;
+  for (let w = 0; w < 80; w++) { for (let k = 0; k < S.TICKS_PER_WEEK; k++) S.stepTick(W); W.pending.length = 0; W.money = Math.max(W.money, 4e9); }
+  const hr = S.hrTeams(W);
+  ok(hr.length === 3 && hr.every((x) => x.hr && x.want === 5 && x.repeat && x.autoTrain), 'tre team bildas med önskad storlek, upprepning och kurser');
+  ok(hr.every((x) => x.members.length === 5), 'teamen fylls till önskad storlek (' + hr.map((x) => x.members.length).join(',') + ')');
+  ok(W.staff.length >= staffBefore + 15 && W.hr.hired >= 15, 'avdelningen anställde minst femton (' + W.hr.hired + ')');
+  ok(hr.every((x) => x.members.every((id) => !regular.includes(id))), 'bara nyanställda går till teamen, aldrig ordinarie personal');
+  ok(W.news.some((n) => n.key === 'news.hrHires'), 'ett samlat besked per kvartal');
+  ok(W.games.length > 0 || hr.some((x) => x.mission), 'teamen tar uppdrag på egen hand');
+  // reserven: utan pengar anställer den inte
+  const Wp = S.newGame({ studio: 'P', seed: 93 }); S.makeCompetitors(Wp); S.initWorld(Wp);
+  Wp.t = 48 * 24; Wp.office.tier = 5; Wp.u.flags.hrAuto = true;
+  S.setHrPlan(Wp, 2, 5); Wp.money = 20000; S.refreshCandidates(Wp);
+  const n0 = Wp.staff.length; S.hrWeek(Wp);
+  ok(Wp.staff.length === n0, 'utan reserv i kassan anställer avdelningen ingen');
+  const r0 = W.rng; S.refreshCandidates(W); const r1 = W.rng; S.hrWeek(W);
+  ok(W.rng === r1 && r1 !== r0, 'personalavdelningen drar inget ur slumptalsföljden (kandidaterna gör det)');
+  // ett nedlagt team minskar planen
+  const hrT = S.hrTeams(W)[0]; const planBefore = S.hrPlan(W).teams;
+  ok(S.disbandTeam(W, hrT.id) === true && S.hrPlan(W).teams === planBefore - 1, 'ett nedlagt HR-team minskar planen så det inte bildas igen');
+  // önskad storlek på ett vanligt team
+  const free = W.staff.filter((x) => !x.isFounder && !S.teamOfStaff(W, x.id));
+  const M = S.createTeam(W); for (const x of free.slice(0, 3)) S.addMember(W, M.id, x.id);
+  ok(S.setWant(W, M.id, 6) === true && M.want === 6 && S.setWant(W, M.id, 0) === true && M.want === 0 && S.setWant(W, M.id, 1) === true && M.want === S.HR_MIN, 'önskad storlek: av, 6 och minst ' + S.HR_MIN);
+}
+{
+  // marknadens mättnad: ett fåtal egna släpp är gratis, många delar på köparna
+  const W = S.newGame({ studio: 'M', seed: 94 }); S.makeCompetitors(W); S.initWorld(W);
+  W.t = 48 * 15;
+  const x = { genre: 'action', topic: W.u.topics[0] };
+  ok(S.satOf(0) === 1 && S.satOf(S.SAT_FREE) === 1 && S.satOf(S.SAT_FREE + 20) < 0.85 && S.satOf(200) > 0.2, 'mättnaden är 1 upp till ' + S.SAT_FREE + ' släpp och avtar långsamt');
+  W.games = Array.from({ length: 5 }, (_, i) => ({ id: 1000 + i, t: W.t - 3 * i, genre: 'puzzle', topic: x.topic, score: 7 }));
+  const c1 = S.crowding(W, x, W.t);
+  ok(c1.own === 5 && c1.sat === 1, 'fem egna släpp ger ingen mättnad');
+  W.games = Array.from({ length: 30 }, (_, i) => ({ id: 1000 + i, t: W.t - Math.floor(i * 1.5), genre: 'puzzle', topic: x.topic, score: 7 }));
+  const c2 = S.crowding(W, x, W.t);
+  ok(c2.own === 30 && c2.sat < 0.8 && c2.sat > 0.5 && c2.mult <= c2.sat * 1.05 + 1e-9, 'trettio släpp på ett år delar på köparna (sat ' + c2.sat.toFixed(2) + ')');
+  W.games.push({ id: 5000, t: W.t - 60, genre: 'puzzle', topic: x.topic, score: 7 });
+  ok(S.crowding(W, x, W.t).own === 30, 'släpp äldre än 48 veckor räknas inte');
+}
+
 console.log(fails ? `\n${fails} FEL` : '\nAlla tester gick bra');
 process.exit(fails ? 1 : 0);

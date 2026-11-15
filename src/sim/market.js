@@ -162,6 +162,18 @@ export const compMean = (c, year) => 5.4 + (c.strength - 0.7) * 2.6 + Math.min(1
 // x = { genre, genre2, topic }, T = släppveckan. Ger { mult, rivals: [{ title?, studio, color, genre, topic, t, score, future, hit }] }.
 export const CROWD_WEEKS = 8;
 export const CROWD_QUIET = 1.05;
+// Marknadens mättnad: en studio som släpper många spel på kort tid delar på samma köpare. Räknat på dina egna släpp de senaste
+// 48 veckorna (utom spelet självt): upp till SAT_FREE spel är gratis, därefter säljer varje nytt spel 1/(1 + SAT_K × överskottet).
+// Det betyder att fler självgående team ger allt mindre för varje team, så storleken är ett val och inte bara mer.
+export const SAT_WEEKS = 48;
+export const SAT_FREE = 8;
+export const SAT_K = 0.012;
+export const satOf = (n) => 1 / (1 + SAT_K * Math.max(0, n - SAT_FREE));
+export function ownRecent(G, x, T = G.t) {
+  let n = 0;
+  for (const g of G.games || []) if (g !== x && (x.id == null || g.id !== x.id) && g.t <= T && T - g.t < SAT_WEEKS) n++;
+  return n;
+}
 export function crowding(G, x, T = G.t) {
   const rivals = [];
   const add = (r, studio, color, score, t, future, title) => {
@@ -181,7 +193,9 @@ export function crowding(G, x, T = G.t) {
   }
   rivals.sort((a, b) => b.hit - a.hit);
   const sum = rivals.reduce((a, r) => a + r.hit, 0);
-  return { mult: rivals.length ? clamp(1 - sum, 0.75, 1) : CROWD_QUIET, rivals };
+  const mine = ownRecent(G, x, T);
+  const sat = satOf(mine);
+  return { mult: (rivals.length ? clamp(1 - sum, 0.75, 1) : CROWD_QUIET) * sat, rivals, own: mine, sat };
 }
 // Konkurrenterna släpper vid månadsskiftet (monthlyMarket), första månadsskiftet från nextT.
 export const releaseWeek = (c) => Math.ceil(c.nextT / WEEKS_PER_MONTH) * WEEKS_PER_MONTH;
