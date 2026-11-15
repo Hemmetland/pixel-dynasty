@@ -1489,3 +1489,23 @@ input[type='range']::-moz-range-thumb { width: 18px; height: 18px; border-radius
 .es-pv { margin-top: 12px; padding: 10px 12px; border-radius: 12px; border: 1px solid var(--line); background: rgba(246, 184, 74, 0.05); }
 .es-log .rn-i { flex: none; }
 .es-on { border-color: color-mix(in srgb, var(--gold) 45%, transparent); }
+
+/* ── Guiden: sorterna av onlinespel som kort; e-sportpanelen i trofétema (guld) ── */
+.seg:has(> [data-act="w-kind"]) { display: grid; grid-template-columns: repeat(auto-fill, minmax(138px, 1fr)); gap: 8px; padding: 0; background: none; border: 0; box-shadow: none; }
+.seg > [data-act="w-kind"] { display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 6px; min-height: 76px; padding: 10px 8px; border-radius: 14px; text-align: center; line-height: 1.2; white-space: normal;
+  background: rgba(255, 255, 255, 0.04); border: 1px solid var(--line); transition: 0.14s; }
+.seg > [data-act="w-kind"] .ic { width: 26px; height: 26px; padding: 5px; border-radius: 9px; margin: 0; color: var(--accent); background: color-mix(in srgb, var(--accent) 14%, transparent); box-sizing: content-box; }
+.seg > [data-act="w-kind"]:hover { background: rgba(255, 255, 255, 0.08); transform: translateY(-1px); }
+.seg > [data-act="w-kind"].on { background: linear-gradient(180deg, color-mix(in srgb, var(--accent) 24%, transparent), color-mix(in srgb, var(--accent) 8%, transparent)); border-color: var(--accent); box-shadow: 0 8px 20px -10px var(--accent); }
+.seg > [data-act="w-kind"].on .ic { background: var(--accent); color: #04121a; }
+@media (max-width: 760px) { .seg:has(> [data-act="w-kind"]) { grid-template-columns: repeat(2, 1fr); } .seg > [data-act="w-kind"] { min-height: 64px; } }
+
+.es-type { border-radius: 14px; transition: 0.14s; }
+.es-type:hover { transform: translateY(-1px); }
+.es-type.sel { border-color: var(--gold); background: linear-gradient(180deg, color-mix(in srgb, var(--gold) 16%, transparent), color-mix(in srgb, var(--gold) 4%, transparent)); box-shadow: 0 8px 22px -12px var(--gold); }
+.es-type .rn-i.sbig { background: color-mix(in srgb, var(--gold) 18%, transparent); box-shadow: inset 0 0 0 1px color-mix(in srgb, var(--gold) 40%, transparent); }
+.es-seg button.on { background: color-mix(in srgb, var(--gold) 22%, transparent); color: var(--text); box-shadow: inset 0 0 0 1px var(--gold); }
+.es-pv { background: radial-gradient(90% 120% at 0% 0%, color-mix(in srgb, var(--gold) 12%, transparent), transparent 70%), rgba(255, 255, 255, 0.03); border-color: color-mix(in srgb, var(--gold) 28%, var(--line)); }
+.btn[data-act="es-go"]:not([disabled]) { background: linear-gradient(180deg, #ffe08a, #f0aa2a); color: #3a2400; border-color: rgba(255, 255, 255, 0.4); text-shadow: none; box-shadow: 0 10px 26px -8px rgba(255, 190, 60, 0.7), inset 0 1px 0 rgba(255, 255, 255, 0.55); }
+.btn[data-act="es-go"]:not([disabled]):hover { filter: brightness(1.07); }
+.es-on { background: linear-gradient(135deg, color-mix(in srgb, var(--gold) 14%, transparent), transparent 70%); }
