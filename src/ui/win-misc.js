@@ -6,7 +6,7 @@ import { identity } from '../sim/legacy.js';
 import { identityName } from '../data/identity.js';
 import { CERTS } from '../data/certs.js';
 import { lang } from '../core/i18n.js';
-import { music } from '../audio/sfx.js';
+import { music, ambience } from '../audio/sfx.js';
 import { ACHIEVEMENTS } from '../data/achievements.js';
 import { MKT } from '../data/research.js';
 import { marketingOptions, launchMarketing } from '../sim/dev.js';
@@ -209,7 +209,7 @@ regWin({
     const slider = (k, key, on) => `<div class="row" style="gap:12px;padding:9px 0;border-bottom:1px dashed var(--line)"><span style="min-width:110px">${t(key)}</span><input type="range" min="0" max="100" value="${Math.round(s[k] * 100)}" data-set="${k}" ${on ? '' : 'disabled'}></div>`;
     return `
       <div class="row" style="justify-content:space-between;padding:9px 0;border-bottom:1px dashed var(--line)"><span>${icon('globe')} ${t('set.lang')}</span><div class="seg"><button class="${s.lang === 'sv' || (!s.lang && document.documentElement.lang === 'sv') ? 'on' : ''}" data-act="set-lang" data-l="sv">Svenska</button><button class="${s.lang === 'en' || (!s.lang && document.documentElement.lang === 'en') ? 'on' : ''}" data-act="set-lang" data-l="en">English</button></div></div>
-      ${tog('music', 'set.music')}${slider('musicVol', 'set.musicVol', s.music)}${musicStyleRow(s)}${tog('sfx', 'set.sfx')}${slider('sfxVol', 'set.sfxVol', s.sfx)}
+      ${tog('music', 'set.music')}${slider('musicVol', 'set.musicVol', s.music)}${musicStyleRow(s)}${tog('sfx', 'set.sfx')}${slider('sfxVol', 'set.sfxVol', s.sfx)}${tog('amb', 'set.amb')}${slider('ambVol', 'set.ambVol', s.amb)}
       ${tog('hd', 'set.hd')}${tog('crt', 'set.crt')}${tog('reduced', 'set.reduced')}${paceRow(s)}${tog('menuPause', 'set.menuPause')}${tog('tutorial', 'set.tutorial')}
       ${G ? `<div class="lbl" style="margin:16px 0 8px">${t('set.saveData')}</div>
       <div class="row wrap" style="gap:8px"><button class="btn" data-act="set-export">${icon('copy')}${t('set.export')}</button><button class="btn" data-act="set-import">${icon('upload')}${t('set.import')}</button></div>
@@ -233,6 +233,7 @@ act('set-tog', (el) => {
   s[k] = !s[k];
   UI.app.applySettings();
   if (k === 'music') s[k] ? music.start?.() : music.stop?.();
+  if (k === 'amb') s[k] ? UI.app.G && ambience.start?.() : ambience.stop?.();
   UI.refresh();
 });
 act('set-mstyle', (el) => {

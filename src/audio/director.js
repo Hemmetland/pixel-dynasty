@@ -52,3 +52,24 @@ export function pickMood(D, s) {
   }
   return 'play';
 }
+
+// Omgivningsljudet: hur starkt stadsbruset, syrsorna, regnet och blåsten ska vara. En ren funktion.
+// s = { mode: 'title' | 'play', over, night (0-1), rain (0-1), snow (0-1), month (0-11), paused }
+// Dagtid hörs stadsbrus, sommarnätter ger syrsor, regn och snö dämpar staden, och snö och vintrar ger blåst. Står spelet stilla
+// är det lite tystare, och på titelskärmen eller vid konkurs hörs ingenting.
+export function ambienceMix(s) {
+  const mix = { city: 0, cricket: 0, rain: 0, wind: 0 };
+  if (s.mode !== 'play' || s.over) return mix;
+  const u = (v) => Math.min(1, Math.max(0, v || 0));
+  const night = u(s.night);
+  const rain = u(s.rain);
+  const snow = u(s.snow);
+  const summer = s.month >= 4 && s.month <= 8;
+  const k = s.paused ? 0.6 : 1;
+  mix.city = (0.15 + 0.5 * (1 - night)) * (1 - 0.6 * Math.max(rain, snow)) * k;
+  mix.cricket = summer && rain < 0.2 && snow === 0 ? (Math.max(0, night - 0.45) / 0.55) * k : 0;
+  mix.rain = rain * 0.9 * k;
+  mix.wind = Math.min(1, snow * 0.8 + (summer ? 0 : night * 0.25)) * k;
+  for (const key of Object.keys(mix)) mix[key] = Math.round(mix[key] * 1000) / 1000;
+  return mix;
+}

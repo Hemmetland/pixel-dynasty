@@ -1,7 +1,8 @@
 // Musiken utan ljud: en låtsas-WebAudio räknar tonerna per stämning, och musikregin provas som ren funktion.
-const mkParam = () => ({ value: 0, setValueAtTime() {}, linearRampToValueAtTime() {}, exponentialRampToValueAtTime() {}, cancelScheduledValues() {} });
+const mkParam = () => ({ value: 0, setValueAtTime() {}, linearRampToValueAtTime() {}, exponentialRampToValueAtTime() {}, cancelScheduledValues() {}, setTargetAtTime(v) { this.value = v; } });
 const node = (extra = {}) => ({ connect() {}, disconnect() {}, ...extra });
 const counts = { osc: 0, noise: 0 };
+const made = [];
 class FakeCtx {
   constructor() {
     this.currentTime = 0;
@@ -16,12 +17,12 @@ class FakeCtx {
   createAnalyser() { return node({ fftSize: 0 }); }
   createConvolver() { return node({ buffer: null }); }
   createBuffer(c, len) { return { getChannelData: () => new Float32Array(len) }; }
-  createOscillator() { counts.osc++; return node({ frequency: mkParam(), type: '', start() {}, stop() {} }); }
+  createOscillator() { counts.osc++; const o = node({ frequency: mkParam(), type: '', start() {}, stop() {} }); made.push(o); return o; }
   createBufferSource() { counts.noise++; return node({ buffer: null, loop: false, start() {}, stop() {} }); }
 }
 globalThis.window = { AudioContext: FakeCtx, addEventListener() {} };
-const { music, MOODS, LAYERS } = await import('../src/audio/sfx.js');
-const { pickMood, newDirector, INTERLUDE_AFTER, INTERLUDE_LEN, PAUSE_CALM } = await import('../src/audio/director.js');
+const { music, sfx, ambience, unlockAudio, MOODS, LAYERS } = await import('../src/audio/sfx.js');
+const { pickMood, newDirector, ambienceMix, INTERLUDE_AFTER, INTERLUDE_LEN, PAUSE_CALM } = await import('../src/audio/director.js');
 
 let fails = 0;
 const ok = (c, m) => {
@@ -110,5 +111,48 @@ D = newDirector();
 const lively = [];
 for (let t = 0; t <= 600; t += 5) lively.push(pickMood(D, { ...base, now: t, style: 'lively', speed: 1 }));
 ok(lively.every((x) => x === 'play'), 'stilen Livlig har inga lugna stunder, inte ens på lägsta fart');
+// ── ljudeffekternas röst per epok ──
+unlockAudio();
+const clickType = (year) => {
+  music.setEra(year);
+  made.length = 0;
+  sfx.play('click');
+  return made[made.length - 1] && made[made.length - 1].type;
+};
+ok(clickType(1985) === 'square' && clickType(1995) === 'triangle' && clickType(2010) === 'sine', 'ljudeffekterna går från fyrkantsvåg (80-tal) via triangel till sinus (2004 och framåt)');
+music.setEra(1985);
+
+// ── omgivningsljudet ──
+const noon = { mode: 'play', over: false, night: 0, rain: 0, snow: 0, month: 5, paused: false };
+const mixSum = (m) => m.city + m.cricket + m.rain + m.wind;
+ok(mixSum(ambienceMix({ ...noon, mode: 'title' })) === 0 && mixSum(ambienceMix({ ...noon, over: true })) === 0, 'titelskärmen och konkursen är tysta');
+const day = ambienceMix(noon);
+ok(day.city > 0.5 && day.cricket === 0 && day.rain === 0 && day.wind === 0, 'en klar dag i juni: bara stadsbrus (' + day.city + ')');
+const sNight = ambienceMix({ ...noon, night: 1 });
+ok(sNight.cricket > 0.9 && sNight.city < day.city && sNight.city > 0, 'en sommarnatt ger syrsor och stillare stad');
+const wNight = ambienceMix({ ...noon, night: 1, month: 0 });
+ok(wNight.cricket === 0 && wNight.wind > 0 && wNight.wind < 0.4, 'en vinternatt har inga syrsor men lite blåst');
+const rainy = ambienceMix({ ...noon, rain: 1 });
+ok(rainy.rain > 0.8 && rainy.city < day.city && rainy.cricket === 0, 'regn hörs och dämpar staden');
+const snowy = ambienceMix({ ...noon, snow: 1, month: 0 });
+ok(snowy.wind > 0.7 && snowy.rain === 0 && snowy.city < day.city, 'snö ger blåst och dämpar staden');
+ok(mixSum(ambienceMix({ ...noon, paused: true })) < mixSum(day), 'står spelet stilla blir det lite tystare');
+const all = [];
+for (const night of [0, 0.5, 1]) for (const rain of [0, 1]) for (const snow of [0, 1]) for (const month of [0, 5, 11]) for (const paused of [false, true]) all.push(ambienceMix({ ...noon, night, rain, snow, month, paused }));
+ok(all.every((m) => Object.values(m).every((v) => v >= 0 && v <= 1)), 'alla nivåer håller sig mellan 0 och 1');
+ok(JSON.stringify(ambienceMix({ ...noon, night: 0.3 })) === JSON.stringify(ambienceMix({ ...noon, night: 0.3 })), 'omgivningsljudet är en ren funktion');
+ok(ambience.on() === false && ambience._levels() === null, 'omgivningsljudet börjar avstängt');
+ambience.start();
+ok(ambience.on() === true, 'start slår på omgivningsljudet');
+ambience.set(ambienceMix({ ...noon, night: 1 }));
+const lv = ambience._levels();
+ok(lv.city > 0 && lv.cricket > 0 && lv.rain === 0 && lv.wind === 0, 'nivåerna följer mixen (stad ' + lv.city.toFixed(2) + ', syrsor ' + lv.cricket.toFixed(3) + ')');
+ok(lv.cricket <= 0.08 && lv.city <= 0.4, 'nivåerna är låga (syrsor högst 0,08, stad högst 0,4)');
+ambience.set(ambienceMix({ ...noon, rain: 1 }));
+ok(ambience._levels().rain > 0.03 && ambience._levels().cricket === 0, 'regnet kommer in och syrsorna försvinner');
+ambience.stop();
+ok(ambience.on() === false && Object.values(ambience._levels()).every((v) => v === 0), 'stopp tystar allt');
+ambience.set(ambienceMix(noon));
+ok(Object.values(ambience._levels()).every((v) => v === 0), 'ett avslaget omgivningsljud ändras inte av set');
 console.log(fails ? fails + ' fel' : 'Alla musiktester gick bra');
 process.exit(fails ? 1 : 0);

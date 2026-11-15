@@ -11,8 +11,8 @@ import { makeCompetitors } from '../sim/market.js';
 import { releaseGame, cancelProject, toggleCrunch, shipNow, extendPolish } from '../sim/dev.js';
 import { cancelContract } from '../sim/contracts.js';
 import { refreshCandidates } from '../sim/people.js';
-import { sfx, music } from '../audio/sfx.js';
-import { newDirector, pickMood } from '../audio/director.js';
+import { sfx, music, ambience } from '../audio/sfx.js';
+import { newDirector, pickMood, ambienceMix } from '../audio/director.js';
 import { UI, act, initUICore, toast, eventCard, $, icon, L, money, esc } from './core.js';
 import { buildHUD, buildDock, updateHUD, updateDock, updateDev, setHUDVisible, flashStat, fitHUD } from './hud.js';
 import { showPrompt } from './prompts.js';
@@ -27,6 +27,15 @@ const CARD_BOTTOM = 290;
 
 // händelsekortets färg och rubrik efter nyhetens slag, och vilket fönster Visa-knappen öppnar
 const EV_KIND = { award: 'award', bad: 'warning', platform: 'platform' };
+// Stora stunder som inte har någon egen ruta får ett litet firande: ljud, konfetti, ibland fyrverkerier, och personalen jublar
+const CHEER = {
+  rankTop: { sfx: 'fanfare', conf: 90, fw: 4, cele: 4 },
+  liveLaunch: { sfx: 'launch', conf: 70, fw: 3, cele: 3.5 },
+  hwLaunch: { sfx: 'launch', conf: 70, fw: 2, cele: 3.5 },
+  storeTop: { sfx: 'record', conf: 50, fw: 0, cele: 3 },
+  storeLevel: { sfx: 'record', conf: 40, fw: 0, cele: 2.5 },
+  storeRecord: { sfx: 'record', conf: 30, fw: 0, cele: 0 },
+};
 const GO = [[/^news\.(lowCash|debt)$/, 'finance'], [/^news\.hw/, 'hardware'], [/^(live|esp)\./, 'library'], [/^news\.(quit|quitMood|clash|trained|teamTrained|staffGrow|missionDone|missionLost|opsLost|hrHires)$/, 'staff'], [/^news\.campus$/, 'studio'], [/^news\.bizReport$/, 'contracts'], [/^news\.(boardReport|sub(Hit|Talent|Poach|PoachHeld|Scandal)|acquired|integrating|integrated)$/, 'market'], [/^news\.(platform$|recipeLevel)/, 'market'], [/^news\.store(Level|Top|Spot|Event|Wish|Deal|Bundle|Rec)/, 'store']];
 const goOf = (key) => (GO.find(([re]) => re.test(key)) || [0, 'news'])[1];
 
@@ -78,6 +87,7 @@ export const app = {
     }
     sfx.setVolume?.(s.sfx ? s.sfxVol : 0);
     music.setVolume?.(s.music ? s.musicVol : 0);
+    ambience.setVolume?.(s.amb ? s.ambVol : 0);
     saveSettings(s);
   },
   setLanguage(l) {
@@ -213,6 +223,7 @@ export const app = {
       sc.confetti(60 + c.i * 30);
     });
     on('chartTop', () => this.mode === 'play' && sc.confetti(50));
+    for (const k of Object.keys(CHEER)) on(k, () => this.cheer(k));
     on('released', (g) => {
       // ett självgående teams spel firas bara om det blev riktigt bra
       if (!g.auto || g.score >= 8) sc.celebrateNow(3.5);
@@ -352,6 +363,7 @@ export const app = {
     if (fresh) saveGame(G);
     music.setEra?.(1980 + Math.floor(G.t / 48));
     music.start?.();
+    if (this.settings.amb) ambience.start?.();
     music.setMood?.('play');
     emit('gameStart', G);
   },
@@ -387,6 +399,19 @@ export const app = {
     emit('title');
   },
 
+  // Ett litet firande (se CHEER), högst ett per tre sekunder så att flera händelser i rad inte blir ett kaos. Bara ljud och bilder.
+  cheer(kind) {
+    const c = CHEER[kind];
+    if (!c || this.mode !== 'play' || !this.G || !this.scene) return;
+    const now = performance.now();
+    if (now - (this.cheerT || 0) < 3000) return;
+    this.cheerT = now;
+    sfx.play(c.sfx);
+    this.scene.confetti(c.conf);
+    if (c.fw) this.scene.fireworks(c.fw);
+    if (c.cele) this.scene.celebrateNow(c.cele);
+  },
+
   // Musikregin: en gång i sekunden, efter hur spelet går (paus, fart, övertid, ruta som visas)
   directMusic(now) {
     const G = this.G;
@@ -402,6 +427,22 @@ export const app = {
       style: this.settings.musicStyle,
     });
     if (mood && music.mood?.() !== mood) music.setMood?.(mood);
+    // Omgivningsljudet följer dygnet och vädret i scenen (bara ljud, ingenting i spelet ändras)
+    if (this.settings.amb && ambience.on?.()) {
+      const wd = this.scene && this.scene.world;
+      const w = wd ? wd.weather : { type: 'clear', amt: 0 };
+      ambience.set?.(
+        ambienceMix({
+          mode: this.mode === 'play' && G ? 'play' : 'title',
+          over: !!(G && G.over),
+          night: wd ? Math.min(1, wd.info().night / 0.55) : 0,
+          rain: w.type === 'rain' ? w.amt : 0,
+          snow: w.type === 'snow' ? w.amt : 0,
+          month: wd ? wd.month : 0,
+          paused: this.speed === 0 || (this.settings.menuPause && this.menuOpen),
+        }),
+      );
+    }
   },
 
   // ── Loop ──

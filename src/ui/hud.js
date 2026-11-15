@@ -19,7 +19,7 @@ import { canAcquireAny, ownedComps } from '../sim/acquire.js';
 import { hwDecisions } from './win-hardware.js';
 import { lang } from '../core/i18n.js';
 import { fmtNum, clamp } from '../core/util.js';
-import { music } from '../audio/sfx.js';
+import { music, ambience } from '../audio/sfx.js';
 import { saveSettings } from '../core/store.js';
 import { CLIENTS, BRIEFS } from '../data/events.js';
 import { ACHIEVEMENTS } from '../data/achievements.js';
@@ -143,12 +143,18 @@ export function buildHUD(root) {
   act('menu', () => UI.open('menu'));
   act('hud-mute', () => {
     const app = UI.app;
-    const on = !(app.settings.music || app.settings.sfx);
+    const on = !(app.settings.music || app.settings.sfx || app.settings.amb);
     app.settings.music = on;
     app.settings.sfx = on;
+    app.settings.amb = on;
     app.applySettings();
-    if (on) music.start?.();
-    else music.stop?.();
+    if (on) {
+      music.start?.();
+      if (app.G) ambience.start?.();
+    } else {
+      music.stop?.();
+      ambience.stop?.();
+    }
     const b = $('#mute-btn');
     if (b) b.innerHTML = icon(on ? 'volume' : 'mute');
   });

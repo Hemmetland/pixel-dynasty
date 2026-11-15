@@ -4,8 +4,11 @@ let master = null;
 let sfxBus = null;
 let musicBus = null;
 let reverb = null;
+let ambBus = null;
 let sfxVol = 0.7;
 let musicVol = 0.5;
+let ambVol = 0.5;
+let sfxEra = 0; // ljudeffekternas röst följer epoken (se ERA_WAVE och music.setEra)
 let unlocked = false;
 let analyser = null;
 
@@ -28,6 +31,9 @@ function ensure() {
     sfxBus = ctx.createGain();
     sfxBus.gain.value = sfxVol;
     sfxBus.connect(master);
+    ambBus = ctx.createGain();
+    ambBus.gain.value = ambVol * 0.6;
+    ambBus.connect(master);
     musicBus = ctx.createGain();
     musicBus.gain.value = musicVol * 0.55;
     // musiken går genom ett lågpassfilter så att de högsta tonerna blir mjuka i stället för spetsiga
@@ -82,30 +88,46 @@ function env(g, t, a, d, peak, sustain = 0) {
   g.gain.linearRampToValueAtTime(peak, t + a);
   g.gain.exponentialRampToValueAtTime(Math.max(sustain, 0.0001), t + a + d);
 }
+// Ljudeffekternas röst: åttiotalets pip (fyrkantsvåg) blir mjukare på nittiotalet och rundare och med lite klang från 2004
+const ERA_WAVE = [null, { square: 'triangle', sawtooth: 'triangle' }, { square: 'sine', sawtooth: 'triangle', triangle: 'sine' }];
+const ERA_ROOM = [0, 0.22, 0.4];
+const WAVE_RMS = { square: 1, sawtooth: 0.577, triangle: 0.577, sine: 0.707 };
 function tone(type, f0, f1, t, dur, vol, bus = sfxBus, dest = null) {
   const c = ctx;
   const o = c.createOscillator();
   const g = c.createGain();
-  o.type = type;
+  const fx = bus === sfxBus && !dest && sfxEra > 0;
+  const wave = fx ? ERA_WAVE[sfxEra][type] || type : type;
+  o.type = wave;
+  if (wave !== type) vol *= Math.min(1.5, Math.pow(WAVE_RMS[type] / WAVE_RMS[wave], 0.7)); // en mjukare våg får lika hög ljudstyrka
   o.frequency.setValueAtTime(f0, t);
   if (f1 && f1 !== f0) o.frequency.exponentialRampToValueAtTime(f1, t + dur);
   env(g, t, 0.004, dur, vol);
   o.connect(g);
   g.connect(dest || bus);
+  if (fx && reverb) {
+    const sg = c.createGain();
+    sg.gain.value = ERA_ROOM[sfxEra];
+    g.connect(sg);
+    sg.connect(reverb);
+  }
   o.start(t);
   o.stop(t + dur + 0.05);
   return o;
 }
 let noiseBuf = null;
-function noise(t, dur, vol, fType = 'highpass', f = 3000, bus = sfxBus, f2 = null) {
-  const c = ctx;
+function noiseBuffer() {
   if (!noiseBuf) {
-    noiseBuf = c.createBuffer(1, c.sampleRate, c.sampleRate);
+    noiseBuf = ctx.createBuffer(1, ctx.sampleRate, ctx.sampleRate);
     const d = noiseBuf.getChannelData(0);
     for (let i = 0; i < d.length; i++) d[i] = Math.random() * 2 - 1;
   }
+  return noiseBuf;
+}
+function noise(t, dur, vol, fType = 'highpass', f = 3000, bus = sfxBus, f2 = null) {
+  const c = ctx;
   const s = c.createBufferSource();
-  s.buffer = noiseBuf;
+  s.buffer = noiseBuffer();
   s.loop = true;
   const fl = c.createBiquadFilter();
   fl.type = fType;
@@ -138,6 +160,8 @@ const SFX = {
   final: (t) => [60, 64, 67, 72].forEach((n) => tone('triangle', hz(n), hz(n), t, 0.6, 0.1)),
   release: (t) => [67, 71, 74, 79].forEach((n, i) => tone('square', hz(n), hz(n), t + i * 0.08, 0.2, 0.1)),
   fanfare: (t) => { [67, 67, 67, 72, 76, 79].forEach((n, i) => tone('square', hz(n), hz(n), t + [0, 0.12, 0.24, 0.36, 0.56, 0.78][i], i === 5 ? 0.8 : 0.16, 0.11)); [55, 60, 64].forEach((n) => tone('triangle', hz(n), hz(n), t + 0.78, 0.8, 0.1)); },
+  record: (t) => [79, 84, 88, 91].forEach((n, i) => { tone('triangle', hz(n), hz(n), t + i * 0.06, 0.22, 0.1); tone('sine', hz(n + 12), hz(n + 12), t + i * 0.06, 0.18, 0.04); }),
+  launch: (t) => { noise(t, 0.5, 0.08, 'bandpass', 400, sfxBus, 3200); [60, 67, 72, 76].forEach((n, i) => tone('square', hz(n), hz(n), t + 0.45 + i * 0.05, 0.5, 0.07)); },
   achievement: (t) => [79, 83, 86, 91].forEach((n, i) => tone('triangle', hz(n), hz(n), t + i * 0.07, 0.3, 0.12)),
 };
 export const sfx = {
@@ -156,6 +180,114 @@ export const sfx = {
     sfxVol = v;
     if (sfxBus) sfxBus.gain.value = v;
   },
+};
+
+// ── Omgivningsljud ──
+// Ett svagt bakgrundsljud som följer dygnet och vädret: stadsbrus på dagen, syrsor på sommarnätter, regn och blåst. Nivåerna
+// kommer ur ambienceMix i director.js (en ren funktion) och ändras mjukt en gång i sekunden. Ljudet är bara ljud (aldrig G.rng).
+const A = { on: false, L: null };
+const AMB_GAIN = { city: 0.14, cricket: 0.035, rain: 0.055, wind: 0.35 };
+function buildAmbience() {
+  const c = ctx;
+  const filt = (type, f, q = 0.7) => {
+    const s = c.createBufferSource();
+    s.buffer = noiseBuffer();
+    s.loop = true;
+    const fl = c.createBiquadFilter();
+    fl.type = type;
+    fl.frequency.value = f;
+    fl.Q.value = q;
+    s.connect(fl);
+    s.start();
+    return fl;
+  };
+  const level = () => {
+    const g = c.createGain();
+    g.gain.value = 0;
+    g.connect(ambBus);
+    return g;
+  };
+  const lfo = (f, depth, target, type = 'sine') => {
+    const o = c.createOscillator();
+    o.type = type;
+    o.frequency.value = f;
+    const d = c.createGain();
+    d.gain.value = depth;
+    o.connect(d);
+    d.connect(target);
+    o.start();
+  };
+  const city = level();
+  const cf = filt('bandpass', 420, 0.6);
+  const cm = c.createGain();
+  cm.gain.value = 0.75;
+  cf.connect(cm);
+  lfo(0.11, 0.25, cm.gain);
+  cm.connect(city);
+  // syrsor: en ton som slås av och på snabbt (kvittret) och långsamt (pauserna)
+  const cricket = level();
+  const co = c.createOscillator();
+  co.type = 'sine';
+  co.frequency.value = 4300;
+  const ca = c.createGain();
+  ca.gain.value = 0.5;
+  lfo(27, 0.5, ca.gain, 'square');
+  const cb = c.createGain();
+  cb.gain.value = 0.5;
+  lfo(1.3, 0.5, cb.gain, 'square');
+  co.connect(ca);
+  ca.connect(cb);
+  cb.connect(cricket);
+  co.start();
+  const rain = level();
+  const rf = filt('highpass', 1100);
+  const rl = c.createBiquadFilter();
+  rl.type = 'lowpass';
+  rl.frequency.value = 8000;
+  rf.connect(rl);
+  rl.connect(rain);
+  const wind = level();
+  const wf = filt('lowpass', 380);
+  lfo(0.07, 140, wf.frequency);
+  wf.connect(wind);
+  return { city, cricket, rain, wind };
+}
+const toward = (param, v, t) => {
+  try {
+    param.setTargetAtTime(v, t, 1.5);
+  } catch {
+    param.value = v;
+  }
+};
+export const ambience = {
+  start() {
+    const c = ensure();
+    if (!c || A.on) return;
+    if (!A.L) {
+      try {
+        A.L = buildAmbience();
+      } catch {
+        return;
+      }
+    }
+    A.on = true;
+  },
+  stop() {
+    if (!A.on || !A.L) return;
+    A.on = false;
+    for (const g of Object.values(A.L)) toward(g.gain, 0, ctx.currentTime);
+  },
+  setVolume(v) {
+    ambVol = v;
+    if (ambBus) ambBus.gain.value = v * 0.6;
+  },
+  // mix: { city, cricket, rain, wind } mellan 0 och 1 (från ambienceMix)
+  set(mix) {
+    if (!A.on || !A.L) return;
+    for (const k of Object.keys(A.L)) toward(A.L[k].gain, (mix[k] || 0) * AMB_GAIN[k], ctx.currentTime);
+  },
+  on: () => A.on,
+  _levels: () => A.L && Object.fromEntries(Object.entries(A.L).map(([k, g]) => [k, g.gain.value])),
 };
 
 // ── Musik ──
@@ -358,6 +490,7 @@ export const music = {
   mood: () => M.nextMood || M.mood,
   setEra(year) {
     M.era = year < 1991 ? 0 : year < 2004 ? 1 : 2;
+    sfxEra = M.era;
     M.key = 57 + ((year * 7) % 5);
   },
   // för test: ljudkontexten, och kör schemaläggaren ett varv och ger avsnittet som spelas
