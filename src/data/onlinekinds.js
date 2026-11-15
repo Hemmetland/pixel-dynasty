@@ -42,12 +42,12 @@ export const kindOf = (topic, genre, genre2) => TOPIC_KIND[topic] || GENRE_KIND[
 // E-sportevent, två per sort. Vilka som finns styrs av sorten (kind).
 const E = (id, kind, ic, weeks, view, out, drama, name, desc) => ({ id, kind, ic, weeks, view, out, drama, name, desc });
 export const ETYPES = [
-  E('race', 'mmo', 'rocket', 3, 1.1, 1.2, 0.3,
-    { sv: 'Först i världen', en: 'Race to world first' },
-    { sv: 'Gillen tävlar om att klara den nya utmaningen först. Alla tittar och håller på sitt favoritlag.', en: 'Guilds race to clear the new challenge first. Everyone watches and cheers for a favourite.' }),
+  { ...E('race', 'mmo', 'rocket', 3, 1.1, 1.2, 0.3,
+    { sv: 'Raidrusningen', en: 'The Raid Rush' },
+    { sv: 'Tio toppgillen (spelargrupper) tävlar om att klara säsongens nya raid, ett jättesvårt uppdrag för många spelare på en gång, först i världen. Startar bara med en ny säsong, och hela världen tittar.', en: 'Ten top guilds (player groups) race to clear the season\'s new raid, a huge mission for many players at once, first in the world. It only starts with a new season, and the whole world watches.' }), season: true },
   E('dungeon', 'mmo', 'skull', 2, 0.9, 0.9, 0.2,
-    { sv: 'Grottjakten', en: 'Dungeon run' },
-    { sv: 'Lag tävlar om snabbaste vägen genom grottorna. Kortare och billigare än ett race.', en: 'Teams race through the dungeons. Shorter and cheaper than a race.' }),
+    { sv: 'Nyckelstegen', en: 'The Key Ladder' },
+    { sv: 'Lag tävlar i dungeons på tid, och varje nyckel gör nästa nivå svårare. Den som klarar den svåraste nivån fortast vinner. Kortare och billigare än raidrusningen, och går att köra när som helst.', en: 'Teams run timed dungeons, and every key makes the next level harder. The team that clears the hardest level fastest wins. Shorter and cheaper than the Raid Rush, and can run any time.' }),
   E('lastteam', 'survival', 'fire', 2, 1.15, 1.2, 0.35,
     { sv: 'Sista laget kvar', en: 'Last team standing' },
     { sv: 'Lagen släpps ut på en karta som krymper. Bara ett lag överlever.', en: 'Teams drop onto a shrinking map. Only one team survives.' }),
@@ -84,6 +84,11 @@ export const ETYPES = [
 ];
 export const ETYPE = Object.fromEntries(ETYPES.map((e) => [e.id, e]));
 export const etypesOf = (kind) => ETYPES.filter((e) => e.kind === (KIND[kind] ? kind : 'mmo'));
+
+// Tio toppgillen i raidrusningen väljs ur den här listan (påhittade namn), och deras styrka avgör vem som klarar raiden först
+export const GUILDS = ['Iron Oath', 'Ashen Crown', 'Nightwatch', 'Last Light', 'Pale Banner', 'Rune Syndicate', 'Ember Order', 'Gravebound', 'Silent Choir', 'Hollow Throne', 'Winter Vow', 'Dawnbreakers', 'Stoneheart', 'Ravenguard', 'Grimwake', 'Thornfall', 'Moonbound', 'Cinder Pact', 'Sunken Court', 'Wild Hunt', 'Storm Covenant', 'Black Lantern', 'Ivory Legion', 'Verdant Circle', 'Crimson Tide', 'Silver Dusk', 'Obsidian Hand', 'Northern Flame'];
+export const RAID_GUILDS = 10;
+export const RAID_BOSSES = 8;
 
 // Lagnamn till vinnarna: förled + efterled, valda med en hash (aldrig slumpen i spelet)
 export const TEAM_A = ['Nord', 'Iron', 'Neon', 'Shadow', 'Storm', 'Pixel', 'Crimson', 'Frost', 'Thunder', 'Silver', 'Rogue', 'Lunar', 'Atomic', 'Wild', 'Cyber', 'Golden'];

@@ -2095,6 +2095,8 @@ ok(!bad.length, `äldre sparning utan ett av ${paths.length} fält går att spel
     g.live.pot = subs * 1.25 * (KIND[kind] ? KIND[kind].pot : 1);
     return [GE, g];
   };
+  // en säsong som startade för `ago` veckor sedan (raidrusningen följer säsongen)
+  const inSeason = (GE, g, ago = 0) => { g.live.season = { id: 'story', t: GE.t - ago, until: GE.t - ago + 12, subs0: g.live.subs, q: 1, share: 0, cost: 0 }; };
   // sorten ändrar potentialen och hur fort innehållet åldras; utan sort är det ett MMO
   const [, gm] = mkOnline('mmo');
   const [, gf] = mkOnline('farm');
@@ -2124,6 +2126,7 @@ ok(!bad.length, `äldre sparning utan ett av ${paths.length} fält går att spel
 
   // ett event från start till slut
   const [GR, gr] = mkOnline('mmo');
+  inSeason(GR, gr);
   const rngBefore = GR.rng;
   const m0 = GR.money, s0 = gr.live.subs, f0 = GR.fans;
   ok(S.startEsport(GR, gr.id, 'dungeon', 99, 0, 0) === false && S.startEsport(GR, gr.id, 'bracket', 2, 0, 0) === false, 'ogiltiga val och en tävling från en annan sort nekas');
@@ -2147,9 +2150,55 @@ ok(!bad.length, `äldre sparning utan ett av ${paths.length} fält går att spel
   // samma slump i två identiska spel
   const [GA, ga] = mkOnline('mmo');
   const [GB, gb] = mkOnline('mmo');
+  inSeason(GA, ga); inSeason(GB, gb);
   S.startEsport(GA, ga.id, 'race', 2, 1, 0); S.startEsport(GB, gb.id, 'race', 2, 1, 0);
   for (let i = 0; i < 4; i++) { S.esportsWeek(GA); GA.t++; S.esportsWeek(GB); GB.t++; }
   ok(ga.live.esp.log[0].viewers === gb.live.esp.log[0].viewers && ga.live.esp.log[0].winner === gb.live.esp.log[0].winner, 'två lika spel ger samma utfall (slumpen är en hash av fröet)');
+
+  // raidrusningen följer säsongen: bara de första veckorna av en ny säsong, en gång per säsong, och utan att vänta på vilan
+  const [GN1, gn1] = mkOnline('mmo');
+  ok(typeof S.startEsport(GN1, gn1.id, 'race', 1, 0, 0) === 'string' && !(gn1.live.esp && gn1.live.esp.cur), 'raidrusningen startar inte utan en säsong');
+  ok(S.startEsport(GN1, gn1.id, 'dungeon', 1, 0, 0) === true, 'nyckelstegen går att köra utan säsong');
+  const [GN2, gn2] = mkOnline('mmo');
+  inSeason(GN2, gn2, 9);
+  ok(typeof S.startEsport(GN2, gn2.id, 'race', 1, 0, 0) === 'string' && S.espTypeBlock(GN2, gn2, 'race') === 'late', 'raidrusningen startar inte sent i säsongen');
+  const [GN3, gn3] = mkOnline('mmo');
+  inSeason(GN3, gn3, 1);
+  ok(S.espTypeBlock(GN3, gn3, 'race') === '' && S.espTypeBlock(GN3, gn3, 'dungeon') === '', 'raidrusningen kan starta i början av säsongen');
+  // en vilande efter nyckelstegen hindrar inte raidrusningen
+  S.startEsport(GN3, gn3.id, 'dungeon', 1, 0, 0);
+  let gN = 0; while (gn3.live.esp.cur && gN++ < 20) { S.esportsWeek(GN3); GN3.t++; }
+  inSeason(GN3, gn3, 3);
+  ok(S.espReadyIn(GN3, gn3.live) > 0 && S.canEsport(GN3, gn3, 'dungeon') !== true && S.canEsport(GN3, gn3, 'race') === true, 'raidrusningen väntar inte på vilan efter ett annat event');
+  ok(S.startEsport(GN3, gn3.id, 'race', 1, 0, 0) === true, 'raidrusningen startar mitt i vilan');
+  const C3 = gn3.live.esp.cur;
+  ok(C3.field.length === 10 && new Set(C3.field.map((x) => x.name)).size === 10, 'tio olika gillen tävlar');
+  ok(S.raceStanding(C3).every((r) => r.boss === 0) && S.raceStanding(C3).length === 10, 'alla börjar på noll bossar');
+  const seen = [];
+  gN = 0;
+  while (gn3.live.esp.cur && gN++ < 20) { S.esportsWeek(GN3); GN3.t++; const c = gn3.live.esp.cur; if (c) seen.push(S.raceStanding(c)); }
+  const log3 = gn3.live.esp.log[0];
+  const fin = S.raceStanding({ ...C3, w: C3.weeks });
+  ok(log3.type === 'race' && log3.winner === fin[0].name && fin[0].boss === 8 && fin.slice(1).every((r) => r.boss < 8), 'det starkaste gillet klarar alla bossar först och vinner');
+  ok(seen.length >= 1 && seen.every((r) => r.every((x) => x.boss < 8)) && seen.every((r) => r.every((x, i) => i === 0 || r[i - 1].boss >= x.boss)), 'mitt i raiden har ingen klarat allt och listan är sorterad');
+  ok(S.espTypeBlock(GN3, gn3, 'race') === 'done' && typeof S.startEsport(GN3, gn3.id, 'race', 1, 0, 0) === 'string', 'raidrusningen körs en gång per säsong');
+  ok(GN3.news.filter((n) => n.key === 'esp.news.raceOpen').length === 1, 'raidmeddelandet kom en gång, när säsongen öppnade raiden, och inte igen efter att den körts');
+  // en ny säsong ger ett meddelande en gång, och det återkommande eventet väntar tyst på säsongen
+  const [GN4, gn4] = mkOnline('mmo');
+  S.setEsportAuto(GN4, gn4.id, { type: 'race', i: 1, p: 0, m: 0 });
+  for (let i = 0; i < 4; i++) { S.esportsWeek(GN4); GN4.t++; }
+  ok(!gn4.live.esp.cur && gn4.live.esp.autoWarn === 0 && GN4.news.filter((n) => n.key === 'esp.news.autoPaused').length === 0, 'ett återkommande race väntar tyst utan säsong');
+  inSeason(GN4, gn4, 0);
+  S.esportsWeek(GN4);
+  ok(gn4.live.esp.cur && gn4.live.esp.cur.type === 'race' && gn4.live.esp.cur.field.length === 10, 'ett återkommande race startar när säsongen börjar');
+  const [GN5, gn5] = mkOnline('mmo');
+  inSeason(GN5, gn5, 0);
+  S.esportsWeek(GN5); S.esportsWeek(GN5);
+  ok(GN5.news.filter((n) => n.key === 'esp.news.raceOpen').length === 1, 'en ny säsong ger ett raidmeddelande en gång');
+  const [GN6, gn6] = mkOnline('farm');
+  inSeason(GN6, gn6, 0);
+  S.esportsWeek(GN6);
+  ok(GN6.news.filter((n) => n.key === 'esp.news.raceOpen').length === 0, 'andra sorter får inget raidmeddelande');
 
   // krav: spelare, pengar och att spelet lever
   const [GS2, gs2] = mkOnline('mmo', 2012, 1000);

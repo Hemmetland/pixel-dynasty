@@ -1509,3 +1509,14 @@ input[type='range']::-moz-range-thumb { width: 18px; height: 18px; border-radius
 .btn[data-act="es-go"]:not([disabled]) { background: linear-gradient(180deg, #ffe08a, #f0aa2a); color: #3a2400; border-color: rgba(255, 255, 255, 0.4); text-shadow: none; box-shadow: 0 10px 26px -8px rgba(255, 190, 60, 0.7), inset 0 1px 0 rgba(255, 255, 255, 0.55); }
 .btn[data-act="es-go"]:not([disabled]):hover { filter: brightness(1.07); }
 .es-on { background: linear-gradient(135deg, color-mix(in srgb, var(--gold) 14%, transparent), transparent 70%); }
+
+/* ── Raidrusningen: läget bland de tio gillena ── */
+.es-rank { display: grid; grid-template-columns: 18px minmax(0, 1fr) auto auto; align-items: center; gap: 8px; padding: 3px 0; font-size: 12.5px; }
+.es-rank .n { color: var(--muted); font-weight: 700; text-align: right; }
+.es-rank b { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.es-rank .rb { display: inline-flex; gap: 2px; }
+.es-rank .rb i { width: 8px; height: 8px; border-radius: 2px; background: rgba(255, 255, 255, 0.1); }
+.es-rank .rb i.on { background: var(--gold); box-shadow: 0 0 6px color-mix(in srgb, var(--gold) 60%, transparent); }
+.es-rank .faint { font-size: 11.5px; min-width: 74px; text-align: right; }
+@media (max-width: 560px) { .es-rank { grid-template-columns: 16px minmax(0, 1fr) auto; } .es-rank .faint { display: none; } }
+

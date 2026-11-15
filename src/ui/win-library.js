@@ -23,8 +23,8 @@ import { openExpansion } from './wizard.js';
 import { CERTS, certOf, certCounts, nextCert, totalUnits, records } from '../sim/charts.js';
 import { fanVoices, fanSource } from '../sim/fans.js';
 import { FAN_SOURCE } from '../data/fanvoices.js';
-import { KIND, etypesOf, ETYPE } from '../data/onlinekinds.js';
-import { PRIZES, PRODS, MKTS, ESP_MIN, ESP_AUTO_BUFFER, esportPlan, espRating, espBestPrize, espReadyIn, canEsport, startEsport, setEsportAuto, kindOfGame } from '../sim/esports.js';
+import { KIND, etypesOf, ETYPE, RAID_BOSSES } from '../data/onlinekinds.js';
+import { PRIZES, PRODS, MKTS, ESP_MIN, ESP_AUTO_BUFFER, esportPlan, espRating, espBestPrize, espReadyIn, canEsport, startEsport, setEsportAuto, kindOfGame, raceStanding } from '../sim/esports.js';
 import { SUB_TIERS, OPS, PRICE_MIN, PRICE_MAX, PATCH_WEEKS, EVENT_WEEKS, SURGE_WEEKS, tierMix, liveMonth, serverCap, livePatchCost, startLivePatch, setLivePrice, setLiveOps, closeLive, rivalMmos, rivalPull, rivalFactor, liveFactors, setLiveAuto, setLiveAutoSeason, PERKS, perkCost, setLivePerk, AUTO_FRESH, AUTO_BUFFER, AUTO_SEASON_BELOW, eventOn, eventReadyIn, liveEventCost, startLiveEvent, SHOP, isF2P, canGoF2P, goF2P, setLiveShop, liveLoad, liveArpu, hikeShare, REGIONS, regionGain, REGION_NAME, REGION_WEEKS, regionBonus, regionsOpen, liveRegionCost, startLiveRegion, SEASONS, SEASON_WEEKS, seasonOn, seasonReadyIn, seasonShare, seasonBlock, seasonQuality, liveSeasonCost, startLiveSeason, liveAge } from '../sim/live.js';
 
 // Stäng servrarna och gör till gratisspel kräver två tryck: första trycket "armerar" knappen för det spelet
@@ -309,14 +309,18 @@ function esportPanel(G, g) {
   if (E.cur) {
     const C = E.cur;
     const left = Math.max(0, C.weeks - C.w);
+    const rank = C.field ? raceStanding(C) : [];
+    const standings = rank.length
+      ? `<div class="es-race"><div class="lbl" style="margin:10px 0 4px">${t('es.standings')}</div>${rank.slice(0, 5).map((r, i) => `<div class="es-rank"><span class="n">${i + 1}</span><b>${esc(r.name)}</b><span class="rb">${Array.from({ length: RAID_BOSSES }, (_, k) => `<i class="${k < r.boss ? 'on' : ''}"></i>`).join('')}</span><span class="faint">${t('es.bosses', { n: r.boss, m: RAID_BOSSES })}</span></div>`).join('')}<div class="faint" style="font-size:11.5px;margin-top:3px">${t('es.guildsMore', { n: rank.length - 5 })}</div></div>`
+      : '';
     const pips = Array.from({ length: C.weeks }, (_, i) => `<i class="${i < C.w ? 'on' : i === C.w ? 'now' : ''}"></i>`).join('');
     return `${head}<div class="ltier season-on es-on"><span class="rn-i sbig" style="--c:var(--gold)">${icon(ETYPE[C.type].ic)}</span><div style="flex:1;min-width:0"><div class="row" style="font-size:14px"><b>${t('es.running', { name: L(ETYPE[C.type].name) })}</b><span class="sp"></span><span class="faint">${t('es.left', { n: left })}</span></div><div class="sweeks">${pips}</div>
-      <div class="row wrap" style="gap:6px;margin-top:8px"><span class="spill" style="--c:var(--accent)">${icon('eye')}${t('es.soFar', { v: fmtNum(approx(C.viewers)) })}</span><span class="spill" style="--c:var(--good)">${icon('user')}${t('es.soFarNew', { n: fmtNum(approx(C.newPlayers)) })}</span><span class="spill" style="--c:var(--money)">${icon('money')}${t('es.soFarSpons', { v: money(C.sponsors) })}</span></div></div></div>${log}`;
+      <div class="row wrap" style="gap:6px;margin-top:8px"><span class="spill" style="--c:var(--accent)">${icon('eye')}${t('es.soFar', { v: fmtNum(approx(C.viewers)) })}</span><span class="spill" style="--c:var(--good)">${icon('user')}${t('es.soFarNew', { n: fmtNum(approx(C.newPlayers)) })}</span><span class="spill" style="--c:var(--money)">${icon('money')}${t('es.soFarSpons', { v: money(C.sponsors) })}</span></div>${standings}</div></div>${log}`;
   }
-  const can = canEsport(G, g);
   const st = esState(G, g);
+  const can = canEsport(G, g, st.type);
   const types = etypesOf(kind.id);
-  const typeCards = `<div class="sgrid">${types.map((ty) => `<button class="scard es-type ${st.type === ty.id ? 'sel' : ''}" data-act="es-type" data-id="${g.id}" data-t="${ty.id}"><div class="row" style="gap:10px;align-items:flex-start"><span class="rn-i sbig" style="--c:var(--gold)">${icon(ty.ic)}</span><div style="flex:1;min-width:0;text-align:left"><b>${L(ty.name)}</b> <span class="faint" style="font-size:11.5px">${t('es.weeks', { n: ty.weeks })}</span><div class="faint" style="font-size:11.5px;line-height:1.35;margin-top:2px">${L(ty.desc)}</div></div></div></button>`).join('')}</div>`;
+  const typeCards = `<div class="sgrid">${types.map((ty) => `<button class="scard es-type ${st.type === ty.id ? 'sel' : ''}" data-act="es-type" data-id="${g.id}" data-t="${ty.id}"><div class="row" style="gap:10px;align-items:flex-start"><span class="rn-i sbig" style="--c:var(--gold)">${icon(ty.ic)}</span><div style="flex:1;min-width:0;text-align:left"><b>${L(ty.name)}</b> <span class="faint" style="font-size:11.5px">${t('es.weeks', { n: ty.weeks })}</span>${ty.season ? ` <span class="tag" style="--c:var(--gold)" data-tip="${esc(t('es.seasonTip'))}">${icon('calendar')}${t('es.seasonTag')}</span>` : ''}<div class="faint" style="font-size:11.5px;line-height:1.35;margin-top:2px">${L(ty.desc)}</div></div></div></button>`).join('')}</div>`;
   const best = espBestPrize(G, g, st.type, st.p, st.m);
   const prizeBtns = PRIZES.map((_, i) => `<button class="${st.i === i ? 'on' : ''} ${best === i ? 'best' : ''}" data-act="es-set" data-id="${g.id}" data-k="i" data-v="${i}">${best === i ? icon('star') : ''}${money(esportPlan(G, g, st.type, i, st.p, st.m).cost.prize)}</button>`).join('');
   const prodBtns = PRODS.map((_, i) => `<button class="${st.p === i ? 'on' : ''}" data-act="es-set" data-id="${g.id}" data-k="p" data-v="${i}" data-tip="${esc(t(PROD_TIP[i]))}">${icon(PRODS[i].ic)}${t(PROD_KEY[i])}</button>`).join('');

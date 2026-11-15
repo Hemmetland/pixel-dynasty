@@ -10,16 +10,19 @@
 // och en del av dem stannar. Sponsorerna betalar per tittare.
 import { clamp } from '../core/util.js';
 import { hashStr } from '../core/rng.js';
-import { t } from '../core/i18n.js';
+import { t, L as pick } from '../core/i18n.js';
 import { yearOf, moneyScale } from './const.js';
 import { earn, spend } from './studio.js';
 import { note } from './news.js';
-import { liveGames, liveArpu, costPerSub, subPrices, liveTarget } from './live.js';
-import { KIND, ETYPE, etypesOf, TEAM_A, TEAM_B } from '../data/onlinekinds.js';
+import { liveGames, liveArpu, costPerSub, subPrices, liveTarget, seasonOn } from './live.js';
+import { KIND, ETYPE, etypesOf, TEAM_A, TEAM_B, GUILDS, RAID_GUILDS, RAID_BOSSES } from '../data/onlinekinds.js';
 
 // Spelare som behövs för att ett event ska vara värt att visa, och veckor av vila efter ett event
 export const ESP_MIN = 3000;
 export const ESP_REST = 6;
+// Raidrusningen (en tävling som följer säsongen) kan bara starta de första RACE_WINDOW veckorna av en ny säsong, en gång per säsong,
+// och väntar inte på vilan efter ett annat event: den nya raiden kommer när säsongen kommer.
+export const RACE_WINDOW = 8;
 // Automatiska event startar när kassan räcker till AUTO_BUFFER event
 export const ESP_AUTO_BUFFER = 3;
 // Prispengar, sändning och marknadsföring: fem, tre och tre nivåer. Kostnaden är det största av ett grundbelopp (i år-2000-dollar,
@@ -141,20 +144,58 @@ export function espBestPrize(G, g, typeId, p, m) {
   return best;
 }
 
-export function canEsport(G, g) {
+// Varför en tävling som följer säsongen inte kan starta nu ('' = går bra, eller tävlingen följer inte säsongen)
+export function espTypeBlock(G, g, typeId) {
+  const type = ETYPE[typeId];
+  if (!type || !type.season || !g || !g.live) return '';
+  const L = g.live;
+  if (!seasonOn(G, L)) return 'noSeason';
+  if (G.t - L.season.t > RACE_WINDOW) return 'late';
+  if (espOf(L).raceT === L.season.t) return 'done';
+  return '';
+}
+const blockText = (G, g, typeId, why) => t(why === 'noSeason' ? 'err.esNoSeason' : why === 'late' ? 'err.esLate' : 'err.esDone', { name: pick(ETYPE[typeId].name), n: RACE_WINDOW });
+export function canEsport(G, g, typeId) {
   if (!g || !g.live || g.live.closed) return 'gone';
   const E = espOf(g.live);
   if (E.cur) return t('err.esRunning');
   if (g.live.subs < ESP_MIN) return t('err.esSmall', { n: fmtN(ESP_MIN) });
-  if (espReadyIn(G, g.live) > 0) return t('err.esRest', { n: espReadyIn(G, g.live) });
+  const why = espTypeBlock(G, g, typeId);
+  if (why) return blockText(G, g, typeId, why);
+  if (!(ETYPE[typeId] && ETYPE[typeId].season) && espReadyIn(G, g.live) > 0) return t('err.esRest', { n: espReadyIn(G, g.live) });
   return true;
+}
+// Tio toppgillen i en raidrusning: valda och rangordnade med en hash av fröet (aldrig G.rng). s = styrka, den starkaste klarar raiden först.
+function raidField(G, g, n) {
+  return GUILDS.map((name) => ({ name, k: hash01(G, `f${g.id}:${n}:${name}`) }))
+    .sort((a, b) => a.k - b.k)
+    .slice(0, RAID_GUILDS)
+    .map((x) => ({ name: x.name, k: x.k, s: 0.6 + 0.4 * hash01(G, `s${g.id}:${n}:${x.name}`) }));
+}
+// Läget i raiden efter de veckor som gått: hur många av RAID_BOSSES bossar varje gille lagt ner (bästa först). Veckorna räknas som
+// eventets egna (weekShare), så det mesta händer mot slutet. Mitt i raiden får ett gille en dag som går bättre eller sämre (jit),
+// så ordningen skiftar, men efter sista veckan har det starkaste gillet klarat alla och de andra färre.
+const jit = (k, w) => ((Math.floor(k * 1e6) * 9301 + (w + 1) * 49297) % 233280) / 233280 * 2 - 1;
+export function raceStanding(C) {
+  if (!C || !C.field) return [];
+  const n = C.weeks;
+  const w = Math.min(C.w, n);
+  const done = w >= n;
+  const cum = (w * (w + 1)) / (n * (n + 1));
+  const top = Math.max(...C.field.map((x) => x.s));
+  return C.field
+    .map((x) => {
+      const f = Math.pow(x.s / top, 3) * (done ? 1 : 1 + 0.35 * (1 - cum) * jit(x.k, w));
+      return { name: x.name, s: x.s, k: x.k, boss: Math.max(0, Math.min(done ? RAID_BOSSES : RAID_BOSSES - 1, Math.floor(RAID_BOSSES * cum * f + 1e-9))) };
+    })
+    .sort((a, b) => b.boss - a.boss || (done ? b.s - a.s : a.k - b.k));
 }
 export function startEsport(G, id, typeId, i, p, m) {
   const g = liveOf(G, id);
   const type = ETYPE[typeId];
   if (!g || !type || !PRIZES[i] || !PRODS[p] || !MKTS[m]) return false;
   if (!etypesOf(kindOfGame(g).id).some((x) => x.id === typeId)) return false;
-  const ok = canEsport(G, g);
+  const ok = canEsport(G, g, typeId);
   if (ok !== true) return ok;
   const L = g.live;
   const E = espOf(L);
@@ -162,6 +203,10 @@ export function startEsport(G, id, typeId, i, p, m) {
   if (G.money < plan.cost.total) return t('err.money');
   spend(G, plan.cost.total, 'esports');
   E.cur = { type: typeId, i, p, m, t0: G.t, until: G.t + type.weeks, weeks: type.weeks, plan, cost: plan.cost.total, viewers: 0, sponsors: 0, newPlayers: 0, w: 0 };
+  if (type.season) {
+    E.raceT = L.season.t;
+    E.cur.field = raidField(G, g, E.n + 1);
+  }
   E.n++;
   L.boost = Math.max(L.boost, G.t + type.weeks);
   note(G, 'esp.news.start', { title: g.title, name: type.name, prize: fmtN(plan.cost.prize) }, 'good', true);
@@ -185,9 +230,22 @@ export function setEsportAuto(G, id, cfg) {
 // Veckans vikt: eventet bygger upp mot en final, och sista veckan har flest tittare
 const weekShare = (k, n) => (k + 1) / ((n * (n + 1)) / 2);
 
+// En ny säsong i ett MMO öppnar raidrusningen: ett meddelande en gång per säsong, om spelet är stort nog för e-sport
+function raceNotice(G, g) {
+  const L = g.live;
+  if (!seasonOn(G, L) || L.subs < ESP_MIN || G.t - L.season.t > RACE_WINDOW) return;
+  const race = etypesOf(kindOfGame(g).id).find((x) => x.season);
+  if (!race) return;
+  const E = espOf(L);
+  if (E.seenT === L.season.t) return;
+  E.seenT = L.season.t;
+  if (E.raceT !== L.season.t) note(G, 'esp.news.raceOpen', { title: g.title, name: pick(race.name) }, 'good');
+}
+
 export function esportsWeek(G) {
   for (const g of liveGames(G)) {
     const L = g.live;
+    raceNotice(G, g);
     if (!L.esp) continue;
     const E = L.esp;
     if (E.cur) {
@@ -196,8 +254,9 @@ export function esportsWeek(G) {
     }
     E.scene = Math.max(0, E.scene - SCENE_DECAY);
     L.eLift = 1 + (SCENE_LIFT * E.scene) / 100;
-    if (E.auto && G.t >= E.ready && L.subs >= ESP_MIN) {
-      const a = E.auto;
+    const a = E.auto;
+    // en tävling som följer säsongen väntar tyst på nästa säsong, de andra på att vilan tar slut
+    if (a && L.subs >= ESP_MIN && (ETYPE[a.type].season ? !espTypeBlock(G, g, a.type) : G.t >= E.ready)) {
       const plan = esportPlan(G, g, a.type, a.i, a.p, a.m);
       if (G.money >= plan.cost.total * ESP_AUTO_BUFFER && startEsport(G, g.id, a.type, a.i, a.p, a.m) === true) E.autoWarn = 0;
       else if (!E.autoWarn) {
@@ -242,7 +301,7 @@ function stepEvent(G, g, E) {
 function finishEvent(G, g, E, type) {
   const L = g.live;
   const C = E.cur;
-  const winner = `${TEAM_A[Math.floor(hash01(G, `a${g.id}:${E.n}`) * TEAM_A.length)]} ${TEAM_B[Math.floor(hash01(G, `b${g.id}:${E.n}`) * TEAM_B.length)]}`;
+  const winner = C.field ? raceStanding({ ...C, w: C.weeks })[0].name : `${TEAM_A[Math.floor(hash01(G, `a${g.id}:${E.n}`) * TEAM_A.length)]} ${TEAM_B[Math.floor(hash01(G, `b${g.id}:${E.n}`) * TEAM_B.length)]}`;
   const margin = Math.max(0, liveArpu(G, L) - costPerSub(G, L));
   const value = C.newPlayers * margin * VALUE_MONTHS;
   const back = C.sponsors + value;

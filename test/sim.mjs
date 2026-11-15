@@ -381,10 +381,13 @@ function manage(G) {
   }
   // onlinespel: innehållsuppdatering när innehållet börjar bli gammalt, och servrar när det blir fullt
   if (mmo) for (const g of S.liveGames(G)) {
-    if (esports && S.canEsport(G, g) === true) {
-      const ty = etypesOf(g.live.kind || 'mmo')[0].id;
-      const i = S.espBestPrize(G, g, ty, espP, espM);
-      if (i >= 0 && G.money > S.esportPlan(G, g, ty, i, espP, espM).cost.total * 4) S.startEsport(G, g.id, ty, i, espP, espM);
+    if (esports) {
+      // tävlingen som följer säsongen först (den kan bara starta ett fåtal veckor), sedan de andra
+      const types = etypesOf(g.live.kind || 'mmo').filter((x) => S.canEsport(G, g, x.id) === true).sort((x, y) => !!y.season - !!x.season);
+      for (const ty of types) {
+        const i = S.espBestPrize(G, g, ty.id, espP, espM);
+        if (i >= 0 && G.money > S.esportPlan(G, g, ty.id, i, espP, espM).cost.total * 4 && S.startEsport(G, g.id, ty.id, i, espP, espM) === true) break;
+      }
     }
     if (autoSeason && !g.live.autoSeason) S.setLiveAutoSeason(G, g.id, true);
     if (perks && !S.isF2P(g.live)) for (let i = 0; i < 3; i++) if (!(g.live.perk && g.live.perk[i]) && G.money > S.perkCost(G, g, i) * 4) S.setLivePerk(G, g.id, i, true);
