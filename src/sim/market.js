@@ -1,7 +1,8 @@
 import { clamp } from '../core/util.js';
-import { rnd, rint, gauss, pick, chance, weighted, shuffle } from '../core/rng.js';
+import { rnd, rint, gauss, pick, chance, weighted, shuffle, hashStr } from '../core/rng.js';
 import { emit } from '../core/bus.js';
 import { COMPETITORS, TITLE_PARTS, TOPIC_NOUNS } from '../data/names.js';
+import { FRANCHISES, FRANCHISE, frTitle } from '../data/franchises.js';
 import { TOPICS, TOPIC } from '../data/topics.js';
 import { GENRES, GENRE } from '../data/genres.js';
 import { PLATFORMS, potential } from '../data/platforms.js';
@@ -68,7 +69,7 @@ export function releaseComp(G, c) {
   const plats = PLATFORMS.filter((p) => !p.own && potential(p, yf) > 1);
   let plat = weighted(G, plats, (p) => potential(p, yf));
   // tema och genre bestämdes när släppet planerades (ryktet); gamla sparfiler och första släppet drar dem nu
-  const nx = c.next && TOPIC[c.next.topic] && GENRE[c.next.genre] ? c.next : rollNext(G, year);
+  const nx = c.next && TOPIC[c.next.topic] && GENRE[c.next.genre] ? c.next : rollNext(G, year, c);
   const topic = TOPIC[nx.topic];
   const genre = GENRE[nx.genre];
   const strength = c.strength;
@@ -92,11 +93,22 @@ export function releaseComp(G, c) {
   const enOf = (x) => (typeof x === 'string' ? x : x?.en || '');
   const taken = new Set(G.market.releases.map((x) => enOf(x.title)));
   for (const g of G.games) taken.add(enOf(g.title));
-  const title = randomTitle(rnd2(G), topic.id, taken);
+  let title = randomTitle(rnd2(G), topic.id, taken); // alltid fyra dragningar, även när titeln kommer från en serie
+  // en spelserie: förlagets nästa del (titeln valdes när släppet planerades) och en räknare för nästa uppföljare
+  const fr = nx.fr && FRANCHISE[nx.fr] ? FRANCHISE[nx.fr] : null;
+  if (fr) {
+    const n = nx.n || 0;
+    title = frTitle(fr, n, year);
+    if (taken.has(title.en)) title = frTitle(fr, n + 1, year + 1);
+    c.frN = { ...(c.frN || {}), [fr.id]: n + 1 };
+    c.frT = { ...(c.frT || {}), [fr.id]: G.t };
+    c.lastFr = fr.id;
+  }
   const rel = {
     id: G.uid++, t: G.t, comp: c.id, studio: c.name, color: c.color, title, score, total,
     platform: plat.id, genre: genre.id, topic: topic.id, scope, yours: false, price: priceOf(year), tail: SALES_TAIL,
   };
+  if (fr) rel.fr = fr.id;
   G.market.releases.push(rel);
   if (G.market.releases.length > 260) G.market.releases.shift();
   if (bought) rel.ex = true;
@@ -105,7 +117,7 @@ export function releaseComp(G, c) {
   c.best = Math.max(c.best, score);
   c.nextT = G.t + Math.round(rint(G, 36, 90) / (0.6 + strength * 0.6) / Math.min(1.8, 1 + (year - 1980) / 60));
   if (c.owned) c.nextT = subCadence(G, c, c.nextT);
-  c.next = rollNext(G, yearOf(c.nextT));
+  c.next = rollNext(G, yearOf(c.nextT), c);
   c.strength = clamp(c.strength + c.growth * (score >= mean ? 1 : 0.4) - 0.004, 0.45, 1.7);
   // krönikan: konkurrenternas allra största spel, högst ett per halvår så att krönikan mest handlar om din studio
   if (G.rival && G.rival.id === c.id && !c.owned) note(G, 'news.rivalRel', { rival: c.name, title, v: score.toFixed(1) }, 'info');
@@ -118,11 +130,29 @@ export function releaseComp(G, c) {
 }
 // Konkurrentens nästa spel: tema och genre (som rykte i marknadsfönstret innan det släpps).
 const COMP_GENRES = ['action', 'adventure', 'strategy', 'rpg', 'simulation', 'casual', 'shooter', 'racing'];
-function rollNext(G, year) {
+function rollNext(G, year, c) {
   const topicsAvail = TOPICS.filter((t) => t.start || RESEARCH.some((r) => (r.unlock.topics || []).includes(t.id) && r.year <= year + 1));
   const topic = pick(G, topicsAvail);
   const genre = weighted(G, GENRES.filter((g) => COMP_GENRES.includes(g.id)), (g) => 1 + topic.compat[GENRES.indexOf(g)] * 0.6);
-  return { topic: topic.id, genre: genre.id };
+  return (c && franchiseNext(G, c, year, topicsAvail)) || { topic: topic.id, genre: genre.id };
+}
+// En spelserie i stället för ett slumpat spel: ungefär vartannat släpp från ett förlag med serier för den tiden. Valet görs
+// med en hash av fröet (aldrig G.rng), så slumpföljden är densamma som utan serier. Tema och genre följer serien, och titeln
+// (med uppföljarens nummer eller årtal) sparas direkt så att ryktet i Marknad kan visa den.
+const FR_P = 0.55;
+function franchiseNext(G, c, year, topicsAvail) {
+  const ok = new Set(topicsAvail.map((t) => t.id));
+  // en serie vilar efter ett släpp: ett år för årsserier, annars knappt två år
+  const when = c.nextT ?? G.t;
+  const rested = (f) => !(c.frT && c.frT[f.id] != null) || when - c.frT[f.id] >= (f.kind === 'y' ? 44 : 90);
+  const list = FRANCHISES.filter((f) => f.by === c.name && f.from <= year && year <= f.to && ok.has(f.topic) && TOPIC[f.topic] && GENRE[f.genre] && rested(f));
+  if (!list.length) return null;
+  const h = (k) => hashStr(`${G.seed || 0}:fr${k}:${c.id}:${c.games || 0}`) / 4294967296;
+  if (h('p') >= FR_P) return null;
+  let i = Math.floor(h('i') * list.length);
+  const f = list[i];
+  const n = (c.frN && c.frN[f.id]) || 0;
+  return { topic: f.topic, genre: f.genre, fr: f.id, n, title: frTitle(f, n, year) };
 }
 // Väntat betyg för en konkurrents spel ett visst år.
 export const compMean = (c, year) => 5.4 + (c.strength - 0.7) * 2.6 + Math.min(1, (year - 1980) / 40) * 0.3;

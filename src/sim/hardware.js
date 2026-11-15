@@ -54,7 +54,7 @@ const FX_P = 0.003;
 const CRYPTO = [tOf(2017, 5), tOf(2018, 7, 2)];
 const CHIPS = [tOf(2020, 2, 2), tOf(2022, 5)];
 // Plattformar
-export const PER_WEIGHT = 30000; // installerad bas per viktpoäng (Nova Prism 5 har vikt 80)
+export const PER_WEIGHT = 30000; // installerad bas per viktpoäng (Gamingstation 5 har vikt 80)
 const WEIGHT_MAX = 90;
 const THIRD = 30; // andra förlags spel på plattformen, i spelintäkt per viktpoäng och vecka (gånger licensavgiften och stödet)
 export const PLAT_MIN = { handheld: 40000, console: 60000, vr: 25000 }; // första ordern

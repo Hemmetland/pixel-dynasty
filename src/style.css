@@ -1477,3 +1477,6 @@ input[type='range']::-moz-range-thumb { width: 18px; height: 18px; border-radius
   .sf-spot-row .btn.sm { width: 100%; justify-content: center; }
   .sf-spot-row.on { flex-wrap: nowrap; }
 }
+
+/* Rykten: titeln på en spelserie som förlaget släpper nästa del i */
+.rumor-title{font-weight:600;font-size:13.5px;color:var(--gold);margin-top:2px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}

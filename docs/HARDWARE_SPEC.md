@@ -164,7 +164,7 @@ En lanserad bärbar enhet eller konsol blir en plattform i spelet (samma fält s
 `G.hw.plats` och sammanslagen med `PLATFORMS` där plattformar listas):
 
 - `weight` = installerad bas / 15 000, högst 90. 300k sålda om året ger vikt ca 20 efter ett år och 40 efter två
-  (Nova Prism 5 har 80).
+  (Gamingstation 5 har 80).
 - `tier` = bästa konkurrerande generation vid lansering (Topp och Mellan), en lägre för Budget. Budget får en
   casual-bias som Hikari Wave (`casual: 1.3, simulation: 1.1, shooter: 0.75`), Topp en teknikbias (`shooter: 1.15,
   action: 1.1, racing: 1.1`).
@@ -307,12 +307,12 @@ Kalibrera i den här ordningen: MARKNAD-tabellen (storleken), sedan THIRD (royal
 
 - `h_vr` (2015, kräver `h_handheld` och `f_vr`, 5 000 FP och 12 M$) öppnar typen VR-headset (`vr` i `HW_TYPES`):
   basår 2016, 56 veckor, design 6 M$, prototyp 1 M$, förslagspris 399 $, enhetskostnad 75 %, kostnadsfall 12 %/år,
-  livscykel 5 år, BASE 0,25 och MAX 0,5 (Lumen VR är enda rivalen), marknad 60 000 (2015), 160 000 (2016),
+  livscykel 5 år, BASE 0,25 och MAX 0,5 (Lumen Rift är enda rivalen), marknad 60 000 (2015), 160 000 (2016),
   360 000 (2020) och 520 000 (2025) enheter per år. Första ordern 25 000.
 - Headsetet följer reglerna för en bärbar enhet: egen plattform av slaget `vr` (namn Mirage), egen arkitektur med
   Systemkretsar, licens, devkit, bakåtkompatibilitet, butiken, koncernsynergin och köpta exklusiva. Generationen är
-  den bästa konsolens (inte en lägre), och plattformen gynnar action, simulering och skjutspel som Lumen VR.
-- Ett spel på en VR-plattform (Lumen VR eller Mirage) behöver en motor med motordelen VR-rendering: utan den blir
+  den bästa konsolens (inte en lägre), och plattformen gynnar action, simulering och skjutspel som Lumen Rift.
+- Ett spel på en VR-plattform (Lumen Rift eller Mirage) behöver en motor med motordelen VR-rendering: utan den blir
   råbetyget 15 % lägre, med den 3 % högre (`vrFit` i `sim/score.js`). Guiden varnar när plattformen är VR och motorn
   saknar delen, och studioanteckningarna i rapporten säger vilket det blev.
 - Botar `--hw --vr --end=2026` (24 seeds): kassa 2026 933 M$ mot 893 M$ med bara `--hw` (+4,5 %). Första Mirage

@@ -37,12 +37,14 @@ export const PARTNERS = {
   comic: [['Inkpot Comics', '#8ab4ff'], ['Rutpress', '#ffb08a'], ['Quill & Frame', '#e0c070'], ['Paneltryck', '#8ae8c0']],
   film: [['Lumenwood Pictures', '#ffd66a', 7.2], ['Kestrel Films', '#9ab0ff', 6.5], ['Bluefjord Studios', '#5ad0e8', 5.8], ['Pinecrest Pictures', '#8ac87a', 6.8], ['Ottervale Films', '#ff9a7a', 5.2]],
 };
+// Konkurrerande förlag. Förebilderna finns i verkligheten men namnen är påhittade (som konsolerna i platforms.js). Varje förlag
+// har egna spelserier i franchises.js, med förlagets namn som nyckel. Listan har alltid 14 namn (slumpen i makeCompetitors).
 export const COMPETITORS = [
-  ['Brightside Games', '#ffcf4a'], ['Kraken Studios', '#4ae0c8'], ['Hexa Interactive', '#9b7bff'],
-  ['Polar Pixel', '#7ad0ff'], ['Nimbus Entertainment', '#e8e8ff'], ['Ironclad Soft', '#ff7a5c'],
-  ['Moonwolf Games', '#b8c0ff'], ['Atlas Arcade', '#f6b84a'], ['Vantage Digital', '#4aa8ff'],
-  ['Sundial Studio', '#ffb08a'], ['Frostbyte', '#8ae8ff'], ['Orca Interactive', '#5a8aff'],
-  ['Redshift Games', '#ff5c7a'], ['Cobalt Crew', '#3a6aff'],
+  ['Electric Arts', '#ffcf4a'], ['Blazzard Entertainment', '#4ae0c8'], ['Square Root Enix', '#9b7bff'],
+  ['Blockhead Studios', '#7ad0ff'], ['Konomi', '#e8e8ff'], ['Activate Interactive', '#ff7a5c'],
+  ['Epoch Games', '#b8c0ff'], ['Namko Arcade', '#f6b84a'], ['Ubiquity Soft', '#4aa8ff'],
+  ['Bethany Softworks', '#ffb08a'], ['Vault Software', '#8ae8ff'], ['Hikari Games', '#5a8aff'],
+  ['Capcon', '#ff5c7a'], ['Rockstorm Games', '#3a6aff'],
 ];
 // Titelbyggstenar för slumpad speltitel. Svenska adjektiv i svag form och substantiv i bestämd form ("Mörka Legenden").
 // Substantiven får inte sluta på s (genitiv i "Legendens mörka hemlighet").

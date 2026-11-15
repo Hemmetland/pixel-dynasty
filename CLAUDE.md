@@ -22,6 +22,7 @@ Standalone repository (it started as the `game/` folder of Hemmetland/budgetverk
 
 ## Rules
 - Graphics are procedural by default. Sprites from PixelLab may live in `assets/` (see `docs/PIXELLAB.md`) and always need a procedural fallback; no other image or audio files and no runtime dependencies. All visible text goes through `t()` in both languages. The dev console is the one exception (its own sv/en helper `L()`): it is a developer tool and not part of the release build.
+- Real-world flavour with invented names: games from other publishers, consoles, computers and studios copy real-world brands in spirit (Football Universe for FIFA, Gamingstation for PlayStation, Pear Phone for iPhone) but never use the real names or trademarks. Rival publishers and their series live in `src/data/names.js` (COMPETITORS, always 14) and `src/data/franchises.js` (series per publisher, sequels count up or carry the year); hardware in `src/data/platforms.js`. New brand-like names follow the same pun style.
 - Never put API tokens in files or chat. PixelLab uses `PIXELLAB_API_TOKEN` from the environment (`node tools/pixellab.mjs balance`).
 - Plain words: texts are for ordinary players, so avoid jargon in both languages (say "Starkare version", "Kostnad per styck", "Förväntan", "Övertid", not revision, unit cost, hype, crunch) and explain a number's scale ("70 av 100") or add a tooltip.
 - Keep `src/sim` free of DOM and keep results deterministic per seed; old saves (localStorage `pixel-dynasty-save-v1`) must keep loading.

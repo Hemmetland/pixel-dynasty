@@ -9,6 +9,10 @@ import { ACHIEVEMENTS } from '../src/data/achievements.js';
 import { weeklyOf } from '../src/core/weekly.js';
 import { identityName } from '../src/data/identity.js';
 import { STORE_EVENTS } from '../src/data/storeevents.js';
+import { FRANCHISES, FRANCHISE, frTitle } from '../src/data/franchises.js';
+import { COMPETITORS } from '../src/data/names.js';
+import { TOPIC } from '../src/data/topics.js';
+import { GENRE } from '../src/data/genres.js';
 let fails = 0;
 const ok = (c, m) => { if (!c) { fails++; console.log('FAIL', m); } else console.log('ok  ', m); };
 const G = S.newGame({ studio: 'T', seed: 7, difficulty: 'normal' });
@@ -2031,6 +2035,42 @@ ok(!bad.length, `äldre sparning utan ett av ${paths.length} fält går att spel
   // onlinemålet visas först när forskningen är gjord
   ok(!S.activeGoals(late, 99).some((x) => x.id === 'live1') && !S.activeGoals(late, 99).some((x) => x.id === 'hw1'), 'onlinespel- och hårdvarumålet väntar på forskningen');
   off();
+}
+
+// ── Verkliga förebilder: förlag, spelserier och konsoler med påhittade namn ──
+{
+  const names = new Set(COMPETITORS.map((c) => c[0]));
+  ok(COMPETITORS.length === 14, 'fjorton förlag (slumpföljden i makeCompetitors hänger på antalet)');
+  ok(FRANCHISES.every((f) => names.has(f.by) && TOPIC[f.topic] && GENRE[f.genre]), 'varje spelserie hör till ett förlag och har ett riktigt tema och en riktig genre');
+  ok(new Set(FRANCHISES.map((f) => f.id)).size === FRANCHISES.length && FRANCHISES.every((f) => FRANCHISE[f.id] === f), 'spelserierna har egna id:n');
+  ok([...names].every((n) => FRANCHISES.filter((f) => f.by === n).length >= 4), 'varje förlag har minst fyra spelserier');
+  const fb = FRANCHISE.footballuniverse, gl = FRANCHISE.grandlarceny, mu = FRANCHISE.mustache, sp = FRANCHISE.speedfever;
+  ok(frTitle(fb, 12, 2004).en === 'Football Universe 2004', 'en årsserie får årtalet i titeln');
+  ok(frTitle(gl, 0, 1997).en === 'Grand Larceny Auto' && frTitle(gl, 2, 2002).en === 'Grand Larceny Auto III', 'en serie med romerska siffror börjar utan siffra');
+  ok(frTitle(sp, 1, 1995).en === 'Speed Fever 2' && frTitle(mu, 1, 1990).en.startsWith('Super Mustache Bros: '), 'siffror eller undertitel för uppföljare');
+  ok(PLATFORM.nova32.name === 'Gamingstation' && PLATFORM.nova5.name === 'Gamingstation 5' && PLATFORM.phone.name === 'Pear Phone', 'konsolerna har namn med verkliga förebilder');
+  // en spelad värld: serier syns bland släppen, titlarna är unika och ryktet har titeln
+  const W = S.newGame({ studio: 'F', seed: 11 });
+  S.makeCompetitors(W);
+  S.initWorld(W);
+  let guardF = 0;
+  while (S.yearOf(W.t) < 2006 && guardF++ < 1e6) { W.pending.length = 0; S.stepTick(W); }
+  const rel = W.market.releases;
+  const seen = rel.filter((r) => r.fr);
+  ok(seen.length >= 10 && seen.length < rel.length, `en del av släppen är spelserier (${seen.length} av ${rel.length})`);
+  ok(seen.every((r) => FRANCHISE[r.fr] && r.title.en.startsWith(FRANCHISE[r.fr].name) && r.studio === FRANCHISE[r.fr].by), 'titeln och förlaget hör ihop med serien');
+  ok(seen.every((r) => r.topic === FRANCHISE[r.fr].topic && r.genre === FRANCHISE[r.fr].genre), 'seriens tema och genre följer med släppet');
+  const titles = rel.map((r) => r.title.en);
+  ok(new Set(titles).size === titles.length, 'inga två släpp har samma titel');
+  ok(W.comps.every((c) => !c.next || !c.next.fr || (c.next.title && c.next.title.en && c.next.topic === FRANCHISE[c.next.fr].topic)), 'ryktet om ett seriesläpp har titeln och seriens tema');
+  // en gammal sparning: förlag med gamla namn och utan seriernas räknare får vanliga titlar och kraschar inte
+  const OLD = S.newGame({ studio: 'O', seed: 12 });
+  S.makeCompetitors(OLD);
+  S.initWorld(OLD);
+  for (const c of OLD.comps) { c.name = 'Gammalt förlag ' + c.id; delete c.frN; delete c.frT; delete c.next; }
+  guardF = 0;
+  while (S.yearOf(OLD.t) < 1990 && guardF++ < 1e6) { OLD.pending.length = 0; S.stepTick(OLD); }
+  ok(OLD.market.releases.length > 5 && OLD.market.releases.every((r) => !r.fr), 'gamla förlag utan serier får vanliga titlar');
 }
 console.log(fails ? `\n${fails} FEL` : '\nAlla tester gick bra');
 process.exit(fails ? 1 : 0);
