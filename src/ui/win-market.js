@@ -246,7 +246,7 @@ regWin({
   color: 'var(--money)',
   size: 'xl',
   title: () => t('mkt.tab.store'),
-  render: (G) => storeTab(G),
+  render: (G) => sceneHTML('shop', G) + storeTab(G),
 });
 regWin({
   id: 'group',

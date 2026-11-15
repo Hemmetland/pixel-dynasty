@@ -62,14 +62,15 @@ const STATE = {
     };
   },
   group: (G) => lifeState(G, 'group'),
+  shop: (G) => lifeState(G, 'store'),
   lab: (G) => {
     const l = lifeState(G, 'lab');
     const staff = (G.staff || []).filter((x) => !x.away).map((x) => x.look);
     return { ...l, looks: staff };
   },
 };
-const TICK_SC = { studio: ['dev', 'studio'], factory: ['hw'], engine: ['eng'], group: ['group'], lab: ['lab'] };
-const LOG_SC = { studio: 'dev', factory: 'hw', engine: 'eng', group: 'group', lab: 'lab' };
+const TICK_SC = { studio: ['dev', 'studio'], factory: ['hw'], engine: ['eng'], group: ['group'], lab: ['lab'], shop: ['store'] };
+const LOG_SC = { studio: 'dev', factory: 'hw', engine: 'eng', group: 'group', lab: 'lab', shop: 'store' };
 function refresh(kind, cfg) {
   try {
     cfg.st = STATE[kind](cfg.G);
@@ -81,6 +82,7 @@ function caption(kind, cfg) {
   const st = cfg.st;
   if (kind === 'studio') return !st ? t('ls.studio') : st.active ? t('ls.studio.on', { title: st.title || '…' }) : st.report ? t('ls.studio.report') : t('ls.studio.idle');
   if (kind === 'engine') return st && st.active ? t('ls.engine.on', { name: st.name }) : st && st.team ? t('ls.engine.team', { team: st.team.name }) : t('ls.engine');
+  if (kind === 'shop') return !st || !st.open ? t('ls.shop') : st.paused ? t('ls.shop.closed') : st.ev ? t('ls.shop.ev', { name: st.ev }) : t('ls.shop.on');
   if (kind === 'lab') return st && st.active.length ? t('ls.lab.on', { n: st.active.length }) : t('ls.lab');
   if (kind === 'group') return st && st.subs.some((c) => c.mode === 'int') ? t('ls.group.int') : t('ls.group', { n: st ? st.subs.length : 0 });
   if (!st || !st.open) return t('ls.factory');
@@ -617,6 +619,77 @@ function drawLab(ctx, W, tm, cfg) {
   darken(ctx, W, 0.04, '#7cffd8');
 }
 
+// ── Butiken ──
+function drawShop(ctx, W, tm, cfg) {
+  const fy = H - 6;
+  const st = cfg.st && cfg.st.open ? cfg.st : { lvl: 1, spots: 0, deals: 0, bundles: 0, ev: null, team: null, paused: false };
+  const lvl = Math.max(1, Math.min(6, st.lvl));
+  const sale = st.deals + st.bundles + st.spots > 0;
+  const down = recent(['shopDown'], 8, tm).length > 0 || st.paused;
+  const event = !!st.ev;
+  R(ctx, 0, 0, W, H, event ? '#2a1c40' : '#1f2a3e');
+  for (let x = 0; x < W; x += 10) R(ctx, x, 0, 1, H - 12, event ? '#33224e' : '#26334a');
+  R(ctx, 0, H - 12, W, 12, '#3a3448');
+  R(ctx, 0, H - 12, W, 1, '#6a5a80');
+  for (let x = 0; x < W; x += 14) R(ctx, x, H - 11, 1, 11, '#2e2a3c');
+  R(ctx, 0, H - 4, W, 1, '#241f30');
+  // skylt
+  const sx = Math.round(W * 0.5 - 24);
+  R(ctx, sx, 3, 48, 13, '#0c1020');
+  R(ctx, sx, 3, 48, 1, '#3a4256');
+  if (!down || Math.floor(tm * 2) % 2) V.neonText(ctx, 'STORE', sx + 8, 6, '#ffffff', event ? '#ff7ab8' : '#4de1d0', 1);
+  // vimplar vid temaveckor
+  if (event) for (let x = 0; x < W; x += 6) {
+    R(ctx, x, 1 + (x % 12 ? 1 : 0), 3, 3, ['#ff6a8a', '#ffe27a', '#7cf2ff', '#8aff9a'][(x / 6) % 4 | 0]);
+  }
+  // hyllor med spelaskar: fler ju högre nivå
+  const nShelf = Math.min(4, 1 + Math.ceil(lvl / 2));
+  const shelfW = Math.min(46, Math.round((W - 120) / Math.max(1, nShelf)) - 2);
+  for (let k = 0; k < nShelf; k++) {
+    const x = 8 + k * (shelfW + 4);
+    if (x + shelfW > sx - 4 && x < sx + 52) continue;
+    R(ctx, x, 20, shelfW, 24, '#3a2a20');
+    for (let r = 0; r < 2; r++) {
+      R(ctx, x + 1, 21 + r * 11, shelfW - 2, 10, '#241a14');
+      for (let b = 0; b < Math.floor((shelfW - 3) / 4); b++) R(ctx, x + 2 + b * 4, 22 + r * 11 + (b % 2), 3, 9 - (b % 2), ['#e8504a', '#4a90e0', '#f2c84a', '#6cc86a', '#b46bff', '#ff7ab8'][(b + r + k) % 6]);
+    }
+  }
+  // rea: skyltar och prisbrickor blinkar
+  if (sale) {
+    const bx = W - 70;
+    R(ctx, bx, 18, 30, 12, '#e8504a');
+    R(ctx, bx, 18, 30, 1, '#ff9a8a');
+    if (Math.floor(tm * 2) % 2) V.neonText(ctx, '-%', bx + 10, 21, '#ffffff', '#ff4a3c', 1);
+  }
+  // disken med kassa
+  const cx = Math.round(W * 0.5 + 6);
+  R(ctx, cx, fy - 14, 52, 14, '#8a4ac8');
+  R(ctx, cx, fy - 14, 52, 1, '#b684e8');
+  R(ctx, cx - 1, fy - 16, 54, 3, '#e8d8b8');
+  R(ctx, cx - 1, fy - 16, 54, 1, '#fff4dc');
+  for (let i = 0; i < 4; i++) R(ctx, cx + 4 + i * 13, fy - 11, 9, 9, '#7a3cb8');
+  R(ctx, cx + 36, fy - 24, 10, 8, '#2a2f3c');
+  R(ctx, cx + 37, fy - 23, 8, 4, '#10303a');
+  R(ctx, cx + 38, fy - 22, 3, 1, '#8aff9a');
+  // kassör
+  person(ctx, cx + 24, fy - 1, cfg.looks[0], down ? 'sitIdle' : 'type', tm, 1, true, 0.4);
+  // kunder går in, tittar och går ut med en kasse; fler ju fler kunder (butiksnivå, rea och tema)
+  const crowd = Math.min(5, down ? 0 : 1 + Math.floor(lvl / 2) + (sale ? 1 : 0) + (event ? 1 : 0));
+  for (let i = 0; i < crowd; i++) {
+    const period = 12 + i * 2.3;
+    const k = (tm + i * 4.7) % period;
+    const look = cfg.looks[(i + 1) % cfg.looks.length];
+    const xa = 6 + (i * 37) % Math.max(20, cx - 30);
+    if (k < 3) person(ctx, lerp(-8, xa, k / 3), fy + 2 + (i % 2), look, 'walk', tm, 1, false, i);
+    else if (k < 8) person(ctx, xa, fy + 2 + (i % 2), look, 'notes', tm, 1, false, i);
+    else if (k < 10) person(ctx, lerp(xa, cx - 4, (k - 8) / 2), fy + 2 + (i % 2), look, 'walk', tm, 1, false, i);
+    else person(ctx, lerp(cx - 4, W + 8, (k - 10) / (period - 10)), fy + 2 + (i % 2), look, 'walk', tm, 1, false, i);
+  }
+  if (down) for (let i = 0; i < 3; i++) R(ctx, 8 + i * 10, 8, 6, 6, Math.floor(tm * 4 + i) % 2 ? '#ff5050' : '#702020');
+  for (const e of recent(['shopLevel', 'shopRecord', 'shopTop', 'shopUsers'], 4.6, tm)) confetti(ctx, W, tm - e.t0, e.b.n);
+  darken(ctx, W, 0.04, '#ffd0ff');
+}
+
 // ── Koncernen ──
 function drawGroup(ctx, W, tm, cfg) {
   const fy = H - 6;
@@ -713,7 +786,7 @@ function drawGroup(ctx, W, tm, cfg) {
   ctx.globalAlpha = 1;
   for (const e of recent(['party', 'anniv', 'fans', 'film', 'grpDone'], 4.6, tm)) confetti(ctx, W, tm - e.t0, e.b.n);
 }
-const DRAW = { studio: drawStudio, factory: drawFactory, engine: drawEngine, group: drawGroup, lab: drawLab };
+const DRAW = { studio: drawStudio, factory: drawFactory, engine: drawEngine, group: drawGroup, lab: drawLab, shop: drawShop };
 
 // ── Timer ──
 let timer = 0;
