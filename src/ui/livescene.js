@@ -15,6 +15,7 @@ import * as V from '../render/props2.js';
 import { HW_TYPES } from '../data/hardware.js';
 import { lifeState, lifeLog, lifeText } from '../sim/life.js';
 import { hashStr } from '../core/rng.js';
+import { fmtNum } from '../core/util.js';
 
 const R = V.R;
 const H = 56; // logisk höjd; bredden följer fönstret (3 skärmpixlar per pixel, 2 på smal skärm)
@@ -63,17 +64,22 @@ const STATE = {
   },
   group: (G) => lifeState(G, 'group'),
   shop: (G) => lifeState(G, 'store'),
+  live: (G, cfg) => {
+    const l = lifeState(G, 'live');
+    const g = l.games.find((x) => x.id === cfg.gid) || l.games[0] || null;
+    return { ...l, g };
+  },
   lab: (G) => {
     const l = lifeState(G, 'lab');
     const staff = (G.staff || []).filter((x) => !x.away).map((x) => x.look);
     return { ...l, looks: staff };
   },
 };
-const TICK_SC = { studio: ['dev', 'studio'], factory: ['hw'], engine: ['eng'], group: ['group'], lab: ['lab'], shop: ['store'] };
-const LOG_SC = { studio: 'dev', factory: 'hw', engine: 'eng', group: 'group', lab: 'lab', shop: 'store' };
+const TICK_SC = { studio: ['dev', 'studio'], factory: ['hw'], engine: ['eng'], group: ['group'], lab: ['lab'], shop: ['store'], live: ['live'] };
+const LOG_SC = { studio: 'dev', factory: 'hw', engine: 'eng', group: 'group', lab: 'lab', shop: 'store', live: 'live' };
 function refresh(kind, cfg) {
   try {
-    cfg.st = STATE[kind](cfg.G);
+    cfg.st = STATE[kind](cfg.G, cfg);
   } catch {
     cfg.st = null;
   }
@@ -82,6 +88,7 @@ function caption(kind, cfg) {
   const st = cfg.st;
   if (kind === 'studio') return !st ? t('ls.studio') : st.active ? t('ls.studio.on', { title: st.title || '…' }) : st.report ? t('ls.studio.report') : t('ls.studio.idle');
   if (kind === 'engine') return st && st.active ? t('ls.engine.on', { name: st.name }) : st && st.team ? t('ls.engine.team', { team: st.team.name }) : t('ls.engine');
+  if (kind === 'live') return !st || !st.g ? t('ls.live') : st.g.ops && !st.g.event ? t('ls.live.ops') : st.g.event ? t('ls.live.ev') : st.g.patch ? t('ls.live.patch') : st.g.season ? t('ls.live.season') : t('ls.live.on', { n: fmtNum(st.g.subs) });
   if (kind === 'shop') return !st || !st.open ? t('ls.shop') : st.paused ? t('ls.shop.closed') : st.ev ? t('ls.shop.ev', { name: st.ev }) : t('ls.shop.on');
   if (kind === 'lab') return st && st.active.length ? t('ls.lab.on', { n: st.active.length }) : t('ls.lab');
   if (kind === 'group') return st && st.subs.some((c) => c.mode === 'int') ? t('ls.group.int') : t('ls.group', { n: st ? st.subs.length : 0 });
@@ -690,6 +697,82 @@ function drawShop(ctx, W, tm, cfg) {
   darken(ctx, W, 0.04, '#ffd0ff');
 }
 
+// ── Onlinespelet ──
+function drawLive(ctx, W, tm, cfg) {
+  const fy = H - 6;
+  const st = cfg.st || { g: null, server: 1 };
+  const g = st.g || { subs: 0, fresh: 50, season: false, patch: false, event: false, region: false, ops: false };
+  const down = recent(['liveDown'], 8, tm).length > 0;
+  const subs = g.subs;
+  // natthimmel, berg och spelets värld
+  R(ctx, 0, 0, W, H, '#0e1634');
+  R(ctx, 0, 14, W, 10, '#162248');
+  R(ctx, 0, 24, W, 12, '#1f2c5a');
+  for (let i = 0; i < Math.floor(W / 12); i++) R(ctx, Math.floor(V.hash(i * 5) * W), 2 + Math.floor(V.hash(i * 11) * 16), 1, 1, Math.floor(tm * 1.2 + i) % 4 ? '#ffffff' : '#6a78b8');
+  for (let x = 0; x < W; x += 2) R(ctx, x, 30 - Math.round(Math.abs(Math.sin(x * 0.045)) * 12 + Math.sin(x * 0.13) * 3), 2, 14, '#141c40');
+  // slottet i mitten
+  const cx = Math.round(W * 0.5);
+  R(ctx, cx - 16, 18, 32, 22, '#2a3470');
+  R(ctx, cx - 16, 18, 32, 1, '#5a6ab0');
+  for (const tx of [cx - 20, cx + 14]) { R(ctx, tx, 12, 8, 28, '#323e82'); R(ctx, tx - 1, 10, 10, 3, '#3a488e'); R(ctx, tx + 3, 5, 1, 5, '#8a94aa'); R(ctx, tx + 4, 5 + (Math.floor(tm * 2) % 2), 4, 3, g.event ? '#ff7ab8' : '#4de1d0'); }
+  R(ctx, cx - 4, 30, 8, 10, '#0c1230');
+  for (let k = 0; k < 6; k++) if (Math.floor(tm * 0.5 + k * 1.3) % 5) R(ctx, cx - 12 + (k % 3) * 10, 22 + Math.floor(k / 3) * 6, 3, 3, '#ffd36a');
+  // marken
+  R(ctx, 0, 40, W, H - 40, '#1c3a30');
+  R(ctx, 0, 40, W, 2, '#2a5a44');
+  R(ctx, 0, H - 6, W, 6, '#2a3a30');
+  // spelare: fler ju fler prenumeranter (grovt log), små figurer som vandrar och slåss mot en drake ibland
+  const crowd = subs <= 0 ? 0 : Math.min(26, 3 + Math.round(Math.log10(Math.max(10, subs)) * 4));
+  for (let i = 0; i < crowd; i++) {
+    const sp = 4 + V.hash(i * 3) * 8;
+    const px = ((V.hash(i * 7) * (W + 40) + tm * sp * (i % 2 ? 1 : -1)) % (W + 40) + (W + 40)) % (W + 40) - 20;
+    const py = 44 + Math.floor(V.hash(i * 13) * 8);
+    const col = ['#e8504a', '#4a90e0', '#f2c84a', '#6cc86a', '#b46bff', '#ff7ab8'][i % 6];
+    R(ctx, Math.round(px), py - 4 + (Math.floor(tm * 4 + i) % 2), 2, 2, '#f2d0a0');
+    R(ctx, Math.round(px), py - 2, 2, 3, col);
+  }
+  // säsong: lövregn eller snö
+  if (g.season) for (let i = 0; i < 24; i++) {
+    const x = (V.hash(i * 9) * W + tm * 6 + Math.sin(tm + i) * 3) % W;
+    const y = ((tm * (6 + (i % 5)) + V.hash(i * 3) * 40) % 44);
+    R(ctx, Math.round(x), Math.round(y), 1, 1, i % 3 ? '#ffffff' : '#ffd36a');
+  }
+  // serverhallen till höger: fler rack med högre nivå, lamporna blinkar fortare med fler spelare
+  const racks = Math.max(1, Math.min(4, st.server || 1));
+  const busy = Math.min(8, 2 + subs / 40000);
+  for (let r = 0; r < racks; r++) {
+    const rx = W - 20 - r * 16;
+    F.rack(ctx, rx, fy - 1, 14, 38, r + 5);
+    for (let u = 0; u < 8; u++) if (Math.floor(tm * busy + u * 1.7 + r) % 3 === 0) R(ctx, rx + 10, fy - 36 + u * 4, 1, 1, down ? '#ff5a50' : '#5cf2a0');
+  }
+  // driftteamet vid sina skärmar till vänster
+  F.desk2(ctx, 8, fy, 1, 2, 3);
+  F.chair2(ctx, 8, fy, '#3a6a5a');
+  person(ctx, 11, fy, cfg.looks[0], down ? 'sitIdle' : 'type', tm, 1, true, 0.3);
+  if (g.ops) person(ctx, 42, fy + 2, cfg.looks[1], 'laptop', tm, 1, false, 0.8);
+  if (down) {
+    bubble(ctx, 14, fy - 26, 'exclam', (tm * 1.0) % 2, 1.8, tm);
+    for (let i = 0; i < 3; i++) R(ctx, 4 + i * 8, 4, 5, 5, Math.floor(tm * 4 + i) % 2 ? '#ff5050' : '#702020');
+  }
+  // underhåll: gnistor över slottet
+  if (g.patch) for (let i = 0; i < 5; i++) if (Math.floor(tm * 6 + i) % 2) R(ctx, cx - 10 + Math.floor(V.hash(Math.floor(tm * 6) + i) * 20), 8 + Math.floor(V.hash(i * 3 + Math.floor(tm * 5)) * 10), 1, 1, '#ffe27a');
+  // eventet och nya regioner: fyrverkerier
+  if (g.event || recent(['liveEvent', 'liveExp', 'liveRegion', 'liveSeason'], 6, tm).length) for (let f = 0; f < 3; f++) {
+    const k = (tm * 0.6 + f * 0.37) % 1;
+    const fx = Math.round(V.hash(f * 5 + Math.floor(tm * 0.6 + f * 0.37)) * (W - 40)) + 20;
+    const fyy = 8 + Math.round(V.hash(f * 3 + Math.floor(tm * 0.6)) * 8);
+    if (k < 0.7) for (let a = 0; a < 10; a++) {
+      const an = (a / 10) * Math.PI * 2;
+      const rr = k * 12;
+      ctx.globalAlpha = 1 - k / 0.7;
+      R(ctx, Math.round(fx + Math.cos(an) * rr), Math.round(fyy + Math.sin(an) * rr), 1, 1, ['#ff7ab8', '#ffd36a', '#7cf2ff'][f % 3]);
+    }
+    ctx.globalAlpha = 1;
+  }
+  for (const e of recent(['liveLaunch', 'liveExp'], 4.6, tm)) confetti(ctx, W, tm - e.t0, e.b.n);
+  darken(ctx, W, 0.04, '#7cc8ff');
+}
+
 // ── Koncernen ──
 function drawGroup(ctx, W, tm, cfg) {
   const fy = H - 6;
@@ -786,7 +869,7 @@ function drawGroup(ctx, W, tm, cfg) {
   ctx.globalAlpha = 1;
   for (const e of recent(['party', 'anniv', 'fans', 'film', 'grpDone'], 4.6, tm)) confetti(ctx, W, tm - e.t0, e.b.n);
 }
-const DRAW = { studio: drawStudio, factory: drawFactory, engine: drawEngine, group: drawGroup, lab: drawLab, shop: drawShop };
+const DRAW = { studio: drawStudio, factory: drawFactory, engine: drawEngine, group: drawGroup, lab: drawLab, shop: drawShop, live: drawLive };
 
 // ── Timer ──
 let timer = 0;

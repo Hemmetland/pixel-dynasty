@@ -1,4 +1,5 @@
 import { $, esc, icon, t, tn, L, L as pick, UI, act, regWin, money, errToast, bar } from './core.js';
+import { sceneHTML } from './livescene.js';
 import { sfx } from '../audio/sfx.js';
 import { glyphImg } from '../render/glyphs.js';
 import { coverImg } from '../render/covers.js';
@@ -392,6 +393,7 @@ function livePanel(G, g) {
     ${canGoF2P(G, L) ? `<div class="ltier f2p-row" style="margin-top:8px"><div style="flex:1;min-width:0"><b>${t('live.f2pHead')}</b><div class="faint" style="font-size:11.5px">${t('live.f2pHelp')}</div></div>
       <button class="btn sm ${f2pArm ? 'danger' : ''}" data-act="lv-f2p" data-id="${g.id}">${icon('refresh')}${t(f2pArm ? 'live.f2pSure' : 'live.f2p')}</button></div>` : ''}`;
   return `<div class="card live-card" style="margin-top:16px">
+    ${sceneHTML('live', G, { gid: g.id })}
     <div class="row" style="margin-bottom:10px;gap:8px"><span class="tag" style="--c:var(--good)">${icon('globe')}${t('live.tag')}</span>${L.kind ? `<span class="tag" style="--c:var(--accent)" data-tip="${esc(pick(KIND[L.kind].desc))}">${icon(KIND[L.kind].ic)}${pick(KIND[L.kind].name)}</span>` : ''}${f2p ? `<span class="tag" style="--c:var(--warn)">${t('live.f2pTag')}</span>` : ''}<div class="lbl">${t('live.title')}</div><span class="sp"></span>${L.exps.length ? `<span class="faint" style="font-size:12px">${t('live.exps')}: ${L.exps.length}</span>` : ''}</div>
     <div class="grid" style="grid-template-columns:repeat(auto-fit,minmax(130px,1fr))">
       <div class="counter" style="--c:var(--good)"><div class="v num">${fmtNum(L.subs)}</div><div class="k">${t(f2p ? 'live.players' : 'live.subs')} · ${t('live.peak', { n: fmtNum(L.peak) })}</div></div>
