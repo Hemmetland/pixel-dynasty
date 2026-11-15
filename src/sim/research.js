@@ -44,6 +44,7 @@ export function startResearch(G, id) {
   G.rp -= c.rp;
   if (c.money) spend(G, c.money, 'research');
   G.research.active.push({ id, progress: 0, total: r.weeks * TICKS_PER_WEEK });
+  beat(G, 'resStart', { g: r.name });
   emit('researchStart', r);
   return true;
 }

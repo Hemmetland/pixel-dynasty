@@ -29,7 +29,7 @@ export const TEAM_NAMES = [
 export const teamsOf = (G) => G.teams || [];
 // Uppgifter där medarbetarna är ute på sitt (s.away) och inte arbetar med dina projekt: driftteam för ett onlinespel (ops),
 // produktteam för en hårdvarulinje (hw), forskningsteam (res) och butiksteam (shop). Utan uppgift, eller med 'game', är teamet vanlig personal.
-export const HOLD_ROLES = new Set(['ops', 'hw', 'res', 'shop']);
+export const HOLD_ROLES = new Set(['ops', 'hw', 'res', 'shop', 'eng']);
 export const holds = (team) => HOLD_ROLES.has(team.role);
 // Medarbetarna är ute på sin uppgift: borta från dina projekt (away) och utanför huset (out, se studio.js). Den som kommer tillbaka
 // behöver ett skrivbord i huset, och den som flyttar ut ett av platserna i serverrummet och labben.

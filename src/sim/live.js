@@ -13,6 +13,7 @@ import { yearOf, priceOf, moneyScale, WEEKS_PER_MONTH, WEEKS_PER_YEAR } from './
 import { facLevel, earn, spend } from './studio.js';
 import { forecast } from './sales.js';
 import { note } from './news.js';
+import { beat } from './life.js';
 import { KIND } from '../data/onlinekinds.js';
 
 // Storlekar som går att göra som onlinespel, och som expansion
@@ -287,6 +288,7 @@ export function launchLive(G, game, kind) {
     boost: G.t + 10, hype: game.hype || 0, regions: [], region: null,
   };
   G.stats.liveLaunched = (G.stats.liveLaunched || 0) + 1;
+  beat(G, 'liveLaunch', { g: game.title });
   note(G, 'live.news.launch', { title: game.title }, 'good');
   emit('liveLaunch', game);
 }
@@ -305,6 +307,7 @@ export function releaseExpansion(G, game) {
   L.pot *= 1 + clamp(0.06 * (game.score - 5.5), -0.1, 0.25);
   L.exps.push(game.id);
   L.boost = G.t + 8;
+  beat(G, 'liveExp', { g: game.title });
   note(G, 'live.news.expansion', { title: game.title, base: base.title }, game.score >= 7 ? 'good' : 'info');
 }
 
@@ -397,6 +400,7 @@ function seasonEnd(G, g) {
   L.seasons = (L.seasons || 0) + 1;
   L.lastSeason = S.id;
   G.stats.liveSeasons = (G.stats.liveSeasons || 0) + 1;
+  beat(G, 'liveSeasonEnd', { g: g.title, a: Math.max(0, back), v: back >= 1 ? 0 : 1 });
   note(G, back >= 1 ? 'live.news.seasonEnd' : 'live.news.seasonFlat', { title: g.title, name: th.name, n: fmtN(back) }, back >= 1 ? 'good' : 'info');
   L.season = null;
 }
@@ -430,6 +434,7 @@ export function liveWeek(G) {
       L.fresh = Math.min(100, L.fresh + PATCH_FRESH);
       L.patch = null;
       mark(G, L, 'patch');
+      beat(G, 'livePatch', { g: g.title });
       note(G, 'live.news.patch', { title: g.title }, 'good');
     }
     // servrarna i en ny region öppnar: fler spelare hittar spelet, och de kommer fort de första veckorna
@@ -523,6 +528,7 @@ export function liveWeek(G) {
       L.fresh = Math.max(0, L.fresh - 4);
       L.outages++;
       mark(G, L, 'down');
+      beat(G, 'liveDown', { g: g.title, v: over > 0 ? 1 : 0 });
       note(G, over > 0 ? 'live.news.overload' : 'live.news.outage', { title: g.title }, 'bad');
     }
     for (const m of MILESTONES) {
@@ -579,6 +585,7 @@ export function startLiveEvent(G, id) {
   L.events = (L.events || 0) + 1;
   mark(G, L, 'ev');
   L.evCost = (L.evCost || 0) + cost;
+  beat(G, 'liveEvent', { g: g.title });
   L.fresh = Math.min(100, L.fresh + EVENT_FRESH);
   L.boost = Math.max(L.boost, G.t + EVENT_WEEKS + 1);
   return true;
@@ -624,6 +631,7 @@ export function startLiveSeason(G, id, theme, off = 0) {
   L.fresh = Math.min(100, L.fresh + th.fresh);
   L.boost = Math.max(L.boost, G.t + 6);
   mark(G, L, 'ss');
+  beat(G, 'liveSeason', { g: g.title });
   note(G, 'live.news.seasonStart', { title: g.title, name: th.name }, 'good');
   return true;
 }
@@ -661,6 +669,7 @@ export function startLiveRegion(G, id, region) {
   spend(G, cost, 'servers');
   L.region = { id: region, t: G.t, until: G.t + REGION_WEEKS };
   L.regionCost = (L.regionCost || 0) + cost;
+  beat(G, 'liveRegion', { g: g.title });
   return true;
 }
 // Pris för en nivå relativt standardpriset, i steg om 5 %

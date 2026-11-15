@@ -8,6 +8,7 @@ import { spend, earn } from './studio.js';
 import { curveFor, unitRev } from './sales.js';
 import { PUB_SHARE } from './publish.js';
 import { note } from './news.js';
+import { beat } from './life.js';
 import { hwReach, digitalOf, platStore, PLAT_CUT } from './hardware.js';
 import { STORE_EVENTS, EVENT_BY_ID, LEVEL_NAMES } from '../data/storeevents.js';
 
@@ -76,6 +77,7 @@ const yscale = storeScale;
 function openStore(G) {
   G.store = { t0: G.t, reach: 0.01, trust: 50, dev: 0, policy: 'closed', fee: 0.2, support: 1, ads: 1, ex: false, sale: 1, wait: 0, sb: 0, polT: -1e9, ms: 0, lvl: 1, spots: [], rk: {}, rkp: {}, ev: null, m: blank(), lm: blank(), tot: blank() };
   note(G, 'news.storeOpen', { studio: G.studio }, 'good');
+  beat(G, 'shopOpen', {});
   emit('storeOpen', G.store);
   return G.store;
 }
@@ -224,6 +226,7 @@ export function storeWeek(G) {
   // driftstopp: oftare med liten support
   if (rngFor(G, 'out:' + G.t)() < SUPPORT[S.support].outage) {
     S.trust = clamp(S.trust - 10, 0, 100);
+    beat(G, 'shopDown', {});
     note(G, 'news.storeDown', { studio: G.studio }, 'bad');
   }
   // rean: äldre spel säljer igen, nya användare kommer och fler väntar på nästa rea
@@ -343,6 +346,7 @@ export function storeWeek(G) {
   rankWatch(G, S);
   recordWatch(G, S, inc, bestG);
   while (S.ms < MILESTONES.length && users >= MILESTONES[S.ms]) {
+    beat(G, 'shopUsers', { a: MILESTONES[S.ms] / 1e6 });
     note(G, 'news.storeUsers', { studio: G.studio, n: MILESTONES[S.ms] / 1e6 }, 'good');
     S.ms++;
   }
@@ -371,6 +375,7 @@ function levelWatch(G, S) {
   if (l > S.lvl) {
     S.lvl = l;
     note(G, 'news.storeLevel', { n: l, name: LEVEL_NAMES[l - 1] }, 'good', false, true);
+    beat(G, 'shopLevel', { a: l });
     emit('storeLevel', { level: l });
   }
 }
@@ -421,6 +426,7 @@ export function startSpot(G, id) {
   spotsOf(S).push({ id, t0: G.t, inc: 0 });
   S.spotN = (S.spotN || 0) + 1;
   note(G, 'news.storeSpotStart', { title: g.title }, 'info', true);
+  beat(G, 'shopSpot', { g: g.title });
   emit('storeSpot', { game: g });
   return true;
 }
@@ -482,6 +488,7 @@ function addDeal(G, g, i, auto) {
   dealsOf(G.store).push({ id: g.id, i, t0: G.t, inc: 0, auto: !!auto });
   G.stats.storeDeals = (G.stats.storeDeals || 0) + 1;
   note(G, auto ? 'news.storeDealAuto' : 'news.storeDealStart', { title: g.title, n: Math.round(DEALS[i].cut * 100) }, 'info', true);
+  beat(G, 'shopDeal', { g: g.title, a: Math.round(DEALS[i].cut * 100) });
   emit('storeDeal', { game: g, i });
 }
 export function startDeal(G, id, i) {
@@ -547,6 +554,7 @@ export function startBundle(G, ids) {
   bundlesOf(G.store).push({ ids: ids.slice(), t0: G.t, inc: 0 });
   G.stats.storeBundles = (G.stats.storeBundles || 0) + 1;
   note(G, 'news.storeBundleStart', { titles: gs.map((g) => (typeof g.title === 'string' ? g.title : g.title.sv || '')).join(', ') }, 'info', true);
+  beat(G, 'shopBundle', { a: gs.length });
   emit('storeBundle', { games: gs });
   return true;
 }
@@ -609,7 +617,10 @@ function extraWeek(G, S) {
     out.evt = v;
     S.ev.inc += v;
     S.ev.n = Math.max(S.ev.n, eventFits(G, ev).length);
-    if (G.t === S.ev.t0) note(G, 'news.storeEvent', { name: ev.name }, 'info');
+    if (G.t === S.ev.t0) {
+      beat(G, 'shopTheme', { g: ev.name });
+      note(G, 'news.storeEvent', { name: ev.name }, 'info');
+    }
   } else if (S.ev && !S.ev.done) {
     S.ev.done = 1;
     if (S.ev.n > 0 && S.ev.inc >= 1) note(G, 'news.storeEventEnd', { name: EVENT_BY_ID[S.ev.id].name, v: fmtMoney(S.ev.inc) }, 'good');
@@ -690,6 +701,7 @@ function recordWatch(G, S, week, game) {
       r.sh = r.v;
       r.nt = G.t;
       note(G, key === 'game' ? 'news.storeRecGame' : 'news.storeRecWeek', vars(), 'good', false, true);
+      beat(G, 'shopRecord', { v: key === 'game' ? 0 : 1 });
       emit('storeRecord', { kind: key });
     }
   };
@@ -729,6 +741,7 @@ function rankWatch(G, S) {
       g.storeTop = G.t;
       G.stats.storeTops = (G.stats.storeTops || 0) + 1;
       note(G, 'news.storeTop', { title: g.title }, 'good', false, true);
+      beat(G, 'shopTop', { g: g.title });
       emit('storeTop', { game: g });
     }
   }

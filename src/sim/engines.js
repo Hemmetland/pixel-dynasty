@@ -27,6 +27,7 @@ export function buildEngine(G, name, featIds) {
     kind: 'engine', id: G.uid++, name: name || t('misc.engine'), feats: featIds, ticks: 0,
     total: engineWeeks(featIds) * TICKS_PER_WEEK, state: 'dev', phase: 0, cost,
   };
+  beat(G, 'engStart', { g: G.job.name });
   emit('jobStart', G.job);
   return true;
 }
@@ -34,6 +35,8 @@ export function engineTick(G) {
   const J = G.job;
   if (!J || J.kind !== 'engine') return;
   J.ticks++;
+  if (J.ticks === Math.floor(J.total / 2)) beat(G, 'engHalf', { g: J.name });
+  if (J.ticks === Math.floor((J.total * 3) / 4)) beat(G, 'engTest', { g: J.name });
   if (J.ticks >= J.total) {
     const e = { id: G.uid++, name: J.name, feats: J.feats, tech: engineTech(J.feats), built: yfOf(G.t) };
     G.engines.push(e);

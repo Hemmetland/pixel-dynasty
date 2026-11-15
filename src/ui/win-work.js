@@ -7,6 +7,8 @@ import { acceptContract } from '../sim/contracts.js';
 import { teamOutput } from '../sim/dev.js';
 import { sceneHTML } from './livescene.js';
 import { buildEngine, engineCost, engineTech, engineWeeks } from '../sim/engines.js';
+import { engTeamOf, canEngOrder, orderEngine } from '../sim/engteam.js';
+import { engCard } from './eng-card.js';
 import { engineMult, engineNeed, yfOf, yearOf, TICKS_PER_WEEK, engineEff } from '../sim/const.js';
 import { workers } from '../sim/people.js';
 import { bizCard } from './biz-card.js';
@@ -18,6 +20,11 @@ import { coverImg } from '../render/covers.js';
 import { fmtNum, clamp } from '../core/util.js';
 
 const K = { tab: 'contracts', name: '', sel: new Set(['sprites']) };
+// Öppnar fönstret på fliken Motorer (från personalfönstret)
+export function showEngines() {
+  K.tab = 'engines';
+  UI.open('contracts');
+}
 
 function contractsTab(G) {
   if (!G.contracts.length) return `<div class="empty">${icon('hammer')}<div>${t('work.none')}</div></div>`;
@@ -48,7 +55,9 @@ function enginesTab(G) {
   const existing = G.engines
     .map((e) => `<div class="card row" style="gap:12px"><div class="fi" style="width:38px;height:38px;border-radius:11px;display:grid;place-items:center;background:rgba(77,225,208,.14);color:var(--accent)">${icon('cpu')}</div><div style="flex:1"><b>${esc(e.name)}</b><div class="faint" style="font-size:12px">${e.feats.length} ${t('work.parts')}</div></div><div class="disp" style="font-size:23px;color:var(--tech)">+${Math.round((engineMult(e, yfOf(G.t)) - 1) * 100)}%</div></div>`)
     .join('');
-  return `<div class="grid" style="grid-template-columns:1.3fr 1fr;gap:20px;align-items:start">
+  const team = engTeamOf(G);
+  const teamBtn = team ? `<button class="btn block" style="margin-top:8px" data-act="w-buildteam" data-tip="${esc(t('eng.buildTip'))}" ${canEngOrder(G, team, sel) === true ? '' : 'disabled'}>${icon('team')}${t('eng.build')}</button>` : '';
+  return `${engCard(G)}<div class="grid" style="grid-template-columns:1.3fr 1fr;gap:20px;align-items:start">
     <div><div class="lbl" style="margin-bottom:8px">${t('work.parts')}</div><div class="feats">${feats
       .map((f) => `<button class="feat ${K.sel.has(f.id) ? 'on' : ''}" data-act="w-feat" data-id="${f.id}"><span>${L(f.name)}</span><small>+${f.tech} · ${money(f.cost)}</small></button>`)
       .join('')}</div></div>
@@ -56,7 +65,7 @@ function enginesTab(G) {
       <div class="kv"><span>${t('work.techPts')}</span><b>${tech}</b></div><div class="kv"><span>${t('work.cost')}</span><b>${money(cost)}</b></div><div class="kv"><span>${t('work.time')}</span><b>${sel.length ? engineWeeks(sel) + ' ' + t('ui.weeksShort') : '–'}</b></div>
       <div style="margin:12px 0 4px"><div class="row"><span class="lbl">${t('work.vsEra')}</span><span class="sp"></span><b class="num">${Math.round(ratio * 100)}%</b></div>${bar(ratio * 70, ratio >= 1 ? 'var(--good)' : 'var(--accent)', 'tall')}</div>
       <p class="hint" style="margin:8px 0 12px">${t('work.engHelp')}</p>
-      <button class="btn primary block" data-act="w-build" ${sel.length >= 2 && !G.job && G.money >= cost ? '' : 'disabled'}>${icon('hammer')}${t('work.build')}</button></div>
+      <button class="btn primary block" data-act="w-build" ${sel.length >= 2 && !G.job && G.money >= cost ? '' : 'disabled'}>${icon('hammer')}${t('work.build')}</button>${teamBtn}</div>
       ${existing ? `<div class="lbl">${t('work.engines')}</div>${existing}` : ''}</div></div>`;
 }
 
@@ -152,6 +161,15 @@ act('w-feat', (el) => {
   if (K.sel.has(id)) K.sel.delete(id);
   else K.sel.add(id);
   UI.refresh();
+});
+act('w-buildteam', () => {
+  const G = UI.app.G;
+  const r = orderEngine(G, K.name.trim(), [...K.sel]);
+  if (r === true) {
+    sfx.play('start');
+    K.name = '';
+    UI.refresh();
+  } else errToast(r);
 });
 act('w-build', () => {
   const G = UI.app.G;

@@ -4,6 +4,7 @@ import { yearOf, WEEKS_PER_YEAR } from './const.js';
 import { spend, earn, campusOf } from './studio.js';
 import { curveFor } from './sales.js';
 import { note } from './news.js';
+import { beat } from './life.js';
 import { BASE_SHARE, STABLE_MIN, stability, subOf, shareOf } from './group.js';
 
 // Uppköp: med forskningen Uppköp kan studion köpa en konkurrent. Den fortsätter släppa spel som förut (samma slumpföljd),
@@ -56,6 +57,7 @@ export function acquire(G, id) {
   Object.assign(c, { owned: true, ownedT: G.t, paid: price, subRev: 0, sub: null });
   subOf(G, c);
   G.stats.acquired = (G.stats.acquired || 0) + 1;
+  beat(G, 'grpBuy', { g: c.name });
   note(G, 'news.acquired', { studio: c.name, v: yearOf(G.t) }, 'good');
   emit('acquired', c);
   return true;
@@ -91,6 +93,7 @@ export function divest(G, id) {
   const v = sellPrice(G, c);
   earn(G, v, 'acquisitions');
   Object.assign(c, { owned: false, soldT: G.t, sub: null });
+  beat(G, 'grpSell', { g: c.name });
   note(G, 'news.divested', { studio: c.name, v: yearOf(G.t) }, 'info');
   emit('divested', c);
   return true;
