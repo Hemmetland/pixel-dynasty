@@ -21,7 +21,7 @@ const keys = [...out].sort();
 // minst en nyckel med prefixet; varje id kontrolleras av testerna eller i strings.js.
 const DYN = [
   'menu.g.', 'ng.hair.',
-  'arch.', 'compat.', 'diff.', 'expo.d', 'hl.', 'set.mstyle.', 'set.pace.', 'pn.req.', 'era.h.', 'era.b.', 'expo.i.', 'expo.n.', 'expo.o', 'fin.c.', 'help.', 'hw.arch.', 'hw.cls.', 'hw.clsTip.', 'hw.pd.', 'hw.pk.', 'hw.q.', 'hw.qTip.',
+  'arch.', 'compat.', 'diff.', 'expo.d', 'hl.', 'set.mstyle.', 'set.pace.', 'set.pf.', 'pn.req.', 'era.h.', 'era.b.', 'expo.i.', 'expo.n.', 'expo.o', 'fin.c.', 'help.', 'hw.arch.', 'hw.cls.', 'hw.clsTip.', 'hw.pd.', 'hw.pk.', 'hw.q.', 'hw.qTip.',
   'hw.rev.', 'hw.spec.', 'news.hwRev', 'hw.tab.', 'hw.type.', 'hw.typeD.', 'ins.', 'ins.audience.', 'ins.bugs.', 'ins.compat.', 'ins.focus.', 'ins.platform.', 'ins.vr.', 'mkt.tab.', 'news.tab.', 'skill.',
   'staff.train.', 'tut.', 'dist.deal.', 'tm.err.', 'tm.mis.', 'tm.hw.st.', 'tm.role.', 'legs.', 'legs.adv.', 'ins.know.', 'tm.res.on.', 'tm.res.f.', 'tm.res.l', 'news.recipeLevel', 'staff.f.', 'staff.s.', 'board.st.', 'news.sub',
 ];

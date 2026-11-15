@@ -9,7 +9,7 @@ const SKEY = 'pixel-dynasty-settings-v1';
 const HKEY = 'pixel-dynasty-hall-v1';
 const HALL_MAX = 20;
 
-export const DEFAULT_SETTINGS = { lang: null, music: true, sfx: true, musicVol: 0.5, musicStyle: 'auto', sfxVol: 0.7, amb: true, ambVol: 0.5, crt: false, hd: false, reduced: false, menuPause: true, tutorial: true, speed: 2, pace: 'normal' };
+export const DEFAULT_SETTINGS = { lang: null, music: true, sfx: true, musicVol: 0.5, musicStyle: 'auto', sfxVol: 0.7, amb: true, ambVol: 0.5, pfocus: 'auto', pfocusSeen: false, crt: false, hd: false, reduced: false, menuPause: true, tutorial: true, speed: 2, pace: 'normal' };
 
 export function loadSettings() {
   try {

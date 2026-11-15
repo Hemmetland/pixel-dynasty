@@ -10,6 +10,7 @@ import { REVIEWERS } from '../data/reviews.js';
 import { EV } from '../data/events.js';
 import { reviewTexts, phaseCats, idealFocus, SCOPE_CAP, softCap, scoreLegs, focusKnown } from '../sim/score.js';
 import { setPhaseFocus } from '../sim/dev.js';
+import { pfocusOf } from './pfocus.js';
 import { resolveEvent, previewFx, fxBlockReason } from '../sim/events.js';
 import { AWARD_CATS } from '../sim/awards.js';
 import { expoPrompt } from './expo.js';
@@ -63,6 +64,16 @@ function phasePrompt(app, G, p, finish) {
   const cats = phaseCats(G, p.phase);
   const val = { ...J.focus[p.phase] };
   const ideal = focusKnown(G, J.genre) ? idealFocus(G, J.genre, p.phase, J.genre2) : null;
+  // Standard: när idealet är känt sköter teamet fördelningen själv och ingen ruta kommer (se pfocus.js)
+  if (ideal && pfocusOf(app.settings) === 'auto') {
+    setPhaseFocus(G, p.phase, ideal);
+    if (!app.settings.pfocusSeen) {
+      app.settings.pfocusSeen = true;
+      app.applySettings();
+      toast(t('phase.autoNote', { n: p.phase + 1 }), 'info', 9000);
+    }
+    return finish();
+  }
   const names = ['dev.p1', 'dev.p2', 'dev.p3'];
   UI.modal(`
     <div class="win-head"><div class="wi" style="--wc:var(--accent)">${icon('sliders')}</div><h2>${t('phase.title', { n: p.phase + 1 })}<div class="sub">${t(names[p.phase])} · ${esc(J.title)}</div></h2></div>
@@ -75,12 +86,19 @@ function phasePrompt(app, G, p, finish) {
       </div>
       ${cats.length ? focusHTML(cats, val, ideal, 'pf') : ''}
     </div>
-    <div class="win-foot">${ideal ? `<button class="btn" data-act="p-ideal">${icon('target')}${t('wiz.useIdeal')}</button>` : `<span class="hint">${icon('info')} ${t('wiz.focusUnknown')}</span>`}<span class="sp"></span><button class="btn primary lg" data-act="p-go">${t('phase.go')}${icon('arrow')}</button></div>`,
+    <div class="win-foot">${ideal ? `<button class="btn" data-act="p-ideal">${icon('target')}${t('wiz.useIdeal')}</button><button class="btn ghost" data-act="p-auto" data-tip="${t('phase.autoTip')}">${icon('gear')}${t('phase.auto')}</button>` : `<span class="hint">${icon('info')} ${t('wiz.focusUnknown')}</span>`}<span class="sp"></span><button class="btn primary lg" data-act="p-go">${t('phase.go')}${icon('arrow')}</button></div>`,
     (el) => {
       bindFocus(el, cats, val, ideal, 'pf', () => {});
       act('p-go', () => {
         setPhaseFocus(G, p.phase, val);
         sfx.play('start');
+        finish();
+      });
+      act('p-auto', () => {
+        app.settings.pfocus = 'auto';
+        app.settings.pfocusSeen = true;
+        app.applySettings();
+        setPhaseFocus(G, p.phase, idealFocus(G, J.genre, p.phase, J.genre2));
         finish();
       });
       act('p-ideal', () => {
