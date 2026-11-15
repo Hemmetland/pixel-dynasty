@@ -2051,6 +2051,8 @@ export const STRINGS = {
   'ls.bank': ['Ekonomiavdelningen räknar pengar', 'The finance department is counting money'],
   'ls.bank.red': ['Kassan är tom, dags att rädda ekonomin', 'The cash is gone, time to save the finances'],
   'ls.live': ['Servrarna går', 'The servers are running'],
+  'ls.live.final': ['Säsongsfinal: världen tittar', 'Season final: the world is watching'],
+  'ls.live.feud': ['Fejd i toppen: {a} mot {b}', 'Rivalry at the top: {a} against {b}'],
   'ls.live.on': ['{n} spelare är inne i världen', '{n} players are in the world'],
   'ls.live.ops': ['Driftteamet håller koll på servrarna', 'The ops team is watching the servers'],
   'ls.live.ev': ['Ett event pågår i spelet', 'An event is on in the game'],
