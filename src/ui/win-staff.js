@@ -5,10 +5,12 @@ import { SPECS, TRAITS, hire, fire, raise, train, canTrain, trainCost, trainWeek
 import { TEAM_MAX, TEAM_SIZE, teamsOf, teamName, membersOf, teamOfStaff, teamsOpen, createTeam, disbandTeam, addMember, removeMember, courseInfo, canTrainTeam, trainTeam, teamAvg, leadOf, setLead } from '../sim/teams.js';
 import { capacity } from '../sim/studio.js';
 import { autoOpen, canMission, eligibleBases, missionQuote, startMission, cancelMission, missionProgress, missionWeeksLeft, samspel, SAMSPEL_MAX, MISSION_KINDS, MISSION_MIN } from '../sim/autoteam.js';
+import { opsOpen, opsInfo, opsNeed, canOps, assignOps, endOps, RUTIN_MAX } from '../sim/opsteam.js';
+import { liveGames, TM_DECAY, TM_OUTAGE, TM_COST, TM_RENO } from '../sim/live.js';
 import { SCOPES } from '../sim/const.js';
 import { dateOf } from '../sim/const.js';
 
-const S = { tab: 'team', trainFor: null, fireFor: null, addFor: null, disbandFor: null, mk: {}, cancelFor: null };
+const S = { tab: 'team', trainFor: null, fireFor: null, addFor: null, disbandFor: null, mk: {}, cancelFor: null, opsFor: null };
 const SK = { design: ['bulb', 'var(--design)'], tech: ['cpu', 'var(--tech)'], speed: ['rocket', 'var(--warn)'], research: ['flask', 'var(--rp)'] };
 
 const skills = (G, s) => {
@@ -96,9 +98,48 @@ function crew(G, team) {
     ${mem.length ? `<div class="faint" style="font-size:11.5px;margin-top:6px">${lead ? t('tm.leadIs', { name: esc(lead.name) }) : t('tm.leadNone')}</div>` : ''}
     ${mem.length < TEAM_SIZE ? `<div class="row" style="margin-top:8px"><button class="btn sm ${S.addFor === team.id ? 'on' : ''}" data-act="tm-addopen" data-tid="${team.id}">${icon('plus')}${t('tm.add')}</button></div>` : ''}${picker}
     ${mem.length ? `<div class="lbl" style="margin:12px 0 0">${t('tm.avg')}</div>${skills(G, teamAvg(G, team))}` : ''}
-    <div style="margin-top:12px;padding-top:10px;border-top:1px dashed var(--line)"><div class="lbl" style="margin:0 0 6px">${t('tm.course')}</div>${course}</div>
-    ${missionBlock(G, team)}
+    ${roleBlock(G, team)}
+    ${team.role === 'ops' ? opsBlock(G, team) : `<div style="margin-top:12px;padding-top:10px;border-top:1px dashed var(--line)"><div class="lbl" style="margin:0 0 6px">${t('tm.course')}</div>${course}</div>${missionBlock(G, team)}`}
   </div>`;
+}
+
+// Uppgift: spelutveckling (kurs och egna uppdrag) eller driftteam för ett levande onlinespel
+function roleBlock(G, team) {
+  if (!opsOpen(G) && team.role !== 'ops') return '';
+  const ops = team.role === 'ops';
+  const games = liveGames(G);
+  const pick =
+    S.opsFor === team.id
+      ? `<div class="lbl" style="margin:10px 0 4px">${t('tm.ops.pick')}</div><div class="tm-mem">${
+          games.length
+            ? games
+                .map((g) => {
+                  const ok = canOps(G, team, g.id);
+                  return `<button class="tm-chip add ${ops && team.target === g.id ? 'on' : ''}" data-act="tm-opsgame" data-tid="${team.id}" data-id="${g.id}" ${ok === true || (ops && team.target === g.id) ? '' : 'disabled'} data-tip="${esc(ok === true ? t('tm.ops.needTip') : t('tm.err.' + ok))}"><span class="ell">${esc(g.title)}</span><b class="num">${icon('user')}${opsNeed(G, g)}</b></button>`;
+                })
+                .join('')
+            : `<span class="faint" style="font-size:12px">${t('tm.ops.none')}</span>`
+        }</div>`
+      : '';
+  return `<div style="margin-top:12px;padding-top:10px;border-top:1px dashed var(--line)"><div class="lbl" style="margin:0 0 6px">${t('tm.role')}</div>
+    <div class="row wrap" style="gap:6px"><button class="btn sm ${ops ? '' : 'on'}" data-act="tm-role" data-tid="${team.id}" data-k="game" ${team.mission && ops ? 'disabled' : ''}>${icon('gamepad')}${t('tm.role.game')}</button><button class="btn sm ${ops ? 'on' : ''}" data-act="tm-role" data-tid="${team.id}" data-k="ops" data-tip="${esc(t('tm.role.opsTip'))}">${icon('globe')}${t('tm.role.ops')}</button></div>${pick}</div>`;
+}
+// Ett driftteam: vilket spel, hur väl det räcker till och vad det ger
+function opsBlock(G, team) {
+  const head = `<div class="lbl" style="margin:12px 0 6px">${t('tm.role.ops')}</div>`;
+  const inf = opsInfo(G, team);
+  if (!inf) return `<div>${head}<div class="hint" style="margin:0">${icon('info')} ${t('tm.err.opsGame')}</div></div>`;
+  const pct = Math.round(inf.eff * 100);
+  const gives = t('tm.ops.gives', { a: Math.round(TM_DECAY * inf.eff * 100), b: Math.round(TM_OUTAGE * inf.eff * 100), c: Math.round(TM_COST * inf.eff * 100), d: Math.round(TM_RENO * inf.eff * 100) });
+  return `<div>${head}<div class="hint" style="margin:0 0 8px">${t('tm.ops.help')}</div>
+    <div class="sf-spot-row on" style="display:block"><div class="row" style="gap:8px"><b class="ell" style="flex:1;min-width:0">${t('tm.ops.on', { title: esc(inf.game.title) })}</b><span class="tag" style="--c:var(--good)" data-tip="${esc(t('tm.ops.effTip'))}">${t('tm.ops.eff', { n: pct })}</span></div>
+      <div style="margin:8px 0 4px">${bar(pct, 'var(--good)')}</div>
+      <div class="faint" style="font-size:12px">${t('tm.ops.need', { need: inf.need, n: inf.n })}</div>
+      <div class="faint" style="font-size:12px;margin-top:2px" data-tip="${esc(t('tm.ops.rutinTip'))}">${t('tm.ops.rutin', { n: inf.rutin, m: RUTIN_MAX })}</div>
+      <div class="muted" style="font-size:12px;margin-top:6px">${gives}</div>
+      <div class="row" style="margin-top:8px"><span class="sp"></span><button class="btn sm" data-act="tm-opsend" data-tid="${team.id}" ${team.mission ? 'disabled' : ''} data-tip="${esc(t('tm.ops.endTip'))}">${t('tm.ops.end')}</button></div></div>
+    ${autoOpen(G) ? toggleRow('tm-repeat', team.id, !!team.repeat, t('tm.ops.repeat'), t('tm.ops.repeatHelp')) : ''}
+    ${team.mission ? missionBlock(G, team) : ''}</div>`;
 }
 function groupsView(G) {
   const teams = teamsOf(G);
@@ -116,12 +157,13 @@ function toggleRow(act, tid, on, title, help) {
   return `<div class="ltier autoseason ${on ? 'on' : ''}" style="margin-top:8px"><span class="rn-i" style="--c:${on ? 'var(--good)' : 'var(--muted)'}">${icon('refresh')}</span><div style="flex:1;min-width:0"><b>${title}</b><div class="faint" style="font-size:11.5px">${help}</div></div><button class="switch ${on ? 'on' : ''}" data-act="${act}" data-tid="${tid}" role="switch" aria-checked="${on ? 'true' : 'false'}" aria-label="${esc(title)}"><i></i></button></div>`;
 }
 function missionBlock(G, team) {
+  if (team.role === 'ops' && !team.mission) return '';
   const head = `<div class="lbl" style="margin:0 0 6px">${t('tm.mis')}</div>`;
   if (!autoOpen(G)) return `<div style="margin-top:12px;padding-top:10px;border-top:1px dashed var(--line)">${head}<div class="hint" style="margin:0">${icon('lock')} ${t('tm.mis.locked')}</div></div>`;
   const m = team.mission;
   const sp = samspel(team);
   const stats = `<div class="faint" style="font-size:12px;margin-top:8px" data-tip="${esc(t('tm.mis.statsTip'))}">${t('tm.mis.stats', { n: sp, m: SAMSPEL_MAX, g: (team.games || []).length, b: team.best ? team.best.toFixed(1) : '–' })}</div>`;
-  const toggles = toggleRow('tm-repeat', team.id, !!team.repeat, t('tm.mis.repeat'), t('tm.mis.repeatHelp')) + toggleRow('tm-atrain', team.id, team.autoTrain !== false, t('tm.mis.train'), t('tm.mis.trainHelp'));
+  const toggles = team.role === 'ops' ? '' : toggleRow('tm-repeat', team.id, !!team.repeat, t('tm.mis.repeat'), t('tm.mis.repeatHelp')) + toggleRow('tm-atrain', team.id, team.autoTrain !== false, t('tm.mis.train'), t('tm.mis.trainHelp'));
   let body;
   if (m) {
     const J = m.J;
@@ -189,6 +231,7 @@ regWin({
     S.cancelFor = null;
     S.trainFor = null;
     S.fireFor = null;
+    S.opsFor = null;
     S.focus = null;
   },
 });
@@ -340,6 +383,35 @@ act('tm-repeat', (el) => {
 act('tm-atrain', (el) => {
   const team = UI.app.G.teams.find((x) => x.id === +el.dataset.tid);
   if (team) team.autoTrain = team.autoTrain === false;
+  UI.refresh();
+});
+
+act('tm-role', (el) => {
+  const G = UI.app.G;
+  const tid = +el.dataset.tid;
+  const team = G.teams.find((x) => x.id === tid);
+  if (!team) return;
+  if (el.dataset.k === 'ops') S.opsFor = S.opsFor === tid ? null : tid;
+  else if (team.role === 'ops') {
+    const r = endOps(G, tid);
+    if (typeof r === 'string') errToast(r);
+    S.opsFor = null;
+  } else S.opsFor = null;
+  UI.refresh();
+});
+act('tm-opsgame', (el) => {
+  const G = UI.app.G;
+  const tid = +el.dataset.tid;
+  const r = assignOps(G, tid, +el.dataset.id);
+  if (r === true) {
+    sfx.play('research');
+    S.opsFor = null;
+  } else errToast(r);
+  UI.refresh();
+});
+act('tm-opsend', (el) => {
+  const r = endOps(UI.app.G, +el.dataset.tid);
+  if (typeof r === 'string') errToast(r);
   UI.refresh();
 });
 

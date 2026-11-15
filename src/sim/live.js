@@ -87,7 +87,16 @@ export const SEASON_WEEKS = 12;
 export const SEASON_GAP = 30;
 const SEASON_REPEAT = 0.6;
 const SEASON_POT_MAX = 0.12;
-const RENO_FLOOR = 0.6;
+export const RENO_FLOOR = 0.6;
+// Driftteam (sim/opsteam.js): ett team som sköter spelet ger L.tm (0–1, räknas om varje vecka). Med full effekt åldras innehållet
+// TM_DECAY långsammare, avbrotten blir TM_OUTAGE färre, uppdateringar, evenemang och säsonger blir TM_COST billigare (teamet gör
+// jobbet själv) och spelet åldras TM_RENO långsammare (veckor av förnyelse per vecka). Teamet startar också uppdateringar,
+// evenemang, säsonger och nya regioner på egen hand.
+export const TM_DECAY = 0.45;
+export const TM_OUTAGE = 0.6;
+export const TM_COST = 0.3;
+export const TM_RENO = 0.3;
+export const tmOf = (L) => (L && L.tm) || 0;
 export const SEASONS = [
   { id: 'story', ic: 'book', cost: 1.4, reno: 0.12, fresh: 25, pot: 0.02, pass: 0.08, lift: 1.06, back: 0, minAge: 0, name: { sv: 'Ny berättelse', en: 'New storyline' }, desc: { sv: 'Nytt kapitel med färskt innehåll och lite fler spelare i grunden.', en: 'A new chapter with fresh content and a few more players for good.' } },
   { id: 'ranked', ic: 'trophy', cost: 1.2, reno: 0.08, fresh: 10, pot: 0, pass: 0.22, lift: 1.04, back: 0, minAge: 0, name: { sv: 'Tävlingssäsong', en: 'Ranked season' }, desc: { sv: 'Rankade matcher och belöningar. Säsongspasset ger mest extra intäkt.', en: 'Ranked matches and rewards. The season pass earns the most extra revenue.' } },
@@ -416,7 +425,7 @@ export function liveWeek(G) {
   let weekRev = 0;
   for (const g of games) {
     const L = g.live;
-    L.fresh = Math.max(0, L.fresh - FRESH_DECAY * kindData(L).decay);
+    L.fresh = Math.max(0, L.fresh - FRESH_DECAY * kindData(L).decay * (1 - TM_DECAY * tmOf(L)));
     if (L.patch && G.t >= L.patch.until) {
       L.fresh = Math.min(100, L.fresh + PATCH_FRESH);
       L.patch = null;
@@ -434,7 +443,7 @@ export function liveWeek(G) {
     }
     if (L.season) seasonWeek(G, g);
     // löpande uppdateringar startar nästa av sig själva; räcker inte kassan sägs det till en gång
-    if (L.auto && !L.patch && L.fresh <= AUTO_FRESH) {
+    if ((L.auto || tmOf(L) > 0) && !L.patch && L.fresh <= AUTO_FRESH) {
       if (G.money >= livePatchCost(G, g) * AUTO_BUFFER) {
         startLivePatch(G, g.id);
         L.autoWarn = 0;
@@ -444,7 +453,7 @@ export function liveWeek(G) {
       }
     }
     // automatiska säsonger: nästa tema startar av sig självt; räcker inte kassan sägs det till en gång
-    if (L.autoSeason) {
+    if (L.autoSeason || tmOf(L) > 0) {
       const th = autoSeasonPick(G, g);
       if (th) {
         if (G.money >= liveSeasonCost(G, g, th) * AUTO_BUFFER && startLiveSeason(G, g.id, th) === true) L.autoSeasonWarn = 0;
@@ -509,7 +518,7 @@ export function liveWeek(G) {
     }
     // nöjda spelare blir fans, ett dåligt spel tappar dem
     G.fans = Math.max(0, G.fans + payBase(L) * 0.00025 * (g.score - 5));
-    if (L.subs > 500 && chance(G, OPS[L.ops].outage + over * 0.08)) {
+    if (L.subs > 500 && chance(G, OPS[L.ops].outage * (1 - TM_OUTAGE * tmOf(L)) + over * 0.08)) {
       L.subs *= 0.96;
       L.fresh = Math.max(0, L.fresh - 4);
       L.outages++;
@@ -538,7 +547,7 @@ const liveOf = (G, id) => {
 // Innehållsuppdatering: ungefär en halv månads standardintäkter plus en grundkostnad, klar efter PATCH_WEEKS veckor
 export function livePatchCost(G, g) {
   const year = yearOf(G.t);
-  return Math.round((payBase(g.live) * subPrices(year)[0] * 0.5 + 20000 * moneyScale(year)) / 100) * 100;
+  return Math.round(((payBase(g.live) * subPrices(year)[0] * 0.5 + 20000 * moneyScale(year)) * (1 - TM_COST * tmOf(g.live))) / 100) * 100;
 }
 export function startLivePatch(G, id) {
   const g = liveOf(G, id);
@@ -553,7 +562,7 @@ export function startLivePatch(G, id) {
 // Evenemang: ungefär en åttondel av en månads standardintäkter plus en grundkostnad, startar direkt
 export function liveEventCost(G, g) {
   const year = yearOf(G.t);
-  return Math.round((payBase(g.live) * subPrices(year)[0] * 0.12 + 8000 * moneyScale(year)) / 100) * 100;
+  return Math.round(((payBase(g.live) * subPrices(year)[0] * 0.12 + 8000 * moneyScale(year)) * (1 - TM_COST * tmOf(g.live))) / 100) * 100;
 }
 // Veckor tills nästa evenemang kan starta (0 = nu)
 export const eventReadyIn = (G, L) => (L.evT == null ? 0 : Math.max(0, L.evT + EVENT_GAP - G.t));
@@ -577,7 +586,7 @@ export function startLiveEvent(G, id) {
 // Säsong: en månads standardintäkter ungefär, gånger temats kostnadsfaktor, plus en grundkostnad
 export function liveSeasonCost(G, g, id) {
   const year = yearOf(G.t);
-  return Math.round(((payBase(g.live) * subPrices(year)[0] * 0.9 + 60000 * moneyScale(year)) * SEASON[id].cost) / 100) * 100;
+  return Math.round(((payBase(g.live) * subPrices(year)[0] * 0.9 + 60000 * moneyScale(year)) * SEASON[id].cost * (1 - TM_COST * tmOf(g.live))) / 100) * 100;
 }
 // Veckor tills nästa säsong kan starta (0 = nu)
 export const seasonReadyIn = (G, L) => (L.ssT == null ? 0 : Math.max(0, L.ssT + SEASON_GAP - G.t));

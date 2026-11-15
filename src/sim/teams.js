@@ -64,8 +64,9 @@ export function createTeam(G) {
 export function disbandTeam(G, id) {
   const team = teamById(G, id);
   if (!team) return false;
-  // ett pågående uppdrag avbryts: medarbetarna är tillbaka i arbetet
+  // ett pågående uppdrag avbryts och ett driftteam lämnar sitt spel: medarbetarna är tillbaka i arbetet
   if (team.mission) for (const s of G.staff) if (team.mission.J.crew.includes(s.id)) s.away = false;
+  if (team.role === 'ops') for (const s of G.staff) if (team.members.includes(s.id)) s.away = false;
   G.teams = G.teams.filter((x) => x !== team);
   return true;
 }
@@ -80,6 +81,8 @@ export function addMember(G, id, sid) {
     x.members = x.members.filter((m) => m !== sid);
     if (x.lead === sid) x.lead = null;
   }
+  // ett driftteams medarbetare är ute på sitt spel (s.away); den som byter team är tillbaka i arbetet
+  st.away = team.role === 'ops';
   team.members.push(sid);
   return true;
 }
@@ -89,6 +92,10 @@ export function removeMember(G, id, sid) {
   if (team.mission) return tr(G, 'err.teamBusy');
   team.members = team.members.filter((m) => m !== sid);
   if (team.lead === sid) team.lead = null;
+  if (team.role === 'ops') {
+    const st = G.staff.find((s) => s.id === sid);
+    if (st) st.away = false;
+  }
   return true;
 }
 
@@ -104,6 +111,7 @@ export function courseInfo(G, team) {
 export function canTrainTeam(G, team) {
   if (!G.u.flags.training) return 'locked';
   if (team.mission) return 'mission';
+  if (team.role === 'ops') return 'ops';
   const c = courseInfo(G, team);
   if (c.mem.length < 2) return 'small';
   if (c.busy.length === c.mem.length) return 'busy';

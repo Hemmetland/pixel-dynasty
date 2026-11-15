@@ -25,7 +25,7 @@ export const MISSION_MIN = 3;
 export const SAMSPEL_MAX = 10;
 export const MISSION_KINDS = ['sequel', 'expansion', 'new'];
 const SEQ_MAX_CHAIN = 3; // en serie fortsätter till och med del fyra av teamets egna val
-const EXP_GAP = 24; // veckor mellan två expansioner (automatiskt val)
+export const EXP_GAP = 24; // veckor mellan två expansioner (automatiskt val)
 // Ett uppdrag har en egen budget (verktyg, testare, ljud och grafik utifrån): BUDGET_SHARE av vad spelet väntas dra in utan hype.
 export const BUDGET_SHARE = 0.2;
 
@@ -55,6 +55,8 @@ export function canMission(G, team, kind, baseId) {
   if (mem.length < MISSION_MIN) return 'smallMission';
   if (mem.some((s) => s.isFounder)) return 'founder';
   if (mem.some((s) => s.trainUntil > G.t)) return 'training';
+  // ett driftteam bygger bara expansioner till sitt eget spel
+  if (team.role === 'ops' && (kind !== 'expansion' || baseId !== team.target)) return 'opsOnly';
   if (kind === 'new') return true;
   if (!eligibleBases(G, kind).some((g) => g.id === baseId)) return kind === 'sequel' && !G.u.flags.sequels ? 'noSequels' : 'base';
   return true;
@@ -171,7 +173,8 @@ const tOf = (G, code) => tr(G, 'tm.err.' + code);
 
 function release(G, team, reason) {
   const m = team.mission;
-  for (const s of G.staff) if (m.J.crew.includes(s.id)) s.away = false;
+  // ett driftteam är kvar ute på sitt spel också efter uppdraget
+  for (const s of G.staff) if (m.J.crew.includes(s.id)) s.away = team.role === 'ops';
   team.mission = null;
   return reason;
 }
@@ -247,7 +250,7 @@ export function missionWeek(G) {
   for (const team of teamsOf(G)) {
     const m = team.mission;
     if (!m) {
-      if (membersOf(G, team).length >= MISSION_MIN) idle(G, team);
+      if (team.role !== 'ops' && membersOf(G, team).length >= MISSION_MIN) idle(G, team);
       continue;
     }
     const ws = membersOf(G, team).filter((s) => m.J.crew.includes(s.id));

@@ -1194,6 +1194,93 @@ ok(true, 'alla händelser körda');
   for (let i = 0; i < 20; i++) { GO2.t++; S.missionWeek(GO2); }
   ok(Number.isFinite(GO2.money), 'en sparning från före de självgående teamen fortsätter som vanligt');
 }
+const liveAgeOf = (W, gm) => (W.t - gm.live.t0 - (gm.live.reno || 0)) / 48;
+// driftteam: ett team sköter ett levande onlinespel (färskare innehåll, färre avbrott, billigare uppdateringar, egna drag)
+{
+  const mkWorld = () => {
+    const W = S.newGame({ studio: 'O', seed: 61 }); S.makeCompetitors(W); S.initWorld(W);
+    W.t = 48 * 24; W.money = 5e7; W.fans = 80000; W.office.tier = 4; W.office.fac.server = { lvl: 3, slot: 0 };
+    for (let i = 0; i < 9; i++) { S.refreshCandidates(W); W.money += W.candidates[0].fee; S.hire(W, W.candidates[0].id); }
+    W.games.push({ id: 9201, title: 'Onlinevärlden', platform: 'pc', genre: 'rpg', topic: 'fantasy', scope: 'large', audience: 'everyone', score: 8, total: 3e6, t: W.t - 48, tail: 1, priceAt: 30, weekly: [1], revenue: 5e6, units: 1e5, fansGained: 0, ended: true, chain: 1, insights: [], reviews: [], flags: [], hype: 40 });
+    S.launchLive(W, W.games[W.games.length - 1], 'mmo');
+    const L = W.games[W.games.length - 1].live;
+    L.subs = 200000; L.pot = 260000; L.peak = 200000; L.regions = ['na']; L.boost = 0;
+    return W;
+  };
+  const GO = mkWorld();
+  const g = GO.games[GO.games.length - 1];
+  const crew = GO.staff.filter((x) => !x.isFounder);
+  const T = S.createTeam(GO);
+  for (const x of crew.slice(0, 5)) S.addMember(GO, T.id, x.id);
+  ok(S.assignOps(GO, T.id, 9201) !== true && S.canOps(GO, T, 9201) === 'opsLocked', 'ett driftteam kräver forskningen Driftteam');
+  GO.u.flags.opsTeams = true; GO.u.flags.training = true; GO.u.flags.autoTeams = true; GO.u.flags.sequels = true;
+  GO.u.scopes = ['small', 'medium', 'large', 'aaa'];
+  for (const x of ['rpg', 'action']) if (!GO.u.genres.includes(x)) GO.u.genres.push(x);
+  ok(S.canOps(GO, T, 9999) === 'opsGame', 'bara ett levande onlinespel går att sköta');
+  const T1 = S.createTeam(GO); S.addMember(GO, T1.id, crew[5].id);
+  ok(S.canOps(GO, T1, 9201) === 'opsSmall', 'minst två personer');
+  S.addMember(GO, T1.id, GO.staff[0].id);
+  ok(S.canOps(GO, T1, 9201) === 'founder', 'grundaren kan inte vara med');
+  S.disbandTeam(GO, T1.id);
+  const need = S.opsNeed(GO, g);
+  ok(need >= 3 && need <= 12 && S.opsNeed({ ...GO }, { live: { ...g.live, subs: 5e6 } }) > need, 'behovet växer med antalet spelare (' + need + ' personer)');
+  const w0 = S.workers(GO).length;
+  ok(S.assignOps(GO, T.id, 9201) === true && T.role === 'ops' && T.target === 9201 && T.members.every((id) => GO.staff.find((x) => x.id === id).away) && S.workers(GO).length === w0 - 5, 'teamet tar hand om spelet och är borta från dina projekt');
+  ok(S.leadOf(GO, T) !== null && S.opsTeamOf(GO, 9201) === T, 'en arbetsledare utses');
+  const T2 = S.createTeam(GO); S.addMember(GO, T2.id, crew[6].id); S.addMember(GO, T2.id, crew[7].id);
+  ok(S.canOps(GO, T2, 9201) === 'opsTaken', 'ett spel har bara ett driftteam');
+  ok(S.canTrainTeam(GO, T) === 'ops', 'ett driftteam går inte på kurs');
+  ok(S.canMission(GO, T, 'new') === 'opsOnly' && S.canMission(GO, T, 'expansion', 9999) === 'opsOnly', 'ett driftteam bygger bara expansioner till sitt eget spel');
+  S.disbandTeam(GO, T2.id);
+  const eff1 = S.opsEff(GO, T, g);
+  ok(eff1 > 0 && eff1 <= 1, 'effekten ligger mellan noll och ett (' + eff1.toFixed(2) + ')');
+  const lone = S.createTeam(GO); S.addMember(GO, lone.id, crew[6].id);
+  const effOf = (n) => { lone.members = crew.slice(6, 6 + n).map((x) => x.id); lone.role = 'ops'; lone.target = 9201; const v = S.opsEff(GO, lone, g); lone.role = null; return v; };
+  ok(effOf(2) < effOf(4), 'fler händer ger större effekt');
+  S.disbandTeam(GO, lone.id);
+  // jämför med samma spel utan team under ett par år
+  const CT = mkWorld();
+  const cg = CT.games[CT.games.length - 1];
+  const rng0 = GO.rng;
+  S.opsWeek(GO);
+  ok(GO.rng === rng0 && g.live.tm > 0, 'veckans räkning rör inte slumpföljden och sätter teamets effekt');
+  const costTeam = S.livePatchCost(GO, g), costNone = S.livePatchCost(CT, cg);
+  ok(costTeam < costNone, 'en uppdatering blir billigare med teamet (' + costTeam + ' mot ' + costNone + ')');
+  let freshT = 0, freshC = 0, outT = 0, outC = 0;
+  for (let i = 0; i < 96; i++) {
+    for (const W of [GO, CT]) { W.t++; S.opsWeek(W); S.liveWeek(W); if (W.pending.length) W.pending.length = 0; }
+    freshT += g.live.fresh; freshC += cg.live.fresh;
+  }
+  outT = g.live.outages; outC = cg.live.outages;
+  ok(freshT > freshC * 1.3, 'innehållet är färskare med ett driftteam (' + Math.round(freshT / 96) + ' mot ' + Math.round(freshC / 96) + ')');
+  ok(g.live.reno > 0 && !cg.live.reno && liveAgeOf(GO, g) < liveAgeOf(CT, cg), 'spelet åldras långsammare');
+  ok(g.live.subs > cg.live.subs && Number.isFinite(GO.money) && Number.isFinite(g.live.rev), 'spelet har fler spelare med teamet (' + Math.round(g.live.subs) + ' mot ' + Math.round(cg.live.subs) + ')');
+  ok(g.live.events > 0 && GO.news.some((n) => n.key === 'news.opsEvent'), 'teamet startar evenemang på egen hand');
+  ok(S.rutin(T) >= 3 && T.opsW === 97, 'rutinen växer med åren (' + S.rutin(T) + ' av ' + S.RUTIN_MAX + ')');
+  ok(g.live.regions.length > 1 && GO.news.some((n) => n.key === 'news.opsRegion'), 'teamet öppnar nya regioner när de lönar sig (' + g.live.regions.length + ')');
+  ok(outT <= outC + 3, 'färre avbrott med teamet (' + outT + ' mot ' + outC + ')');
+  // expansion på eget initiativ
+  T.repeat = true; g.live.fresh = 40;
+  S.opsWeek(GO);
+  ok(T.mission && T.mission.kind === 'expansion' && T.mission.base === 9201, 'ett driftteam som fått det bygger en expansion när innehållet blivit gammalt');
+  let guard = 0;
+  while (T.mission && guard++ < 4000) { if (GO.pending.length) GO.pending.length = 0; S.stepTick(GO); }
+  ok(!T.mission && T.role === 'ops' && T.members.every((id) => GO.staff.find((x) => x.id === id).away) && g.live.exps.length === 1, 'efter expansionen är teamet kvar ute på spelet');
+  // byta uppgift
+  ok(S.endOps(GO, T.id) === true && !T.role && GO.staff.every((x) => !x.away), 'teamet kan sluta sköta spelet och är då vanligt personal igen');
+  ok(S.assignOps(GO, T.id, 9201) === true && S.removeMember(GO, T.id, crew[0].id) === true && !GO.staff.find((x) => x.id === crew[0].id).away, 'den som tas ur ett driftteam är tillbaka i arbetet');
+  const T4 = S.createTeam(GO);
+  ok(S.addMember(GO, T4.id, crew[1].id) === true && !GO.staff.find((x) => x.id === crew[1].id).away, 'den som flyttas till ett spelteam är tillbaka i arbetet');
+  S.disbandTeam(GO, T4.id);
+  // nedlagt spel
+  S.closeLive(GO, 9201);
+  S.opsWeek(GO);
+  ok(!T.role && !T.target && GO.staff.every((x) => !x.away) && GO.news.some((n) => n.key === 'news.opsLost') && !g.live.tm, 'när spelet läggs ned blir teamet ledigt');
+  // äldre sparningar
+  const GOLD = JSON.parse(JSON.stringify(CT)); delete GOLD.teams;
+  for (let i = 0; i < 20; i++) { GOLD.t++; S.opsWeek(GOLD); S.liveWeek(GOLD); }
+  ok(Number.isFinite(GOLD.money) && !GOLD.games[GOLD.games.length - 1].live.tm, 'en sparning från före driftteamen fortsätter som vanligt');
+}
 // förlag: pitchar kommer ur fröet, förskott vid underskrift, två avtal åt gången, spelet släpps med ett betyg i intervallet
 {
   const GB = S.newGame({ studio: 'F', seed: 12 }); S.makeCompetitors(GB); S.initWorld(GB);

@@ -26,6 +26,8 @@ import { FAN_SOURCE } from '../data/fanvoices.js';
 import { KIND, etypesOf, ETYPE, RAID_BOSSES } from '../data/onlinekinds.js';
 import { PRIZES, PRODS, MKTS, ESP_MIN, ESP_AUTO_BUFFER, esportPlan, espRating, espBestPrize, espReadyIn, canEsport, startEsport, setEsportAuto, kindOfGame, raceStanding } from '../sim/esports.js';
 import { SUB_TIERS, OPS, PRICE_MIN, PRICE_MAX, PATCH_WEEKS, EVENT_WEEKS, SURGE_WEEKS, tierMix, liveMonth, serverCap, livePatchCost, startLivePatch, setLivePrice, setLiveOps, closeLive, rivalMmos, rivalPull, rivalFactor, liveFactors, setLiveAuto, setLiveAutoSeason, PERKS, perkCost, setLivePerk, AUTO_FRESH, AUTO_BUFFER, AUTO_SEASON_BELOW, eventOn, eventReadyIn, liveEventCost, startLiveEvent, SHOP, isF2P, canGoF2P, goF2P, setLiveShop, liveLoad, liveArpu, hikeShare, REGIONS, regionGain, REGION_NAME, REGION_WEEKS, regionBonus, regionsOpen, liveRegionCost, startLiveRegion, SEASONS, SEASON_WEEKS, seasonOn, seasonReadyIn, seasonShare, seasonBlock, seasonQuality, liveSeasonCost, startLiveSeason, liveAge } from '../sim/live.js';
+import { opsTeamOf, opsInfo } from '../sim/opsteam.js';
+import { teamName } from '../sim/teams.js';
 
 // Stäng servrarna och gör till gratisspel kräver två tryck: första trycket "armerar" knappen för det spelet
 let closeArmed = null;
@@ -354,6 +356,13 @@ function hikeLine(G, L) {
 }
 
 // Driftpanelen för ett onlinespel: spelare, intäkter, innehåll, serverlast, konkurrenter, priser per nivå, drift och åtgärder
+// Sköts spelet av ett driftteam: vilket team och hur bra det räcker till
+function opsTeamLine(G, g) {
+  const team = opsTeamOf(G, g.id);
+  const inf = team ? opsInfo(G, team) : null;
+  if (!inf) return '';
+  return `<div class="row wrap" style="gap:8px;margin-top:12px"><span class="spill" style="--c:var(--good)" data-tip="${esc(t('live.tmOnTip'))}">${icon('team')}${t('live.tmOn', { team: esc(L(teamName(team))), n: Math.round(inf.eff * 100) })}</span></div>`;
+}
 function livePanel(G, g) {
   const L = g.live;
   if (!L) return '';
@@ -401,6 +410,7 @@ function livePanel(G, g) {
     ${rivalList(G, g)}
     ${regionPanel(G, g)}
     ${pay}
+    ${opsTeamLine(G, g)}
     <div class="lbl" style="margin:16px 0 6px">${t('live.ops')}</div>
     <div class="seg">${OPS.map((_, i) => `<button class="${L.ops === i ? 'on' : ''}" data-act="lv-ops" data-id="${g.id}" data-i="${i}">${t(OPS_KEY[i])}</button>`).join('')}</div>
     <p class="hint" style="margin-top:6px">${t('live.opsHelp')}</p>

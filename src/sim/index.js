@@ -4,6 +4,7 @@ export * from './state.js';
 export * from './people.js';
 export * from './teams.js';
 export * from './autoteam.js';
+export * from './opsteam.js';
 export * from './studio.js';
 export * from './research.js';
 export * from './dev.js';
