@@ -1594,3 +1594,11 @@ input[type='range']::-moz-range-thumb { width: 18px; height: 18px; border-radius
 @keyframes lspulse { 50% { opacity: 0.35; } }
 @media (prefers-reduced-motion: reduce) { .ls-cap i { animation: none; } }
 @media (max-height: 559px) { .ls { height: 112px; } .ls-cv { position: absolute; left: 0; bottom: 0; } }
+.ls-tick { position: absolute; left: 50%; top: 8px; transform: translateX(-50%); max-width: calc(100% - 24px); padding: 4px 12px; border-radius: 999px; font-size: 12px; font-weight: 700; color: #f2f6ff; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; background: rgba(8, 12, 30, 0.78); border: 1px solid rgba(150, 172, 255, 0.28); backdrop-filter: blur(6px); opacity: 0; pointer-events: none; }
+.ls-tick:empty { display: none; }
+.ls-tick.on { animation: lstick 9s ease both; }
+@keyframes lstick { 0% { opacity: 0; transform: translate(-50%, -6px); } 6% { opacity: 1; transform: translate(-50%, 0); } 85% { opacity: 1; } 100% { opacity: 0; } }
+.ls-prog { position: absolute; left: 0; right: 0; bottom: 0; height: 4px; background: rgba(8, 12, 30, 0.55); }
+.ls-prog i { display: block; height: 100%; background: linear-gradient(90deg, #4de1d0, #8aff9a); box-shadow: 0 0 10px rgba(77, 225, 208, 0.7); transition: width 0.5s; }
+.ls-prog[hidden] { display: none; }
+@media (max-width: 760px) { .ls-tick { top: auto; bottom: 8px; } .ls-cap { max-width: 70%; } }

@@ -1,15 +1,20 @@
-// Levande scener i fönstren: en liten pixelbild överst som visar att något händer. Skapa spel visar studion där utvecklarna
-// jobbar (tangentbord, kaffe, tankebubblor, katten sover), Hårdvara visar labbet och fabriken (lödning, löpande band, robotarm,
-// bärare med lådor). Personerna är studions egen personal med spelets figur. Allt ritas av tiden (inga tillstånd), så scenen
-// överlever att fönstret ritas om. En enda timer ritar alla synliga scenbilder, och den står still när fönstret är dolt.
+// Levande scener i fönstren: en liten pixelbild överst som visar att något händer. Skapa spel visar studion där teamet jobbar,
+// Hårdvara visar labbet och fabriken. Personerna är studions egen personal med spelets figur. Scenerna visar spelets verkliga
+// läge (sim/life.js lifeState: vem som sitter vid skärmarna, övertid, buggar, hur långt projektet har kommit, vilka produkter som
+// ritas, tillverkas och beställs) och reagerar på händelserna ('life' på bussen) med pratbubblor, jubel, konfetti, pizza, gäster,
+// lastbilar och en tickerrad. Allt ritas av tiden (inga tillstånd i bilden), så scenen överlever att fönstret ritas om.
+// En enda timer ritar alla synliga scenbilder och den står still när fönstret är dolt.
 import { t } from './core.js';
+import { on } from '../core/bus.js';
 import { drawPoseSprite } from '../render/charsprite.js';
 import { drawPerson, POSE_FRAMES } from '../render/people.js';
 import { drawEmote } from '../render/emotes.js';
-import { drawCat } from '../render/props.js';
+import { drawCat, labBench } from '../render/props.js';
 import * as F from '../render/furniture.js';
 import * as V from '../render/props2.js';
-import { labBench } from '../render/props.js';
+import { HW_TYPES } from '../data/hardware.js';
+import { lifeState, lifeLog, lifeText } from '../sim/life.js';
+import { hashStr } from '../core/rng.js';
 
 const R = V.R;
 const H = 56; // logisk höjd; bredden följer fönstret (3 skärmpixlar per pixel, 2 på smal skärm)
@@ -20,39 +25,91 @@ const FALLBACK = [
   { skin: 0, hair: 5, hairColor: 4, shirt: 2, pants: 3, acc: 0, body: 0 },
   { skin: 3, hair: 2, hairColor: 0, shirt: 7, pants: 0, acc: 0, body: 0 },
   { skin: 1, hair: 4, hairColor: 5, shirt: 12, pants: 2, acc: 0, body: 0 },
+  { skin: 0, hair: 0, hairColor: 3, shirt: 3, pants: 1, acc: 0, body: 0 },
 ];
+const now = () => (typeof performance !== 'undefined' ? performance.now() / 1000 : 0);
 
-// Bildens HTML. kind: 'studio' | 'factory'. extra: { color } (hårdvarans färg). Staben hämtas ur G.staff.
+// ── Händelserna ──
+const BEATS = []; // { b, t0 } de senaste händelserna från simen, med tiden de kom
+on('life', (b) => {
+  BEATS.push({ b, t0: now() });
+  while (BEATS.length > 24) BEATS.shift();
+});
+const recent = (kinds, maxAge, tm) => BEATS.filter((e) => kinds.includes(e.b.k) && tm - e.t0 < maxAge && tm >= e.t0);
+const BIG = ['launch', 'done', 'sold', 'chart', 'disc', 'party', 'anniv', 'engine', 'fans', 'hwLaunch'];
+
+// Bildens HTML. kind: 'studio' | 'factory'. Staben och läget hämtas ur G.
 export function sceneHTML(kind, G, extra = {}) {
   const looks = (G.staff || []).map((s) => s.look).filter(Boolean);
-  for (const l of FALLBACK) if (looks.length < 6) looks.push(l);
-  CFG[kind] = { looks, n: Math.max(1, Math.min(5, (G.staff || []).length)), ...extra };
+  for (const l of FALLBACK) if (looks.length < 8) looks.push(l);
+  const cfg = (CFG[kind] = { G, looks, n: Math.max(1, Math.min(5, (G.staff || []).length)), st: null, stT: -9, ...extra });
+  refresh(kind, cfg);
   start();
-  const cap = kind === 'studio' ? t('ls.studio', { n: CFG[kind].n }) : t('ls.factory');
-  return `<div class="ls ls-${kind}"><canvas class="ls-cv" data-ls="${kind}" width="200" height="${H}"></canvas><span class="ls-cap"><i></i>${cap}</span></div>`;
+  const last = lifeLog(G, kind === 'studio' ? 'dev' : 'hw', 0).slice(-1)[0];
+  return `<div class="ls ls-${kind}"><canvas class="ls-cv" data-ls="${kind}" width="200" height="${H}"></canvas><span class="ls-cap"><i></i><b>${caption(kind, cfg)}</b></span><span class="ls-tick" data-seen="${last ? last.n : 0}"></span><div class="ls-prog" hidden><i></i></div></div>`;
+}
+function refresh(kind, cfg) {
+  try {
+    cfg.st = lifeState(cfg.G, kind === 'studio' ? 'dev' : 'hw');
+  } catch {
+    cfg.st = null;
+  }
+}
+function caption(kind, cfg) {
+  const st = cfg.st;
+  if (kind === 'studio') return !st ? t('ls.studio') : st.active ? t('ls.studio.on', { title: st.title || '…' }) : st.report ? t('ls.studio.report') : t('ls.studio.idle');
+  if (!st || !st.open) return t('ls.factory');
+  return st.orders.length ? t('ls.factory.prod') : st.designing.length ? t('ls.factory.design') : t('ls.factory');
 }
 
 // ── Gemensamt ──
-const frameOf = (pose, t_) => Math.floor(t_ * ({ type: 8, walk: 9, drink: 3, fix: 5, notes: 4, walkBox: 9, walkCup: 9, present: 3, stand: 0 }[pose] || 4)) % (POSE_FRAMES[pose] || 1);
+const frameOf = (pose, t_) => Math.floor(t_ * ({ type: 8, walk: 9, drink: 3, fix: 5, notes: 4, walkBox: 9, walkCup: 9, present: 3, wave: 5, cheer: 5, stand: 0 }[pose] || 4)) % (POSE_FRAMES[pose] || 1);
 function person(ctx, x, y, look, pose, tm, dir = 1, seated = false, off = 0) {
   if (drawPoseSprite(ctx, x, y, look, pose, tm + off, dir, seated)) return;
   drawPerson(ctx, x, y, look, pose, frameOf(pose, tm + off), dir, { t: tm, seated, noShadow: false });
 }
 const lerp = (a, b, k) => a + (b - a) * Math.max(0, Math.min(1, k));
-function steam(ctx, x, y, tm, n = 3, a = 0.5) {
+const hx = (n) => (hashStr('ls' + n) % 1000) / 1000;
+function steam(ctx, x, y, tm, n = 3, a = 0.5, col = '#ffffff') {
   for (let i = 0; i < n; i++) {
     const p = (tm * 0.6 + i / n) % 1;
     ctx.globalAlpha = (1 - p) * a;
-    ctx.fillStyle = '#ffffff';
+    ctx.fillStyle = col;
     const s = 1 + Math.floor(p * 2);
     ctx.fillRect(Math.round(x + Math.sin(tm * 2 + i * 2) * 1.5 * p), Math.round(y - p * 14), s, s);
   }
   ctx.globalAlpha = 1;
 }
+function confetti(ctx, W, age, seed) {
+  if (age > 4.6) return;
+  const cols = ['#ff6a8a', '#ffe27a', '#7cf2ff', '#8aff9a', '#c89aff', '#ffffff'];
+  for (let i = 0; i < 44; i++) {
+    const r1 = hx(seed * 31 + i);
+    const r2 = hx(seed * 17 + i * 7);
+    const x = r1 * W + Math.sin(age * 3 + i) * 3;
+    const y = -4 + age * (14 + r2 * 22) - (1 - Math.min(1, age * 3)) * 6;
+    if (y > H) continue;
+    ctx.globalAlpha = Math.min(1, (4.6 - age) / 1.2);
+    R(ctx, Math.round(x), Math.round(y), 2, Math.floor(age * 6 + i) % 2 ? 1 : 2, cols[i % cols.length]);
+  }
+  ctx.globalAlpha = 1;
+}
+function bubble(ctx, x, y, kind, age, life, tm) {
+  if (age >= 0 && age < life) drawEmote(ctx, x, y, kind, age, life, tm);
+}
+function darken(ctx, W, a, col = '#05081a') {
+  ctx.globalAlpha = a;
+  ctx.fillStyle = col;
+  ctx.fillRect(0, 0, W, H);
+  ctx.globalAlpha = 1;
+}
 
 // ── Studion ──
+const EMO = { idea: 'bulb', bug: 'exclam', fix: 'heart', tired: 'sweat', crunch: 'coffee', relax: 'heart', pizza: 'heart', phase: 'bulb', half: 'bulb', quarter: 'bulb', almost: 'exclam', launch: 'heart', hired: 'heart', visitor: 'question', contract: 'heart' };
 function drawStudio(ctx, W, tm, cfg) {
   const fy = H - 6;
+  const st = cfg.st || { active: false, crunch: false, bugs: 0, crew: [] };
+  const crunch = !!st.crunch && st.active;
   R(ctx, 0, 0, W, H, '#1a2044');
   R(ctx, 0, 30, W, H - 40, '#212a58');
   R(ctx, 0, H - 13, W, 2, '#12172f');
@@ -77,38 +134,77 @@ function drawStudio(ctx, W, tm, cfg) {
     R(ctx, wx + 13, 5, 2, 22, '#2a3258');
     R(ctx, wx, 15, 28, 1, '#2a3258');
   }
-  // plansch och kanbantavla
   F.kanban(ctx, W - 92, 7, 24, 16, 5);
   // golv
   R(ctx, 0, H - 11, W, 11, '#5a3d27');
-  for (let x = -((tm * 0) | 0); x < W; x += 18) R(ctx, x, H - 11, 1, 11, '#47301e');
+  for (let x = 0; x < W; x += 18) R(ctx, x, H - 11, 1, 11, '#47301e');
   R(ctx, 0, H - 11, W, 1, '#7a5636');
   R(ctx, 0, H - 6, W, 1, '#4c3320');
-  // skrivbord och utvecklare
-  const nd = Math.max(2, Math.min(cfg.n, Math.floor((W - 96) / 56)));
+  // vilka som sitter vid skärmarna: de som kan jobba (annars bara de som finns)
+  const crew = st.crew.filter((c) => !c.away);
   const pitch = 56;
   const x0 = 10;
+  const cap = Math.max(2, Math.floor((W - 96) / pitch));
+  const nd = Math.max(2, Math.min(cap, crew.length || cfg.n));
+  const staffLook = (id, i) => (cfg.G.staff.find((s) => s.id === id) || {}).look || cfg.looks[i];
+  const cheer = recent(['launch', 'done', 'sold', 'chart', 'disc', 'party', 'contract'], 3.4, tm).length > 0;
+  const guestE = recent(['visitor'], 14, tm)[0];
+  const pizzaE = recent(['pizza'], 13, tm)[0];
+  const seat = [];
   for (let i = 0; i < nd; i++) {
     const dx = x0 + i * pitch;
     F.chair2(ctx, dx + 3, fy, ['#3a4a6a', '#6a3a4a', '#3a6a5a', '#5a4a7a'][i % 4]);
     F.desk2(ctx, dx + 3, fy, i % 5, i + 1, 2);
-    // skärmen i profil lever: kodrader som rullar
+    const c = crew[i];
+    const look = c ? staffLook(c.id, i) : cfg.looks[i];
+    const tired = c && c.mood < 35;
+    const typing = st.active ? Math.floor((tm + i * 3.1) / 6) % 4 !== 3 : false;
+    // skärmen i profil: kodrader som rullar (bara när ett projekt pågår), annars en stilla skärmsläckare
     const sx = dx + 3 + 16;
     const sy = fy - 27;
     for (let r = 0; r < 4; r++) {
-      const len = 2 + Math.floor(V.hash(Math.floor(tm * 2) * 7 + r * 3 + i * 11) * 5);
-      R(ctx, sx, sy + r * 2, len, 1, ['#7cf2ff', '#ff7ab8', '#ffe27a', '#8aff9a'][(r + Math.floor(tm * 2) + i) % 4]);
+      if (st.active) {
+        const len = 2 + Math.floor(V.hash(Math.floor(tm * 2) * 7 + r * 3 + i * 11) * 5);
+        R(ctx, sx, sy + r * 2, len, 1, ['#7cf2ff', '#ff7ab8', '#ffe27a', '#8aff9a'][(r + Math.floor(tm * 2) + i) % 4]);
+      } else R(ctx, sx + (Math.floor(tm + r) % 3), sy + r * 2, 2, 1, '#4a5a8a');
     }
-    const look = cfg.looks[i];
-    const typing = Math.floor((tm + i * 3.1) / 6) % 4 !== 3; // då och då en paus då personen tänker
-    person(ctx, dx + 3 + 3, fy, look, typing ? 'type' : 'think', tm, 1, true, i * 0.37);
+    const pose = cheer ? 'cheer' : tired && st.active ? 'tired' : st.active ? (typing ? 'type' : 'think') : Math.floor((tm + i * 5) / 7) % 3 === 0 ? 'read' : 'sitIdle';
+    person(ctx, dx + 3 + 3, fy, look, pose, tm, 1, true, i * 0.37);
+    // en kaffemugg på bordet när det är övertid
+    if (crunch) {
+      R(ctx, dx + 3 + 11, fy - 14, 3, 3, '#f4f4ff');
+      R(ctx, dx + 3 + 14, fy - 13, 1, 1, '#f4f4ff');
+      steam(ctx, dx + 3 + 12, fy - 15, tm + i, 2, 0.4);
+    }
+    seat.push({ x: dx + 8, id: c ? c.id : 0 });
+  }
+  // buggar kryper över borden (ett par per tjugo buggar, högst fem)
+  const bugs = Math.min(5, Math.ceil((st.bugs || 0) / 6));
+  for (let k = 0; k < bugs; k++) {
+    const p = ((tm * (0.05 + 0.02 * k) + k * 0.31) % 1) * (nd * pitch);
+    const bx = Math.round(x0 + p);
+    const by = fy - 12 + Math.round(Math.sin(tm * 4 + k) * 0.6);
+    R(ctx, bx, by, 3, 2, '#5ad06a');
+    R(ctx, bx + 1, by - 1, 1, 1, '#2f8a3c');
+    R(ctx, bx, by + 2, 1, 1, Math.floor(tm * 8 + k) % 2 ? '#2f8a3c' : '#14301a');
+    R(ctx, bx + 2, by + 2, 1, 1, Math.floor(tm * 8 + k) % 2 ? '#14301a' : '#2f8a3c');
   }
   // kaffehörnan
   const cx = W - 52;
   F.kitchenCounter(ctx, cx, fy, 42);
   F.espresso(ctx, cx + 8, fy - 16);
   steam(ctx, cx + 14, fy - 30, tm, 3, 0.45);
-  // någon går efter kaffe: dörren, kaffemaskinen och tillbaka
+  // pizza på golvet efter ett pizzabeslut
+  if (pizzaE) {
+    const px = Math.round(W * 0.5);
+    for (let k = 0; k < 3; k++) {
+      R(ctx, px + k * 2, fy + 1 - k * 3, 12, 3, '#c49a62');
+      R(ctx, px + k * 2, fy + 1 - k * 3, 12, 1, '#dcb680');
+      R(ctx, px + k * 2 + 3, fy + 2 - k * 3, 6, 1, '#e8504a');
+    }
+    steam(ctx, px + 7, fy - 8, tm, 2, 0.4);
+  }
+  // någon går efter kaffe och tillbaka
   const walker = cfg.looks[Math.min(cfg.looks.length - 1, nd)];
   const cyc = 18;
   const k = tm % cyc;
@@ -118,17 +214,38 @@ function drawStudio(ctx, W, tm, cfg) {
   else if (k < 9) person(ctx, wxB, fy + 2, walker, 'drink', tm, 1);
   else if (k < 14) person(ctx, lerp(wxB, wxA, (k - 9) / 5), fy + 2, walker, 'walkCup', tm, -1);
   else person(ctx, wxA, fy + 2, walker, 'stand', tm, 1);
-  // tankebubblor över skrivborden
-  const era = Math.floor(tm / 5.5);
-  const who = era % nd;
-  const age = tm - era * 5.5;
-  drawEmote(ctx, x0 + who * pitch + 8, fy - 31, ['bulb', 'coffee', 'heart', 'exclam', 'question', 'bulb'][era % 6], age, 2.4, tm);
+  // en gäst (journalist) kommer förbi och hälsar efter ett bra spel
+  if (guestE) {
+    const age = tm - guestE.t0;
+    const gx = lerp(-10, wxA - 14, age / 5);
+    const gl = { ...FALLBACK[guestE.b.n % FALLBACK.length], shirt: 8 };
+    person(ctx, gx, fy + 3, gl, age < 5 ? 'walk' : age < 11 ? 'wave' : 'walk', tm, age < 11 ? 1 : -1);
+    if (age >= 11) person(ctx, lerp(wxA - 14, -10, (age - 11) / 3), fy + 3, gl, 'walk', tm, -1);
+  }
+  // en nyanställd kommer in
+  const hireE = recent(['hired'], 9, tm)[0];
+  if (hireE) {
+    const age = tm - hireE.t0;
+    person(ctx, lerp(-10, wxA - 30, age / 6), fy + 3, cfg.looks[Math.min(cfg.looks.length - 1, nd + 1)], age < 6 ? 'walk' : 'wave', tm, 1);
+  }
+  // pratbubblor: händelserna först (över rätt person), annars då och då en av sig själv
+  const ev = recent(Object.keys(EMO), 2.6, tm);
+  for (const e of ev) {
+    const idx = Math.max(0, seat.findIndex((s) => s.id === e.b.s));
+    const sp = seat[e.b.s ? idx : e.b.n % seat.length] || seat[0];
+    bubble(ctx, sp.x, fy - 31, EMO[e.b.k], tm - e.t0, 2.4, tm);
+  }
+  if (!ev.length) {
+    const era = Math.floor(tm / 5.5);
+    if (era % 2 === 0 || crunch) bubble(ctx, seat[era % nd].x, fy - 31, crunch ? 'coffee' : ['bulb', 'heart', 'question'][era % 3], tm - era * 5.5, 2.4, tm);
+  }
   // katten sover vid kaffehörnan
   drawCat(ctx, cx - 18, fy + 3, 'sleep', Math.floor(tm * 1.5), 1, 0);
-  // varmt ljus från taklamporna
-  ctx.globalAlpha = 0.07;
+  // ljus: taklampor, och vid övertid mörkare med varmare sken
+  if (crunch) darken(ctx, W, 0.22);
+  ctx.globalAlpha = crunch ? 0.12 : 0.07;
   for (let i = 0; i < nd; i++) {
-    ctx.fillStyle = '#ffe9a8';
+    ctx.fillStyle = crunch ? '#ffc060' : '#ffe9a8';
     ctx.beginPath();
     ctx.moveTo(x0 + i * pitch + 14, 0);
     ctx.lineTo(x0 + i * pitch + 40, fy);
@@ -137,10 +254,11 @@ function drawStudio(ctx, W, tm, cfg) {
     ctx.fill();
   }
   ctx.globalAlpha = 1;
+  for (const e of recent(BIG, 4.6, tm)) confetti(ctx, W, tm - e.t0, e.b.n);
 }
 
 // ── Labbet och fabriken ──
-function drawBoxedItem(ctx, x, ty, p, col) {
+function drawBoxedItem(ctx, x, ty, p, col, bad) {
   if (p < 0.34) { // kretskort
     R(ctx, x, ty - 2, 11, 2, '#2f9a5a');
     R(ctx, x, ty - 2, 11, 1, '#4fd080');
@@ -153,15 +271,30 @@ function drawBoxedItem(ctx, x, ty, p, col) {
     R(ctx, x + 2, ty - 5, 5, 1, col);
     R(ctx, x + 2, ty - 3, 3, 1, '#7cf2ff');
   } else { // färdig i kartong
-    R(ctx, x, ty - 9, 12, 9, '#c49a62');
-    R(ctx, x, ty - 9, 12, 1, '#dcb680');
+    R(ctx, x, ty - 9, 12, 9, bad ? '#8a4a4a' : '#c49a62');
+    R(ctx, x, ty - 9, 12, 1, bad ? '#b86a6a' : '#dcb680');
     R(ctx, x + 5, ty - 9, 2, 9, '#e8dcc0');
-    R(ctx, x + 1, ty - 5, 3, 3, col);
+    R(ctx, x + 1, ty - 5, 3, 3, bad ? '#ff4a4a' : col);
   }
+}
+function truck(ctx, x, fy, tm, col) {
+  R(ctx, x, fy - 22, 38, 20, '#dfe4f0');
+  R(ctx, x, fy - 22, 38, 2, '#ffffff');
+  R(ctx, x + 2, fy - 12, 34, 3, col);
+  R(ctx, x + 38, fy - 15, 10, 13, '#4a90e0');
+  R(ctx, x + 41, fy - 13, 6, 5, '#b8e0ff');
+  R(ctx, x, fy - 4, 48, 2, '#2a2f3c');
+  for (const wx of [x + 6, x + 32, x + 40]) { R(ctx, wx - 2, fy - 5, 6, 6, '#14161e'); R(ctx, wx, fy - 3, 2, 2, '#8a94aa'); }
+  R(ctx, x + 47, fy - 7, 1, 2, Math.floor(tm * 3) % 2 ? '#ffe27a' : '#a08a3a');
 }
 function drawFactory(ctx, W, tm, cfg) {
   const fy = H - 6;
-  const col = cfg.color || '#4de1d0';
+  const st = cfg.st && cfg.st.open ? cfg.st : { designing: [], testing: [], prod: [], orders: [], fab: 0, lab: 1, crew: [], market: 0 };
+  const type0 = (st.orders[0] && st.prod.find((p) => p.id === st.orders[0].p)) || st.prod[0] || st.designing[0] || st.testing[0];
+  const col = (type0 && HW_TYPES[type0.type] && HW_TYPES[type0.type].color) || cfg.color || '#4de1d0';
+  const short = recent(['hwShort'], 6, tm).length > 0;
+  const batch = recent(['hwBatch'], 8, tm).length > 0;
+  const leak = recent(['hwLeak'], 6, tm).length > 0;
   R(ctx, 0, 0, W, H, '#1e2534');
   R(ctx, 0, 0, W, 22, '#262f44');
   for (let x = 0; x < W; x += 24) R(ctx, x, 0, 1, H - 12, '#181e2c');
@@ -181,87 +314,136 @@ function drawFactory(ctx, W, tm, cfg) {
     steam(ctx, px + 1, 17, tm + px, 4, 0.55);
   }
   // neonskylt
-  const label = 'HARDWARE';
   R(ctx, Math.round(W / 2 - 21), 3, 42, 12, '#0c1020');
   R(ctx, Math.round(W / 2 - 21), 3, 42, 1, '#3a4256');
-  V.neonText(ctx, label, Math.round(W / 2 - 17), 6, '#ffffff', col, 1);
+  V.neonText(ctx, 'HARDWARE', Math.round(W / 2 - 17), 6, '#ffffff', col, 1);
   // golv med varningslinje
   R(ctx, 0, H - 12, W, 12, '#363d4e');
-  for (let x = -6 + (Math.floor(tm * 8) % 6) * 0; x < W; x += 6) {
+  for (let x = 0; x < W; x += 6) {
     R(ctx, x, H - 12, 3, 2, '#f2c84a');
     R(ctx, x + 3, H - 12, 3, 2, '#1c212c');
   }
   R(ctx, 0, H - 4, W, 1, '#262c3a');
-  // labbänken med lödaren
+  // labbänken: skärmen visar hur långt första ritningen har kommit, och lödaren jobbar bara när något ritas
   labBench(ctx, 6, fy, 2);
-  person(ctx, 6 + 44, fy + 1, cfg.looks[0], 'fix', tm, -1);
-  if (Math.floor(tm * 7) % 4 < 2) {
+  const d0 = st.designing[0];
+  if (d0) {
+    R(ctx, 6 + 11, fy - 20, 12, 1, '#10303a');
+    R(ctx, 6 + 11, fy - 20, Math.max(1, Math.round(12 * d0.pct)), 1, '#8aff9a');
+  }
+  const chief = st.crew.find((c) => c.chief);
+  const chiefLook = chief && (cfg.G.staff.find((s) => s.id === chief.id) || {}).look;
+  const lab = chiefLook || cfg.looks[0];
+  const busy = st.designing.some((p) => !p.paused);
+  person(ctx, 6 + 44, fy + 1, lab, busy ? 'fix' : 'notes', tm, -1);
+  if (chief) { // chefen märks med en liten guldkrona
+    const kx = 6 + 44;
+    R(ctx, kx - 3, fy - 36, 7, 1, '#ffd36a');
+    R(ctx, kx - 3, fy - 38, 1, 2, '#ffd36a'); R(ctx, kx, fy - 39, 1, 3, '#ffd36a'); R(ctx, kx + 3, fy - 38, 1, 2, '#ffd36a');
+  }
+  if (busy && Math.floor(tm * 7) % 4 < 2) {
     for (let i = 0; i < 4; i++) {
       const a = (tm * 9 + i * 1.7) % 1;
       R(ctx, Math.round(6 + 38 - a * 6 + Math.sin(i * 5) * 2), Math.round(fy - 15 - a * 5 + a * a * 10), 1, 1, i % 2 ? '#ffe27a' : '#ffffff');
     }
   }
-  // löpande bandet
-  const bx0 = 72;
-  const bx1 = W - 78;
+  // provstället: lampan visar om provserien gick fel (röd, rök) eller är klar (grön)
+  const tst = st.testing[0];
+  if (tst) {
+    const tx = 6 + 56;
+    R(ctx, tx, fy - 14, 10, 10, '#2a3042');
+    R(ctx, tx, fy - 14, 10, 1, '#5a6478');
+    R(ctx, tx + 2, fy - 12, 6, 3, '#0e1a30');
+    const bad = tst.state === 'fail';
+    R(ctx, tx + 3, fy - 17, 4, 3, bad ? (Math.floor(tm * 4) % 2 ? '#ff4a4a' : '#8a2a2a') : '#5cf2a0');
+    if (bad) steam(ctx, tx + 5, fy - 17, tm, 3, 0.6, '#555a66');
+  }
+  // löpande bandet: går fortare med beställningar, långsamt annars, står still vid komponentbrist
+  const bx0 = 76;
+  const bx1 = W - 82;
   const bw = Math.max(40, bx1 - bx0);
-  const ty = fy - 9; // bandets ovansida
+  const ty = fy - 9;
+  const pace = short ? 0 : st.orders.length ? 14 : st.prod.length ? 8 : 4;
+  const phase = short ? 0 : (tm * pace) % 1e6;
   R(ctx, bx0 - 3, ty, bw + 6, 4, '#2b3040');
   R(ctx, bx0 - 3, ty, bw + 6, 1, '#4a5268');
-  for (let x = bx0; x < bx0 + bw; x++) if (((x + Math.floor(tm * 14)) % 6) < 3) R(ctx, x, ty + 1, 1, 2, '#3a4258');
+  for (let x = bx0; x < bx0 + bw; x++) if (((x + Math.floor(phase)) % 6) < 3) R(ctx, x, ty + 1, 1, 2, '#3a4258');
   for (let x = bx0 + 4; x < bx0 + bw; x += 12) { R(ctx, x, ty + 4, 2, 5, '#4a5268'); R(ctx, x - 1, fy - 1, 4, 1, '#1c212c'); }
-  const pace = 12;
   const gap = 32;
-  const off = (tm * pace) % gap;
+  const off = short ? 0 : phase % gap;
   for (let kx = -gap; kx < bw + gap; kx += gap) {
     const ix = bx0 + kx + off;
     if (ix < bx0 - 1 || ix > bx0 + bw - 10) continue;
-    drawBoxedItem(ctx, Math.round(ix), ty, (ix - bx0) / bw, col);
+    drawBoxedItem(ctx, Math.round(ix), ty, (ix - bx0) / bw, col, batch);
   }
-  // robotarmen vid mitten av bandet
-  const rx = Math.round(bx0 + bw * 0.4);
-  R(ctx, rx - 5, 22, 10, 3, '#4a5268');
-  const sw = Math.sin(tm * 1.9);
-  const a1x = rx + Math.round(sw * 6);
-  const a1y = 38;
-  for (let i = 0; i <= 12; i++) {
-    const ax = Math.round(lerp(rx, a1x, i / 12));
-    const ay = Math.round(lerp(24, a1y, i / 12));
-    R(ctx, ax - 1, ay, 4, 3, '#59627a');
-    R(ctx, ax, ay, 2, 2, i % 2 ? '#e8504a' : '#c8d0e0');
+  // robotarmar: fler med en större fabrik
+  const arms = Math.min(3, 1 + (st.fab >> 1));
+  for (let a = 0; a < arms; a++) {
+    const rx = Math.round(bx0 + bw * (arms === 1 ? 0.4 : 0.2 + (0.6 * a) / (arms - 1)));
+    R(ctx, rx - 5, 22, 10, 3, '#4a5268');
+    const sw = short ? 0.2 : Math.sin(tm * (pace ? 1.9 : 0.6) + a * 1.3);
+    const a1x = rx + Math.round(sw * 6);
+    const a1y = 38;
+    for (let i = 0; i <= 12; i++) {
+      const ax = Math.round(lerp(rx, a1x, i / 12));
+      const ay = Math.round(lerp(24, a1y, i / 12));
+      R(ctx, ax - 1, ay, 4, 3, '#59627a');
+      R(ctx, ax, ay, 2, 2, i % 2 ? '#e8504a' : '#c8d0e0');
+    }
+    R(ctx, rx - 2, 22, 5, 5, '#e8504a');
+    R(ctx, rx - 1, 23, 3, 1, '#ff9a8a');
+    R(ctx, a1x - 2, a1y, 5, 3, '#8a94aa');
+    R(ctx, a1x, a1y + 3, 1, 2, '#ffe27a');
+    if (pace && sw > 0.82 && Math.floor(tm * 20) % 2) {
+      R(ctx, a1x - 1, a1y + 5, 3, 1, '#ffffff');
+      R(ctx, a1x - 3 + Math.floor(V.hash(Math.floor(tm * 30)) * 6), a1y + 4, 1, 1, '#7cf2ff');
+    }
   }
-  R(ctx, rx - 2, 22, 5, 5, '#e8504a');
-  R(ctx, rx - 1, 23, 3, 1, '#ff9a8a');
-  R(ctx, a1x - 2, a1y, 5, 3, '#8a94aa');
-  R(ctx, a1x, a1y + 3, 1, 2, '#ffe27a');
-  if (sw > 0.82 && Math.floor(tm * 20) % 2) {
-    R(ctx, a1x - 1, a1y + 5, 3, 1, '#ffffff');
-    R(ctx, a1x - 3 + Math.floor(V.hash(Math.floor(tm * 30)) * 6), a1y + 4, 1, 1, '#7cf2ff');
-  }
-  // kontrollpanel med blinkande lampor
+  // kontrollpanel: lamporna blinkar rött vid komponentbrist eller läckta ritningar
   R(ctx, bx0 + bw - 20, ty - 20, 14, 12, '#2a3042');
   R(ctx, bx0 + bw - 19, ty - 19, 12, 5, '#0e1a30');
-  R(ctx, bx0 + bw - 18, ty - 17, 6 + Math.floor(Math.sin(tm * 2) * 2 + 2), 1, '#8aff9a');
-  for (let i = 0; i < 3; i++) R(ctx, bx0 + bw - 18 + i * 4, ty - 12, 2, 2, Math.floor(tm * 2 + i) % 3 === i ? '#ff6a6a' : '#3a4256');
-  // någon kollar kvalitet, en annan bär lådor till lagret
+  R(ctx, bx0 + bw - 18, ty - 17, 6 + Math.floor(Math.sin(tm * 2) * 2 + 2), 1, short || leak ? '#ff6a6a' : '#8aff9a');
+  for (let i = 0; i < 3; i++) R(ctx, bx0 + bw - 18 + i * 4, ty - 12, 2, 2, short || leak ? (Math.floor(tm * 4) % 2 ? '#ff4a4a' : '#3a4256') : Math.floor(tm * 2 + i) % 3 === i ? '#ff6a6a' : '#3a4256');
+  if (leak && Math.floor(tm * 3) % 2) { // larmlampan
+    R(ctx, 3, 24, 5, 4, '#ff4a4a');
+    ctx.globalAlpha = 0.15;
+    ctx.fillStyle = '#ff4a4a';
+    ctx.fillRect(0, 0, W, H);
+    ctx.globalAlpha = 1;
+  }
+  // kvalitetskollen
   person(ctx, bx0 + 20, fy + 2, cfg.looks[1], 'notes', tm, 1, false, 0.5);
-  F.boxes(ctx, W - 40, fy);
-  F.boxes(ctx, W - 54, fy);
-  F.boxes(ctx, W - 27, fy);
+  // lagret: lådorna växer med lagersaldot
+  const stock = st.prod.reduce((a, p) => a + p.stock, 0);
+  const nb = Math.max(1, Math.min(6, 1 + Math.floor(Math.log10(stock + 1) * 1.4)));
+  const wh = W - 56;
+  for (let b = 0; b < nb; b++) F.boxes(ctx, wh + (b % 3) * 13 - 8, fy - Math.floor(b / 3) * 1 + (b >= 3 ? -1 : 0));
+  // bäraren går med lådor till lagret
   const carrier = cfg.looks[2];
   const cyc = 12;
   const k = tm % cyc;
   const ax = bx0 + bw + 2;
-  const bxx = W - 60;
+  const bxx = wh - 14;
   if (k < 5) person(ctx, lerp(ax, bxx, k / 5), fy + 2, carrier, 'walkBox', tm, 1);
   else if (k < 6) person(ctx, bxx, fy + 2, carrier, 'stand', tm, 1);
   else if (k < 11) person(ctx, lerp(bxx, ax, (k - 6) / 5), fy + 2, carrier, 'walk', tm, -1);
   else person(ctx, ax, fy + 2, carrier, 'stand', tm, 1);
-  // vänd skylt över lagret
-  ctx.globalAlpha = 0.06;
-  ctx.fillStyle = '#ffe9a8';
-  ctx.fillRect(0, 0, W, H);
-  ctx.globalAlpha = 1;
+  // en lastbil kör in när en leverans går till lagret
+  const tr = recent(['hwParts', 'hwLaunch'], 11, tm)[0];
+  if (tr) {
+    const age = tm - tr.t0;
+    const target = W - 52;
+    const x = age < 3 ? lerp(W + 4, target, age / 3) : age < 8 ? target : lerp(target, W + 4, (age - 8) / 3);
+    truck(ctx, Math.round(x), fy + 1, tm, col);
+  }
+  // pratbubblor över bänken och provstället
+  const ev = recent(['hwStart', 'hwHalf', 'hwProto', 'hwLeak', 'hwShort', 'hwBatch', 'hwRev'], 2.6, tm);
+  for (const e of ev) {
+    const bad = (e.b.k === 'hwProto' && !e.b.a) || ['hwLeak', 'hwShort', 'hwBatch'].includes(e.b.k);
+    bubble(ctx, e.b.k === 'hwProto' ? 6 + 61 : 6 + 44, fy - 40, bad ? 'exclam' : e.b.k === 'hwProto' ? 'heart' : 'bulb', tm - e.t0, 2.4, tm);
+  }
+  darken(ctx, W, 0.04, '#ffe9a8');
+  for (const e of recent(['hwLaunch', 'hwProto'], 4.6, tm)) if (e.b.k === 'hwLaunch' || e.b.a) confetti(ctx, W, tm - e.t0, e.b.n);
 }
 
 // ── Timer ──
@@ -271,20 +453,51 @@ function tick() {
   if (typeof document === 'undefined' || document.hidden) return;
   const cvs = document.querySelectorAll('canvas.ls-cv');
   if (!cvs.length) return;
-  const tm = reduced ? 3 : performance.now() / 1000;
+  const tm = reduced ? 3 : now();
   for (const cv of cvs) {
     const cw = cv.clientWidth;
     if (!cw) continue;
     const sc = cw >= 640 ? 3 : 2;
     const W = Math.max(120, Math.round(cw / sc));
     if (cv.width !== W) cv.width = W;
-    const cfg = CFG[cv.dataset.ls];
+    const kind = cv.dataset.ls;
+    const cfg = CFG[kind];
     if (!cfg) continue;
+    if (tm - cfg.stT > 0.5) {
+      cfg.stT = tm;
+      refresh(kind, cfg);
+      const box = cv.parentNode;
+      const cap = box.querySelector('.ls-cap b');
+      const txt = caption(kind, cfg);
+      if (cap && cap.textContent !== txt) cap.textContent = txt;
+      const pr = box.querySelector('.ls-prog');
+      if (pr) {
+        const st = cfg.st;
+        const show = kind === 'studio' && st && st.active;
+        pr.hidden = !show;
+        if (show) pr.firstChild.style.width = Math.round(st.pct * 100) + '%';
+      }
+      // tickern: senaste händelsen i den här scenen, i en rad som tonar bort efter en stund
+      const tk = box.querySelector('.ls-tick');
+      const sc2 = kind === 'studio' ? ['dev', 'studio'] : ['hw'];
+      const last = BEATS.filter((e) => sc2.includes(e.b.sc)).slice(-1)[0];
+      if (tk && last && String(last.b.n) !== tk.dataset.seen) {
+        tk.dataset.seen = String(last.b.n);
+        try {
+          tk.textContent = lifeText(last.b);
+        } catch {
+          tk.textContent = '';
+        }
+        tk.classList.remove('on');
+        void tk.offsetWidth;
+        tk.classList.add('on');
+      }
+    }
     cv.style.height = H * sc + 'px';
     const ctx = cv.getContext('2d');
     ctx.imageSmoothingEnabled = false;
     ctx.globalAlpha = 1;
-    if (cv.dataset.ls === 'studio') drawStudio(ctx, W, tm, cfg);
+    if (kind === 'studio') drawStudio(ctx, W, tm, cfg);
     else drawFactory(ctx, W, tm, cfg);
   }
 }
