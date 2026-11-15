@@ -80,6 +80,12 @@ const teamN = +(teamsArg && teamsArg.split('=')[1]) || +opt('teamn', 5);
 const opsArg = args.find((x) => x === '--ops' || x.startsWith('--ops='));
 const opsOn = !!opsArg;
 const opsN = +(opsArg && opsArg.split('=')[1]) || 4;
+// --hwteam=N: (med --hw) när Produktteam finns bildar botten ett team av de N senast anställda (utan grundaren) för varje hårdvarulinje
+// med en produkt på marknaden (--hwtl=pc,gpu väljer linjer, standard pc); teamet tar fram nästa generation, så botten gör inga egna designer för den linjen
+const hwtArg = args.find((x) => x === '--hwteam' || x.startsWith('--hwteam='));
+const hwtOn = !!hwtArg;
+const hwtN = +(hwtArg && hwtArg.split('=')[1]) || 3;
+const hwtLines = opt('hwtl', 'pc').split(',');
 // --bd: skriv ut årets pengar per kategori (för balansarbete)
 const bd = args.includes('--bd');
 const acc = {};
@@ -214,7 +220,18 @@ function hwBot(G) {
       if (S.fabLoad(G) + P.dem * 1.2 <= S.partnerCap(G, S.FAB)) S.setPartner(G, P.id, S.FAB);
     }
   }
-  if (!H.chief && G.staff.length >= S.capacity(G) && G.staff.length >= 12) {
+  if (hwtOn && G.u.flags.hwTeams) {
+    for (const type of S.hwLines(G)) {
+      if (!hwtLines.includes(type) || S.hwTeamOf(G, type) || !H.products.some((p) => p.type === type && p.state === 'market')) continue;
+      const free = G.staff.filter((x) => !x.isFounder && !S.teamOfStaff(G, x.id));
+      if (free.length < hwtN + 2 || S.seatCap(G) - S.outCount(G) < hwtN) break;
+      const tm = S.createTeam(G);
+      if (typeof tm === 'string') break;
+      for (const x of free.sort((p, q) => q.hired - p.hired).slice(0, hwtN)) S.addMember(G, tm.id, x.id);
+      if (S.assignHw(G, tm.id, type) === true) tm.repeat = true;
+    }
+  }
+  if (!H.chief && S.seated(G) >= S.capacity(G) && G.staff.length >= 12) {
     const c = S.chiefCandidates(G)[0];
     if (c) S.setChief(G, c.id);
   }
@@ -222,6 +239,7 @@ function hwBot(G) {
   for (const type of S.openTypes(G).slice().reverse()) {
     if (H.projects.length >= S.labSlots(H)) break;
     if (H.projects.some((p) => p.type === type)) continue;
+    if (hwtOn && S.hwTeamOf(G, type) && S.hwTeamOf(G, type).repeat) continue;
     const life = HW_TYPES[type].life;
     // en linje vars senaste avslutade produkt gick med förlust läggs ned
     const last = H.products.filter((p) => p.type === type && p.state === 'ended').pop();
@@ -237,6 +255,7 @@ function hwBot(G) {
     if (S.startDesign(G, spec) === true && verbose) console.log(`  hw design ${year}: ${H.projects[H.projects.length - 1].name} $${S.designCost(G, spec)} ${S.designWeeks(G, spec)}w`);
   }
   for (const J of H.projects.slice()) {
+    if (J.team) continue;
     if (J.state === 'fail') S.resolveProto(G, J.id, G.money > J.budget * 3 ? 'redo' : 'ship');
     if (J.state !== 'ready') continue;
     const price = S.suggestPrice(J.type, J.cls);
@@ -303,7 +322,7 @@ function manage(G) {
     for (const g of S.liveGames(G)) {
       if (S.opsTeamOf(G, g.id)) continue;
       const free = G.staff.filter((x) => !x.isFounder && !S.teamOfStaff(G, x.id));
-      if (free.length < opsN + 2) break;
+      if (free.length < opsN + 2 || S.seatCap(G) - S.outCount(G) < opsN) break;
       const tm = S.createTeam(G);
       if (typeof tm === 'string') break;
       for (const x of free.sort((p, q) => q.hired - p.hired).slice(0, opsN)) S.addMember(G, tm.id, x.id);
@@ -362,7 +381,7 @@ function manage(G) {
       if (s.mode !== 'int') continue;
       S.setSubBudget(G, c.id, opt('grpb', null) !== null ? +opt('grpb') : G.money > S.investWeek(G, c) * 48 * 4 ? 2 : 1);
       const st = S.ceoCandidates(G)[0];
-      if (!args.includes('--noceo') && !s.ceo && st && G.staff.length >= S.capacity(G) && S.setCeo(G, c.id, st.id) && verbose) console.log(`  ceo ${year}: ${st.name} -> ${c.name} rating ${S.ceoRating(G, st)}`);
+      if (!args.includes('--noceo') && !s.ceo && st && S.seated(G) >= S.capacity(G) && S.setCeo(G, c.id, st.id) && verbose) console.log(`  ceo ${year}: ${st.name} -> ${c.name} rating ${S.ceoRating(G, st)}`);
     }
   }
   // egen butik: öppen (eller sluten) med avgift 20 %, normal support och mer marknadsföring när kassan räcker
@@ -562,6 +581,10 @@ if (teamsOn) {
   const au = G.games.filter((g) => g.auto);
   const tm = S.teamsOf(G)[0];
   console.log(`teams: ${au.length} games, revenue $${Math.round(au.reduce((a, g) => a + g.revenue, 0) / 1e6)}M, mean score ${au.length ? (au.reduce((a, g) => a + g.score, 0) / au.length).toFixed(2) : '-'}, samspel ${tm ? S.samspel(tm) : '-'}`);
+}
+if (hwtOn && G.hw) {
+  const ht = S.teamsOf(G).filter((x) => x.role === 'hw');
+  console.log(`hw teams: ${ht.length}, ${ht.map((x) => x.target + ' gen ' + Math.max(0, ...G.hw.products.filter((p) => p.type === x.target).map((p) => p.gen)) + ' rutin ' + S.hwRutin(x)).join(', ')}, team products ${G.hw.products.filter((p) => p.team).length}, revs ${G.hw.products.reduce((a, p) => a + (p.revs || []).length, 0)}`);
 }
 if (opsOn) {
   const ot = S.teamsOf(G).filter((x) => x.role === 'ops');

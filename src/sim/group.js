@@ -3,7 +3,7 @@ import { hashStr, seeded } from '../core/rng.js';
 import { emit } from '../core/bus.js';
 import { PLATFORM, potential } from '../data/platforms.js';
 import { yearOf, wageIndex, WEEKS_PER_YEAR } from './const.js';
-import { spend, capacity, facLevel, rentOf, facUpkeep, loanInterest } from './studio.js';
+import { spend, capacity, seated, facLevel, rentOf, facUpkeep, loanInterest } from './studio.js';
 import { payroll } from './people.js';
 import { note } from './news.js';
 import { ownPlatFor } from './hardware.js';
@@ -259,7 +259,7 @@ export function recallCeo(G, id) {
   const c = subById(G, id);
   const s = c && c.sub;
   if (!s || !s.ceo) return false;
-  if (G.staff.length >= capacity(G)) return 'capacity';
+  if (seated(G) >= capacity(G)) return 'capacity';
   G.staff.push(s.ceo);
   s.ceo = null;
   s.staff = Math.max(4, s.staff - 1);

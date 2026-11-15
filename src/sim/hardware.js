@@ -5,7 +5,7 @@ import { PLATFORM, PLATFORMS, setOwnPlatforms, potential, launchTime } from '../
 import { HW_TYPES, HW_IDS, HW_CLASSES, HW_QUALITY, HW_ARCH, HW_PARTNERS, HW_PARTNER, ARCH_TYPES, PC_PARTS, PLAT_TYPES, PLAT_FEES, HOST_TYPES, HW_REVS, revSuffix, curveAt } from '../data/hardware.js';
 import { yearOf, yfOf, moneyScale, wageIndex, tOf, WEEKS_PER_YEAR, WEEKS_PER_MONTH } from './const.js';
 import { unitRev, curveFor } from './sales.js';
-import { spend, earn, capacity } from './studio.js';
+import { spend, earn, capacity, seated } from './studio.js';
 import { note } from './news.js';
 
 // Egen hårdvara (balansunderlaget docs/HARDWARE_SPEC.md): med forskningen Hårdvarulabb får studion en hårdvaruavdelning
@@ -32,7 +32,7 @@ const BACKLOG_WEEKS = 6; // de första veckorna efter lanseringen väntar köpar
 const BACKLOG_KEEP = 0.6;
 export const DRIVER_COST = 4000; // drivrutinsteam per vecka, i 1996 års pengar
 const DRIVER_MAX = 90;
-const DRIVER_STEP = 0.25; // kompatibilitet per vecka
+export const DRIVER_STEP = 0.25; // kompatibilitet per vecka
 const DRIVER_BONUS = 15;
 const REL0 = 50;
 const OPT_PER = 0.25; // egna pc-spel på en optimerad motor säljer så mycket mer per andel av marknaden
@@ -106,6 +106,15 @@ const FAB_COST = [0, 20000000, 18000000, 30000000]; // bygget och utbyggnaderna 
 export const FAB_WEEKS = [0, 40, 24, 24];
 export const FAB_CAP = [0, 300000, 800000, 1600000]; // enheter per år
 const FAB_UPKEEP = [0, 60000, 140000, 260000]; // per månad, i 2008 års löner
+// Produktteam (sim/hwteam.js): P.te (0–1, räknas om varje vecka) är teamets effekt på produkten. Med full effekt åldras en produkt
+// HW_TEAM_MT långsammare (P.mt = veckor av underhåll som dras av åldern), revisioner blir HW_TEAM_COST billigare, och en
+// efterföljare som teamet själv tar fram (P.tq = effekten när projektet började) blir HW_TEAM_COST billigare, HW_TEAM_TIME
+// snabbare, HW_TEAM_PERF snabbare i prestanda och får HW_TEAM_RISK lägre prototyprisk.
+export const HW_TEAM_MT = 0.3;
+export const HW_TEAM_COST = 0.25;
+export const HW_TEAM_TIME = 0.15;
+export const HW_TEAM_PERF = 0.04;
+export const HW_TEAM_RISK = 0.35;
 export const canHw = (G) => !!G.u.flags.hw;
 const rngFor = (G, key) => seeded(hashStr(`${G.seed || 0}:hw:${key}`));
 const gaussFor = (G, key, m, s) => gauss({ rng: hashStr(`${G.seed || 0}:hw:${key}`) | 0 }, m, s);
@@ -238,7 +247,7 @@ export function setChief(G, staffId) {
 export function recallChief(G) {
   const H = G.hw;
   if (!H || !H.chief) return false;
-  if (G.staff.length >= capacity(G)) return 'capacity';
+  if (seated(G) >= capacity(G)) return 'capacity';
   G.staff.push(H.chief);
   H.chief = null;
   emit('staffMoved', null);
@@ -297,11 +306,11 @@ export function designWeeks(G, spec) {
   return Math.max(4, Math.round(ty.weeks * CLS[spec.cls].weeks * gen * lab));
 }
 // prototyprisken: prestandamålet minus chefens bonus
-export const protoRisk = (G, spec) => Math.max(0.01, CLS[spec.cls].risk - chiefRisk(G));
+export const protoRisk = (G, spec) => Math.max(0.01, (CLS[spec.cls].risk - chiefRisk(G)) * (1 - HW_TEAM_RISK * (spec.tq || 0)));
 // prestandan mot marknaden vid lanseringen, utan prototypens slump och partnerns nod
 export function designPerf(G, spec) {
   const a = archOf(spec);
-  return CLS[spec.cls].perf * (a ? a.perf : 1) * (1 + (G.perk.hwPerf || 0)) * (1 + chiefPerf(G));
+  return CLS[spec.cls].perf * (a ? a.perf : 1) * (1 + (G.perk.hwPerf || 0)) * (1 + chiefPerf(G)) * (1 + HW_TEAM_PERF * (spec.tq || 0));
 }
 export const baseCompat = (G, spec) => (archOf(spec) ? archOf(spec).compat : 70) + (G.u.flags[isPlat(spec.type) ? 'hw_devkit' : 'hw_driver'] ? (isPlat(spec.type) ? DEVKIT_BONUS : DRIVER_BONUS) : 0);
 export const defectOf = (spec, partner, bad) => (QUAL[spec.qual || 'normal'].defect + HW_PARTNER[partner].defect) * (bad ? 2 : 1);
@@ -433,7 +442,7 @@ function rivalGens(P, t, t0 = P.t) {
 // En revision (Pro) startar om åldrandet från sin tid: P.pt är då tiden prestandan P.perf0 gällde
 export const relPerf = (G, P, t = G.t) => {
   const t0 = P.pt ?? P.t ?? t;
-  return P.perf0 / (1 + HW_TYPES[P.type].decay * (Math.max(0, (t - t0) / WEEKS_PER_YEAR) + RIVAL_AGE * rivalGens(P, t, t0)));
+  return P.perf0 / (1 + HW_TYPES[P.type].decay * (Math.max(0, (t - t0 - (P.mt || 0)) / WEEKS_PER_YEAR) + RIVAL_AGE * rivalGens(P, t, t0)));
 };
 export function scoreOf(G, P, t = G.t) {
   const cheat = P.cheat && P.cheat > t ? BENCH_SCORE : 0;
@@ -967,7 +976,7 @@ export function hwReach(G) {
 // arbetet börjar (P.up håller det som pågår), produkten säljer vidare under tiden; revisionen tar ingen designplats.
 export const revOf = (id) => HW_REVS.find((r) => r.id === id);
 export const revCount = (P, kind) => (P.revs || []).filter((r) => r.k === kind).length;
-export const revCost = (G, P, kind) => Math.round((designCost(G, P) * revOf(kind).cost) / 1000) * 1000;
+export const revCost = (G, P, kind) => Math.round((designCost(G, P) * revOf(kind).cost * (1 - HW_TEAM_COST * (P.te || 0))) / 1000) * 1000;
 export const revWeeks = (G, P, kind) => Math.max(4, Math.round(designWeeks(G, P) * revOf(kind).weeks));
 // veckor kvar innan nästa revision går att påbörja
 export const revWait = (G, P) => Math.max(0, REV_MIN_AGE - (G.t - (P.revLast ?? P.t ?? G.t)));
@@ -1001,6 +1010,7 @@ function finishRev(G, H, P) {
     P.sf = (P.sf ?? P.perf0) * (1 + R.perf);
     P.perf0 = relPerf(G, P) * (1 + R.perf);
     P.pt = G.t;
+    P.mt = 0; // åldrandet startar om, och underhållet räknas från noll
   }
   P.revUnit = (P.revUnit ?? 1) * R.unit;
   P.lifeAdd = (P.lifeAdd || 0) + R.life;

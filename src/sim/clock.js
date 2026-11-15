@@ -17,6 +17,7 @@ import { groupWeek, costSave } from './group.js';
 import { storeWeek } from './store.js';
 import { hwWeek } from './hardware.js';
 import { opsWeek } from './opsteam.js';
+import { hwTeamWeek } from './hwteam.js';
 import { chartWeek, rankYear } from './charts.js';
 import { fanWeek } from './fans.js';
 import { storyWeek } from './news.js';
@@ -70,6 +71,7 @@ function weekly(G) {
   groupWeek(G);
   storeWeek(G);
   hwWeek(G);
+  hwTeamWeek(G); // produktteamen underhåller och tar fram nästa generation efter veckans försäljning
   opsWeek(G); // före liveWeek: driftteamens effekt gäller veckans spelare
   liveWeek(G);
   esportsWeek(G);

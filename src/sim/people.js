@@ -6,7 +6,7 @@ import { yearOf, wageIndex, WEEKS_PER_YEAR } from './const.js';
 import { TRAIN_TEMPO } from './tempo.js';
 import { DIFFICULTY, nextId } from './state.js';
 import { tr } from './tr.js';
-import { capacity, facLevel, spend } from './studio.js';
+import { capacity, seated, facLevel, spend } from './studio.js';
 import { note } from './news.js';
 
 export const SPECS = {
@@ -130,7 +130,7 @@ export function refreshCandidates(G) {
 }
 
 export function canHire(G) {
-  return G.staff.length < capacity(G);
+  return seated(G) < capacity(G);
 }
 export function hire(G, id) {
   const c = G.candidates.find((x) => x.id === id);

@@ -285,12 +285,14 @@ export class Scene {
   syncActors(first) {
     const G = this.G;
     const L = this.L;
-    const ids = new Set(G.staff.map((s) => s.id));
+    // den som är ute på en uppgift utanför huset (s.out) sitter inte vid ett skrivbord här
+    const seatedStaff = G.staff.filter((s) => !s.out);
+    const ids = new Set(seatedStaff.map((s) => s.id));
     // den som slutar (eller blir VD för ett dotterbolag) går ut med en flyttlåda
     for (const [id, a] of this.actors) if (!ids.has(id) && !a.leaving) a.leaving = a.box = true;
     // Studiohuset: personalen fördelas över våningarna (behavior.js), annars i skrivbordsordning
     const order = this.crowd ? this.crowd.nav.order : null;
-    G.staff.forEach((st, i) => {
+    seatedStaff.forEach((st, i) => {
       let a = this.actors.get(st.id);
       const di = order ? order[i] : i;
       const desk = L.desks[di];

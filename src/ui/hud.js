@@ -7,7 +7,7 @@ import { GENRE } from '../data/genres.js';
 import { PLATFORM } from '../data/platforms.js';
 import { dateOf, yearOf, TICKS_PER_WEEK } from '../sim/const.js';
 import { rpPerWeek } from '../sim/research.js';
-import { canUpgradeOffice, capacity, tierOf, nextTier, officeReqs } from '../sim/studio.js';
+import { canUpgradeOffice, capacity, seated, outCount, tierOf, nextTier, officeReqs } from '../sim/studio.js';
 import { canHire, workers, teamFatigue, FATIGUE_MAX, FATIGUE_GRACE } from '../sim/people.js';
 import { canLicense } from '../sim/actions.js';
 import { RESEARCH, RES } from '../data/research.js';
@@ -407,15 +407,16 @@ function updatePanels(G) {
     pl.innerHTML = els.logo.innerHTML;
   }
   const team = $('#pc-team');
-  put($('.v', team), `${G.staff.length}/${cap}`);
-  team.classList.toggle('full', G.staff.length >= cap);
-  setBar(team, (G.staff.length / cap) * 100);
-  team.dataset.tip = t('pn.teamTip', { n: G.staff.length, max: cap, office: L(off.name), work: workers(G).length });
+  const sat = seated(G);
+  put($('.v', team), `${sat}/${cap}`);
+  team.classList.toggle('full', sat >= cap);
+  setBar(team, (sat / cap) * 100);
+  team.dataset.tip = t('pn.teamTip', { n: sat, max: cap, office: L(off.name), work: workers(G).length }) + (outCount(G) ? '<br>' + t('pn.teamOut', { n: outCount(G) }) : '');
   const proj = $('#pc-proj');
   put($('.v', proj), job ? pct(job.proj) + '%' : '–');
   setBar(proj, job ? job.proj : 0);
   proj.classList.toggle('idle', !job);
-  put($('.pn-mini', els.studio), `${G.staff.length}/${cap} · ${job ? pct(job.proj) + '%' : '–'}`);
+  put($('.pn-mini', els.studio), `${sat}/${cap} · ${job ? pct(job.proj) + '%' : '–'}`);
   proj.dataset.tip = job ? job.projTip : t('pn.projectNone');
   const net = G.lastMonth.income - G.lastMonth.expense;
   const res = $('#pc-res');
@@ -471,7 +472,7 @@ function updatePanels(G) {
     el.dataset.tip = r.tip;
   });
   // mobilens sammanfattningsrad
-  put($('#pb-team b'), `${G.staff.length}/${cap}`);
+  put($('#pb-team b'), `${seated(G)}/${cap}`);
   put($('#pb-proj b'), job ? pct(job.proj) + '%' : '–');
   setBar($('#pb-proj'), job ? job.proj : 0);
   put($('#pb-goal b'), `${gdone}/${GOALS.length}`);
@@ -565,7 +566,7 @@ export function updateDock(G) {
   const resAvail = RESEARCH.some((r) => canResearch(G, r.id) === true);
   set('research', 'dot', resAvail);
   const afford = G.candidates.some((c) => G.money >= c.fee);
-  set('staff', 'dot', canHire(G) && afford && G.staff.length < 4 + G.office.tier * 3);
+  set('staff', 'dot', canHire(G) && afford && seated(G) < 4 + G.office.tier * 3);
   set('studio', 'dot', canUpgradeOffice(G) === true);
   const lic = Object.keys(PLATFORM).some((id) => canLicense(G, id) === true && PLATFORM[id].license > 0 && G.money > PLATFORM[id].license * 3 && PLATFORM[id].weight > 18);
   set('market', 'dot', lic && G.flags.seenPlat !== G.t);

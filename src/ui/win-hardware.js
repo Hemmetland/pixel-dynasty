@@ -335,7 +335,7 @@ function productCard(G, P) {
   const partners = fitPartners(G, P.type);
   const so = market && P.stock < 1 && P.dem > 1;
   return `<div class="card hw-card" style="--c:${HW_TYPES[P.type].color}">${head(P, right)}
-    <div class="row wrap" style="gap:6px;margin-top:8px">${state}${so ? tag(t('hw.soldOut'), 'var(--bug)') : ''}${P.cheat > G.t ? tag(t('hw.cheating'), 'var(--warn)') : ''}${P.leakT > G.t ? tag(t('hw.leakTag'), 'var(--warn)') : ''}<span class="sp"></span>${market ? spark(P.hist, HW_TYPES[P.type].color) : ''}</div>
+    <div class="row wrap" style="gap:6px;margin-top:8px">${state}${so ? tag(t('hw.soldOut'), 'var(--bug)') : ''}${P.cheat > G.t ? tag(t('hw.cheating'), 'var(--warn)') : ''}${P.leakT > G.t ? tag(t('hw.leakTag'), 'var(--warn)') : ''}${P.te > 0 ? tag(t('hw.tmOn', { n: Math.round(P.te * 100) }), 'var(--good)') : ''}<span class="sp"></span>${market ? spark(P.hist, HW_TYPES[P.type].color) : ''}</div>
     ${issueRow(G, P)}
     <div style="margin-top:10px">${specLine(G, P)}</div>
     <div class="hw-stats" style="margin-top:10px">

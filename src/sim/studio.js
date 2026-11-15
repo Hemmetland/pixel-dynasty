@@ -35,6 +35,13 @@ export const TIERS = [
 export const tierOf = (G) => TIERS[G.office.tier];
 export const office = tierOf;
 export const capacity = (G) => TIERS[G.office.tier].desks;
+// Personal som är ute på en uppgift utanför huset (s.out: driftteam i serverrummet, produktteam i hårdvarulabbet, forskning i
+// forskningslabbet) sitter inte vid ett skrivbord i studion och räknas inte mot skrivborden. De har egna platser: SEATS_PER_LEVEL
+// per nivå av serverrummet, hårdvarulabbet och forskningslabbet. Det går alltså att anställa ersättare till dem som flyttat ut.
+export const SEATS_PER_LEVEL = 3;
+export const seated = (G) => G.staff.filter((s) => !s.out).length;
+export const outCount = (G) => G.staff.length - seated(G);
+export const seatCap = (G) => SEATS_PER_LEVEL * (facLevel(G, 'server') + facLevel(G, 'lab') + (G.hw ? G.hw.lab || 0 : 0));
 
 export const FACILITIES = {
   coffee: { id: 'coffee', glyph: 'f_coffee', cost: 2500, rent: 90, name: { sv: 'Kaffehörna', en: 'Coffee Corner' },

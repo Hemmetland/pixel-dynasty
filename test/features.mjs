@@ -1224,12 +1224,21 @@ const liveAgeOf = (W, gm) => (W.t - gm.live.t0 - (gm.live.reno || 0)) / 48;
   S.disbandTeam(GO, T1.id);
   const need = S.opsNeed(GO, g);
   ok(need >= 3 && need <= 12 && S.opsNeed({ ...GO }, { live: { ...g.live, subs: 5e6 } }) > need, 'behovet växer med antalet spelare (' + need + ' personer)');
+  GO.office.tier = 2;
+  ok(!S.canHire(GO), 'huset är fullt innan teamet flyttar ut');
+  GO.office.fac.server.lvl = 1;
+  ok(S.canOps(GO, T, 9201) === 'noSeats' && S.seatCap(GO) === 3, 'ett team måste få plats i serverrummet');
+  GO.office.fac.server.lvl = 3;
   const w0 = S.workers(GO).length;
   ok(S.assignOps(GO, T.id, 9201) === true && T.role === 'ops' && T.target === 9201 && T.members.every((id) => GO.staff.find((x) => x.id === id).away) && S.workers(GO).length === w0 - 5, 'teamet tar hand om spelet och är borta från dina projekt');
   ok(S.leadOf(GO, T) !== null && S.opsTeamOf(GO, 9201) === T, 'en arbetsledare utses');
+  ok(S.outCount(GO) === 5 && S.seated(GO) === GO.staff.length - 5 && S.canHire(GO), 'teamet sitter utanför huset och skrivborden räcker till ersättare');
+  GO.office.tier = 0;
+  ok(typeof S.endOps(GO, T.id) === 'string' && T.role === 'ops' && typeof S.removeMember(GO, T.id, crew[0].id) === 'string', 'teamet kan inte komma tillbaka när det inte finns skrivbord åt dem');
+  GO.office.tier = 4;
   const T2 = S.createTeam(GO); S.addMember(GO, T2.id, crew[6].id); S.addMember(GO, T2.id, crew[7].id);
   ok(S.canOps(GO, T2, 9201) === 'opsTaken', 'ett spel har bara ett driftteam');
-  ok(S.canTrainTeam(GO, T) === 'ops', 'ett driftteam går inte på kurs');
+  ok(S.canTrainTeam(GO, T) === 'role', 'ett driftteam går inte på kurs');
   ok(S.canMission(GO, T, 'new') === 'opsOnly' && S.canMission(GO, T, 'expansion', 9999) === 'opsOnly', 'ett driftteam bygger bara expansioner till sitt eget spel');
   S.disbandTeam(GO, T2.id);
   const eff1 = S.opsEff(GO, T, g);
@@ -1280,6 +1289,75 @@ const liveAgeOf = (W, gm) => (W.t - gm.live.t0 - (gm.live.reno || 0)) / 48;
   const GOLD = JSON.parse(JSON.stringify(CT)); delete GOLD.teams;
   for (let i = 0; i < 20; i++) { GOLD.t++; S.opsWeek(GOLD); S.liveWeek(GOLD); }
   ok(Number.isFinite(GOLD.money) && !GOLD.games[GOLD.games.length - 1].live.tm, 'en sparning från före driftteamen fortsätter som vanligt');
+}
+// produktteam: ett litet team med arbetsledare tar hand om en hårdvarulinje (underhåll, revisioner, nästa generation)
+{
+  const GP = S.newGame({ studio: 'P', seed: 71 }); S.makeCompetitors(GP); S.initWorld(GP);
+  GP.t = 48 * 17; GP.money = 3e8; GP.fans = 60000; GP.office.tier = 4;
+  for (let i = 0; i < 8; i++) { S.refreshCandidates(GP); GP.money += GP.candidates[0].fee; S.hire(GP, GP.candidates[0].id); }
+  Object.assign(GP.u.flags, { hw: true, hw_sound: true, hw_gpu: true, hw_pc: true, hw_driver: true, training: true });
+  GP.t++; S.hwWeek(GP);
+  const H = GP.hw;
+  const spec = { type: 'gpu', cls: 'mid', qual: 'normal' };
+  S.startDesign(GP, spec);
+  const J = H.projects[0];
+  for (let i = 0; i < 80 && J.state === 'design'; i++) { GP.t++; S.hwWeek(GP); }
+  if (J.state === 'fail') S.resolveProto(GP, J.id, 'ship');
+  S.launch(GP, J.id, { partner: 'halden', price: S.suggestPrice('gpu', 'mid'), units: 6000 });
+  const P = H.products[0];
+  for (let i = 0; i < 12 && P.state === 'prod'; i++) { GP.t++; S.hwWeek(GP); }
+  const crew = GP.staff.filter((x) => !x.isFounder);
+  const T = S.createTeam(GP);
+  for (const x of crew.slice(0, 3)) S.addMember(GP, T.id, x.id);
+  ok(S.canHwTeam(GP, T, 'gpu') === 'hwLocked' && typeof S.assignHw(GP, T.id, 'gpu') === 'string', 'ett produktteam kräver forskningen Produktteam');
+  GP.u.flags.hwTeams = true;
+  ok(S.canHwTeam(GP, T, 'cpu') === 'hwType' && S.canHwTeam(GP, T, 'sound') === 'hwNone' && S.canHwTeam(GP, T, 'gpu') === true, 'bara en öppen typ där du gjort en produkt går att ta hand om');
+  ok(S.hwLines(GP).join() === 'gpu', 'linjerna är de typer du har produkter i');
+  const lone = S.createTeam(GP); S.addMember(GP, lone.id, crew[3].id);
+  ok(S.canHwTeam(GP, lone, 'gpu') === 'opsSmall', 'minst två personer');
+  S.disbandTeam(GP, lone.id);
+  const GC = JSON.parse(JSON.stringify(GP));
+  const w0 = S.workers(GP).length;
+  ok(S.assignHw(GP, T.id, 'gpu') === true && T.role === 'hw' && T.target === 'gpu' && T.members.every((id) => GP.staff.find((x) => x.id === id).away) && S.workers(GP).length === w0 - 3 && S.leadOf(GP, T) !== null, 'teamet tar hand om linjen och har en arbetsledare');
+  ok(S.outCount(GP) === 3 && S.seatCap(GP) === 3 && typeof S.addMember(GP, T.id, crew[3].id) === 'string' && T.members.length === 3, 'teamet sitter i hårdvarulabbet och en fjärde får inte plats');
+  const T2 = S.createTeam(GP); S.addMember(GP, T2.id, crew[4].id); S.addMember(GP, T2.id, crew[5].id);
+  ok(S.canHwTeam(GP, T2, 'gpu') === 'hwTaken' && S.canTrainTeam(GP, T) === 'role' && S.canMission(GP, T, 'new') !== true, 'en linje har ett team, och ett produktteam går varken kurs eller gör spel');
+  S.disbandTeam(GP, T2.id);
+  const eff = S.hwEff(GP, T, 'gpu');
+  ok(eff > 0.3 && eff <= 1 && S.hwEff(GP, T, 'console') < eff, 'effekten beror på linjens behov (' + eff.toFixed(2) + ')');
+  const rng0 = GP.rng;
+  T.autoRev = false;
+  S.hwTeamWeek(GP);
+  ok(GP.rng === rng0 && P.te > 0 && P.mt > 0, 'veckans räkning rör inte slumpföljden och sätter teamets effekt på produkten');
+  const PC = GC.hw.products[0];
+  for (let i = 0; i < 40; i++) for (const W of [GP, GC]) { W.t++; S.hwWeek(W); S.hwTeamWeek(W); if (W.pending.length) W.pending.length = 0; }
+  ok(S.relPerf(GP, P) > S.relPerf(GC, PC) && P.mt > 5, 'produkten åldras långsammare med teamet (' + S.relPerf(GP, P).toFixed(3) + ' mot ' + S.relPerf(GC, PC).toFixed(3) + ')');
+  ok(P.compat > PC.compat && P.compat <= S.drvMax(P), 'spelstödet förbättras utan kostnad (' + P.compat.toFixed(1) + ' mot ' + PC.compat.toFixed(1) + ')');
+  ok(S.revCost(GP, P, 'pro') < S.revCost(GC, PC, 'pro'), 'en revision blir billigare med teamet');
+  T.autoRev = true;
+  for (let i = 0; i < 120 && !(P.revs && P.revs.length); i++) { GP.t++; S.hwWeek(GP); S.hwTeamWeek(GP); if (GP.pending.length) GP.pending.length = 0; }
+  ok((P.revs && P.revs.length > 0 || P.up) && GP.news.some((n) => n.key === 'news.hwTeamRev'), 'teamet startar en revision av sig självt när produkten tappat mot marknaden');
+  T.autoRev = false;
+  // nästa generation
+  ok(!H.projects.some((p) => p.team === T.id), 'utan inställningen tar teamet inte fram en efterföljare');
+  T.repeat = true;
+  let guard = 0;
+  while (!H.projects.some((p) => p.team === T.id) && !H.products.some((p) => p.team === T.id) && guard++ < 400) { GP.t++; S.hwWeek(GP); S.hwTeamWeek(GP); if (GP.pending.length) GP.pending.length = 0; }
+  const J2 = H.projects.find((p) => p.team === T.id) || H.products.find((p) => p.team === T.id);
+  ok(J2 && GP.news.some((n) => n.key === 'news.hwTeamDesign'), 'teamet börjar designa nästa generation själv');
+  ok(!H.projects.some((p) => p.team === T.id) || (H.projects.find((p) => p.team === T.id).tq > 0 && H.projects.find((p) => p.team === T.id).budget < S.designCost(GP, spec)), 'projektet blir billigare och får teamets effekt');
+  guard = 0;
+  while (!H.products.some((p) => p.team === T.id && p.state === 'market') && guard++ < 400) { GP.t++; S.hwWeek(GP); S.hwTeamWeek(GP); if (GP.pending.length) GP.pending.length = 0; }
+  const P2 = H.products.find((p) => p.team === T.id);
+  ok(P2 && P2.state === 'market' && P2.gen === P.gen + 1 && P2.auto, 'den nya generationen designas, lanseras och säljer (gen ' + (P2 && P2.gen) + ')');
+  for (let i = 0; i < 70; i++) { GP.t++; S.hwWeek(GP); S.hwTeamWeek(GP); if (GP.pending.length) GP.pending.length = 0; }
+  ok(P.state === 'ended' || !P.auto, 'den gamla modellen trappas ned');
+  ok(Number.isFinite(GP.money) && Number.isFinite(P2.rev) && P2.rev > 0, 'den nya modellen säljer och kassan är hel');
+  ok(S.hwRutin(T) >= 1 && T.hwW > 100, 'rutinen växer');
+  ok(S.endHw(GP, T.id) === true && !T.role && GP.staff.every((x) => !x.away), 'teamet kan sluta och är då vanlig personal igen');
+  const GOLD = JSON.parse(JSON.stringify(GC)); delete GOLD.teams;
+  for (let i = 0; i < 20; i++) { GOLD.t++; S.hwWeek(GOLD); S.hwTeamWeek(GOLD); }
+  ok(Number.isFinite(GOLD.money) && GOLD.hw.products.every((x) => !x.te), 'en sparning från före produktteamen fortsätter som vanligt');
 }
 // förlag: pitchar kommer ur fröet, förskott vid underskrift, två avtal åt gången, spelet släpps med ett betyg i intervallet
 {

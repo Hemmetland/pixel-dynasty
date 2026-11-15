@@ -17,7 +17,7 @@ import { labMult, spend } from './studio.js';
 import { randomTitle } from './market.js';
 import { liveGames, EXP_SCOPES } from './live.js';
 import { note } from './news.js';
-import { teamsOf, teamById, teamName, membersOf, canTrainTeam, courseInfo, trainTeam, leadOf, bestLead, leadScore } from './teams.js';
+import { holds, teamsOf, teamById, teamName, membersOf, canTrainTeam, courseInfo, trainTeam, leadOf, bestLead, leadScore } from './teams.js';
 import { SKILLS, skillCap } from './people.js';
 import { tr } from './tr.js';
 
@@ -57,6 +57,7 @@ export function canMission(G, team, kind, baseId) {
   if (mem.some((s) => s.trainUntil > G.t)) return 'training';
   // ett driftteam bygger bara expansioner till sitt eget spel
   if (team.role === 'ops' && (kind !== 'expansion' || baseId !== team.target)) return 'opsOnly';
+  if (team.role === 'hw' || team.role === 'res') return 'roleGame';
   if (kind === 'new') return true;
   if (!eligibleBases(G, kind).some((g) => g.id === baseId)) return kind === 'sequel' && !G.u.flags.sequels ? 'noSequels' : 'base';
   return true;
@@ -174,7 +175,7 @@ const tOf = (G, code) => tr(G, 'tm.err.' + code);
 function release(G, team, reason) {
   const m = team.mission;
   // ett driftteam är kvar ute på sitt spel också efter uppdraget
-  for (const s of G.staff) if (m.J.crew.includes(s.id)) s.away = team.role === 'ops';
+  for (const s of G.staff) if (m.J.crew.includes(s.id)) s.away = holds(team);
   team.mission = null;
   return reason;
 }
@@ -250,7 +251,7 @@ export function missionWeek(G) {
   for (const team of teamsOf(G)) {
     const m = team.mission;
     if (!m) {
-      if (team.role !== 'ops' && membersOf(G, team).length >= MISSION_MIN) idle(G, team);
+      if (!holds(team) && membersOf(G, team).length >= MISSION_MIN) idle(G, team);
       continue;
     }
     const ws = membersOf(G, team).filter((s) => m.J.crew.includes(s.id));

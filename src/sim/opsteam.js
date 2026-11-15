@@ -9,7 +9,7 @@ import { clamp } from '../core/util.js';
 import { note } from './news.js';
 import { tr } from './tr.js';
 import { skillCap } from './people.js';
-import { teamsOf, teamById, teamName, membersOf, leadOf, bestLead, leadScore } from './teams.js';
+import { teamsOf, teamById, teamName, membersOf, leadOf, bestLead, leadScore, endRole, setOut, seatFree, deskFree } from './teams.js';
 import { liveGames, payBase, regionsOpen, regionGain, liveRegionCost, startLiveRegion, eventReadyIn, liveEventCost, startLiveEvent, AUTO_BUFFER, RENO_FLOOR, TM_RENO } from './live.js';
 import { autoOpen, startMission, canMission, EXP_GAP } from './autoteam.js';
 
@@ -59,6 +59,7 @@ export function canOps(G, team, gameId) {
   if (!liveGames(G).some((x) => x.id === gameId)) return 'opsGame';
   const other = opsTeamOf(G, gameId);
   if (other && other !== team) return 'opsTaken';
+  if (!seatFree(G, mem.filter((s) => !s.out).length)) return 'noSeats';
   return true;
 }
 export function assignOps(G, id, gameId) {
@@ -70,19 +71,14 @@ export function assignOps(G, id, gameId) {
   team.role = 'ops';
   team.target = gameId;
   if (!leadOf(G, team)) team.lead = bestLead(G, team).id;
-  for (const s of membersOf(G, team)) s.away = true;
+  setOut(membersOf(G, team), true);
   note(G, 'news.opsStart', { team: teamName(team), title: g.title }, 'info', true);
   return true;
 }
-// Teamet slutar sköta spelet och är vanligt personal igen (inte mitt i en expansion)
+// Teamet slutar sköta spelet och är vanlig personal igen (inte mitt i en expansion)
 export function endOps(G, id) {
   const team = teamById(G, id);
-  if (!team || team.role !== 'ops') return false;
-  if (team.mission) return tr(G, 'err.teamBusy');
-  team.role = null;
-  team.target = null;
-  for (const s of membersOf(G, team)) s.away = false;
-  return true;
+  return team && team.role === 'ops' ? endRole(G, id) : false;
 }
 
 // Spelet har lagts ned: teamet blir ledigt (men en expansion som är på gång får bli klar först)
@@ -90,9 +86,12 @@ function drop(G, team, g) {
   if (team.mission) return;
   const title = g ? g.title : '';
   if (g && g.live) g.live.tm = 0;
-  team.role = null;
   team.target = null;
-  for (const s of membersOf(G, team)) s.away = false;
+  // finns inga skrivbord åt dem väntar de kvar i serverrummet på ett nytt spel
+  if (deskFree(G, membersOf(G, team).filter((s) => s.out).length)) {
+    team.role = null;
+    setOut(membersOf(G, team), false);
+  }
   note(G, 'news.opsLost', { team: teamName(team), title }, 'info');
 }
 
@@ -127,7 +126,7 @@ function autoOps(G, team, g) {
 export function opsWeek(G) {
   for (const g of liveGames(G)) g.live.tm = 0;
   for (const team of teamsOf(G)) {
-    if (team.role !== 'ops') continue;
+    if (team.role !== 'ops' || team.target == null) continue;
     const g = G.games.find((x) => x.id === team.target);
     if (!g || !g.live || g.live.closed) {
       drop(G, team, g);

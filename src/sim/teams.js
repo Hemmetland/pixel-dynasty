@@ -2,7 +2,7 @@
 // TEAM_DISCOUNT av vad kurserna skulle kosta var för sig. Medlemmarna sparas som id i G.teams (ett valfritt fält, så äldre
 // sparningar laddar som förut) och rensas när någon slutar. Längre fram kan ett team också arbeta på egen hand (autoteam.js).
 import { note } from './news.js';
-import { spend } from './studio.js';
+import { spend, seated, capacity, outCount, seatCap } from './studio.js';
 import { tr } from './tr.js';
 import { SKILL_NAMES, trainCost, trainWeeks, trainingSlots, trainingNow, finishTraining, TRAIN_COOLDOWN, SKILLS } from './people.js';
 
@@ -25,6 +25,20 @@ export const TEAM_NAMES = [
 ];
 
 export const teamsOf = (G) => G.teams || [];
+// Uppgifter där medarbetarna är ute på sitt (s.away) och inte arbetar med dina projekt: driftteam för ett onlinespel (ops),
+// produktteam för en hårdvarulinje (hw) och forskningsteam (res). Utan uppgift, eller med 'game', är teamet vanlig personal.
+export const HOLD_ROLES = new Set(['ops', 'hw', 'res']);
+export const holds = (team) => HOLD_ROLES.has(team.role);
+// Medarbetarna är ute på sin uppgift: borta från dina projekt (away) och utanför huset (out, se studio.js). Den som kommer tillbaka
+// behöver ett skrivbord i huset, och den som flyttar ut ett av platserna i serverrummet och labben.
+export function setOut(list, on) {
+  for (const s of list) {
+    s.away = on;
+    s.out = on;
+  }
+}
+export const deskFree = (G, n) => seated(G) + n <= capacity(G);
+export const seatFree = (G, n) => outCount(G) + n <= seatCap(G);
 export const teamById = (G, id) => teamsOf(G).find((x) => x.id === id) || null;
 // Ett namn som {sv,en}-objekt (nyheter och gränssnitt översätter själva); efter tolv namn läggs en siffra till.
 export const teamName = (team) => {
@@ -66,8 +80,24 @@ export function disbandTeam(G, id) {
   if (!team) return false;
   // ett pågående uppdrag avbryts och ett driftteam lämnar sitt spel: medarbetarna är tillbaka i arbetet
   if (team.mission) for (const s of G.staff) if (team.mission.J.crew.includes(s.id)) s.away = false;
-  if (team.role === 'ops') for (const s of G.staff) if (team.members.includes(s.id)) s.away = false;
+  if (holds(team)) {
+    const out = membersOf(G, team).filter((s) => s.out);
+    if (!deskFree(G, out.length)) return tr(G, 'tm.err.noDesk');
+    setOut(out, false);
+  }
   G.teams = G.teams.filter((x) => x !== team);
+  return true;
+}
+// Teamet slutar med sin uppgift (driftteam, produktteam, forskning) och är vanlig personal igen, inte mitt i ett uppdrag
+export function endRole(G, id) {
+  const team = teamById(G, id);
+  if (!team || !holds(team)) return false;
+  if (team.mission) return tr(G, 'err.teamBusy');
+  const out = membersOf(G, team).filter((s) => s.out);
+  if (!deskFree(G, out.length)) return tr(G, 'tm.err.noDesk');
+  team.role = null;
+  team.target = null;
+  setOut(membersOf(G, team), false);
   return true;
 }
 export function addMember(G, id, sid) {
@@ -77,12 +107,14 @@ export function addMember(G, id, sid) {
   if (team.members.includes(sid)) return true;
   if (team.mission || teamOfStaff(G, sid)?.mission) return tr(G, 'err.teamBusy');
   if (team.members.length >= TEAM_SIZE) return tr(G, 'err.teamFull');
+  if (holds(team) && !st.out && !seatFree(G, 1)) return tr(G, 'tm.err.noSeats');
+  if (!holds(team) && st.out && !deskFree(G, 1)) return tr(G, 'tm.err.noDesk');
   for (const x of G.teams) {
     x.members = x.members.filter((m) => m !== sid);
     if (x.lead === sid) x.lead = null;
   }
-  // ett driftteams medarbetare är ute på sitt spel (s.away); den som byter team är tillbaka i arbetet
-  st.away = team.role === 'ops';
+  // ett teams medarbetare är ute på sin uppgift om den har en; den som byter team är tillbaka i arbetet
+  setOut([st], holds(team));
   team.members.push(sid);
   return true;
 }
@@ -90,12 +122,11 @@ export function removeMember(G, id, sid) {
   const team = teamById(G, id);
   if (!team) return false;
   if (team.mission) return tr(G, 'err.teamBusy');
+  const st = G.staff.find((s) => s.id === sid);
+  if (holds(team) && st && st.out && !deskFree(G, 1)) return tr(G, 'tm.err.noDesk');
   team.members = team.members.filter((m) => m !== sid);
   if (team.lead === sid) team.lead = null;
-  if (team.role === 'ops') {
-    const st = G.staff.find((s) => s.id === sid);
-    if (st) st.away = false;
-  }
+  if (holds(team) && st) setOut([st], false);
   return true;
 }
 
@@ -111,7 +142,7 @@ export function courseInfo(G, team) {
 export function canTrainTeam(G, team) {
   if (!G.u.flags.training) return 'locked';
   if (team.mission) return 'mission';
-  if (team.role === 'ops') return 'ops';
+  if (holds(team)) return 'role';
   const c = courseInfo(G, team);
   if (c.mem.length < 2) return 'small';
   if (c.busy.length === c.mem.length) return 'busy';
