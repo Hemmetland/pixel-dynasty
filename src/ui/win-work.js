@@ -5,6 +5,7 @@ import { FEATURES, FEAT } from '../data/research.js';
 import { PLATFORM } from '../data/platforms.js';
 import { acceptContract } from '../sim/contracts.js';
 import { teamOutput } from '../sim/dev.js';
+import { sceneHTML } from './livescene.js';
 import { buildEngine, engineCost, engineTech, engineWeeks } from '../sim/engines.js';
 import { engineMult, engineNeed, yfOf, yearOf, TICKS_PER_WEEK, engineEff } from '../sim/const.js';
 import { workers } from '../sim/people.js';
@@ -115,7 +116,7 @@ regWin({
   title: () => t('work.title'),
   headExtra: () => `<div class="tabs"><button class="tab ${K.tab === 'contracts' ? 'on' : ''}" data-act="w-tab" data-id="contracts">${t('work.contracts')}</button><button class="tab ${K.tab === 'engines' ? 'on' : ''}" data-act="w-tab" data-id="engines">${t('work.engines')}</button><button class="tab ${K.tab === 'publish' ? 'on' : ''}" data-act="w-tab" data-id="publish">${t('pub.tab')}</button></div>`,
   render(G) {
-    return K.tab === 'contracts' ? contractsTab(G) : K.tab === 'publish' ? publishTab(G) : enginesTab(G);
+    return K.tab === 'contracts' ? contractsTab(G) : K.tab === 'publish' ? publishTab(G) : (G.u.flags.engines ? sceneHTML('engine', G) : '') + enginesTab(G);
   },
   bind(el) {
     const inp = $('#eng-name', el);

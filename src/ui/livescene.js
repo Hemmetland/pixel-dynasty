@@ -14,6 +14,7 @@ import * as F from '../render/furniture.js';
 import * as V from '../render/props2.js';
 import { HW_TYPES } from '../data/hardware.js';
 import { lifeState, lifeLog, lifeText } from '../sim/life.js';
+import { ownedComps } from '../sim/acquire.js';
 import { hashStr } from '../core/rng.js';
 
 const R = V.R;
@@ -45,12 +46,24 @@ export function sceneHTML(kind, G, extra = {}) {
   const cfg = (CFG[kind] = { G, looks, n: Math.max(1, Math.min(5, (G.staff || []).length)), st: null, stT: -9, ...extra });
   refresh(kind, cfg);
   start();
-  const last = lifeLog(G, kind === 'studio' ? 'dev' : 'hw', 0).slice(-1)[0];
+  const last = lifeLog(G, LOG_SC[kind], 0).slice(-1)[0];
   return `<div class="ls ls-${kind}"><canvas class="ls-cv" data-ls="${kind}" width="200" height="${H}"></canvas><span class="ls-cap"><i></i><b>${caption(kind, cfg)}</b></span><span class="ls-tick" data-seen="${last ? last.n : 0}"></span><div class="ls-prog" hidden><i></i></div></div>`;
 }
+// Läget per scen: studion och fabriken läser lifeState, motorrummet och koncernen läser spelets data direkt
+const STATE = {
+  studio: (G) => lifeState(G, 'dev'),
+  factory: (G) => lifeState(G, 'hw'),
+  engine: (G) => {
+    const J = G.job && G.job.kind === 'engine' ? G.job : null;
+    return { active: !!J, pct: J ? Math.min(1, J.ticks / Math.max(1, J.total)) : 0, name: J ? J.name : '', parts: J ? J.feats.length : 0, built: (G.engines || []).length };
+  },
+  group: (G) => ({ subs: ownedComps(G).map((c) => ({ id: c.id, name: c.name })) }),
+};
+const TICK_SC = { studio: ['dev', 'studio'], factory: ['hw'], engine: ['dev'], group: ['studio'] };
+const LOG_SC = { studio: 'dev', factory: 'hw', engine: 'dev', group: 'studio' };
 function refresh(kind, cfg) {
   try {
-    cfg.st = lifeState(cfg.G, kind === 'studio' ? 'dev' : 'hw');
+    cfg.st = STATE[kind](cfg.G);
   } catch {
     cfg.st = null;
   }
@@ -58,6 +71,8 @@ function refresh(kind, cfg) {
 function caption(kind, cfg) {
   const st = cfg.st;
   if (kind === 'studio') return !st ? t('ls.studio') : st.active ? t('ls.studio.on', { title: st.title || '…' }) : st.report ? t('ls.studio.report') : t('ls.studio.idle');
+  if (kind === 'engine') return st && st.active ? t('ls.engine.on', { name: st.name }) : t('ls.engine');
+  if (kind === 'group') return t('ls.group', { n: st ? st.subs.length : 0 });
   if (!st || !st.open) return t('ls.factory');
   return st.orders.length ? t('ls.factory.prod') : st.designing.length ? t('ls.factory.design') : t('ls.factory');
 }
@@ -446,6 +461,151 @@ function drawFactory(ctx, W, tm, cfg) {
   for (const e of recent(['hwLaunch', 'hwProto'], 4.6, tm)) if (e.b.k === 'hwLaunch' || e.b.a) confetti(ctx, W, tm - e.t0, e.b.n);
 }
 
+// ── Motorrummet ──
+function gear(ctx, x, y, r, teeth, ang, col, hub) {
+  for (let dy = -r; dy <= r; dy++) {
+    const hw = Math.floor(Math.sqrt(r * r - dy * dy));
+    R(ctx, x - hw, y + dy, hw * 2 + 1, 1, col);
+  }
+  for (let i = 0; i < teeth; i++) {
+    const a = ang + (i * Math.PI * 2) / teeth;
+    R(ctx, Math.round(x + Math.cos(a) * (r + 1)) - 1, Math.round(y + Math.sin(a) * (r + 1)) - 1, 3, 3, col);
+  }
+  const rr = Math.max(2, Math.floor(r / 2));
+  for (let dy = -rr; dy <= rr; dy++) {
+    const hw = Math.floor(Math.sqrt(rr * rr - dy * dy));
+    R(ctx, x - hw, y + dy, hw * 2 + 1, 1, hub);
+  }
+  R(ctx, Math.round(x + Math.cos(ang) * rr * 0.6), Math.round(y + Math.sin(ang) * rr * 0.6), 1, 1, '#ffffff');
+}
+function drawEngine(ctx, W, tm, cfg) {
+  const fy = H - 6;
+  const st = cfg.st || { active: false, pct: 0, parts: 0, built: 0 };
+  const on = st.active;
+  R(ctx, 0, 0, W, H, '#13203a');
+  for (let x = 0; x < W; x += 8) R(ctx, x, 0, 1, H - 12, '#192a4a');
+  for (let y = 4; y < H - 12; y += 8) R(ctx, 0, y, W, 1, '#192a4a');
+  R(ctx, 0, H - 12, W, 12, '#2c3446');
+  R(ctx, 0, H - 12, W, 1, '#4a5470');
+  R(ctx, 0, H - 4, W, 1, '#1e2434');
+  // tavlan med motorns delar: lamporna tänds en och en när bygget framskrider
+  const bw = 54;
+  R(ctx, 8, 6, bw, 30, '#e9eefb');
+  R(ctx, 8, 6, bw, 1, '#ffffff');
+  R(ctx, 7, 5, bw + 2, 1, '#6a7488');
+  const nb = Math.max(4, Math.min(8, on ? st.parts : st.built ? 6 : 4));
+  const lit = on ? Math.round(st.pct * nb) : st.built ? nb : 0;
+  for (let i = 0; i < nb; i++) {
+    const bx = 11 + (i % 4) * 13;
+    const by = 9 + Math.floor(i / 4) * 12;
+    const L = i < lit;
+    R(ctx, bx, by, 11, 8, L ? '#4de1d0' : '#c4cbe0');
+    R(ctx, bx, by, 11, 1, L ? '#9ffff4' : '#e4e9f6');
+    R(ctx, bx + 2, by + 3, 7, 1, L ? '#0e4a52' : '#9aa4c0');
+    if (i % 4 < 3 && i + 1 < nb) R(ctx, bx + 11, by + 4, 2, 1, '#8a94b0');
+  }
+  if (on && Math.floor(tm * 2) % 2) R(ctx, 11 + (lit % 4) * 13 + 3, 9 + Math.floor(lit / 4) * 12 + 5, 5, 1, '#ffe27a');
+  // motorn: kuggar som snurrar när bygget pågår
+  const cx = Math.round(W * 0.5);
+  const spd = on ? 1.4 : 0.18;
+  const flash = recent(['engine'], 3, tm).length ? Math.floor(tm * 10) % 2 : 0;
+  gear(ctx, cx, 28, 11, 10, tm * spd, flash ? '#ffd36a' : '#6a7a9a', '#2a3350');
+  gear(ctx, cx + 17, 20, 7, 8, -tm * spd * 1.55 + 0.2, flash ? '#ffe9a8' : '#8a9ab8', '#2a3350');
+  gear(ctx, cx - 16, 21, 6, 7, -tm * spd * 1.8, flash ? '#ffe9a8' : '#8a9ab8', '#2a3350');
+  R(ctx, cx - 3, 40, 7, 3, '#2a3350');
+  R(ctx, cx - 5, 43, 11, 1, '#4a5470');
+  if (on) steam(ctx, cx + 22, 14, tm, 3, 0.45);
+  if (on && Math.floor(tm * 9) % 3 === 0) R(ctx, cx - 14 + Math.floor(V.hash(Math.floor(tm * 9)) * 28), 12 + Math.floor(V.hash(Math.floor(tm * 7) + 3) * 12), 1, 1, '#ffe27a');
+  // serverracken som bygger (lysdioderna blinkar snabbare under bygget)
+  for (let r = 0; r < 2; r++) {
+    const rx = W - 62 + r * 18;
+    F.rack(ctx, rx, fy - 1, 14, 38, r + 3);
+    for (let u = 0; u < 8; u++) if (Math.floor(tm * (on ? 6 : 1.5) + u * 1.7 + r) % 3 === 0) R(ctx, rx + 10, fy - 36 + u * 4, 1, 1, '#5cf2a0');
+  }
+  // teamet: någon pekar på tavlan, en skriver, en står med laptop, en tittar på maskinen
+  const crew = (cfg.G.staff || []).filter((s) => !s.away).map((s) => s.look);
+  const lk = (i) => crew[i] || cfg.looks[i];
+  person(ctx, 8 + bw + 8, fy + 1, lk(0), on ? 'present' : 'stand', tm, -1);
+  F.desk2(ctx, cx - 70 < 80 ? 76 : cx - 70, fy, 1, 3, 2);
+  F.chair2(ctx, (cx - 70 < 80 ? 76 : cx - 70) , fy, '#3a6a5a');
+  person(ctx, (cx - 70 < 80 ? 76 : cx - 70) + 3, fy, lk(1), on ? 'type' : 'sitIdle', tm, 1, true, 0.3);
+  person(ctx, W - 82, fy + 2, lk(2), on ? 'laptop' : 'stand', tm, 1, false, 0.7);
+  person(ctx, cx + 36, fy + 3, lk(3), 'notes', tm, -1, false, 1.1);
+  for (const e of recent(['engine'], 4.6, tm)) confetti(ctx, W, tm - e.t0, e.b.n);
+  darken(ctx, W, 0.05, '#7cf2ff');
+}
+
+// ── Koncernen ──
+function drawGroup(ctx, W, tm, cfg) {
+  const fy = H - 6;
+  const subs = (cfg.st && cfg.st.subs) || [];
+  // kvällshimmel och stadens siluett i ett stort fönster
+  R(ctx, 0, 0, W, H, '#101a40');
+  R(ctx, 0, 14, W, 14, '#1a2858');
+  R(ctx, 0, 28, W, 12, '#2a2f6a');
+  for (let i = 0; i < Math.floor(W / 14); i++) R(ctx, Math.floor(V.hash(i * 3) * W), 2 + Math.floor(V.hash(i * 7) * 14), 1, 1, Math.floor(tm * 1.3 + i) % 4 ? '#ffffff' : '#6a78b8');
+  const nb = Math.floor(W / 12);
+  for (let i = 0; i < nb; i++) {
+    const bh = 12 + Math.floor(V.hash(i * 5) * 16);
+    const bx = i * 12 + 2;
+    R(ctx, bx, 40 - bh, 10, bh, '#0c1230');
+    for (let k = 0; k < 6; k++) if (V.hash(i * 13 + k) > 0.5 && Math.floor(tm * 0.25 + i + k) % 6) R(ctx, bx + 2 + (k % 2) * 4, 40 - bh + 3 + Math.floor(k / 2) * 4, 2, 2, '#ffd36a');
+  }
+  // koncernens torn: huvudkontoret i mitten och ett torn per dotterbolag, med lampor som blinkar
+  const towers = [{ big: true }, ...subs.slice(0, 6).map((c, i) => ({ c, i }))];
+  const tw = 14;
+  const span = Math.min(W - 120, towers.length * (tw + 8));
+  const tx0 = Math.round(W * 0.5 - span / 2);
+  towers.forEach((tr, k) => {
+    const bx = tx0 + k * (tw + 8);
+    const bh = tr.big ? 38 : 20 + Math.floor(V.hash((tr.c ? tr.c.id : 1) * 7) * 12);
+    R(ctx, bx, 40 - bh, tw, bh, tr.big ? '#27336a' : '#1d2850');
+    R(ctx, bx, 40 - bh, tw, 1, '#5a6ab0');
+    R(ctx, bx, 40 - bh, 1, bh, '#3a4a88');
+    for (let y = 40 - bh + 3; y < 38; y += 4) for (let x = bx + 2; x < bx + tw - 2; x += 4) if (Math.floor(tm * 0.3 + x + y) % 7) R(ctx, x, y, 2, 2, tr.big ? '#ffe9a8' : '#e8c880');
+    R(ctx, bx + Math.floor(tw / 2), 40 - bh - 3, 1, 3, '#8a94aa');
+    R(ctx, bx + Math.floor(tw / 2), 40 - bh - 4, 1, 1, Math.floor(tm * 2 + k) % 2 ? '#ff5050' : '#702020');
+  });
+  // helikopter över staden
+  const hxx = Math.round(((tm * 10) % (W + 60)) - 30);
+  R(ctx, hxx, 10, 8, 3, '#3a4258');
+  R(ctx, hxx + 8, 10, 4, 1, '#3a4258');
+  R(ctx, hxx - 3 + (Math.floor(tm * 18) % 2) * 5, 8, 10, 1, '#aab4c8');
+  R(ctx, hxx + 2, 12, 1, 1, Math.floor(tm * 3) % 2 ? '#ff5050' : '#703030');
+  // karmen runt fönstret och golvet
+  R(ctx, 0, 40, W, 2, '#12172f');
+  R(ctx, 0, 42, W, H - 42, '#2a2236');
+  for (let x = 0; x < W; x += 16) R(ctx, x, 42, 1, H - 42, '#201a2c');
+  R(ctx, 0, H - 6, W, 6, '#3a2c44');
+  // styrelserummet: skärmen med stigande kurva, bordet och mötet
+  const scx = W - 52;
+  V.wallScreen(ctx, scx, 6, 38, 22, 'chart', 3);
+  for (let i = 0; i < 34; i++) R(ctx, scx + 2 + i, 24 - Math.round(i * 0.45 + Math.sin(i * 0.5 + tm) * 1.2), 1, 1, '#8aff9a');
+  const tbx = Math.round(W * 0.5 - 32);
+  const seats = [tbx + 6, tbx + 22, tbx + 38, tbx + 54];
+  const crew = (cfg.G.staff || []).map((s) => s.look);
+  seats.forEach((sx, i) => {
+    const pose = Math.floor((tm + i * 2.3) / 5) % 3 === 0 ? 'talk' : 'stand';
+    person(ctx, sx, fy - 1, crew[i] || cfg.looks[i], pose, tm, i % 2 ? -1 : 1, false, i * 0.5);
+  });
+  F.meetingTable(ctx, tbx, fy + 1, 64);
+  for (let i = 0; i < 4; i++) R(ctx, tbx + 6 + i * 16, fy - 18, 4, 3, i % 2 ? '#f4f4ff' : '#9fd6ff');
+  // någon presenterar vid skärmen
+  person(ctx, scx - 6, fy + 1, crew[4] || cfg.looks[4], 'present', tm, 1);
+  // mynt som stiger ur dotterbolagen
+  const coins = Math.min(8, 2 + subs.length);
+  for (let i = 0; i < coins; i++) {
+    const p = (tm * 0.35 + i / coins) % 1;
+    const bx = tx0 + (i % Math.max(1, towers.length)) * (tw + 8) + 6;
+    ctx.globalAlpha = Math.min(1, (1 - p) * 2);
+    R(ctx, bx, Math.round(36 - p * 26), 3, 3, '#ffd36a');
+    R(ctx, bx + 1, Math.round(36 - p * 26) + 1, 1, 1, '#fff2b0');
+  }
+  ctx.globalAlpha = 1;
+  for (const e of recent(['party', 'anniv', 'fans'], 4.6, tm)) confetti(ctx, W, tm - e.t0, e.b.n);
+}
+const DRAW = { studio: drawStudio, factory: drawFactory, engine: drawEngine, group: drawGroup };
+
 // ── Timer ──
 let timer = 0;
 const reduced = typeof matchMedia !== 'undefined' && matchMedia('(prefers-reduced-motion: reduce)').matches;
@@ -473,13 +633,13 @@ function tick() {
       const pr = box.querySelector('.ls-prog');
       if (pr) {
         const st = cfg.st;
-        const show = kind === 'studio' && st && st.active;
+        const show = (kind === 'studio' || kind === 'engine') && st && st.active;
         pr.hidden = !show;
         if (show) pr.firstChild.style.width = Math.round(st.pct * 100) + '%';
       }
       // tickern: senaste händelsen i den här scenen, i en rad som tonar bort efter en stund
       const tk = box.querySelector('.ls-tick');
-      const sc2 = kind === 'studio' ? ['dev', 'studio'] : ['hw'];
+      const sc2 = TICK_SC[kind];
       const last = BEATS.filter((e) => sc2.includes(e.b.sc)).slice(-1)[0];
       if (tk && last && String(last.b.n) !== tk.dataset.seen) {
         tk.dataset.seen = String(last.b.n);
@@ -497,8 +657,7 @@ function tick() {
     const ctx = cv.getContext('2d');
     ctx.imageSmoothingEnabled = false;
     ctx.globalAlpha = 1;
-    if (kind === 'studio') drawStudio(ctx, W, tm, cfg);
-    else drawFactory(ctx, W, tm, cfg);
+    DRAW[kind](ctx, W, tm, cfg);
   }
 }
 function start() {
