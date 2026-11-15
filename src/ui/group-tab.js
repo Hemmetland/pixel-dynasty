@@ -57,7 +57,7 @@ function synCard(G) {
   return `<div class="card" style="margin-top:14px"><div class="lbl" style="margin-bottom:8px">${t('grp.syn')}</div><div class="col" style="gap:6px">${rows}</div>${nowP}</div>`;
 }
 
-function seg(items, cur, actName, id, tip, dis) {
+export function seg(items, cur, actName, id, tip, dis) {
   return `<div class="seg wrap-seg">${items.map((label, i) => `<button class="${cur === i ? 'on' : ''}" data-act="${actName}" data-id="${id}" data-i="${i}" ${tip ? `data-tip="${esc(tip(i))}"` : ''} ${dis && dis(i) ? 'disabled' : ''}>${label}</button>`).join('')}</div>`;
 }
 

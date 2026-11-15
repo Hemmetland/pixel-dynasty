@@ -8,6 +8,7 @@ import { teamOutput } from '../sim/dev.js';
 import { buildEngine, engineCost, engineTech, engineWeeks } from '../sim/engines.js';
 import { engineMult, engineNeed, yfOf, yearOf, TICKS_PER_WEEK, engineEff } from '../sim/const.js';
 import { workers } from '../sim/people.js';
+import { bizCard } from './biz-card.js';
 import { canPublish, pubOf, activeDeals, canSign, signPitch, campaignCost, runCampaign, labelProfit, PUB_SLOTS } from '../sim/publish.js';
 import { TOPIC } from '../data/topics.js';
 import { GENRE } from '../data/genres.js';
@@ -98,7 +99,7 @@ function publishTab(G) {
     })
     .join('');
   const prof = labelProfit(G);
-  return `<p class="hint" style="margin-bottom:14px">${icon('info')} ${t('pub.help')}</p>
+  return `${bizCard(G)}<p class="hint" style="margin-bottom:14px">${icon('info')} ${t('pub.help')}</p>
     <div class="grid pub-grid">
       <div class="col" style="gap:10px"><div class="lbl">${t('pub.pitches')}</div>${pitches || `<div class="empty" style="padding:24px 10px">${icon('mail')}<div>${t('pub.none')}</div></div>`}</div>
       <div class="col" style="gap:10px"><div class="lbl">${t('pub.deals')} · ${activeDeals(G).length}/${PUB_SLOTS}</div>${deals || '<div class="faint" style="font-size:12.5px">–</div>'}

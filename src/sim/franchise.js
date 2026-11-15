@@ -176,7 +176,7 @@ export function frWeek(G) {
     const o = F.offers.length < OFFER_MAX ? makeOffer(G, list) : null;
     if (o) {
       F.offers.push(o);
-      note(G, OFFER_NEWS[o.kind], { studio: o.partner, title: o.title }, 'info');
+      note(G, OFFER_NEWS[o.kind], { studio: o.partner, title: o.title }, 'info', !!(G.u.flags.bizAuto && G.bz && G.bz.lic)); // tyst när Affärsavdelningen tar emot erbjudandena
     }
   }
   for (const d of F.deals) {

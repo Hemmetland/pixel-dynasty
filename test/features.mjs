@@ -2999,5 +2999,60 @@ ok(!bad.length, `äldre sparning utan ett av ${paths.length} fält går att spel
   ok(got.filter((x) => x === 'news.port:info').length === S.BURST_MAX + 1, 'efter ' + S.BURST_WEEKS + ' veckor visas nästa igen');
 }
 
+// ── Affärsavdelningen: pitchar och licensaffärer ─────────────────────────────────────────────────
+{
+  const GB = S.newGame({ studio: 'Biz', seed: 71 }); S.makeCompetitors(GB); S.initWorld(GB);
+  GB.t = 48 * 25; GB.money = 1e9; GB.u.flags.publish = true; GB.u.flags.merch = true;
+  GB.office.tier = 2; for (let i = 0; i < 5; i++) GB.staff.push(S.makeCandidate(GB, 1));
+  GB.pub = { pitches: [], deals: [], next: GB.t + 100 };
+  GB.fr = { offers: [], deals: [], hype: {}, next: GB.t + 100 };
+  const pit = (lo, hi, adv) => { const p = { id: GB.uid++, studio: 'S', color: '#fff', title: { sv: 'P' + lo, en: 'P' + lo }, topic: 'fantasy', genre: 'rpg', platform: 'pc', scope: 'small', q: (lo + hi) / 2, lo, hi, weeks: 8, until: GB.t + 12, seen: false, advance: adv }; GB.pub.pitches.push(p); return p; };
+  const off = (kind, up, lo, hi) => { const o = { id: GB.uid++, series: 9000 + GB.uid, title: 'S', kind, partner: 'X', color: '#fff', until: GB.t + 12, seen: false, up }; if (kind === 'film') Object.assign(o, { q: (lo + hi) / 2, lo, hi }); GB.fr.offers.push(o); return o; };
+  const lowP = pit(6, 7, 50000), midP = pit(7, 7.8, 50000), topP = pit(8, 9, 50000), thirdP = pit(7, 7.4, 50000);
+  const lowF = off('film', 40000, 5, 6), goodF = off('film', 60000, 7, 8), merch = off('merch', 20000), comic = off('comic', 10000);
+  ok(!S.bizOpen(GB) && S.setBiz(GB, 'pub', 1) === false, 'avdelningen kräver forskningen');
+  S.bizWeek(GB);
+  ok(GB.pub.pitches.length === 4 && GB.fr.offers.length === 4, 'utan forskning rör den ingenting');
+  GB.u.flags.bizAuto = true;
+  ok(S.setBiz(GB, 'pub', 1) === true && S.setBiz(GB, 'pubLvl', 0) === true && S.setBiz(GB, 'pubLvl', 9) === true && S.bizOf(GB).pubLvl === 2 && S.setBiz(GB, 'x', 1) === false, 'policyn kan sättas och begränsas');
+  S.setBiz(GB, 'pubLvl', 2);
+  const r0 = GB.rng;
+  const burn = S.burnOf(GB);
+  ok(burn > 0, 'månadens kostnader finns (' + Math.round(burn) + ')');
+  // reserven: för lite kvar efter förskottet, ingen påskrift
+  GB.money = 50000 + 3 * burn;
+  S.bizWeek(GB);
+  ok(S.activeDeals(GB).length === 0, 'kassan efter förskottet under sex månaders kostnader: ingen påskrift');
+  GB.money = 1e9;
+  S.bizWeek(GB);
+  const signed = S.activeDeals(GB).map((d) => d.id).sort();
+  ok(signed.length === S.PUB_SLOTS && signed.includes(topP.id) && signed.includes(midP.id) && !signed.includes(lowP.id), 'de två bästa pitcharna över gränsen skrivs på, den svaga och den för många inte (' + signed.length + ')');
+  ok(GB.fr.offers.length === 4, 'licenserna rörs inte förrän de slås på');
+  S.setBiz(GB, 'lic', 1);
+  const m0 = GB.money;
+  S.bizWeek(GB);
+  ok(GB.fr.deals.length === 3 && GB.fr.offers.length === 1 && GB.fr.offers[0].id === lowF.id && GB.money === m0 + goodF.up + merch.up + comic.up, 'prylar, serietidning och bra film tas emot, den svaga filmen inte');
+  S.setBiz(GB, 'filmLvl', 0);
+  ok(S.BIZ_FILM[0] === 7.5 && S.bizOf(GB).filmLvl === 0, 'filmgränsen kan höjas');
+  ok(GB.rng === r0, 'avdelningen drar inget ur slumptalsföljden');
+  // kvartalsrapporten
+  GB.t = 12 * 600 + 5;
+  S.bizWeek(GB);
+  ok(GB.news[0].key === 'news.bizReport' && GB.news[0].vars.a === 2 && GB.news[0].vars.b === 3 && GB.bz.q.signed === 0, 'en rapport per kvartal, sedan nollställd');
+  // gammal sparning utan avdelningens fält
+  const old = JSON.parse(JSON.stringify(GB)); delete old.bz;
+  ok(S.bizOf(old).pub === 0 && S.bizOf(old).pubLvl === 2, 'sparning utan avdelningen fungerar');
+}
+{
+  // via spelets klocka: avdelningen skriver på och ger inga egna nyheter om pitcharna
+  const GC = S.newGame({ studio: 'Biz2', seed: 72 }); S.makeCompetitors(GC); S.initWorld(GC);
+  while (S.yearOf(GC.t) < 2005) { GC.money = 1e9; GC.pending.length = 0; S.stepTick(GC); }
+  GC.u.flags.publish = true; GC.u.flags.bizAuto = true; GC.office.tier = 3;
+  S.setBiz(GC, 'pub', 1); S.setBiz(GC, 'pubLvl', 2);
+  for (let i = 0; i < 48 * 4 * 3; i++) { GC.pending.length = 0; GC.money = Math.max(GC.money, 1e9); S.stepTick(GC); }
+  ok(GC.bz.signed >= 3 && S.pubOf(GC).deals.length >= 3, 'klockan: ' + GC.bz.signed + ' påskrifter på tre år');
+  ok(GC.news.some((n) => n.key === 'news.bizReport'), 'klockan: en kvartalsrapport har kommit');
+}
+
 console.log(fails ? `\n${fails} FEL` : '\nAlla tester gick bra');
 process.exit(fails ? 1 : 0);

@@ -27,7 +27,7 @@ const CARD_BOTTOM = 290;
 
 // händelsekortets färg och rubrik efter nyhetens slag, och vilket fönster Visa-knappen öppnar
 const EV_KIND = { award: 'award', bad: 'warning', platform: 'platform' };
-const GO = [[/^news\.(lowCash|debt)$/, 'finance'], [/^news\.hw/, 'hardware'], [/^(live|esp)\./, 'library'], [/^news\.(quit|quitMood|clash|trained|teamTrained|staffGrow|missionDone|missionLost|opsLost|hrHires)$/, 'staff'], [/^news\.campus$/, 'studio'], [/^news\.(boardReport|sub(Hit|Talent|Poach|PoachHeld|Scandal)|acquired|integrating|integrated)$/, 'market'], [/^news\.(platform$|recipeLevel)/, 'market'], [/^news\.store(Level|Top|Spot|Event|Wish|Deal|Bundle|Rec)/, 'store']];
+const GO = [[/^news\.(lowCash|debt)$/, 'finance'], [/^news\.hw/, 'hardware'], [/^(live|esp)\./, 'library'], [/^news\.(quit|quitMood|clash|trained|teamTrained|staffGrow|missionDone|missionLost|opsLost|hrHires)$/, 'staff'], [/^news\.campus$/, 'studio'], [/^news\.bizReport$/, 'contracts'], [/^news\.(boardReport|sub(Hit|Talent|Poach|PoachHeld|Scandal)|acquired|integrating|integrated)$/, 'market'], [/^news\.(platform$|recipeLevel)/, 'market'], [/^news\.store(Level|Top|Spot|Event|Wish|Deal|Bundle|Rec)/, 'store']];
 const goOf = (key) => (GO.find(([re]) => re.test(key)) || [0, 'news'])[1];
 
 export const app = {

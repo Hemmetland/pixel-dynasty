@@ -126,7 +126,8 @@ export function pubWeek(G) {
     if (P.pitches.length < PITCH_MAX) {
       const p = makePitch(G);
       P.pitches.push(p);
-      if (p.hi >= 8.5) note(G, 'news.pitch', { studio: p.studio, title: p.title }, 'info');
+      // med Affärsavdelningen på (bizdept.js) tar den hand om pitcharna och ger inga egna nyheter
+      if (p.hi >= 8.5) note(G, 'news.pitch', { studio: p.studio, title: p.title }, 'info', !!(G.u.flags.bizAuto && G.bz && G.bz.pub));
     }
   }
   for (const d of P.deals) {

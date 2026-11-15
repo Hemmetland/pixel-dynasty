@@ -525,10 +525,11 @@ function seriesPanel(G) {
   const offers = on ? frOf(G).offers.map((o) => offerCard(G, o)).join('') : '';
   const inc = licIncome(G);
   const foot = !on ? `${icon('lock')} ${t('fr.locked')}` : offers ? t('fr.help') : `${t('fr.none')} ${t('fr.help')}`;
+  const auto = on && G.u.flags.bizAuto && G.bz && G.bz.lic ? ` ${t('fr.auto')}` : '';
   return `<div class="card" style="margin-bottom:16px"><div class="row" style="margin-bottom:6px"><div class="lbl">${t('fr.head')}</div><span class="sp"></span>${inc > 0 ? `<span class="faint" style="font-size:12px">${t('fr.total', { v: money(inc) })}</span>` : ''}</div>
     ${offers ? `<div class="col" style="gap:10px;margin:6px 0 12px">${offers}</div>` : ''}
     ${list.slice(0, 6).map((s) => seriesRow(G, s)).join('')}
-    <div class="hint" style="margin-top:8px">${foot}</div></div>`;
+    <div class="hint" style="margin-top:8px">${foot}${auto}</div></div>`;
 }
 
 // Porteringar: färdiga porter med betyg och intäkter, pågående portering och knappar för de plattformar som går att porta till

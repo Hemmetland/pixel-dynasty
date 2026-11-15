@@ -31,8 +31,9 @@ export function setBoard(G, key, v) {
   return true;
 }
 
-const burn = (G) => payroll(G) + rentOf(G) + facUpkeep(G);
-export const boardReserve = (G) => BOARD_MONTHS[boardOf(G).res] * burn(G);
+// Månadens kostnader: löner, hyra och drift
+export const burnOf = (G) => payroll(G) + rentOf(G) + facUpkeep(G);
+export const boardReserve = (G) => BOARD_MONTHS[boardOf(G).res] * burnOf(G);
 
 // Nästa steg styrelsen tar, eller varför den väntar. { act: 'integ' | 'buy' | null, c, why, need }
 // why: off (inget påslaget), none (inget att göra), ops, load, cash, unstable, full. need: kassan som behövs för steget.
@@ -78,7 +79,7 @@ export function boardNext(G) {
 // Budgeten för integrerade bolag: satsa så länge kassan räcker (ett halvårs satsning över reserven, och vidare tills den minskar
 // till ett kvartal), spara bara när kassan är riktigt trång, annars normal
 function autoBudget(G) {
-  const cost = burn(G);
+  const cost = burnOf(G);
   const reserve = boardReserve(G);
   let committed = 0;
   for (const c of ownedComps(G)) {

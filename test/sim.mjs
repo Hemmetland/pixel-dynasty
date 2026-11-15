@@ -53,6 +53,8 @@ const acq = args.includes('--acq');
 const group = args.includes('--group');
 // --board: forskar Koncernstyrelsen och låter den köpa, slå ihop och styra budgeten (i stället för --acq och --group; --boardres=0..2 reserven)
 const board = args.includes('--board');
+// --biz: (med --publish och --lic) forskar Affärsavdelningen och låter den skriva på pitchar (mitt 7+) och ta emot licensaffärer (film från 6,5) i stället för botens egna val
+const biz = args.includes('--biz');
 // --store: bygger en egen butik och öppnar den för andra förlag (--store=closed håller den sluten och gör bara pc-spel,
 // --store=ex med exklusiva spel, --pc bara pc-spel när butiken finns, --fee=0.1 avgiften, --sale=0..3 reans rabattnivå)
 const storeArg = args.find((x) => x === '--store' || x.startsWith('--store='));
@@ -316,7 +318,7 @@ function manage(G) {
   // forskning
   if (!casual || G.t % 16 === 0) for (const r of RESEARCH.slice().sort((a, b) => a.rp - b.rp)) {
     if (G.research.active.length >= S.researchSlots(G)) break;
-    if ((r.id === 'b_port' && !ports) || (r.id === 'b_publish' && !publish) || (r.id === 'b_merch' && !lic) || (r.id === 'b_acq' && !acq && !board) || (r.id === 'b_group' && !group && !board) || (r.id === 'b_board' && !board) || (r.id === 'b_store' && !store) || (r.cat === 'hw' && !hw) || (r.id === 'h_vr' && !vr) || (r.id === 'h_fab' && (!fab || !G.u.flags.hw_console))) continue;
+    if ((r.id === 'b_port' && !ports) || (r.id === 'b_publish' && !publish && !biz) || (r.id === 'b_merch' && !lic && !biz) || (r.id === 'b_biz' && !biz) || (r.id === 'b_acq' && !acq && !board) || (r.id === 'b_group' && !group && !board) || (r.id === 'b_board' && !board) || (r.id === 'b_store' && !store) || (r.cat === 'hw' && !hw) || (r.id === 'h_vr' && !vr) || (r.id === 'h_fab' && (!fab || !G.u.flags.hw_console))) continue;
     if (noplat && PLAT_RES.has(r.id)) continue;
     if (S.canResearch(G, r.id) === true && r.rp <= G.rp) S.startResearch(G, r.id);
   }
@@ -415,9 +417,9 @@ function manage(G) {
     } else if (best && G.money > S.portCost(G, best.g) * 3 && S.startPort(G, best.g.id, best.p) === true && verbose) console.log(`  port ${year}: ${best.g.title} ${best.g.platform} -> ${best.p} score ${best.s} cost $${S.portCost(G, best.g)}`);
   }
   // förlag: skriv på pitchar med intervallmitt 7+ när det finns plats och pengar med marginal
-  if (publish && S.canPublish(G)) for (const p of S.pubOf(G).pitches.slice()) if ((p.lo + p.hi) / 2 >= 7 && G.money > p.advance * 4 && S.signPitch(G, p.id) === true && verbose) console.log(`  sign ${year}: ${p.studio} ${p.scope} demo ${p.lo}-${p.hi} advance $${p.advance}`);
+  if (publish && S.canPublish(G) && !(biz && S.bizOpen(G))) for (const p of S.pubOf(G).pitches.slice()) if ((p.lo + p.hi) / 2 >= 7 && G.money > p.advance * 4 && S.signPitch(G, p.id) === true && verbose) console.log(`  sign ${year}: ${p.studio} ${p.scope} demo ${p.lo}-${p.hi} advance $${p.advance}`);
   // licensaffärer: prylar och serietidningar alltid, film när ryktets mitt är 6.5 eller mer
-  if (lic && S.canFranchise(G)) for (const o of S.frOf(G).offers.slice()) if ((o.kind !== 'film' || (o.lo + o.hi) / 2 >= 6.5) && S.acceptOffer(G, o.id) === true && verbose) console.log(`  deal ${year}: ${o.kind} ${o.partner} up $${o.up}${o.roy ? ' roy $' + o.roy : ''}${o.q ? ' film ' + o.lo + '-' + o.hi + ' (' + o.q + ')' : ''}`);
+  if (lic && S.canFranchise(G) && !(biz && S.bizOpen(G))) for (const o of S.frOf(G).offers.slice()) if ((o.kind !== 'film' || (o.lo + o.hi) / 2 >= 6.5) && S.acceptOffer(G, o.id) === true && verbose) console.log(`  deal ${year}: ${o.kind} ${o.partner} up $${o.up}${o.roy ? ' roy $' + o.roy : ''}${o.q ? ' film ' + o.lo + '-' + o.hi + ' (' + o.q + ')' : ''}`);
   // uppköp: den konkurrent som säljer mest per krona
   if (acq && S.canAcquireAny(G)) {
     const c = G.comps.filter((x) => S.canAcquire(G, x.id) === true).sort((a, b) => S.compYearly(G, b) / S.acqPrice(G, b) - S.compYearly(G, a) / S.acqPrice(G, a))[0];
@@ -426,6 +428,8 @@ function manage(G) {
       if (S.acquire(G, c.id) === true && verbose) console.log(`  acquire ${year}: ${c.name} $${price} yearly $${Math.round(S.compYearly(G, c))}`);
     }
   }
+  // affärsavdelningen: allt påslaget, standardnivåerna
+  if (biz && S.bizOpen(G)) for (const k of ['pub', 'lic']) S.setBiz(G, k, 1);
   // koncernstyrelsen: allt påslaget
   if (board && S.boardOpen(G)) {
     for (const k of ['buy', 'integ', 'budget']) S.setBoard(G, k, 1);
