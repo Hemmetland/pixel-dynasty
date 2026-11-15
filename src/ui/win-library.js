@@ -633,7 +633,7 @@ regWin({
   title: () => t('lib.title'),
   sub: (G) => tn('lib.sub', G.games.length, { v: money(G.stats.revenue) }),
   render(G, arg) {
-    return arg && arg.id ? detailView(G, arg.id) : listView(G);
+    return arg && arg.id ? detailView(G, arg.id) : (G.games.length ? sceneHTML('hall', G) : '') + listView(G);
   },
 });
 act('lib-open', (el) => {

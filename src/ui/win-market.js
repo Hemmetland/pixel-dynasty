@@ -234,7 +234,7 @@ regWin({
   headExtra: (G) => `<div class="tabs">${tabsOf(G).map((k) => `<button class="tab ${M.tab === k ? 'on' : ''}" data-act="m-tab" data-id="${k}">${t('mkt.tab.' + k)}</button>`).join('')}</div>`,
   render(G) {
     if (!tabsOf(G).includes(M.tab)) M.tab = 'plat';
-    return M.tab === 'plat' ? platformsTab(G) : M.tab === 'charts' ? chartsTab(G) : M.tab === 'trends' ? trendsTab(G) : M.tab === 'insights' ? insightsTab(G) : rivalsTab(G);
+    return (M.tab === 'charts' || M.tab === 'trends' ? sceneHTML('market', G) : '') + (M.tab === 'plat' ? platformsTab(G) : M.tab === 'charts' ? chartsTab(G) : M.tab === 'trends' ? trendsTab(G) : M.tab === 'insights' ? insightsTab(G) : rivalsTab(G));
   },
   onOpen(G) {
     G.flags.seenPlat = G.t;
