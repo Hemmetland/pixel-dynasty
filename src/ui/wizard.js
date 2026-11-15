@@ -14,6 +14,7 @@ import { seriesHype, rootOf } from '../sim/franchise.js';
 import { buyLicense, licenseCost } from '../sim/actions.js';
 import { randomTitle, trendWeeksLeft } from '../sim/market.js';
 import { focusHTML, bindFocus } from './focus.js';
+import { sceneHTML } from './livescene.js';
 import { lang } from '../core/i18n.js';
 import { clamp, fmtNum } from '../core/util.js';
 import { workers } from '../sim/people.js';
@@ -341,7 +342,7 @@ regWin({
   headExtra: () => stepper(),
   render(G) {
     const body = W.step === 0 ? stepConcept(G) : W.step === 1 ? stepMarket(G) : stepFocus(G);
-    return `<div class="wz"><div class="wz-main">${body}</div><aside class="wz-side card">${summary(G)}</aside></div>`;
+    return `${sceneHTML('studio', G)}<div class="wz"><div class="wz-main">${body}</div><aside class="wz-side card">${summary(G)}</aside></div>`;
   },
   foot(G) {
     const canNext = W.step === 0 ? W.topic && W.genre : W.step === 1 ? W.platform && G.licenses.includes(W.platform) && platTier(PLATFORM[W.platform], yearOf(G.t)) >= SCOPES[W.scope].minTier && scopeAllowed(W.scope) : true;

@@ -1851,6 +1851,8 @@ export const STRINGS = {
   'ng.skin': ['Hudton', 'Skin'],
   'ng.hairColor': ['Hårfärg', 'Hair colour'],
   'ng.shirt': ['Tröja', 'Shirt'],
+  'ls.studio': ['Studion jobbar', 'The studio at work'],
+  'ls.factory': ['Labbet och fabriken går för fullt', 'The lab and factory are running'],
   'ng.pants': ['Byxor', 'Trousers'],
   'ng.hair.short': ['Kort', 'Short'],
   'ng.hair.tail': ['Hästsvans', 'Ponytail'],
