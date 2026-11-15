@@ -99,7 +99,7 @@ function caption(kind, cfg) {
   if (kind === 'market') return t('ls.market');
   if (kind === 'hall') return !st || !st.n ? t('ls.hall.empty') : t('ls.hall', { n: st.n });
   if (kind === 'bank') return !st ? t('ls.bank') : st.money < 0 ? t('ls.bank.red') : t('ls.bank');
-  if (kind === 'live') return !st || !st.g ? t('ls.live') : st.g.ops && !st.g.event ? t('ls.live.ops') : st.g.event ? t('ls.live.ev') : st.g.patch ? t('ls.live.patch') : st.g.season ? t('ls.live.season') : t('ls.live.on', { n: fmtNum(st.g.subs) });
+  if (kind === 'live') return !st || !st.g ? t('ls.live') : st.g.world && st.g.world.final ? t('ls.live.final') : st.g.world && st.g.world.feud ? t('ls.live.feud', { a: st.g.world.feud.a, b: st.g.world.feud.b }) : st.g.ops && !st.g.event ? t('ls.live.ops') : st.g.event ? t('ls.live.ev') : st.g.patch ? t('ls.live.patch') : st.g.season ? t('ls.live.season') : t('ls.live.on', { n: fmtNum(st.g.subs) });
   if (kind === 'shop') return !st || !st.open ? t('ls.shop') : st.paused ? t('ls.shop.closed') : st.ev ? t('ls.shop.ev', { name: st.ev }) : t('ls.shop.on');
   if (kind === 'lab') return st && st.active.length ? t('ls.lab.on', { n: st.active.length }) : t('ls.lab');
   if (kind === 'group') return st && st.subs.some((c) => c.mode === 'int') ? t('ls.group.int') : t('ls.group', { n: st ? st.subs.length : 0 });
@@ -732,6 +732,54 @@ function drawLive(ctx, W, tm, cfg) {
   R(ctx, 0, 40, W, H - 40, '#1c3a30');
   R(ctx, 0, 40, W, 2, '#2a5a44');
   R(ctx, 0, H - 6, W, 6, '#2a3a30');
+  // onlinevärlden: läktare som växer med nivån, banderoller för de fem främsta gillena, sändningsfinal och fejder
+  const wd = g.world;
+  if (wd) {
+    const hue = (n) => hashStr('g' + n) % 360;
+    const hot = wd.heat > 60;
+    for (const side of [-1, 1]) for (let r = 0; r < wd.tier; r++) for (let k = 0; k < 4 + r * 2; k++) {
+      const x = cx + side * (28 + k * 3) - 1;
+      const y = 37 - r * 3 - (hot && Math.floor(tm * 3 + k + r) % 2 ? 1 : 0);
+      R(ctx, x, y, 2, 2, `hsl(${(hue(k + r * 7 + side) + 20) % 360},50%,55%)`);
+    }
+    const nbn = wd.guilds.length;
+    wd.guilds.forEach((gd, i) => {
+      const bx = Math.round(W * 0.14 + i * ((W * 0.58) / Math.max(1, nbn - 1 || 1)));
+      R(ctx, bx, 34, 1, 14, '#8a94aa');
+      const wave = Math.floor(tm * 3 + i) % 2;
+      ctx.fillStyle = `hsl(${hue(gd.name)},65%,50%)`;
+      ctx.fillRect(bx + 1, 34 + wave, 7, 6);
+      R(ctx, bx + 2, 35 + wave, 5, 1, 'rgba(255,255,255,.45)');
+      if (gd.name === wd.lead) R(ctx, bx + 3, 31, 3, 2, '#ffd36a');
+    });
+    if (wd.feud && Math.floor(tm * 7) % 2) {
+      const ia = wd.guilds.findIndex((x) => x.name === wd.feud.a), ib = wd.guilds.findIndex((x) => x.name === wd.feud.b);
+      if (ia >= 0 && ib >= 0) {
+        const xa = Math.round(W * 0.14 + ia * ((W * 0.58) / Math.max(1, nbn - 1))), xb = Math.round(W * 0.14 + ib * ((W * 0.58) / Math.max(1, nbn - 1)));
+        for (let k = 0; k < 8; k++) R(ctx, Math.round(xa + ((xb - xa) * (k + V.hash(k + Math.floor(tm * 7)))) / 8), 32 + Math.floor(V.hash(k * 3 + Math.floor(tm * 7)) * 5), 1, 1, k % 2 ? '#ff5a50' : '#ffd36a');
+      }
+    }
+    if (wd.final) {
+      // finalens scen: ljusstrålar, två banderoller och kameror när den sänds
+      ctx.globalAlpha = 0.10 + 0.04 * Math.sin(tm * 2);
+      for (const sd of [-1, 1]) for (let k = 0; k < 6; k++) R(ctx, cx + sd * (4 + k * 3), 8 + k * 5, 6, 4, '#fff0b0');
+      ctx.globalAlpha = 1;
+      R(ctx, cx - 16, 40, 32, 3, '#6a5a8a');
+      R(ctx, cx - 16, 40, 32, 1, '#a090c8');
+      for (const [fi, nm] of [[-1, wd.final.a], [1, wd.final.b]]) {
+        const fx = cx + fi * 9;
+        R(ctx, fx, 28, 1, 12, '#c0c8d8');
+        ctx.fillStyle = `hsl(${hue(nm || 'x')},70%,52%)`;
+        ctx.fillRect(fx + 1, 28 + (Math.floor(tm * 4) % 2), 7, 7);
+      }
+      if (wd.final.prod >= 1) for (const cxm of [cx - 30, cx + 28]) {
+        R(ctx, cxm, 38, 6, 4, '#2a3040');
+        R(ctx, cxm + 1, 36, 4, 2, '#4a5470');
+        R(ctx, cxm + 4, 35, 1, 1, Math.floor(tm * 2) % 2 ? '#ff4a3c' : '#702020');
+        R(ctx, cxm + 2, 42, 1, 6, '#2a3040');
+      }
+    }
+  }
   // spelare: fler ju fler prenumeranter (grovt log), små figurer som vandrar och slåss mot en drake ibland
   const crowd = subs <= 0 ? 0 : Math.min(26, 3 + Math.round(Math.log10(Math.max(10, subs)) * 4));
   for (let i = 0; i < crowd; i++) {
@@ -768,7 +816,7 @@ function drawLive(ctx, W, tm, cfg) {
   // underhåll: gnistor över slottet
   if (g.patch) for (let i = 0; i < 5; i++) if (Math.floor(tm * 6 + i) % 2) R(ctx, cx - 10 + Math.floor(V.hash(Math.floor(tm * 6) + i) * 20), 8 + Math.floor(V.hash(i * 3 + Math.floor(tm * 5)) * 10), 1, 1, '#ffe27a');
   // eventet och nya regioner: fyrverkerier
-  if (g.event || recent(['liveEvent', 'liveExp', 'liveRegion', 'liveSeason'], 6, tm).length) for (let f = 0; f < 3; f++) {
+  if (g.event || recent(['liveEvent', 'liveExp', 'liveRegion', 'liveSeason', 'worldTier', 'worldChamp'], 6, tm).length) for (let f = 0; f < 3; f++) {
     const k = (tm * 0.6 + f * 0.37) % 1;
     const fx = Math.round(V.hash(f * 5 + Math.floor(tm * 0.6 + f * 0.37)) * (W - 40)) + 20;
     const fyy = 8 + Math.round(V.hash(f * 3 + Math.floor(tm * 0.6)) * 8);
@@ -780,7 +828,7 @@ function drawLive(ctx, W, tm, cfg) {
     }
     ctx.globalAlpha = 1;
   }
-  for (const e of recent(['liveLaunch', 'liveExp'], 4.6, tm)) confetti(ctx, W, tm - e.t0, e.b.n);
+  for (const e of recent(['liveLaunch', 'liveExp', 'worldChamp', 'worldTier'], 4.6, tm)) confetti(ctx, W, tm - e.t0, e.b.n);
   darken(ctx, W, 0.04, '#7cc8ff');
 }
 
