@@ -20,6 +20,10 @@ import { note } from './news.js';
 import { holds, teamsOf, teamById, teamName, membersOf, canTrainTeam, courseInfo, trainTeam, leadOf, bestLead, leadScore } from './teams.js';
 import { SKILLS, skillCap } from './people.js';
 import { tr } from './tr.js';
+import { logBuild } from './builds.js';
+import { addTalk } from './hype.js';
+import { dirOf, DIR_IDS } from './expdirs.js';
+import { expansionDue, meetBlocked, openExpMeeting, teamMeeting } from './expmeet.js';
 
 export const MISSION_MIN = 3;
 export const SAMSPEL_MAX = 10;
@@ -77,12 +81,14 @@ function bestPlatform(G) {
   }
   return best;
 }
-// Största storleken vars idealteam inte är mer än en person större än teamet (och som plattformen klarar)
-function pickScope(G, n, platId, kind) {
+// Största storleken vars idealteam inte är mer än en person större än teamet (och som plattformen klarar). step flyttar valet
+// ett steg upp eller ner bland de storlekar som går (expansionens riktning, se expdirs.js).
+function pickScope(G, n, platId, kind, step = 0) {
   const tier = platTier(PLATFORM[platId], yearOf(G.t));
   const opts = SCOPE_IDS.filter((id) => id !== 'aaa' && G.u.scopes.includes(id) && SCOPES[id].minTier <= tier && (kind !== 'expansion' || EXP_SCOPES.includes(id)));
   let best = opts[0];
   for (const id of opts) if (SCOPES[id].team <= n + 1) best = id;
+  if (step && best) best = opts[Math.max(0, Math.min(opts.length - 1, opts.indexOf(best) + step))];
   return best;
 }
 // Nytt spel: den kombination av tema och genre som passar bäst och inte upprepar de senaste spelen. Utan receptkunskap väljer teamet
@@ -124,9 +130,10 @@ const sequelTitle = (g) => {
   return base + ' ' + (n + 1);
 };
 
-// Teamets plan som underlag för buildJob (eller null om det inte går)
-export function planMission(G, team, kind, baseId) {
+// Teamets plan som underlag för buildJob (eller null om det inte går). o.dir är expansionens riktning (expdirs.js).
+export function planMission(G, team, kind, baseId, o = {}) {
   const n = membersOf(G, team).length;
+  const dir = kind === 'expansion' ? dirOf(o.dir) : null;
   const base = baseId ? G.games.find((g) => g.id === baseId) : null;
   const seed = `${team.id}:${team.exp || 0}:${G.t}`;
   const rng = seeded(hashStr(`${G.seed || 0}:auto:title:${seed}`));
@@ -134,7 +141,7 @@ export function planMission(G, team, kind, baseId) {
   let plat = base && G.licenses.includes(base.platform) && platformOpen(G, base.platform) ? base.platform : bestPlatform(G);
   if (!plat) return null;
   if (kind === 'expansion') plat = base.platform;
-  const scope = pickScope(G, n, plat, kind);
+  const scope = pickScope(G, n, plat, kind, dir ? dir.step : 0);
   if (!scope) return null;
   const cfg = { scope, audience: base && base.audience && G.u.aud.includes(base.audience) ? base.audience : 'everyone', platform: plat, live: false };
   if (kind === 'new') {
@@ -149,23 +156,32 @@ export function planMission(G, team, kind, baseId) {
   return cfg;
 }
 
-export const missionCost = (G, J) => Math.round((BUDGET_SHARE * expectedRevenue(G, J)) / 50) * 50;
+export const missionCost = (G, J) => Math.round((BUDGET_SHARE * expectedRevenue(G, J) * (J.dirCost || 1)) / 50) * 50;
+// Riktningen sätts på bygget: kostnaden, buggarna och Snacket om beskedet (se expdirs.js). Släppet läser J.dir.
+function setDir(J, dir) {
+  if (!dir || !J.expansionOf) return;
+  J.dir = dir;
+  J.dirCost = dirOf(dir).cost;
+}
 // Vad ett uppdrag skulle kosta (för visning innan det startas), eller null om teamet inte kan planera något
-export function missionQuote(G, team, kind, baseId) {
-  const cfg = planMission(G, team, kind, baseId);
+export function missionQuote(G, team, kind, baseId, o = {}) {
+  const cfg = planMission(G, team, kind, baseId, o);
   const J = cfg ? buildJob(G, cfg, membersOf(G, team).length) : null;
-  return J && typeof J !== 'string' ? { cost: missionCost(G, J), scope: J.scope, weeks: Math.round((J.devTicks + J.polishTicks) / TICKS_PER_WEEK) } : null;
+  if (!J || typeof J === 'string') return null;
+  setDir(J, o.dir);
+  return { cost: missionCost(G, J), scope: J.scope, weeks: Math.round((J.devTicks + J.polishTicks) / TICKS_PER_WEEK) };
 }
 
-export function startMission(G, id, kind, baseId) {
+export function startMission(G, id, kind, baseId, o = {}) {
   const team = teamById(G, id);
   if (!team || !MISSION_KINDS.includes(kind)) return false;
   const ok = canMission(G, team, kind, baseId);
   if (ok !== true) return tOf(G, ok);
-  const cfg = planMission(G, team, kind, baseId);
+  const cfg = planMission(G, team, kind, baseId, o);
   const mem = membersOf(G, team);
   const J = cfg ? buildJob(G, cfg, mem.length) : 'plan';
   if (typeof J === 'string') return tOf(G, 'plan');
+  setDir(J, kind === 'expansion' ? o.dir : null);
   const cost = missionCost(G, J);
   if (G.money < cost) return tr(G, 'err.money');
   spend(G, cost, 'autoteam');
@@ -177,10 +193,15 @@ export function startMission(G, id, kind, baseId) {
   J.crew = mem.map((s) => s.id);
   // arbetsledaren ger upp till 12 % mer tempo (efter hur skicklig ledaren är i förhållande till taket)
   J.autoMult = 0.82 + 0.02 * sp + 0.12 * Math.min(1, leadScore(lead) / (4 * skillCap(G)));
-  J.autoBug = 1 - 0.02 * sp;
+  J.autoBug = (1 - 0.02 * sp) * (J.dir ? dirOf(J.dir).bug : 1);
   J.crunch = false;
   if (sp >= 2 && !focusKnown(G, J.genre)) J.focus = defaultFocus(G, J.genre, J.genre2);
   team.mission = { kind, base: baseId || null, J, t0: G.t };
+  logBuild(G, J, 'start');
+  if (J.dir) {
+    logBuild(G, J, 'dir', DIR_IDS.indexOf(J.dir));
+    addTalk(J, 'dir', dirOf(J.dir).talk);
+  }
   for (const s of mem) s.away = true;
   return true;
 }
@@ -232,13 +253,10 @@ function finishMission(G, team) {
   note(G, 'news.missionDone', { team: teamName(team), title: game.title, v: game.score.toFixed(1) }, game.score >= 7.5 ? 'good' : game.score < 5 ? 'bad' : 'info');
 }
 
-// Vad ett team som fortsätter på egen hand tar sig an härnäst: en expansion, en uppföljare till ett spel som gått bra
-// (serien får inte bli för lång) eller ett nytt spel.
+// Vad ett team som fortsätter på egen hand tar sig an härnäst: en expansion (som tas upp på ett möte, se expmeet.js), en
+// uppföljare till ett spel som gått bra (serien får inte bli för lång) eller ett nytt spel.
 export function nextMission(G, team) {
-  const exp = eligibleBases(G, 'expansion').filter((g) => {
-    const last = Math.max(g.t, ...g.live.exps.map((id) => (G.games.find((x) => x.id === id) || { t: 0 }).t));
-    return G.t - last >= EXP_GAP && g.live.fresh <= 70;
-  });
+  const exp = eligibleBases(G, 'expansion').filter((g) => expansionDue(G, g) && !meetBlocked(G, g));
   if (exp.length) return ['expansion', exp.sort((a, b) => a.live.fresh - b.live.fresh)[0].id];
   const seq = eligibleBases(G, 'sequel').filter((g) => g.score >= 7 && G.t - g.t >= 30 && (g.chain || 0) < SEQ_MAX_CHAIN);
   if (seq.length) return ['sequel', seq.sort((a, b) => b.score - a.score)[0].id];
@@ -257,8 +275,14 @@ function idle(G, team) {
       if (weakest && trainTeam(G, team.id, weakest) === true) return;
     }
   }
-  if (!team.repeat) return;
+  if (!team.repeat || teamMeeting(G, team.id)) return;
   const [kind, base] = nextMission(G, team);
+  // en expansion startar inte av sig själv: teamet kallar till möte och spelaren väljer riktning
+  if (kind === 'expansion') {
+    const g = G.games.find((x) => x.id === base);
+    if (canMission(G, team, 'expansion', base) === true) openExpMeeting(G, team, g);
+    return;
+  }
   startMission(G, team.id, kind, base);
 }
 

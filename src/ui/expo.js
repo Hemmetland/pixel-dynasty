@@ -13,6 +13,7 @@ import { yearOf } from '../sim/const.js';
 import { HW_TYPES } from '../data/hardware.js';
 import { LOGOS } from './hud.js';
 import { talkText } from './hypeui.js';
+import { buildById } from '../sim/builds.js';
 
 const ICON = { dev: 'hammer', game: 'gamepad', hw: 'cpu', live: 'globe' };
 const COL = { dev: 'var(--hot)', game: 'var(--accent)', hw: 'var(--tech)', live: 'var(--good)' };
@@ -58,7 +59,7 @@ export function expoPrompt(app, G, p) {
     const desc = x.k === 'game' ? t('expo.i.game.d', { score: (G.games.find((g) => g.id === x.id)?.score ?? 0).toFixed(1), n: EXPO_LIFT_WEEKS }) : t('expo.i.' + x.k + '.d');
     const thumb = x.k === 'hw' ? `<span class="exi-ic" style="--c:${HW_TYPES[x.type]?.color || '#4aa8ff'}">${icon(HW_TYPES[x.type]?.ic || 'cpu')}</span>` : `<img class="cover" src="${coverURL(coverSpec(G, x), 1)}" width="36" height="48" alt="" draggable="false">`;
     return `<button class="choice exi${on ? ' sel' : ''}" data-act="ex-item" data-key="${itemKey(x)}" ${full ? 'disabled' : ''}>
-      <span class="row" style="gap:10px;width:100%">${thumb}<span style="flex:1;min-width:0"><b>${icon(ICON[x.k])} ${t('expo.i.' + x.k, { name: esc(L(x.name)) })}</b><span class="muted" style="display:block;font-size:12.5px;font-weight:500">${desc}</span>
+      <span class="row" style="gap:10px;width:100%">${thumb}<span style="flex:1;min-width:0"><b>${icon(ICON[x.k])} ${t('expo.i.' + x.k, { name: esc(L(x.name)) })}</b>${x.team ? `<span class="chip" style="margin-left:6px">${icon('team')}${esc(x.team)}</span>` : ''}<span class="muted" style="display:block;font-size:12.5px;font-weight:500">${desc}</span>
         <span class="row" style="gap:8px;margin-top:5px"><span class="faint" style="font-size:11px">${t('expo.strength')}</span><span style="flex:1;max-width:120px">${bar(Math.round(x.q * 100), COL[x.k], 'thin')}</span></span></span>
         <span class="exi-ck">${on ? icon('check') : ''}</span></span>
     </button>`;
@@ -68,7 +69,7 @@ export function expoPrompt(app, G, p) {
   const progRows = (fc) => {
     const pl = fc.plan;
     const dev = chosen().find((x) => x.k === 'dev');
-    const J = dev && G.job && G.job.kind === 'game' ? G.job : null;
+    const J = dev && buildById(G, dev.id) ? buildById(G, dev.id).J : null;
     const gs = G.games.slice(-3);
     const avg = gs.length ? (gs.reduce((a, g) => a + g.score, 0) / gs.length).toFixed(1) : '–';
     return PROG.map((g) => {
@@ -140,7 +141,7 @@ export function expoPrompt(app, G, p) {
 }
 
 const coverSpec = (G, x) => {
-  const g = x.k === 'dev' ? G.job : G.games.find((y) => y.id === x.id);
+  const g = x.k === 'dev' ? (buildById(G, x.id) || {}).J : G.games.find((y) => y.id === x.id);
   return g ? { id: g.id, title: g.title, topic: g.topic, genre: g.genre, platform: g.platform } : { id: x.id, title: x.name, topic: 'space', genre: 'action', platform: 'pc' };
 };
 

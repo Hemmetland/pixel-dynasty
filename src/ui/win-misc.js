@@ -15,23 +15,39 @@ import { pfocusOf, pfocusSeg } from './pfocus.js';
 import { saveGame, exportCode, importCode, freeSlot, useSlot, activeSlot } from '../core/store.js';
 import { devCode } from './devconsole.js';
 import { hypeRateText, hypePartsHTML } from './hypeui.js';
+import { buildsOf } from '../sim/builds.js';
 
 export const AIC = { a_game: 'gamepad', a_star: 'star', a_coin: 'money', a_house: 'building', a_team: 'team', a_heart: 'heart', a_flask: 'flask', a_aaa: 'rocket', a_trophy: 'trophy', a_brief: 'hammer', a_engine: 'cpu', a_clock: 'clock', a_globe: 'globe', a_bulb: 'bulb', a_crown: 'crown', a_disc: 'disc', a_chip: 'gpu' };
 const MIC = { press: 'mail', ads: 'book', tv: 'film', online: 'globe', influencer: 'heart' };
 
 // ── Marknadsföring under utveckling ──
+// Vilket bygge kampanjen gäller: spelarens projekt eller ett teams uppdrag (builds.js). Standard är spelarens, annars det första.
+const MK = { key: null };
+export const setMkTarget = (key) => {
+  MK.key = key;
+};
+const mkBuild = (G) => {
+  const bs = buildsOf(G);
+  return bs.find((b) => b.key === MK.key) || bs[0] || null;
+};
 regWin({
   id: 'marketing',
   icon: 'megaphone',
   color: 'var(--hot)',
   size: 'md',
   title: () => t('mk.title'),
-  sub: (G) => (G.job && G.job.kind === 'game' ? `${esc(G.job.title)} · ${t('stat.hype')} <b>${Math.round(G.job.hype)}</b>` : ''),
+  sub: (G) => {
+    const B = mkBuild(G);
+    return B ? `${esc(B.J.title)} · ${t('stat.hype')} <b>${Math.round(B.J.hype)}</b>` : '';
+  },
   render(G) {
-    const J = G.job;
-    if (!J || J.kind !== 'game') return `<div class="empty">${icon('megaphone')}<div>${t('mk.none')}</div></div>`;
-    const opts = marketingOptions(G);
-    return `<p class="hint" style="margin-bottom:14px">${t('mk.help')} ${t('mk.cap')}</p>
+    const bs = buildsOf(G);
+    const B = mkBuild(G);
+    if (!B) return `<div class="empty">${icon('megaphone')}<div>${t('mk.none')}</div></div>`;
+    const J = B.J;
+    const opts = marketingOptions(G, J);
+    const pick = bs.length > 1 ? `<div class="lbl" style="margin:0 0 6px">${t('mk.target')}</div><div class="row wrap" style="gap:6px;margin-bottom:14px">${bs.map((b) => `<button class="chip pick${b.key === B.key ? ' on' : ''}" data-act="mk-pick" data-key="${b.key}">${icon(b.team ? 'team' : 'gamepad')}${esc(b.J.title)}</button>`).join('')}</div>` : '';
+    return `${pick}<p class="hint" style="margin-bottom:14px">${t('mk.help')} ${t('mk.cap')}</p>
       <div class="bar tall${J.hype > 100 ? ' over' : ''}" style="--c:var(--hot);margin-bottom:14px"><i style="width:${Math.min(100, J.hype)}%"></i></div>
       <div class="card hy-card"><div class="row" style="gap:10px;align-items:center;margin-bottom:6px"><span class="exp-vi">${icon('fire')}</span><div style="flex:1;min-width:0"><b>${t('hy.title')}</b><div class="faint" style="font-size:12.5px">${hypeRateText(G, J)}</div></div></div>${hypePartsHTML(G, J)}<p class="hint" style="margin:8px 0 0">${t('hy.help')}</p></div>
       <div class="col" style="gap:10px">${opts
@@ -43,9 +59,14 @@ regWin({
         .join('')}</div>`;
   },
 });
+act('mk-pick', (el) => {
+  MK.key = el.dataset.key;
+  UI.refresh();
+});
 act('mk-go', (el) => {
   const G = UI.app.G;
-  const r = launchMarketing(G, el.dataset.id);
+  const B = mkBuild(G);
+  const r = B ? launchMarketing(G, el.dataset.id, B.J) : false;
   if (r !== true) errToast(r);
   else toast(t('mk.done', { name: `<b>${L(MKT[el.dataset.id].name)}</b>` }), 'good');
   UI.refresh();
@@ -158,7 +179,7 @@ regWin({
     const grp = (k, body) => `<div class="mgrp"><div class="lbl">${t('menu.g.' + k)}</div><div class="mgrid">${body}</div></div>`;
     return `<button class="mresume" data-act="mn-resume">${icon('play')}<span>${t('menu.resume')}</span><kbd>Esc</kbd></button>
       ${grp('game', c('mn-save', 'save', 'menu.save', 'var(--good)') + c('mn-slots', 'folder', 'menu.slots', 'var(--gold)'))}
-      ${grp('studio', c('mn-news', 'bell', 'menu.news', 'var(--design)', un ? `<i class="badge">${un > 9 ? '9+' : un}</i>` : '') + c('mn-ach', 'award', 'menu.ach', 'var(--fans)') + c('mn-rivals', 'target', 'menu.rivals', 'var(--hot)') + c('mn-expo', 'megaphone', 'menu.expo', 'var(--gold)'))}
+      ${grp('studio', c('mn-news', 'bell', 'menu.news', 'var(--design)', un ? `<i class="badge">${un > 9 ? '9+' : un}</i>` : '') + c('mn-ach', 'award', 'menu.ach', 'var(--fans)') + c('mn-rivals', 'target', 'menu.rivals', 'var(--hot)') + c('mn-builds', 'hammer', 'menu.builds', 'var(--hot)') + c('mn-expo', 'megaphone', 'menu.expo', 'var(--gold)'))}
       ${grp('system', c('mn-set', 'settings', 'menu.settings', 'var(--accent)') + c('mn-help', 'info', 'menu.help', 'var(--rp)') + c('mn-title', 'back', 'menu.title', 'var(--bug)'))}`;
   },
 });
@@ -173,6 +194,7 @@ act('mn-news', () => UI.open('news', null, { force: true }));
 act('mn-ach', () => UI.open('achievements', null, { force: true }));
 act('mn-rivals', () => UI.open('rivals', null, { force: true }));
 act('mn-expo', () => UI.open('expo', null, { force: true }));
+act('mn-builds', () => UI.open('builds', null, { force: true }));
 act('mn-set', () => UI.open('settings', null, { force: true }));
 act('mn-help', () => UI.open('help', null, { force: true }));
 act('mn-title', () => {

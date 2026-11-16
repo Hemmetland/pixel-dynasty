@@ -11,6 +11,7 @@ import './win-misc.js';
 import './win-prest.js';
 import './win-rivals.js';
 import './win-expo.js';
+import './win-builds.js';
 import './win-overview.js';
 import './win-hardware.js';
 import './slots.js';

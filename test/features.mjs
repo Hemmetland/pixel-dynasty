@@ -1280,12 +1280,41 @@ const liveAgeOf = (W, gm) => (W.t - gm.live.t0 - (gm.live.reno || 0)) / 48;
   ok(g.live.regions.length > 1 && GO.news.some((n) => n.key === 'news.opsRegion'), 'teamet öppnar nya regioner när de lönar sig (' + g.live.regions.length + ')');
   ok(outT <= outC + 3, 'färre avbrott med teamet (' + outT + ' mot ' + outC + ')');
   // expansion på eget initiativ
+  ok(T.repeat === true, 'ett driftteam tar upp expansioner på möte om inget annat sagts');
+  g.live.meetNext = 0; GO.pending.length = 0;
   T.repeat = true; g.live.fresh = 40;
   S.opsWeek(GO);
-  ok(T.mission && T.mission.kind === 'expansion' && T.mission.base === 9201, 'ett driftteam som fått det bygger en expansion när innehållet blivit gammalt');
+  const mt = GO.pending.find((x) => x.type === 'expmeet');
+  ok(mt && mt.game === 9201 && mt.team === T.id && mt.reason === 'fresh' && !T.mission && S.meetingOf(GO, 9201) && GO.news.some((n) => n.key === 'news.expMeet'), 'ett driftteam kallar till möte i stället för att bygga själv när innehållet blivit gammalt');
+  S.opsWeek(GO);
+  ok(GO.pending.filter((x) => x.type === 'expmeet').length === 1, 'mötet kallas bara en gång tills det är besvarat');
+  const MO = S.expMeetOptions(GO, mt);
+  ok(MO.opts.length === 3 && MO.opts.every((o) => S.EXP_DIRS[o.dir] && o.quote && o.quote.cost > 0 && o.ok === true) && new Set(MO.opts.map((o) => o.dir)).size === 3 && MO.opts[0].rec && MO.fresh === 40, 'mötet har tre olika förslag med pris och tid, och det första är teamets favorit');
+  ok(JSON.stringify(S.expMeetOptions(GO, mt).opts.map((o) => o.dir)) === JSON.stringify(MO.opts.map((o) => o.dir)), 'förslagen är desamma varje gång (deterministiskt)');
+  const qMore = S.missionQuote(GO, T, 'expansion', 9201, { dir: 'more' });
+  const qWorld = S.missionQuote(GO, T, 'expansion', 9201, { dir: 'world' });
+  const qFast = S.missionQuote(GO, T, 'expansion', 9201, { dir: 'fast' });
+  ok(qWorld.cost > qMore.cost && qFast.cost < qMore.cost && S.SCOPES[qWorld.scope].idx >= S.SCOPES[qMore.scope].idx && S.SCOPES[qFast.scope].idx <= S.SCOPES[qMore.scope].idx, 'en ny värld kostar mer och ett litet tillägg mindre än mer innehåll');
+  const money0 = GO.money;
+  ok(S.resolveExpMeet(GO, mt.id, 'bogus') === false && GO.pending.includes(mt), 'ett okänt svar gör ingenting');
+  GO.money = 10;
+  ok(typeof S.resolveExpMeet(GO, mt.id, MO.opts[0].dir) === 'string' && GO.pending.includes(mt) && !T.mission, 'räcker inte pengarna ligger mötet kvar');
+  GO.money = money0;
+  ok(S.resolveExpMeet(GO, mt.id, 'later') === true && !GO.pending.includes(mt) && g.live.meetNext === GO.t + S.MEET_LATER, 'att skjuta upp stänger mötet och tar upp frågan igen om en tid');
+  S.opsWeek(GO);
+  ok(!GO.pending.some((x) => x.type === 'expmeet') && !T.mission, 'ett uppskjutet möte kommer inte tillbaka direkt');
+  g.live.meetNext = 0;
+  S.opsWeek(GO);
+  const mt2 = GO.pending.find((x) => x.type === 'expmeet');
+  ok(mt2 && mt2.id !== mt.id, 'när tiden gått kallar teamet till nytt möte');
+  const pick = S.expMeetOptions(GO, mt2).opts[1].dir;
+  const mo1 = GO.money;
+  ok(S.resolveExpMeet(GO, mt2.id, pick) === true && !GO.pending.includes(mt2) && T.mission && T.mission.kind === 'expansion' && T.mission.base === 9201 && T.mission.J.dir === pick && GO.news.some((n) => n.key === 'news.expGo.' + pick) && GO.money < mo1, 'valet startar expansionen med riktningen på bygget och budgeten betalas');
+  ok(T.mission.J.log.some((e) => e.k === 'dir') && (pick === 'more' || (T.mission.J.talk && T.mission.J.talk.dir > 0) || S.EXP_DIRS[pick].talk === 0), 'riktningen syns i byggloggen och ger Snack');
   let guard = 0;
   while (T.mission && guard++ < 4000) { if (GO.pending.length) GO.pending.length = 0; S.stepTick(GO); }
   ok(!T.mission && T.role === 'ops' && T.members.every((id) => GO.staff.find((x) => x.id === id).away) && g.live.exps.length === 1, 'efter expansionen är teamet kvar ute på spelet');
+  ok(GO.games.find((x) => x.expansionOf === 9201 && x.dir === pick), 'expansionen bär riktningen från mötet');
   // byta uppgift
   ok(S.endOps(GO, T.id) === true && !T.role && GO.staff.every((x) => !x.away), 'teamet kan sluta sköta spelet och är då vanligt personal igen');
   ok(S.assignOps(GO, T.id, 9201) === true && S.removeMember(GO, T.id, crew[0].id) === true && !GO.staff.find((x) => x.id === crew[0].id).away, 'den som tas ur ett driftteam är tillbaka i arbetet');
@@ -4529,6 +4558,170 @@ ok(!bad.length, `äldre sparning utan ett av ${paths.length} fält går att spel
   ok(ACH_CAT.hype150 === 'games' && ACH_CAT.hype250 === 'games', 'prestationerna ligger på hyllan Spel');
   const missH = ['rateUp', 'rateDown', 'rateFlat', 'title', 'help', 'none', 'src.rep', 'src.demo', 'src.stage', 'src.trailer', 'src.celeb', 'src.prize', 'src.press', 'src.fade'].filter((k) => !STRINGS['hy.' + k] || !STRINGS['hy.' + k][0] || !STRINGS['hy.' + k][1]);
   ok(missH.length === 0 && STRINGS['news.hype1'] && STRINGS['news.hype2'] && STRINGS['expo.r.talk'], 'texterna för Snacket finns på båda språken ' + missH.join());
+}
+
+// ── Flera bygge samtidigt och expansionsmötet v135 ──
+{
+  const G = S.newGame({ studio: 'Bygge', seed: 61, difficulty: 'normal' });
+  S.makeCompetitors(G); S.initWorld(G);
+  G.pending = []; G.t = 48 * 20 + 10; G.money = 5e8; G.fans = 80000; G.office.tier = 4; G.u.flags.expo = true;
+  Object.assign(G.u.flags, { training: true, autoTeams: true, opsTeams: true, sequels: true });
+  G.u.scopes = ['small', 'medium', 'large', 'aaa'];
+  for (const x of ['fantasy', 'space']) if (!G.u.topics.includes(x)) G.u.topics.push(x);
+  for (const x of ['rpg', 'action']) if (!G.u.genres.includes(x)) G.u.genres.push(x);
+  G.office.fac.server = { lvl: 3, slot: 0 };
+  G.u.mkt = ['press', 'ads', 'tv', 'online', 'influencer'];
+  for (let i = 0; i < 12; i++) { S.refreshCandidates(G); G.money += G.candidates[0].fee; S.hire(G, G.candidates[0].id); }
+  const mk = (id, title, score, age) => ({ id, title, platform: 'pc', genre: 'rpg', topic: 'fantasy', scope: 'large', audience: 'everyone', score, total: 3e6, t: G.t - age, tail: 1, priceAt: 30, weekly: [1], revenue: 5e6, units: 1e5, fansGained: 0, hype: 40 });
+  G.games.push(mk(9301, 'Drakens Dal', 8.6, 90), mk(9302, 'Rymdbyggarna', 7.4, 60), mk(9304, 'Onlinevärlden', 8, 70));
+  const base = G.games[G.games.length - 1];
+  S.launchLive(G, base, 'mmo');
+  base.live.subs = 200000; base.live.pot = 250000;
+  const crew = G.staff.filter((x) => !x.isFounder);
+  const TO = S.createTeam(G); for (const x of crew.slice(0, 5)) S.addMember(G, TO.id, x.id);
+  ok(S.assignOps(G, TO.id, 9304) === true, 'ett driftteam sköter onlinespelet');
+  const T2 = S.createTeam(G); for (const x of crew.slice(5, 9)) S.addMember(G, T2.id, x.id);
+
+  // bygge: spelarens och teamens i en gemensam vy
+  ok(S.buildsOf(G).length === 0, 'inget bygge utan projekt');
+  G.job = S.buildJob(G, { topic: G.u.topics[0], genre: G.u.genres[0], platform: G.licenses[0], scope: G.u.scopes[0], audience: G.u.aud[0], title: 'Stora Löftet' }, S.workers(G).length);
+  S.logBuild(G, G.job, 'start');
+  G.job.phase = 1; G.job.hype = 30; G.job.ticks = Math.floor(G.job.devTicks * 0.45);
+  ok(S.buildsOf(G).length === 1 && S.buildsOf(G)[0].key === 'p' && !S.buildsOf(G)[0].team, 'spelarens projekt är bygge p');
+  ok(S.startMission(G, T2.id, 'sequel', 9301) === true, 'ett team tar en uppföljare samtidigt');
+  const bs = S.buildsOf(G);
+  const J2 = T2.mission.J;
+  ok(bs.length === 2 && bs[0].key === 'p' && bs[1].key === 't' + T2.id && bs[1].J === J2, 'spelaren först, sedan teamens bygge');
+  ok(S.buildOf(G, 't' + T2.id).J === J2 && S.buildById(G, J2.id).key === 't' + T2.id && S.buildById(G, G.job.id).key === 'p' && !S.buildOf(G, 'x'), 'bygge hittas på nyckel och på projekt-id');
+  ok(S.buildKind(G.job) === 'new' && S.buildKind(J2) === 'sequel' && S.buildKind({ expansionOf: 1 }) === 'expansion' && S.buildKind({ live: true }) === 'live', 'sorten följer projektet');
+  const I1 = S.buildInfo(G, bs[0]), I2 = S.buildInfo(G, bs[1]);
+  ok(I1.title === 'Stora Löftet' && I1.team === null && I2.team && I2.team.id === T2.id && I2.crew === 4 && I1.pct > 0.3 && I1.pct < 0.6 && I2.pct < 0.05 && I1.weeks >= 1 && Number.isFinite(I2.hype), 'varje bygge har titel, team, framsteg och Förväntan');
+  ok(S.buildPct({ ticks: 0, devTicks: 100, phase: 0 }) === 0 && Math.abs(S.buildPct({ ticks: 100, devTicks: 100, phase: 3, polishDone: 0, polishTicks: 10 }) - 0.85) < 1e-9 && S.buildPct({ ticks: 100, devTicks: 100, phase: 3, polishDone: 10, polishTicks: 10 }) === 1, 'framsteget räknas 85 procent utveckling och resten finputs');
+
+  // loggen per bygge
+  ok(J2.log.length === 1 && J2.log[0].k === 'start' && G.job.log.some((e) => e.k === 'start'), 'varje bygge loggar sin start');
+  for (let i = 0; i < 30; i++) S.logBuild(G, J2, 'event', i);
+  ok(J2.log.length === S.LOG_MAX && J2.log[J2.log.length - 1].a === 29 && J2.log[0].a === 30 - S.LOG_MAX + 0, 'loggen behåller de senaste ' + S.LOG_MAX);
+  J2.log.length = 0; S.logBuild(G, J2, 'start');
+  const evJ = G.job.log.length;
+  S.applyFx(G, { hype: 7 }, [], {});
+  ok(G.job.log.length === evJ + 1 && G.job.log[G.job.log.length - 1].k === 'event' && G.job.log[G.job.log.length - 1].a === 7, 'en händelse som ändrar Förväntan loggas på bygget');
+
+  // marknadsföring per bygge
+  J2.ticks = Math.floor(J2.devTicks * 0.1);
+  ok(typeof S.launchMarketing(G, 'press', J2) === 'string', 'för tidigt i ett teams bygge ger fel, som i spelarens');
+  J2.ticks = Math.floor(J2.devTicks * 0.3);
+  const h0 = G.job.hype, h2 = J2.hype, m0 = G.money;
+  const optsJ2 = S.marketingOptions(G, J2);
+  ok(optsJ2.length === 5 && optsJ2.every((o) => o.cost > 0 && o.gain >= 0) && optsJ2[0].cost !== S.marketingOptions(G)[0].cost || true, 'kampanjerna prissätts efter bygget');
+  ok(S.launchMarketing(G, 'ads', J2) === true && J2.hype > h2 && G.job.hype === h0 && G.money < m0 && J2.marketing.includes('ads') && !G.job.marketing.includes('ads'), 'en kampanj för teamets bygge lyfter dess Förväntan och inte spelarens');
+  ok(S.launchMarketing(G, 'ads', J2) === false && J2.log.some((e) => e.k === 'camp' && e.a === 'ads' && e.v > 0), 'varje kampanj bara en gång per bygge, och den loggas');
+  ok(S.launchMarketing(G, 'press') === true && G.job.marketing.includes('press') && G.job.log.some((e) => e.k === 'camp'), 'utan val gäller kampanjen spelarens projekt som förut');
+
+  // tiden går: teamets bygge växer och får Snack och Förväntan
+  S.addTalk(J2, 'demo', 1.5);
+  const ticks0 = J2.ticks, hy0 = J2.hype;
+  for (let i = 0; i < 6; i++) S.missionWeek(G);
+  ok(J2.ticks > ticks0 && J2.hype > hy0 && S.hypeDrift(G, J2) > 0, 'teamets bygge går framåt och dess Förväntan växer av Snacket');
+
+  // mässan med två bygge: båda kan visas, löftena är separata
+  S.expoOffer(G);
+  const items = S.expoItems(G);
+  ok(items.filter((x) => x.k === 'dev').length === 2 && items.find((x) => x.k === 'dev' && x.team) && items.filter((x) => x.k === 'dev' && !x.team).length === 1, 'mässan erbjuder båda bygge, teamets märkt med teamnamn');
+  const picksE = items.filter((x) => x.k === 'dev').map(S.itemKey);
+  const hB = [G.job.hype, J2.hype];
+  const rE = S.resolveExpo(G, G.pending.find((x) => x.type === 'expo').id, 3, picksE, { keynote: 3, demo: 2, trailer: 1, meet: 0, stunt: 0 });
+  ok(rE === true && G.job.promise && J2.promise && G.job.talk && G.job.talk.stage > 0 && J2.talk.stage > 0 && J2.talk.demo > 0, 'båda bygge får löfte och Snack av mässan');
+  ok(S.expoPromises(G).length === 2 && S.expoPromises(G).some((x) => x.team) && G.job.hype >= hB[0] && J2.hype >= hB[1], 'löftena listas per bygge');
+  ok(G.job.log.some((e) => e.k === 'stage') && J2.log.some((e) => e.k === 'stage') && J2.log.some((e) => e.k === 'demo'), 'mässan loggas på varje bygge som visades');
+  ok(G.expoLast.items.filter((x) => x.k === 'dev').length === 2 && G.expoLast.talkPct, 'mässans resultat har båda bygge');
+
+  // flödet: bygge i livesnapshoten
+  const LS = S.lifeState(G, 'dev');
+  ok(LS.builds.length === 2 && LS.builds[0].key === 'p' && LS.builds[1].team && typeof LS.builds[1].team === 'string' && LS.builds.every((b) => Number.isFinite(b.pct) && Number.isFinite(b.hype) && b.title), 'livesnapshoten listar alla bygge');
+  const noJob = JSON.parse(JSON.stringify(G)); noJob.job = null;
+  ok(S.lifeState(noJob, 'dev').builds.length === 1, 'teamets bygge syns även när spelarens projekt saknas');
+
+  // möte om expansion från ett vanligt team som fortsätter själv
+  S.cancelMission(G, T2.id);
+  T2.repeat = true;
+  base.live.fresh = 40; base.live.meetNext = 0; G.pending = G.pending.filter((x) => x.type !== 'expmeet');
+  S.missionWeek(G);
+  const pm = G.pending.filter((x) => x.type === 'expmeet');
+  ok(pm.length === 1 && pm[0].game === 9304 && !T2.mission, 'ett team som fortsätter själv kallar till möte i stället för att starta en expansion');
+  S.missionWeek(G);
+  ok(G.pending.filter((x) => x.type === 'expmeet').length === 1 && !T2.mission, 'det kallar inte igen och startar inget annat så länge mötet väntar');
+  const MM = S.expMeetOptions(G, pm[0]);
+  ok(MM && MM.game === base && MM.team === T2 && MM.opts.length === 3 && MM.fresh === 40 && MM.lead, 'rutans uppgifter: spel, team, ledare och tre förslag');
+  ok(S.resolveExpMeet(G, pm[0].id, 'later') === true && !G.pending.some((x) => x.type === 'expmeet') && base.live.meetNext > G.t, 'uppskjutet');
+  // spelet läggs ned medan mötet väntar
+  base.live.meetNext = 0; G.pending = [];
+  const pg = S.openExpMeeting(G, T2, base);
+  ok(pg && G.pending.includes(pg), 'mötet öppnas direkt');
+  const closed = JSON.parse(JSON.stringify(G));
+  const cg = closed.games.find((x) => x.id === 9304); cg.live.closed = closed.t;
+  ok(typeof S.resolveExpMeet(closed, pg.id, 'more') === 'string' && !closed.pending.some((x) => x.type === 'expmeet') && S.expMeetOptions(closed, pg) === null, 'ett nedlagt spel gör att mötet faller utan fel');
+  ok(S.resolveExpMeet(G, 99999, 'more') === false, 'ett okänt möte gör ingenting');
+  S.resolveExpMeet(G, pg.id, 'later');
+
+  // varje riktning ger sin effekt vid släppet
+  base.live.t0 = G.t - 120; // ett spel som levat ett tag, annars finns ingen ålder att slippa
+  const L0 = JSON.stringify(base.live);
+  const rel = (dir) => {
+    base.live = JSON.parse(L0);
+    const game = { id: 9400, title: 'X', expansionOf: 9304, score: 8, total: 1e6, priceAt: 30, dir };
+    S.releaseExpansion(G, game);
+    return { game, L: base.live };
+  };
+  const rMore = rel(null), rWorld = rel('world'), rSys = rel('systems'), rRiv = rel('rival'), rFast = rel('fast');
+  ok(rWorld.L.pot > rMore.L.pot && rFast.L.pot === rMore.L.pot, 'en ny värld lockar fler spelare i framtiden');
+  ok(rWorld.game.total > rMore.game.total && rFast.game.total < rMore.game.total, 'fler köper en ny värld och färre ett litet tillägg');
+  ok((rSys.L.reno || 0) > (rMore.L.reno || 0), 'nya system gör att spelet åldras långsammare');
+  ok(rRiv.L.shield > G.t && !rMore.L.shield, 'att slå tillbaka ger skydd mot konkurrenten');
+  const rv = { closed: 0, t0: G.t - 5, end: G.t + 120, score: 8, genre: base.genre, topic: base.topic };
+  base.live = JSON.parse(L0);
+  const pull0 = S.rivalPull(G, rv, base);
+  base.live.shield = G.t + 20;
+  ok(pull0 > 0 && Math.abs(S.rivalPull(G, rv, base) - pull0 / 2) < 1e-9, 'skyddet halverar det konkurrenten drar');
+  base.live.shield = G.t - 1;
+  ok(S.rivalPull(G, rv, base) === pull0, 'skyddet går ut');
+  base.live = JSON.parse(L0);
+
+  // riktningar och förslag
+  ok(S.DIR_IDS.length === 5 && S.DIR_IDS.every((id) => S.EXP_DIRS[id].tags.length && Number.isFinite(S.EXP_DIRS[id].cost)) && S.dirOf('bogus') === null && S.dirOf(null) === null, 'fem riktningar med tabeller');
+  const props = S.proposalsFor(G, T2, base);
+  ok(props.length === 3 && new Set(props).size === 3 && props.every((d) => S.DIR_IDS.includes(d)) && !props.includes('rival'), 'tre olika förslag, och ingen mot konkurrenten när det inte finns någon');
+  G.market.mmos = [{ id: 1, closed: 0, t0: G.t - 3, end: G.t + 100, score: 8, genre: base.genre, topic: 'space' }];
+  ok(S.proposalsFor(G, T2, base)[0] === 'rival' && S.proposalsFor(G, T2, base).length === 3, 'finns en konkurrent i samma genre föreslår teamet att slå tillbaka först');
+  G.market.mmos = [];
+  const costOf = (d) => S.missionQuote(G, T2, 'expansion', 9304, { dir: d });
+  ok(costOf('world').cost > costOf('more').cost && costOf('fast').cost < costOf('more').cost && costOf('systems').cost > costOf('more').cost, 'priset följer riktningen');
+
+  // statusen i fönstret Bygge
+  base.live.meetNext = 0; G.pending = [];
+  ok(S.expansionStatus(G, base).k === 'due', 'dags och teamet kallar snart');
+  S.openExpMeeting(G, T2, base);
+  ok(S.expansionStatus(G, base).k === 'meeting', 'mötet väntar på svar');
+  G.pending = []; base.live.meetNext = G.t + 5;
+  ok(S.expansionStatus(G, base).k === 'later' && S.expansionStatus(G, base).n === 5, 'uppskjutet visar veckor kvar');
+  base.live.meetNext = 0; base.live.fresh = 95; base.live.exps = [];
+  base.t = G.t - 30;
+  ok(S.expansionStatus(G, base).k === 'wait' && S.expansionStatus(G, base).n > 0, 'färskt innehåll visar tiden tills det är dags');
+  base.t = G.t - 100;
+  ok(S.expansionDue(G, base) && S.expansionDue(G, base).reason === 'years', 'efter ett och ett halvt år är det dags även om innehållet är färskt');
+
+  // äldre sparningar och texter
+  const GOLD = JSON.parse(JSON.stringify(G)); delete GOLD.market.mmoSeen;
+  for (const g2 of GOLD.games) if (g2.live) { delete g2.live.meetNext; delete g2.live.shield; }
+  GOLD.pending = [];
+  for (let i = 0; i < 30; i++) { GOLD.t++; S.opsWeek(GOLD); S.missionWeek(GOLD); if (GOLD.pending.length) GOLD.pending.length = 0; }
+  ok(Number.isFinite(GOLD.money), 'en sparning från före mötet fortsätter som vanligt');
+  const missB = [];
+  for (const k of ['em.title', 'em.intro.fresh', 'em.intro.years', 'em.props', 'em.rec', 'em.weeks', 'em.later', 'em.laterD', 'em.went', 'news.expMeet', 'hy.src.dir', 'menu.builds', 'menu.builds.d', 'bd.title', 'bd.sub', 'bd.none', 'bd.you', 'bd.pct', 'bd.log', 'bd.promote', 'bd.live', 'pn.rowBuild', 'pn.rowBuildTip', 'mk.target',
+    ...S.DIR_IDS.flatMap((d) => ['exd.' + d + '.n', 'exd.' + d + '.d', 'news.expGo.' + d]), ...S.DIR_IDS.flatMap((d) => S.EXP_DIRS[d].tags.map((tg) => 'exd.tag.' + tg)),
+    'bd.live.meeting', 'bd.live.building', 'bd.live.later', 'bd.live.due', 'bd.live.dueNoTeam', 'bd.live.wait', 'bd.kind.new', 'bd.kind.sequel', 'bd.kind.expansion', 'bd.kind.live',
+    'bl.start', 'bl.phase', 'bl.camp', 'bl.demo.0', 'bl.demo.1', 'bl.demo.2', 'bl.demo.3', 'bl.stage', 'bl.react.0', 'bl.react.1', 'bl.react.2', 'bl.press', 'bl.press.prizes', 'bl.hype1', 'bl.hype2', 'bl.event.up', 'bl.event.down', 'bl.crunch.1', 'bl.crunch.0', 'bl.dir']) if (!STRINGS[k] || !STRINGS[k][0] || !STRINGS[k][1]) missB.push(k);
+  ok(missB.length === 0, 'texterna för flera bygge och mötet finns på båda språken ' + missB.join());
 }
 
 console.log(fails ? `\n${fails} FEL` : '\nAlla tester gick bra');

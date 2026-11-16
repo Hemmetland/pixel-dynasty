@@ -8,7 +8,7 @@ const dec = (v) => {
   return lang === 'sv' ? s.replace('.', ',') : s;
 };
 const signed = (v) => (v < 0 ? '−' : '+') + dec(v);
-const SRC = ['rep', 'demo', 'stage', 'trailer', 'celeb', 'prize', 'press', 'fade'];
+const SRC = ['rep', 'demo', 'stage', 'trailer', 'celeb', 'prize', 'press', 'dir', 'fade'];
 const srcName = (k) => (SRC.includes(k) ? t('hy.src.' + k) : k);
 
 // Pilen vid siffran: växer märkbart eller faller (den sakta nedgången av sig själv visas inte)

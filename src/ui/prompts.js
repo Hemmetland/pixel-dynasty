@@ -14,6 +14,7 @@ import { pfocusOf } from './pfocus.js';
 import { resolveEvent, previewFx, fxBlockReason } from '../sim/events.js';
 import { AWARD_CATS } from '../sim/awards.js';
 import { expoPrompt } from './expo.js';
+import { expMeetPrompt } from './expmeet.js';
 import { lang, Lf } from '../core/i18n.js';
 import { fmtNum, clamp } from '../core/util.js';
 import { focusHTML, bindFocus } from './focus.js';
@@ -49,7 +50,7 @@ export function showPrompt(app, p) {
     UI.closeModal();
     app.menuChanged();
   };
-  const handler = { phase: phasePrompt, report: reportPrompt, event: eventPrompt, award: awardPrompt, expo: expoPrompt, year: yearPrompt, gameover: gameoverPrompt, ending: endingPrompt, bailout: bailoutPrompt }[p.type];
+  const handler = { phase: phasePrompt, report: reportPrompt, event: eventPrompt, award: awardPrompt, expo: expoPrompt, expmeet: expMeetPrompt, year: yearPrompt, gameover: gameoverPrompt, ending: endingPrompt, bailout: bailoutPrompt }[p.type];
   if (!handler) {
     finish();
     return;

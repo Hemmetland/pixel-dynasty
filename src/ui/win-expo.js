@@ -5,7 +5,7 @@ import { esc, icon, t, UI, act, regWin, MONTHS } from './core.js';
 import { lang } from '../core/i18n.js';
 import { fmtFull, fmtNum } from '../core/util.js';
 import { dateOf } from '../sim/const.js';
-import { expoState, nextExpoT, KEYNOTES } from '../sim/exposhow.js';
+import { expoState, expoPromises, nextExpoT, KEYNOTES } from '../sim/exposhow.js';
 import { showHall, verdictHTML } from './expo.js';
 
 const BOOTH_KEY = [null, 'expo.o1', 'expo.o2', 'expo.o3'];
@@ -28,13 +28,17 @@ function nextCard(G, S) {
 }
 
 function promiseCard(G, S) {
-  const P = S.promise;
-  if (!P) return `<div class="card"><p class="hint" style="margin:0">${icon('info')} ${t('ex.promiseNone')}</p></div>`;
+  const list = expoPromises(G);
+  if (!list.length) return `<div class="card"><p class="hint" style="margin:0">${icon('info')} ${t('ex.promiseNone')}</p></div>`;
   const gs = G.games.slice(-3);
   const avg = gs.length ? (gs.reduce((a, g) => a + g.score, 0) / gs.length).toFixed(1) : '–';
-  const K = KEYNOTES[P.tone];
-  return `<div class="card" style="--c:var(--gold)"><div class="row" style="gap:10px;align-items:center;flex-wrap:wrap"><span class="exp-vi">${icon('megaphone')}</span><b>${esc(P.title)}</b><span class="tag" style="--c:var(--gold)">${t('ex.promiseBar', { bar: P.bar.toFixed(1) })}</span><span class="chip">${t(TONE_KEY[P.tone])}</span></div>
+  return list
+    .map((P) => {
+      const K = KEYNOTES[P.tone];
+      return `<div class="card" style="--c:var(--gold);margin-bottom:8px"><div class="row" style="gap:10px;align-items:center;flex-wrap:wrap"><span class="exp-vi">${icon('megaphone')}</span><b>${esc(P.title)}</b>${P.team ? `<span class="chip">${icon('team')}${esc(P.team)}</span>` : ''}<span class="tag" style="--c:var(--gold)">${t('ex.promiseBar', { bar: P.bar.toFixed(1) })}</span><span class="chip">${t(TONE_KEY[P.tone])}</span></div>
     <p class="hint" style="margin:8px 0 0">${t('ex.promiseText', { bar: P.bar.toFixed(1), avg, pen: Math.round(K.pen * 100), keep: Math.round(K.keep * 100) })}</p></div>`;
+    })
+    .join('');
 }
 
 function lastCard(G, S) {

@@ -3,7 +3,8 @@
 // spelet behöver (fler spelare kräver fler händer), hur skickliga de är, arbetsledaren och rutinen de byggt upp av att ha sköt
 // spelet i flera år. Med full effekt blir innehållet gammalt långsammare, avbrotten färre, spelet åldras långsammare och
 // uppdateringar, evenemang och säsonger blir billigare (se TM_* i live.js). Teamet startar också uppdateringar, evenemang,
-// säsonger och nya regioner på egen hand, och bygger expansioner om teamet har fått den inställningen (se autoteam.js).
+// säsonger och nya regioner på egen hand. När det är dags för en expansion kallar teamet till möte och spelaren väljer
+// riktning (expmeet.js); bygget görs sedan som ett uppdrag (autoteam.js).
 // Allt är deterministiskt: teamet drar inget ur G.rng, så spel utan driftteam har samma slumpföljd som förut.
 import { clamp } from '../core/util.js';
 import { note } from './news.js';
@@ -11,7 +12,8 @@ import { tr } from './tr.js';
 import { skillCap } from './people.js';
 import { teamsOf, teamById, teamName, membersOf, leadOf, bestLead, leadScore, endRole, setOut, seatFree, deskFree } from './teams.js';
 import { liveGames, payBase, regionsOpen, regionGain, liveRegionCost, startLiveRegion, eventReadyIn, liveEventCost, startLiveEvent, AUTO_BUFFER, RENO_FLOOR, TM_RENO } from './live.js';
-import { autoOpen, startMission, canMission, EXP_GAP } from './autoteam.js';
+import { autoOpen, canMission } from './autoteam.js';
+import { expansionDue, meetBlocked, openExpMeeting } from './expmeet.js';
 
 export const OPS_MIN = 2;
 export const RUTIN_WEEKS = 24; // veckor på samma spel per steg i rutin
@@ -70,6 +72,7 @@ export function assignOps(G, id, gameId) {
   const g = G.games.find((x) => x.id === gameId);
   team.role = 'ops';
   team.target = gameId;
+  if (team.repeat === undefined) team.repeat = true; // teamet tar upp expansioner på möte (kan stängas av)
   if (!leadOf(G, team)) team.lead = bestLead(G, team).id;
   setOut(membersOf(G, team), true);
   note(G, 'news.opsStart', { team: teamName(team), title: g.title }, 'info', true);
@@ -115,10 +118,11 @@ function autoOps(G, team, g) {
     }
     if (best && startLiveRegion(G, g.id, best) === true) note(G, 'news.opsRegion', { team: teamName(team), title: g.title }, 'info', true);
   }
-  // en expansion när innehållet blivit gammalt och det gått en tid sedan senaste
-  if (team.repeat && !team.mission && autoOpen(G) && L.fresh <= 70 && membersOf(G, team).length >= 3) {
-    const last = Math.max(g.t, ...L.exps.map((id) => (G.games.find((x) => x.id === id) || { t: 0 }).t));
-    if (G.t - last >= EXP_GAP && canMission(G, team, 'expansion', g.id) === true) startMission(G, team.id, 'expansion', g.id);
+  // en expansion när innehållet blivit gammalt eller det gått länge sedan senaste: teamet börjar inte bygga själv utan kallar
+  // till möte, där spelaren väljer riktning (expmeet.js)
+  if (team.repeat && !team.mission && autoOpen(G) && membersOf(G, team).length >= 3) {
+    const due = expansionDue(G, g);
+    if (due && !meetBlocked(G, g) && canMission(G, team, 'expansion', g.id) === true) openExpMeeting(G, team, g, due);
   }
 }
 

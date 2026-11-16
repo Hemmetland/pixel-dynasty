@@ -16,7 +16,8 @@ import { canResearch } from '../sim/research.js';
 import { canHw } from '../sim/hardware.js';
 import { canStore } from '../sim/store.js';
 import { canAcquireAny, ownedComps } from '../sim/acquire.js';
-import { teamsOpen } from '../sim/teams.js';
+import { teamsOpen, teamName } from '../sim/teams.js';
+import { buildsOf } from '../sim/builds.js';
 import { hwDecisions } from './win-hardware.js';
 import { lang } from '../core/i18n.js';
 import { fmtNum, clamp } from '../core/util.js';
@@ -368,7 +369,22 @@ function taskRows(G, job) {
     const p = (lg.revenue / lg.total) * 100;
     sales = { id: 's' + lg.id, grp: 3, ic: 'chart', c: 'var(--money)', name: lg.title, sub: t('pn.rowSales'), pct: p, tip: t('pn.rowSalesTip', { title: esc(lg.title), pct: pct(p), rev: money(lg.revenue), total: money(lg.total) }), go: 'library' };
   }
-  return [job, res[0], mkt, port, res[1], sales, res[2]].filter(Boolean).slice(0, 3).sort((a, b) => a.grp - b.grp);
+  // teamens bygge (uppdrag som självgående team sköter) får egna rader, upp till två, och rutan växer med en rad
+  const tb = buildsOf(G)
+    .filter((b) => b.team)
+    .slice(0, 2)
+    .map((b) => {
+      const J2 = b.J;
+      const g = gameProgress(J2);
+      const names = [t('dev.p1'), t('dev.p2'), t('dev.p3'), t('dev.polish')];
+      const phase = names[Math.min(3, J2.phase)];
+      const team = L(teamName(b.team));
+      return {
+        id: 'b' + J2.id, grp: 0, ic: 'team', c: 'var(--tech)', name: J2.title, sub: t('pn.rowBuild', { team, phase }), pct: J2.state === 'report' ? 100 : g.pp,
+        tip: t('pn.rowBuildTip', { title: esc(J2.title), team: esc(team), phase, pct: pct(g.pp), total: pct(g.all), hype: Math.round(J2.hype || 0) }), go: 'builds',
+      };
+    });
+  return [job, ...tb, res[0], mkt, port, res[1], sales, res[2]].filter(Boolean).slice(0, tb.length ? 4 : 3).sort((a, b) => a.grp - b.grp);
 }
 
 // Nästa mål, alltid synligt under uppgifterna när handledningen är över: närmaste kontor (med det första krav som saknas

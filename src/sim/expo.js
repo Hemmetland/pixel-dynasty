@@ -6,6 +6,8 @@ import { yearOf, priceOf, SCOPES } from './const.js';
 import { spend, earn } from './studio.js';
 import { promoPrice } from './dev.js';
 import { addTalk, prGain, talkWeekly } from './hype.js';
+import { buildsOf, buildById, logBuild } from './builds.js';
+import { teamName } from './teams.js';
 import { note } from './news.js';
 import { liveGames } from './live.js';
 import { scoreOf } from './hardware.js';
@@ -56,8 +58,7 @@ export const itemKey = (x) => x.k + ':' + x.id;
 // Det som går att visa upp just nu, med styrka (q)
 export function expoItems(G) {
   const out = [];
-  const J = G.job;
-  if (J && J.kind === 'game' && J.state === 'dev') out.push({ k: 'dev', id: J.id, q: devQ(G, J), name: J.title });
+  for (const b of buildsOf(G)) if (b.J.state === 'dev') out.push({ k: 'dev', id: b.J.id, q: devQ(G, b.J), name: b.J.title, team: b.team ? teamName(b.team) : null });
   const selling = G.games.filter((g) => !g.ended && !g.live && !g.expansionOf).sort((a, b) => b.t - a.t).slice(0, 4);
   for (const g of selling) out.push({ k: 'game', id: g.id, q: gameQ(g), name: g.title });
   const ps = ((G.hw && G.hw.products) || []).filter((p) => p.state === 'market').slice(0, 3);
@@ -167,33 +168,37 @@ function runExpo(G, B, picks, cost, plan, parts) {
     beat(G, 'expoTrailer', { v: trailerHit ? 2 : TR.id - 1 });
   }
   const keyMult = 1 + 0.1 * (K ? K.id : 0); // scenen sätter också de visade sakerna i rampljuset
-  const talk = {}; // Snacket (hype.js) som programmet ger spelet i utveckling, per källa
-  const tk = (k, v) => {
-    if (v) talk[k] = (talk[k] || 0) + v;
+  const talks = {}; // Snacket (hype.js) som programmet ger varje spel i utveckling, per bygge och källa
+  const tk = (id, k, v) => {
+    if (v) (talks[id] || (talks[id] = {}))[k] = ((talks[id] || {})[k] || 0) + v;
   };
+  let devSeen = 0; // fler än ett bygge kan visas: de får egna utfall (det första behåller de gamla slumpnycklarna)
   const contest = plan.stunt === 2 ? 1.25 : 1;
   for (const x of picks) {
     const row = { k: x.k, id: x.id, name: x.name, q: x.q };
     if (x.k === 'dev') {
-      const J = G.job;
+      const bd = buildById(G, x.id);
+      const J = bd && bd.J.state === 'dev' ? bd.J : null;
+      const nth = devSeen++;
+      if (bd && bd.team) row.team = teamName(bd.team);
       const ratio = J ? J.bugs / SCOPES[J.scope].bugs : 0;
       const u = J ? rng() : 1;
       const hv = clamp(buzz, 0.8, 1.4);
       let add = 0;
       if (J && plan.demo === 2) {
         // smygsläpp: demon ges till alla. Få buggar ger jubel (och gratis felsökning), många ger ett pinsamt hopkok
-        const good = roll('drop') < dropChance(ratio);
+        const good = roll(nth ? 'drop:' + x.id : 'drop') < dropChance(ratio);
         row.drop = good ? 'hit' : 'flop';
         if (good) {
           add = B.hype * 1.6 * hv;
-          tk('demo', EXPO_TALK.drop);
+          tk(x.id, 'demo', EXPO_TALK.drop);
           fanBonus += 0.5;
           mood += 0.6;
           J.bugs *= 0.88;
           lines.push({ k: 'dropHit', title: x.name });
         } else {
           add = B.hype * 0.4 * hv;
-          tk('demo', EXPO_TALK.dropFlop);
+          tk(x.id, 'demo', EXPO_TALK.dropFlop);
           J.hype = Math.max(0, J.hype - 3);
           fanLoss += 0.25;
           mood -= 0.6;
@@ -203,7 +208,7 @@ function runExpo(G, B, picks, cost, plan, parts) {
         beat(G, 'expoDemo', { g: x.name, v: good ? 2 : 3 });
       } else if (J && u < clamp((ratio - 0.5) * 0.8, 0, 0.5) * (DM.crash ?? 1)) {
         J.hype = Math.max(0, J.hype - 5);
-        tk('demo', EXPO_TALK.crash);
+        tk(x.id, 'demo', EXPO_TALK.crash);
         row.crash = true;
         fanLoss += 0.3;
         mood -= 0.5;
@@ -211,7 +216,7 @@ function runExpo(G, B, picks, cost, plan, parts) {
         beat(G, 'expoDemo', { g: x.name, v: 1 });
       } else if (J) {
         add = B.hype * hv * (DM.hype ?? 1);
-        tk('demo', (EXPO_TALK.demo + EXPO_TALK.demoQ * x.q) * (DM.hype ?? 1));
+        tk(x.id, 'demo', (EXPO_TALK.demo + EXPO_TALK.demoQ * x.q) * (DM.hype ?? 1));
         lines.push({ k: 'demo', title: x.name });
         beat(G, 'expoDemo', { g: x.name, v: 0 });
       }
@@ -220,10 +225,12 @@ function runExpo(G, B, picks, cost, plan, parts) {
         add += B.hype * K.hype * hv * (react === 2 ? 1.2 : react === 0 ? 0.6 : 1);
         J.promise = { bar: K.bar, tone: K.id, pen: K.pen, keep: K.keep, y: year };
         row.promise = K.bar;
-        tk('stage', EXPO_TALK.stage[K.id] * EXPO_TALK.react[react]);
+        tk(x.id, 'stage', EXPO_TALK.stage[K.id] * EXPO_TALK.react[react]);
+        logBuild(G, J, 'stage', K.id, react);
       }
-      if (J && TR.id) tk('trailer', trailerHit ? EXPO_TALK.trailerHit : EXPO_TALK.trailer[TR.id]);
-      if (J && celeb === true) tk('celeb', EXPO_TALK.celeb);
+      if (J && TR.id) tk(x.id, 'trailer', trailerHit ? EXPO_TALK.trailerHit : EXPO_TALK.trailer[TR.id]);
+      if (J && celeb === true) tk(x.id, 'celeb', EXPO_TALK.celeb);
+      if (J) logBuild(G, J, 'demo', 0, row.drop === 'hit' ? 2 : row.drop === 'flop' ? 3 : row.crash ? 1 : 0);
       if (J && add > 0) {
         row.hype = prGain(J.hype, add); // själva uppmärksamheten räknas som reklam (till 100), det som växer vidare är Snacket
         J.hype += row.hype;
@@ -316,7 +323,7 @@ function runExpo(G, B, picks, cost, plan, parts) {
   if (year >= 2010 && G.fans > 20000 && rng() < 0.5) lines.push({ k: 'streamer' });
   if (buzz > 1.5) lines.push({ k: 'press' });
   // mässpriserna och pressens dom
-  const Jh = hasDev && G.job ? G.job.hype : 0;
+  const Jh = picks.reduce((m, x) => (x.k === 'dev' ? Math.max(m, (buildById(G, x.id) || { J: { hype: 0 } }).J.hype) : m), 0);
   const prizes = prizeBoard(G, year, { level: B.id, plan, q, buzz, hype: Jh, hwQ: hwPicks.reduce((m, x) => Math.max(m, x.q), 0), hasDev, hasHw: hwPicks.length > 0, nPicks: picks.length, trailerHit: trailerHit ? 1 : 0, celeb });
   const won = prizes.filter((p) => p.win);
   won.forEach((p, n) => {
@@ -334,7 +341,8 @@ function runExpo(G, B, picks, cost, plan, parts) {
   beat(G, 'expoClose', { a: visitors, v: visitors > att * B.hall * 1.25 ? 1 : 0 });
   // domen flyttar försäljningslyftet och förväntan, sedan läggs lyften på de visade sakerna
   let dh = 0;
-  let talkPct = 0; // vad programmet gav i Snack, procent i veckan
+  let talkPct = 0; // vad programmet gav i Snack (första bygget), procent i veckan
+  let firstTalk = null;
   for (const row of items) {
     if (row.k === 'game') {
       const g = G.games.find((y) => y.id === row.id);
@@ -348,13 +356,21 @@ function runExpo(G, B, picks, cost, plan, parts) {
         row.lift *= vm;
         P.boost = Math.min(0.3, (P.boost || 0) + row.lift);
       }
-    } else if (row.k === 'dev' && G.job) {
+    } else if (row.k === 'dev') {
+      const bd = buildById(G, row.id);
+      if (!bd) continue;
+      const J = bd.J;
       dh = EXPO_VERDICT.hype[tier];
-      G.job.hype = Math.max(0, G.job.hype + dh);
-      tk('prize', EXPO_TALK.prize * won.length);
-      tk('press', EXPO_TALK.verdict[tier]);
-      for (const k of Object.keys(talk)) addTalk(G.job, k, talk[k]);
-      talkPct = talkWeekly(G.job, Object.values(talk).reduce((a, v) => a + v, 0));
+      J.hype = Math.max(0, J.hype + dh);
+      tk(row.id, 'prize', EXPO_TALK.prize * won.length);
+      tk(row.id, 'press', EXPO_TALK.verdict[tier]);
+      const talk = talks[row.id] || {};
+      for (const k of Object.keys(talk)) addTalk(J, k, talk[k]);
+      row.talk = talk;
+      row.talkPct = talkWeekly(J, Object.values(talk).reduce((a, v) => a + v, 0));
+      if (!talkPct) talkPct = row.talkPct; // det första bygget står för resultatets sammanfattning
+      if (!firstTalk) firstTalk = talk;
+      logBuild(G, J, 'press', tier, won.length);
     }
   }
   const fans = Math.max(0, Math.round((visitors * 0.1 * (0.6 + 0.8 * q) * (1 + fanBonus) * (1 - Math.min(0.6, fanLoss)) + won.length * visitors * EXPO_PRIZE_FANS) * EXPO_VERDICT.fans[tier]));
@@ -366,6 +382,6 @@ function runExpo(G, B, picks, cost, plan, parts) {
     rivals: comps.slice(0, 6).map((c) => ({ name: c.name, color: c.color })),
     t: G.t, plan, parts, prizes,
     verdict: { tier, r: Math.round(R * 100) / 100, lift: vm, hype: dh, fans: EXPO_VERDICT.fans[tier] },
-    trailerHit, celeb, react, meet, talk, talkPct,
+    trailerHit, celeb, react, meet, talk: firstTalk || {}, talkPct,
   };
 }

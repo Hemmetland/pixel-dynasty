@@ -15,6 +15,7 @@ import { forecast } from './sales.js';
 import { note } from './news.js';
 import { beat } from './life.js';
 import { hypeLevel } from './hype.js';
+import { dirOf } from './expdirs.js';
 import { KIND } from '../data/onlinekinds.js';
 
 // Storlekar som går att göra som onlinespel, och som expansion
@@ -302,12 +303,15 @@ export function releaseExpansion(G, game) {
     return;
   }
   const L = base.live;
-  const buy = clamp(0.3 + 0.1 * (game.score - 6), 0.1, 0.7);
+  const dir = dirOf(game.dir); // riktningen som valdes på expansionsmötet (expmeet.js)
+  const buy = clamp(0.3 + 0.1 * (game.score - 6) + (dir ? dir.buy : 0), 0.1, 0.7);
   game.total = (payBase(L) * buy + (game.total / game.priceAt) * 0.15) * game.priceAt * 0.75;
   L.fresh = 100;
-  L.pot *= 1 + clamp(0.06 * (game.score - 5.5), -0.1, 0.25);
+  L.pot *= 1 + clamp(0.06 * (game.score - 5.5), -0.1, 0.25) + (dir ? dir.pot : 0);
   L.exps.push(game.id);
   L.boost = G.t + 8;
+  if (dir && dir.reno) L.reno = Math.min((L.reno || 0) + dir.reno, Math.max(L.reno || 0, (G.t - L.t0) * (1 - RENO_FLOOR)));
+  if (dir && dir.shield) L.shield = G.t + dir.shield;
   beat(G, 'liveExp', { g: game.title });
   note(G, 'live.news.expansion', { title: game.title, base: base.title }, game.score >= 7 ? 'good' : 'info');
 }
@@ -335,7 +339,7 @@ export function rivalPull(G, m, g) {
   const fade = clamp((m.end - G.t) / (2 * WEEKS_PER_YEAR), 0.3, 1);
   const sim = (m.genre === g.genre ? 1 : m.genre === g.genre2 ? 0.7 : 0.45) + (m.topic === g.topic ? 0.25 : 0);
   const q = clamp(1 + 0.3 * (m.score - g.score), 0.4, 1.8);
-  return base * surge * fade * sim * q * (g.live && eventOn(G, g.live) ? 0.5 : 1);
+  return base * surge * fade * sim * q * (g.live && eventOn(G, g.live) ? 0.5 : 1) * (g.live && g.live.shield > G.t ? 0.5 : 1);
 }
 export const rivalFactor = (G, g) => clamp(1 - rivalMmos(G).reduce((a, m) => a + rivalPull(G, m, g), 0), 0.55, 1);
 

@@ -23,6 +23,7 @@ import { takeSeriesHype } from './franchise.js';
 import { beat, lifePick } from './life.js';
 import { settlePromise } from './exposhow.js';
 import { hypeTick, hypeMark, prGain } from './hype.js';
+import { logBuild } from './builds.js';
 
 export const RP_RATE = 0.05;
 // Satser som beskriver "per projekt" skalas mot projektets längd (tempo) så att ett längre projekt inte tappar mer hype
@@ -43,6 +44,7 @@ export function startProject(G, cfg) {
   const job = buildJob(G, cfg, workers(G).length);
   if (typeof job === 'string') return job;
   G.job = job;
+  logBuild(G, job, 'start');
   emit('jobStart', job);
   return job;
 }
@@ -107,7 +109,10 @@ export function setPhaseFocus(G, phase, raw) {
 export function toggleCrunch(G) {
   if (G.job) {
     G.job.crunch = !G.job.crunch;
-    if (G.job.kind === 'game') beat(G, G.job.crunch ? 'crunch' : 'relax', { g: G.job.title });
+    if (G.job.kind === 'game') {
+      beat(G, G.job.crunch ? 'crunch' : 'relax', { g: G.job.title });
+      logBuild(G, G.job, 'crunch', 0, G.job.crunch ? 1 : 0);
+    }
   }
 }
 
@@ -122,22 +127,25 @@ export function expectedRevenue(G, J) {
 // om när försäljningen växer snabbare än penningvärdet). Alla fem kostar ungefär en tjugondel av vad spelet drar in.
 // Reklamen lyfter Förväntan till som mest 100 (PR_CEILING i hype.js). Över det växer den bara av Snacket, utan tak.
 const MKT_SHARE = { press: 0.005, ads: 0.01, tv: 0.02, online: 0.03, influencer: 0.045 };
-export function promoPrice(G, base, share) {
-  const J = G.job && G.job.kind === 'game' ? G.job : null;
+const jobFor = (G, J) => J || (G.job && G.job.kind === 'game' ? G.job : null);
+export function promoPrice(G, base, share, J0) {
+  const J = jobFor(G, J0);
   return Math.max(base * moneyScale(yearOf(G.t)), J ? share * expectedRevenue(G, J) : 0);
 }
-export function marketingCost(G, id) {
-  return Math.round((promoPrice(G, MKT[id].cost, MKT_SHARE[id] || 0) * mktCostMult(G)) / 50) * 50;
+// J = vilket bygge kampanjen gäller (spelarens projekt som standard, annars ett teams)
+export function marketingCost(G, id, J) {
+  return Math.round((promoPrice(G, MKT[id].cost, MKT_SHARE[id] || 0, J) * mktCostMult(G)) / 50) * 50;
 }
-export function marketingOptions(G) {
-  const hype = G.job?.hype ?? 0;
-  return G.u.mkt.map((id) => ({ ...MKT[id], cost: marketingCost(G, id), gain: prGain(hype, MKT[id].hype * mktHypeMult(G)), used: !!G.job?.marketing.includes(id) }));
+export function marketingOptions(G, J0) {
+  const J = jobFor(G, J0);
+  const hype = J?.hype ?? 0;
+  return G.u.mkt.map((id) => ({ ...MKT[id], cost: marketingCost(G, id, J), gain: prGain(hype, MKT[id].hype * mktHypeMult(G)), used: !!J?.marketing.includes(id) }));
 }
-export function launchMarketing(G, id) {
-  const J = G.job;
+export function launchMarketing(G, id, J0) {
+  const J = J0 || G.job;
   if (!J || J.kind !== 'game' || J.state !== 'dev' || J.marketing.includes(id)) return false;
   if (J.ticks < J.devTicks * 0.2) return t('err.tooEarly');
-  const cost = marketingCost(G, id);
+  const cost = marketingCost(G, id, J);
   if (G.money < cost) return t('err.money');
   spend(G, cost, 'marketing');
   J.cost += cost;
@@ -145,6 +153,7 @@ export function launchMarketing(G, id) {
   const add = prGain(J.hype, MKT[id].hype * mktHypeMult(G));
   J.hype += add;
   beat(G, 'ad', { g: J.title, a: Math.round(add) });
+  logBuild(G, J, 'camp', id, Math.round(add));
   emit('marketing', { id, add });
   return true;
 }
@@ -250,29 +259,28 @@ export function stepJob(G, J, ws, auto) {
       }
     }
     J.ticks++;
-    if (!auto && J.ticks === Math.floor(J.devTicks / 4)) beat(G, 'quarter', { g: J.title });
-    if (!auto && J.ticks === Math.floor(J.devTicks / 2)) beat(G, 'half', { g: J.title });
-    if (!auto && J.ticks === Math.floor((J.devTicks * 3) / 4)) beat(G, 'almost', { g: J.title });
+    if (J.ticks === Math.floor(J.devTicks / 4)) beat(G, 'quarter', { g: J.title });
+    if (J.ticks === Math.floor(J.devTicks / 2)) beat(G, 'half', { g: J.title });
+    if (J.ticks === Math.floor((J.devTicks * 3) / 4)) beat(G, 'almost', { g: J.title });
     hypeTick(G, J);
-    if (!auto) {
-      const m = hypeMark(J);
-      if (m) note(G, 'news.hype' + m, { title: J.title }, 'good');
+    const hm = hypeMark(J);
+    if (hm) {
+      note(G, 'news.hype' + hm, { title: J.title }, 'good');
+      logBuild(G, J, 'hype' + hm, Math.round(J.hype));
     }
     // fasbyte
     const phaseLen = J.devTicks / 3;
     if (J.ticks >= J.devTicks) {
       J.phase = 3;
-      if (!auto) {
-        emit('phase', { phase: 3, job: J });
-        beat(G, 'phase', { g: J.title, a: 3 });
-      }
+      logBuild(G, J, 'phase', 3);
+      beat(G, 'phase', { g: J.title, a: 3 });
+      if (!auto) emit('phase', { phase: 3, job: J });
     } else if (J.ticks >= phaseLen * (J.phase + 1)) {
       J.phase++;
       if (!auto && phaseCats(G, J.phase).length >= 2) G.pending.push({ type: 'phase', phase: J.phase, id: G.uid++ });
-      if (!auto) {
-        emit('phase', { phase: J.phase, job: J });
-        beat(G, 'phase', { g: J.title, a: J.phase });
-      }
+      logBuild(G, J, 'phase', J.phase);
+      beat(G, 'phase', { g: J.title, a: J.phase });
+      if (!auto) emit('phase', { phase: J.phase, job: J });
     }
     // Slumphändelser under utveckling hanteras av clock (veckovis).
   } else {
@@ -354,6 +362,7 @@ export function releaseGame(G) {
     novel: isNovel(G, J),
   };
   if (J.auto) game.auto = J.auto; // gjort av ett självgående team (autoteam.js)
+  if (J.dir) game.dir = J.dir; // en expansions riktning från mötet (expmeet.js)
   const prev = J.sequelOf ? G.games.find((g) => g.id === J.sequelOf) : null;
   G.games.push(game);
   G.know.combos[J.topic + '|' + J.genre] = Math.round(compatOf(J.topic, J.genre));

@@ -11,6 +11,8 @@ import { L } from '../core/i18n.js';
 import { dateOf, WEEKS_PER_YEAR } from './const.js';
 import { note } from './news.js';
 import { beat } from './life.js';
+import { buildsOf } from './builds.js';
+import { teamName } from './teams.js';
 import { compMean } from './market.js';
 
 // Presentation på scen. crowd: fler besökare, hype: andel av monterns förväntan som läggs på spelet i utveckling, bar: betyget du lovar,
@@ -148,6 +150,13 @@ export function expoPromise(G) {
   return P ? { title: L(J.title), bar: P.bar, tone: P.tone, pen: P.pen, y: P.y } : null;
 }
 
+// Löftena på alla bygge som pågår (spelarens och teamens): [{ title, bar, tone, pen, y, team }]
+export function expoPromises(G) {
+  return buildsOf(G)
+    .filter((b) => b.J.promise)
+    .map((b) => ({ title: L(b.J.title), bar: b.J.promise.bar, tone: b.J.promise.tone, pen: b.J.promise.pen, y: b.J.promise.y, team: b.team ? teamName(b.team) : null }));
+}
+
 // ── Historik och ögonblicksbild ─────────────────────────────────
 export const HIST_MAX = 20;
 export function recordShow(G, r) {
@@ -189,6 +198,7 @@ export function expoState(G) {
         }
       : null,
     promise: expoPromise(G),
+    promises: expoPromises(G),
     shows: hist.length,
     prizes: hist.reduce((a, h) => a + (h.pz ? h.pz.length : 0), 0),
   };

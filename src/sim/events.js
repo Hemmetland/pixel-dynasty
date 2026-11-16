@@ -7,6 +7,7 @@ import { SCOPE_TEMPO } from './tempo.js';
 import { earn, spend } from './studio.js';
 import { parPerTick } from './score.js';
 import { note } from './news.js';
+import { logBuild } from './builds.js';
 import { crisisOf, monthRev, crisisAfter } from './crisis.js';
 import { warOf, hwwarAfter } from './hwwar.js';
 import { warRep, warBase, warCut, warShort, warPay } from './hardware.js';
@@ -172,7 +173,10 @@ export function applyFx(G, fx, out = [], ctx = {}, dry = false) {
     out.push({ k: 'fans', v });
   }
   if (fx.hype) {
-    if (J && !dry) J.hype = Math.max(0, J.hype + fx.hype);
+    if (J && !dry) {
+      J.hype = Math.max(0, J.hype + fx.hype);
+      logBuild(G, J, 'event', Math.round(fx.hype));
+    }
     out.push({ k: 'hype', v: fx.hype });
   }
   if (fx.hypeNext) {

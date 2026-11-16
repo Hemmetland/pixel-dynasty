@@ -18,6 +18,7 @@ import { ACHIEVEMENTS } from '../data/achievements.js';
 import { CERTS, certIndex, totalUnits } from '../data/certs.js';
 import { membersOf, leadOf, teamName } from './teams.js';
 import { crisisState } from './crisis.js'; // bara i lifeState (vid anrop)
+import { buildsOf, buildInfo } from './builds.js'; // bara i lifeState (vid anrop)
 import { warState } from './hwwar.js';
 import { expoState } from './exposhow.js';
 import { FACILITIES } from './studio.js'; // bara i lifeText (vid anrop), så importcykeln gör inget
@@ -224,11 +225,16 @@ export function lifeState(G, sc) {
   if (sc === 'expo') return expoState(G);
   const J = G.job && G.job.kind === 'game' ? G.job : null;
   const crew = workers(G).map((w) => ({ id: w.id, name: lifeName(w), mood: Math.round(w.mood), fatigue: Math.round((w.fatigue || 0) * 10) / 10, trait: w.trait || null, away: !!w.away }));
-  if (!J) return { active: false, phase: 0, pct: 0, bugs: 0, crunch: false, title: '', crew };
+  // alla bygge som pågår (spelarens och teamens): key 'p' är ordinarie teamets, 't<id>' ett teams uppdrag (builds.js)
+  const builds = buildsOf(G).map((b) => {
+    const i = buildInfo(G, b);
+    return { key: i.key, title: i.title, kind: i.kind, team: i.team ? L(i.team.name) : null, phase: i.phase, pct: i.pct, hype: i.hype, bugs: i.bugs, crew: i.crew, report: i.state === 'report' };
+  });
+  if (!J) return { active: false, phase: 0, pct: 0, bugs: 0, crunch: false, title: '', crew, builds };
   const dev = J.state === 'dev';
   const build = Math.min(1, J.ticks / Math.max(1, J.devTicks));
   const pct = J.phase >= 3 ? 0.85 + 0.15 * Math.min(1, J.polishDone / Math.max(1, J.polishTicks)) : 0.85 * build;
-  return { active: dev, phase: J.phase, pct: dev ? pct : 1, bugs: Math.round(J.bugs), crunch: !!J.crunch, title: J.title || '', hype: Math.round(J.hype || 0), report: J.state === 'report', crew };
+  return { active: dev, phase: J.phase, pct: dev ? pct : 1, bugs: Math.round(J.bugs), crunch: !!J.crunch, title: J.title || '', hype: Math.round(J.hype || 0), report: J.state === 'report', crew, builds };
 }
 function hwState(G) {
   const H = G.hw;

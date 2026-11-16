@@ -204,6 +204,7 @@ function chooseBest(G, plat, scope) {
 }
 
 // PROMPTDBG=1: hur många gånger spelet stoppar och kräver ett svar (ruta) per år, per sort. Vid fart 2 är ett år ungefär en minut.
+const meetStat = {};
 const promptSeen = new Set();
 const promptGaps = [];
 let lastPromptT = 0;
@@ -235,7 +236,15 @@ function handlePending(G) {
     } else if (p.type === 'event') {
       const ev = EV[p.ev];
       S.resolveEvent(G, p.id, Math.floor(Math.random() * ev.choices.length));
-    } else if (p.type === 'bailout') { S.takeBailout(G); G.pending.shift(); } else if (p.type === 'expo') {
+    } else if (p.type === 'bailout') { S.takeBailout(G); G.pending.shift(); } else if (p.type === 'expmeet') {
+      // expansionsmötet: boten väljer teamets favorit om pengarna räcker och skjuter annars upp (--meet=0: alltid upp)
+      const M = S.expMeetOptions(G, p);
+      const o = M && opt('meet', '1') !== '0' ? M.opts.find((x) => x.ok === true) : null;
+      if (process.env.MEETDBG && M) console.log(`   meet ${S.yearOf(G.t)} ${M.game.title} ${M.reason} fresh ${M.fresh} gap ${M.gap} money ${Math.round(G.money / 1e6)}M: ` + M.opts.map((x) => x.dir + ' ' + (x.quote ? Math.round(x.quote.cost / 1e3) + 'k ' + x.quote.scope + ' ' + x.quote.weeks + 'w' : '-') + ' ' + x.ok).join(' | '));
+      if (o) meetStat[o.dir] = (meetStat[o.dir] || 0) + 1; else meetStat.later = (meetStat.later || 0) + 1;
+      if (S.resolveExpMeet(G, p.id, o ? o.dir : 'later') !== true) S.resolveExpMeet(G, p.id, 'later');
+      if (G.pending[0] === p) G.pending.shift();
+    } else if (p.type === 'expo') {
       // med --expo går boten på mässan om pengarna räcker (annars hoppar den över)
       if (process.env.EXPODBG3) { const J = G.job; console.log(`   pre ${S.yearOf(G.t)} dev ${J && J.kind === 'game' && J.state === 'dev' ? 'ratio ' + (J.bugs / S.SCOPES[J.scope].bugs).toFixed(2) + ' hype ' + Math.round(J.hype) + ' phase ' + J.phase : '-'}`); }
       if (!expoLevel || (S.resolveExpo(G, p.id, expoLevel, undefined, expoPlan) !== true && S.resolveExpo(G, p.id, expoLevel) !== true)) S.resolveExpo(G, p.id, 0);
@@ -751,7 +760,7 @@ if (campusOn || hrOn) {
 }
 if (opsOn) {
   const ot = S.teamsOf(G).filter((x) => x.role === 'ops');
-  console.log(`ops teams: ${ot.length}, rutin ${ot.map((x) => S.rutin(x)).join('/')}, live games ${S.liveGames(G).length}, effect ${S.liveGames(G).map((g) => ((g.live.tm || 0) * 100).toFixed(0)).join('/')}`);
+  console.log(`ops teams: ${ot.length}, rutin ${ot.map((x) => S.rutin(x)).join('/')}, live games ${S.liveGames(G).length}, effect ${S.liveGames(G).map((g) => ((g.live.tm || 0) * 100).toFixed(0)).join('/')}, meetings ${JSON.stringify(meetStat)}, expansions ${G.games.filter((g) => g.expansionOf).length}`);
 }
 if (ports) {
   const pr = G.games.flatMap((g) => g.ports || []);

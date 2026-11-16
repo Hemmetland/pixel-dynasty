@@ -1748,3 +1748,30 @@ button.pr-rec { width: 100%; }
 .hy-row { display: flex; justify-content: space-between; gap: 10px; font-size: 13px; padding: 3px 0; border-top: 1px solid var(--line); }
 .hy-row:first-of-type { border-top: 0; }
 .hy-row.faint { color: var(--faint); }
+
+/* Expansionsmötet: teamets ledare berättar, förslagen ligger som val, teamets favorit är markerad */
+.em-lead { display: flex; align-items: flex-end; gap: 14px; }
+.em-lead .evtext { margin: 0; }
+.em-opt { gap: 6px; }
+.em-opt.rec { border-color: color-mix(in srgb, var(--gold) 55%, transparent); background: color-mix(in srgb, var(--gold) 8%, transparent); }
+.em-opt .em-rec { margin-left: 4px; }
+.em-tag.good { color: var(--good); border-color: color-mix(in srgb, var(--good) 40%, transparent); background: color-mix(in srgb, var(--good) 10%, transparent); }
+.em-tag.bug { color: var(--bug); border-color: color-mix(in srgb, var(--bug) 40%, transparent); background: color-mix(in srgb, var(--bug) 10%, transparent); }
+@media (max-width: 560px) { .em-lead .sc-av { width: 52px; height: 70px; } }
+
+/* Bygge: ett kort per bygge med framsteg, Förväntan, Snack och loggen över vad som hänt */
+.bd-head { gap: 8px; align-items: center; flex-wrap: wrap; }
+.bd-title { font-size: 15px; }
+.bd-prog { display: flex; align-items: center; gap: 12px; margin-top: 10px; }
+.bd-prog .bar { flex: 1; }
+.bd-cols { display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1.2fr); gap: 16px; }
+.bd-log { display: flex; flex-direction: column; gap: 5px; max-height: 210px; overflow-y: auto; }
+.bd-ev { display: grid; grid-template-columns: 18px 64px 1fr; gap: 7px; align-items: start; font-size: 12.5px; }
+.bd-ev .bd-ic { color: var(--faint); }
+.bd-ev .bd-ic .ic { width: 15px; height: 15px; }
+.bd-ev .bd-t { color: var(--faint); white-space: nowrap; }
+.bd-ev.good .bd-ic { color: var(--good); }
+.bd-ev.bad .bd-ic { color: var(--bug); }
+.chip.pick { cursor: pointer; }
+.chip.pick.on { color: var(--hot); border-color: color-mix(in srgb, var(--hot) 55%, transparent); background: color-mix(in srgb, var(--hot) 14%, transparent); }
+@media (max-width: 640px) { .bd-cols { grid-template-columns: 1fr; } }
