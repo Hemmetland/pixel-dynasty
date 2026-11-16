@@ -75,6 +75,7 @@ const STATE = {
     return { ...h, games: (G.games || []).slice(-8).map((g) => ({ id: g.id, score: g.score || 0 })), n: (G.games || []).length, fans: G.fans || 0 };
   },
   crisis: (G) => ({ ...lifeState(G, 'crisis'), looks: (G.staff || []).filter((x) => !x.away).map((x) => x.look) }),
+  war: (G) => ({ ...lifeState(G, 'war'), looks: (G.staff || []).filter((x) => !x.away).map((x) => x.look) }),
   bank: (G) => ({ money: G.money, hist: (G.hist && G.hist.cash ? G.hist.cash.slice(-40).map((p) => p.v) : []), looks: (G.staff || []).filter((x) => !x.away).map((x) => x.look) }),
   live: (G, cfg) => {
     const l = lifeState(G, 'live');
@@ -87,8 +88,8 @@ const STATE = {
     return { ...l, looks: staff };
   },
 };
-const TICK_SC = { studio: ['dev', 'studio'], factory: ['hw'], engine: ['eng'], group: ['group'], lab: ['lab'], shop: ['store'], live: ['live'], bank: ['dev', 'studio'], market: ['dev'], hall: ['hall'], crisis: ['crisis'] };
-const LOG_SC = { studio: 'dev', factory: 'hw', engine: 'eng', group: 'group', lab: 'lab', shop: 'store', live: 'live', bank: 'studio', market: 'dev', hall: 'hall', crisis: 'crisis' };
+const TICK_SC = { studio: ['dev', 'studio'], factory: ['hw'], engine: ['eng'], group: ['group'], lab: ['lab'], shop: ['store'], live: ['live'], bank: ['dev', 'studio'], market: ['dev'], hall: ['hall'], crisis: ['crisis'], war: ['hw'] };
+const LOG_SC = { studio: 'dev', factory: 'hw', engine: 'eng', group: 'group', lab: 'lab', shop: 'store', live: 'live', bank: 'studio', market: 'dev', hall: 'hall', crisis: 'crisis', war: 'hw' };
 function refresh(kind, cfg) {
   try {
     cfg.st = STATE[kind](cfg.G, cfg);
@@ -101,6 +102,7 @@ function caption(kind, cfg) {
   if (kind === 'studio') return !st ? t('ls.studio') : st.active ? t('ls.studio.on', { title: st.title || '…' }) : st.report ? t('ls.studio.report') : t('ls.studio.idle');
   if (kind === 'engine') return st && st.active ? t('ls.engine.on', { name: st.name }) : st && st.team ? t('ls.engine.team', { team: st.team.name }) : t('ls.engine');
   if (kind === 'market') return t('ls.market');
+  if (kind === 'war') return !st || !st.opp ? t('ls.war.none') : st.supply && st.supply.short ? t('ls.war.short', { name: st.supply.short.partner }) : st.patent && st.patent.on ? t('ls.war.patent', { name: st.opp.maker }) : t(['ls.war.0', 'ls.war.1', 'ls.war.2', 'ls.war.3'][st.level] || 'ls.war.0', { name: st.opp.maker });
   if (kind === 'crisis') return !st || !st.rival ? t('ls.crisis.none') : t(['ls.crisis.0', 'ls.crisis.1', 'ls.crisis.2', 'ls.crisis.3'][st.level] || 'ls.crisis.0', { name: st.rival.name });
   if (kind === 'hall') return !st || !st.n ? t('ls.hall.empty') : st.ach ? t('ls.hall.ach', { n: st.n, a: st.ach, m: st.total }) : t('ls.hall', { n: st.n });
   if (kind === 'bank') return !st ? t('ls.bank') : st.money < 0 ? t('ls.bank.red') : t('ls.bank');
@@ -1146,6 +1148,88 @@ function drawCrisis(ctx, W, tm, cfg) {
   darken(ctx, W, 0.04 + lv * 0.02, lv >= 2 ? '#ff7a6a' : '#7ca8ff');
 }
 
+// ── Hårdvarukriget ──
+function drawWar(ctx, W, tm, cfg) {
+  const fy = H - 6;
+  const st = cfg.st || { opp: null, own: null, level: 0, heat: 0, shield: 0, patent: { on: false, lic: 0 }, supply: { short: null }, looks: [] };
+  const lv = st.level | 0;
+  const opp = st.opp, own = st.own;
+  const mv = recent(['warMove'], 9, tm);
+  const solved = recent(['warSolved'], 3, tm);
+  const has = (v) => mv.some((e) => e.b.v === v);
+  const short = !!(st.supply && st.supply.short) || has(5);
+  const oc = (opp && opp.color) || '#6a7a9a';
+  const gy = H - 12;
+  R(ctx, 0, 0, W, H, ['#16243a', '#201e3a', '#2e1e34', '#3c1c2c'][lv]);
+  for (let x = 0; x < W; x += 12) R(ctx, x, 0, 1, gy, ['#1b2c46', '#262445', '#37243e', '#4a2434'][lv]);
+  R(ctx, 0, gy, W, 12, '#2c3040');
+  R(ctx, 0, gy, W, 1, '#5a6280');
+  // marknadsandelen som rep: din färg mot konkurrentens, strecket flyttar sig med vikterna
+  const bw = Math.max(40, Math.min(150, W - 106)), bx = Math.max(W >= 200 ? 100 : 6, Math.round(W * 0.5 - bw / 2));
+  const ow = own ? Math.max(1, own.w) : 1, pw = opp ? Math.max(1, opp.w) : 1;
+  const split = Math.round((bw * ow) / (ow + pw));
+  R(ctx, bx - 1, 1, bw + 2, 6, '#0c1020');
+  R(ctx, bx, 2, split, 4, '#4de1d0');
+  R(ctx, bx + split, 2, bw - split, 4, oc);
+  R(ctx, bx + split - 1, 0, 3, 8, '#ffffff');
+  if (lv >= 2 && Math.floor(tm * 6) % 2) R(ctx, bx + split - 2, 8, 5, 2, '#ffd36a');
+  // din monter till vänster: konsol på bordet och hylla med lådor (tom vid komponentbrist)
+  const lx = Math.round(W * 0.18);
+  R(ctx, lx, gy - 12, 36, 12, '#2a4a52');
+  R(ctx, lx, gy - 12, 36, 1, '#6ac8c0');
+  R(ctx, lx + 6, gy - 20, 22, 8, '#e8e8f0');
+  R(ctx, lx + 6, gy - 20, 22, 1, '#ffffff');
+  R(ctx, lx + 9, gy - 18, 8, 3, '#4de1d0');
+  R(ctx, lx + 20, gy - 17, 5, 2, '#2a2f3c');
+  R(ctx, lx - 2, gy - 38, 40, 14, '#1a2230');
+  for (let k = 0; k < 6; k++) if (!short && k < 6) R(ctx, lx + k * 6, gy - 36 + (k % 2) * 6, 5, 5, ['#4de1d0', '#e8e8f0', '#6ac8c0'][k % 3]);
+  if (short) { R(ctx, lx + 2, gy - 36, 30, 1, '#ff5a50'); if (Math.floor(tm * 2) % 2) V.neonText(ctx, '0', lx + 14, gy - 33, '#ff9a8a', '#ff4a3c', 1); }
+  // skölden runt din monter
+  ctx.globalAlpha = Math.min(0.5, 0.06 + st.shield * 0.004 + (solved.length ? 0.2 * Math.abs(Math.sin(tm * 8)) : 0));
+  for (let a = Math.PI; a < Math.PI * 2; a += 0.07) R(ctx, Math.round(lx + 18 + Math.cos(a) * 30), Math.round(gy + Math.sin(a) * 40), 2, 2, '#7cf2ff');
+  ctx.globalAlpha = 1;
+  // konkurrentens monter till höger: skylt med namn, större konsol, prislapp som sänks vid prissänkning
+  const rx = Math.round(W * 0.82) - 36;
+  R(ctx, rx, gy - 12, 36, 12, '#3a2a40');
+  R(ctx, rx, gy - 12, 36, 1, oc);
+  R(ctx, rx + 6, gy - 22, 24, 10, oc);
+  R(ctx, rx + 6, gy - 22, 24, 1, 'rgba(255,255,255,.5)');
+  R(ctx, rx + 10, gy - 19, 10, 3, '#10142a');
+  if (opp) V.neonText(ctx, String(opp.maker).slice(0, 7).toUpperCase(), rx - 2, gy - 32, '#ffffff', oc, 1);
+  const cut = has(0);
+  R(ctx, rx + 24, gy - 15, 10, 6, '#f4f0e4');
+  if (cut && Math.floor(tm * 4) % 2) R(ctx, rx + 25, gy - 14, 8, 1, '#e8504a');
+  else V.neonText(ctx, cut ? '-%' : '$', rx + 26, gy - 14, '#e8504a', '#e8504a', 1);
+  if (has(1)) { R(ctx, rx + 8, gy - 30, 18, 6, '#e8504a'); V.neonText(ctx, 'EXCL', rx + 9, gy - 29, '#ffffff', '#ff4a3c', 1); }
+  // folk: din personal vid montern, kunder som vandrar mellan montrarna, jurist, fankrig, korslicens
+  const lk = (i) => (st.looks && st.looks[i]) || cfg.looks[i];
+  person(ctx, lx - 8, fy + 2, lk(0), 'stand', tm, 1, false, 0.2);
+  person(ctx, lx + 44, fy + 2, lk(1), 'talk', tm, -1, false, 0.9);
+  for (let i = 0; i < 2; i++) {
+    const period = 14 + i * 3, k = (tm + i * 6) % period;
+    person(ctx, lerp(bx - 10, bx + bw + 10, i ? 1 - k / period : k / period), fy + 3, cfg.looks[(i + 3) % cfg.looks.length], 'walk', tm, i ? -1 : 1, false, i);
+  }
+  if (has(3) || (st.patent && st.patent.on && !st.patent.lic)) {
+    const px = rx - 14;
+    person(ctx, px, fy + 3, cfg.looks[4], 'stand', tm, -1, false, 1.4);
+    R(ctx, px + 3, fy - 8, 7, 5, '#3a2a1a');
+    R(ctx, px + 3, fy - 8, 7, 1, '#6a4a2a');
+    if (Math.floor(tm * 2) % 4 === 0) R(ctx, px - 5, fy - 4, 5, 2, '#c8b890');
+  }
+  if (has(2)) for (let i = 0; i < 3; i++) { const px = bx + 20 + i * 24 + Math.round(Math.sin(tm * 3 + i) * 2); person(ctx, px, fy + 3, cfg.looks[(i + 2) % cfg.looks.length], 'walk', tm, i % 2 ? 1 : -1, false, i); R(ctx, px + 2, fy - 22, 1, 12, '#c8b890'); R(ctx, px - 2, fy - 27, 8, 6, '#f4f0e4'); }
+  if (has(4) || (st.patent && st.patent.lic > 0)) {
+    const hxx = Math.round(W * 0.5);
+    R(ctx, hxx - 3, fy - 7, 6, 2, '#f2d0a0');
+    if (Math.floor(tm * 2) % 2) R(ctx, hxx - 1, fy - 12, 2, 2, '#8aff9a');
+  }
+  // brand och brist
+  if (has(6)) for (let i = 0; i < 5; i++) { const fx = lx + 4 + i * 6; R(ctx, fx, gy - 14 - (Math.floor(tm * 6 + i) % 3) * 2, 3, 4 + (i % 2) * 2, i % 2 ? '#ff9a3a' : '#ffd36a'); }
+  if (has(6)) steam(ctx, lx + 16, gy - 20, tm, 4, 0.6, '#4a4e66');
+  if (short && !has(6)) bubble(ctx, lx + 14, gy - 52, 'sweat', (tm * 1.0) % 2.4, 1.8, tm);
+  for (const e of solved) if (e.b.v === 0) confetti(ctx, W, tm - e.t0, e.b.n);
+  darken(ctx, W, 0.04 + lv * 0.02, lv >= 2 ? '#ff7a6a' : '#7ca8ff');
+}
+
 // ── Koncernen ──
 function drawGroup(ctx, W, tm, cfg) {
   const fy = H - 6;
@@ -1242,7 +1326,7 @@ function drawGroup(ctx, W, tm, cfg) {
   ctx.globalAlpha = 1;
   for (const e of recent(['party', 'anniv', 'fans', 'film', 'grpDone'], 4.6, tm)) confetti(ctx, W, tm - e.t0, e.b.n);
 }
-const DRAW = { studio: drawStudio, factory: drawFactory, engine: drawEngine, group: drawGroup, lab: drawLab, shop: drawShop, live: drawLive, bank: drawBank, market: drawMarket, hall: drawHall, crisis: drawCrisis };
+const DRAW = { studio: drawStudio, factory: drawFactory, engine: drawEngine, group: drawGroup, lab: drawLab, shop: drawShop, live: drawLive, bank: drawBank, market: drawMarket, hall: drawHall, crisis: drawCrisis, war: drawWar };
 
 // ── Timer ──
 let timer = 0;
