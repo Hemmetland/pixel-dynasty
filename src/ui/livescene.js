@@ -76,6 +76,7 @@ const STATE = {
   },
   crisis: (G) => ({ ...lifeState(G, 'crisis'), looks: (G.staff || []).filter((x) => !x.away).map((x) => x.look) }),
   war: (G) => ({ ...lifeState(G, 'war'), looks: (G.staff || []).filter((x) => !x.away).map((x) => x.look) }),
+  expo: (G) => ({ ...lifeState(G, 'expo'), looks: (G.staff || []).filter((x) => !x.away).map((x) => x.look) }),
   bank: (G) => ({ money: G.money, hist: (G.hist && G.hist.cash ? G.hist.cash.slice(-40).map((p) => p.v) : []), looks: (G.staff || []).filter((x) => !x.away).map((x) => x.look) }),
   live: (G, cfg) => {
     const l = lifeState(G, 'live');
@@ -88,8 +89,8 @@ const STATE = {
     return { ...l, looks: staff };
   },
 };
-const TICK_SC = { studio: ['dev', 'studio'], factory: ['hw'], engine: ['eng'], group: ['group'], lab: ['lab'], shop: ['store'], live: ['live'], bank: ['dev', 'studio'], market: ['dev'], hall: ['hall'], crisis: ['crisis'], war: ['hw'] };
-const LOG_SC = { studio: 'dev', factory: 'hw', engine: 'eng', group: 'group', lab: 'lab', shop: 'store', live: 'live', bank: 'studio', market: 'dev', hall: 'hall', crisis: 'crisis', war: 'hw' };
+const TICK_SC = { studio: ['dev', 'studio'], factory: ['hw'], engine: ['eng'], group: ['group'], lab: ['lab'], shop: ['store'], live: ['live'], bank: ['dev', 'studio'], market: ['dev'], hall: ['hall'], crisis: ['crisis'], war: ['hw'], expo: ['expo'] };
+const LOG_SC = { studio: 'dev', factory: 'hw', engine: 'eng', group: 'group', lab: 'lab', shop: 'store', live: 'live', bank: 'studio', market: 'dev', hall: 'hall', crisis: 'crisis', war: 'hw', expo: 'expo' };
 function refresh(kind, cfg) {
   try {
     cfg.st = STATE[kind](cfg.G, cfg);
@@ -102,6 +103,7 @@ function caption(kind, cfg) {
   if (kind === 'studio') return !st ? t('ls.studio') : st.active ? t('ls.studio.on', { title: st.title || '…' }) : st.report ? t('ls.studio.report') : t('ls.studio.idle');
   if (kind === 'engine') return st && st.active ? t('ls.engine.on', { name: st.name }) : st && st.team ? t('ls.engine.team', { team: st.team.name }) : t('ls.engine');
   if (kind === 'market') return t('ls.market');
+  if (kind === 'expo') return !st || !st.open ? t('ls.expo.locked') : st.next > 0 ? t('ls.expo.next', { n: st.next }) : t('ls.expo.on');
   if (kind === 'war') return !st || !st.opp ? t('ls.war.none') : st.supply && st.supply.short ? t('ls.war.short', { name: st.supply.short.partner }) : st.patent && st.patent.on ? t('ls.war.patent', { name: st.opp.maker }) : t(['ls.war.0', 'ls.war.1', 'ls.war.2', 'ls.war.3'][st.level] || 'ls.war.0', { name: st.opp.maker });
   if (kind === 'crisis') return !st || !st.rival ? t('ls.crisis.none') : t(['ls.crisis.0', 'ls.crisis.1', 'ls.crisis.2', 'ls.crisis.3'][st.level] || 'ls.crisis.0', { name: st.rival.name });
   if (kind === 'hall') return !st || !st.n ? t('ls.hall.empty') : st.ach ? t('ls.hall.ach', { n: st.n, a: st.ach, m: st.total }) : t('ls.hall', { n: st.n });
@@ -1230,6 +1232,59 @@ function drawWar(ctx, W, tm, cfg) {
   darken(ctx, W, 0.04 + lv * 0.02, lv >= 2 ? '#ff7a6a' : '#7ca8ff');
 }
 
+// ── Spelmässan ──
+function drawExpo(ctx, W, tm, cfg) {
+  const fy = H - 6;
+  const st = cfg.st || { open: false, next: 0, last: null, shows: 0, prizes: 0, looks: [] };
+  const L = st.last;
+  const live = recent(['expoOpen', 'expoKeynote', 'expoDemo', 'expoTrailer', 'expoStunt', 'expoPrize', 'expoVerdict'], 6, tm).length > 0;
+  R(ctx, 0, 0, W, H, '#10163a');
+  R(ctx, 0, 0, W, 8, '#070a1a');
+  R(ctx, 0, H - 14, W, 14, '#1a2150');
+  for (let x = 0; x < W; x += 24) R(ctx, x, H - 14, 1, 14, '#141a3c');
+  // strålkastare som sveper över hallen
+  for (let i = 0; i < 5; i++) {
+    const lx = Math.round(W * (0.12 + i * 0.19)), sw2 = Math.sin(tm * (live ? 1.6 : 0.6) + i * 1.3) * 8;
+    R(ctx, lx - 1, 8, 6, 2, i % 2 ? '#ffe9a8' : '#a8d8ff');
+    ctx.globalAlpha = live ? 0.1 : 0.05;
+    for (let k = 0; k < 8; k++) R(ctx, Math.round(lx + 2 + sw2 * (k / 8) - k), 10 + k * 5, 2 + k * 2, 5, i % 2 ? '#ffe9a8' : '#a8d8ff');
+    ctx.globalAlpha = 1;
+  }
+  // banderoll med årtalet
+  const bx0 = Math.round(W * 0.5 - 30);
+  R(ctx, bx0, 12, 60, 11, '#0c1020');
+  R(ctx, bx0, 12, 60, 1, '#4a5470');
+  V.neonText(ctx, L ? String(L.year) : 'EXPO', bx0 + 10, 14, '#ffffff', '#ff7ab8', 1);
+  // monter: större med mässans nivå, skärm och disk
+  const lvl = L ? Math.max(1, Math.min(3, L.level)) : 1;
+  const bw = 30 + lvl * 16, bx = Math.round(W * 0.5 - bw / 2);
+  R(ctx, bx, fy - 28, bw, 24, '#1b2760');
+  R(ctx, bx, fy - 28, bw, 2, '#4de1d0');
+  R(ctx, bx - 2, fy - 8, bw + 4, 6, '#4de1d0');
+  R(ctx, bx - 2, fy - 8, bw + 4, 1, '#b8fff4');
+  for (let k = 0; k < lvl + 1; k++) { R(ctx, bx + 4 + k * 14, fy - 24, 10, 12, '#05081a'); R(ctx, bx + 5 + k * 14, fy - 23, 8, 10, `rgba(77,225,208,${0.4 + 0.3 * Math.sin(tm * 3 + k)})`); }
+  for (let x = bx - 2, i = 0; x < bx + bw + 2; x += 6, i++) R(ctx, x, fy - 33 + (i % 3), 4, 3, ['#ff6b8a', '#ffe08a', '#4de1d0', '#9b7bff'][i % 4]);
+  // rivalernas montrar
+  (L && L.rivals ? L.rivals : []).slice(0, 3).forEach((rv, i) => {
+    const rx = i % 2 ? Math.round(W * 0.68) + (i > 1 ? 40 : 0) : Math.round(W * 0.12) + i * 38;
+    R(ctx, rx, fy - 20, 30, 16, '#141a3c');
+    R(ctx, rx, fy - 20, 30, 3, rv.color || '#8a56dc');
+  });
+  // besökare: fler ju fler besökare på senaste mässan, och alla går in i hallen när en mässa pågår
+  const crowd = Math.min(18, L ? 4 + Math.round(Math.log10(Math.max(10, L.visitors)) * 3) : 3);
+  for (let i = 0; i < crowd; i++) {
+    const sp = 3 + V.hash(i * 5) * 5, px0 = ((V.hash(i * 9) * (W + 20) + tm * sp * (i % 2 ? 1 : -1)) % (W + 20) + (W + 20)) % (W + 20) - 10;
+    const py = fy - 2 + Math.floor(V.hash(i * 13) * 6);
+    const col = ['#e8504a', '#4a90e0', '#f2c84a', '#6cc86a', '#b46bff', '#ff7ab8'][i % 6];
+    R(ctx, Math.round(px0), py - 5 + (Math.floor(tm * 4 + i) % 2), 2, 2, '#f2d0a0');
+    R(ctx, Math.round(px0), py - 3, 2, 3, col);
+  }
+  person(ctx, bx + bw * 0.3, fy - 4, cfg.looks[0], 'talk', tm, 1, false, 0.4);
+  if (L && L.celeb) { person(ctx, Math.round(W * 0.5 + Math.sin(tm * 0.5) * 40), fy + 3, cfg.looks[3], 'walk', tm, 1, false, 0.9); if ((tm * 3) % 2.2 < 0.15) R(ctx, Math.round(W * 0.5 + 18), fy - 22, 3, 3, '#ffffff'); }
+  for (const e of recent(['expoPrize', 'expoVerdict', 'expoStunt'], 4.6, tm)) confetti(ctx, W, tm - e.t0, e.b.n);
+  darken(ctx, W, 0.04, '#ff9ac8');
+}
+
 // ── Koncernen ──
 function drawGroup(ctx, W, tm, cfg) {
   const fy = H - 6;
@@ -1326,7 +1381,7 @@ function drawGroup(ctx, W, tm, cfg) {
   ctx.globalAlpha = 1;
   for (const e of recent(['party', 'anniv', 'fans', 'film', 'grpDone'], 4.6, tm)) confetti(ctx, W, tm - e.t0, e.b.n);
 }
-const DRAW = { studio: drawStudio, factory: drawFactory, engine: drawEngine, group: drawGroup, lab: drawLab, shop: drawShop, live: drawLive, bank: drawBank, market: drawMarket, hall: drawHall, crisis: drawCrisis, war: drawWar };
+const DRAW = { studio: drawStudio, factory: drawFactory, engine: drawEngine, group: drawGroup, lab: drawLab, shop: drawShop, live: drawLive, bank: drawBank, market: drawMarket, hall: drawHall, crisis: drawCrisis, war: drawWar, expo: drawExpo };
 
 // ── Timer ──
 let timer = 0;

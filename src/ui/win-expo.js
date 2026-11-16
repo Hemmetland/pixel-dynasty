@@ -1,5 +1,6 @@
 // Spelmässan: när nästa mässa är, löftet som följer med spelet i utveckling, den senaste mässan (kan visas igen) och tidigare år.
 // Själva mässan planeras i rutan som kommer när den börjar (ui/expo.js); här görs inga val, bara uppföljning.
+import { sceneHTML } from './livescene.js';
 import { esc, icon, t, UI, act, regWin, MONTHS } from './core.js';
 import { lang } from '../core/i18n.js';
 import { fmtFull, fmtNum } from '../core/util.js';
@@ -66,7 +67,7 @@ regWin({
   render(G) {
     const S = expoState(G);
     const tips = TIPS.map((k, i) => `<div class="card row rvl-fr" style="gap:12px"><span class="rvl-ei">${icon(TIP_IC[i])}</span><div style="flex:1;min-width:0;font-size:13px">${t(k)}</div></div>`).join('');
-    return `${sec(t('ex.secNext'))}${nextCard(G, S)}${S.open ? `${sec(t('ex.secPromise'))}${promiseCard(G, S)}` : ''}${S.open || G.expoLast ? `${sec(t('ex.secLast'))}${lastCard(G, S)}` : ''}${histList(G, S)}${sec(t('ex.secTips'))}<div class="col" style="gap:8px">${tips}</div>`;
+    return `${S.open ? sceneHTML('expo', G) : ''}${sec(t('ex.secNext'))}${nextCard(G, S)}${S.open ? `${sec(t('ex.secPromise'))}${promiseCard(G, S)}` : ''}${S.open || G.expoLast ? `${sec(t('ex.secLast'))}${lastCard(G, S)}` : ''}${histList(G, S)}${sec(t('ex.secTips'))}<div class="col" style="gap:8px">${tips}</div>`;
   },
 });
 

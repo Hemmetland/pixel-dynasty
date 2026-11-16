@@ -358,6 +358,83 @@ function scene(app, G, r) {
       px(cx0 + 8, y - 8, 4, 5, mix(col, 0.5 + 0.2 * glow));
     }
   };
+  // Programmet och utfallet från mässan (r.plan m.fl., saknas på äldre mässor): scen med trailern, kändis, rivalmöte, pokaler, pressens dom och demos som kraschar eller slår
+  const P = r.plan || {};
+  const prizeWins = (r.prizes || []).filter((z) => z.win).length;
+  const verdictTier = r.verdict ? r.verdict.tier : null;
+  const extras = (time) => {
+    const bx = cx - bw / 2;
+    const spot = (x, col, a) => cone(x, 11, 66, 14 + (P.keynote || 0) * 3, col, a);
+    if (P.keynote > 0 || P.trailer > 0) {
+      // scenen till höger: golv, stor skärm med trailern, talarstol och strålkastare (djärvare keynote ger större scen)
+      const sw = P.keynote > 0 ? 70 + P.keynote * 6 : 44;
+      const sx0 = W - sw - 8;
+      px(sx0 - 2, 56, sw + 4, 10, '#0a0f26');
+      px(sx0 - 2, 56, sw + 4, 1, '#ff6b8a');
+      px(sx0, 58, sw, 6, '#1d2552');
+      const scrH = 26;
+      px(sx0 + 2, 24, sw - 4, scrH, '#04061a');
+      px(sx0 + 3, 25, sw - 6, scrH - 2, '#0d1330');
+      if (P.trailer > 0) {
+        const col = P.trailer === 2 ? '#ff7ab8' : '#4de1d0';
+        for (let y = 26; y < 24 + scrH - 2; y += 2) px(sx0 + 3, y, sw - 6, 1, mix(col, 0.14 + 0.08 * Math.sin(time * 3 + y)));
+        const k = (time * 18) % (sw - 12);
+        px(sx0 + 5 + k, 30, 6, 14, mix('#ffffff', 0.22));
+        px(sx0 + 4 + ((time * 9) % (sw - 14)), 38, 10, 3, mix(col, 0.6));
+        if (P.trailer === 1) { px(sx0 + 3, 25, sw - 6, 3, '#000'); px(sx0 + 3, 24 + scrH - 5, sw - 6, 3, '#000'); }
+        if (r.trailerHit && Math.floor(time * 6) % 2) for (const [dx, dy] of [[0, 0], [sw - 4, 0], [0, scrH - 2], [sw - 4, scrH - 2]]) px(sx0 + 1 + dx, 24 + dy, 3, 3, '#ffe08a');
+        if (P.trailer === 2) for (let i = 0; i < 4; i++) { const q = (time * 0.7 + i / 4) % 1; px(sx0 + sw / 2 - 20 + i * 12, 22 - Math.round(q * 16), 4, 3, mix('#ffffff', 1 - q)); }
+      }
+      if (P.keynote > 0) {
+        spot(sx0 + sw * 0.3, '#ffe9a8', 0.07);
+        spot(sx0 + sw * 0.7, '#ff9ab8', 0.06);
+        px(sx0 + sw / 2 - 4, 56, 8, 4, '#4a2a1a');
+        person(sx0 + sw / 2, 60, staff[0], time, 1, (time % 4) < 1.2);
+        // publikens reaktion på keynoten: jubel (plus), artigt (knappt) eller tyst
+        if (r.react === 2) for (let i = 0; i < 5; i++) { const q = (time * 1.1 + i * 0.2) % 1; px(sx0 + 6 + i * (sw / 6), 50 - Math.round(q * 20), 3, 1, '#ffe08a'); px(sx0 + 7 + i * (sw / 6), 49 - Math.round(q * 20), 1, 3, '#ffe08a'); }
+        else if (r.react === 0 && Math.floor(time * 1.2) % 3 === 0) px(sx0 + sw / 2 + 8, 40, 6, 1, '#6a76a8');
+      }
+    }
+    // kändisen på väg till montern med blixtrande kameror
+    if (r.celeb === true) {
+      const cxx = cx + Math.sin(time * 0.5) * 60;
+      person(cxx, by + 62, { skin: SKINS[2], hair: HAIRS[1], shirt: '#ffd36a', pants: '#2a1a3a' }, time, 0, true);
+      px(cxx - 2, by + 45, 5, 2, '#05081a');
+      for (let i = 0; i < 4; i++) if ((time * 3 + i * 0.7) % 2.2 < 0.12) { const fx = cxx - 22 + i * 14; px(fx, by + 36, 3, 3, '#ffffff'); px(fx - 1, by + 37, 5, 1, 'rgba(255,255,255,.6)'); }
+    }
+    // rivalmöte vid första rivalens monter: kaffe, vår seger eller deras
+    if (r.meet && rivals[0]) {
+      const v = rivals[0];
+      if (r.meet === 'friend') { px(v.x + 14, 52, 4, 4, '#f4e8d0'); px(v.x + 18, 53, 1, 2, '#f4e8d0'); px(v.x + 15, 49 - (Math.floor(time * 2) % 2), 1, 2, 'rgba(255,255,255,.6)'); }
+      else if (r.meet === 'win') { px(v.x + 20, 30 + (Math.floor(time * 3) % 2), 5, 5, '#ffd36a'); px(v.x + 21, 29, 3, 7, '#ffd36a'); }
+      else { px(v.x + 12, 28, 18, 5, '#4a4e66'); px(v.x + 18, 26, 10, 4, '#4a4e66'); }
+    }
+    // pokalerna från mässans priser ovanför montern
+    for (let i = 0; i < Math.min(5, prizeWins); i++) {
+      const gx = cx - (Math.min(5, prizeWins) - 1) * 7 + i * 14;
+      px(gx - 3, 60, 7, 6, '#ffd36a');
+      px(gx - 1, 66, 3, 3, '#e8b848');
+      px(gx - 4, 69, 9, 2, '#b8882a');
+      if ((time * 1.4 + i) % 4 < 0.2) px(gx, 59, 2, 2, '#ffffff');
+    }
+    // pressens dom: ett band högst upp, fler stjärnor ju bättre
+    if (verdictTier != null) {
+      const bc = ['#6a4a5a', '#5a6078', '#4a78c8', '#4ac888', '#ffd36a'][verdictTier] || '#5a6078';
+      const vx = cx + 46;
+      px(vx, 12, 46, 8, bc);
+      px(vx, 12, 46, 1, 'rgba(255,255,255,.4)');
+      px(vx + 21, 20, 4, 3, bc);
+      for (let i = 0; i <= verdictTier; i++) px(vx + 23 - verdictTier * 4 + i * 8 - 1, 14, 3, 3, '#ffffff');
+    }
+    // demos: kraschad enhet ryker, en succé glittrar
+    const nI = r.items.length;
+    r.items.forEach((x, i) => {
+      const sxx = bx + (bw * (i + 0.5)) / Math.max(1, nI) - 12;
+      if (x.crash) for (let k = 0; k < 4; k++) { const q = (time * 0.9 + k / 4) % 1; ctx.globalAlpha = (1 - q) * 0.7; px(sxx + 8 + k * 2 + Math.sin(time * 3 + k) * 2, by + 12 - Math.round(q * 14), 3, 3, '#7a7e96'); ctx.globalAlpha = 1; }
+      else if (x.drop === 'hit' && (time * 2 + i) % 3 < 0.2) px(sxx + 4 + ((i * 7) % 16), by + 6 + ((i * 5) % 12), 2, 2, '#ffffff');
+      if (x.drop === 'flop') { ctx.globalAlpha = 0.28; px(sxx, by + 2, 24, 29, '#000'); ctx.globalAlpha = 1; }
+    });
+  };
   const draw = (time) => {
     ctx.clearRect(0, 0, W, H);
     // bakvägg med panelfogar och mjuk ljusning mot golvet
@@ -490,6 +567,7 @@ function scene(app, G, r) {
         px(x + Math.sin(time * 3 + k) * 3, y, 2, 2, ['#ff6b8a', '#ffe08a', '#4de1d0', '#9b7bff', '#ffffff'][i % 5]);
       }
     }
+    extras(time);
     // vinjett
     const vg = ctx.createRadialGradient(W / 2, H / 2, 70, W / 2, H / 2, 190);
     vg.addColorStop(0, 'rgba(0,0,0,0)');
