@@ -1724,3 +1724,16 @@ button.pr-rec { width: 100%; }
 .ls-prog i { display: block; height: 100%; background: linear-gradient(90deg, #4de1d0, #8aff9a); box-shadow: 0 0 10px rgba(77, 225, 208, 0.7); transition: width 0.5s; }
 .ls-prog[hidden] { display: none; }
 @media (max-width: 760px) { .ls-tick { top: auto; bottom: 8px; } .ls-cap { max-width: 70%; } }
+
+/* Spelmässan v133: programmet, pressens dom och fönstret */
+.exp-row { display: flex; flex-direction: column; gap: 8px; padding: 10px 12px; }
+.exp-row .seg { align-self: flex-start; max-width: 100%; }
+.exp-row > .row > b { display: inline-flex; align-items: center; gap: 7px; }
+.exp-row > .row > b .ic { width: 17px; height: 17px; color: var(--hot); }
+.exp-row .seg button { padding: 6px 10px; }
+.exp-vi { flex: none; width: 34px; height: 34px; border-radius: 10px; display: grid; place-items: center; color: var(--hot); background: color-mix(in srgb, var(--hot) 16%, transparent); }
+.exp-vi .ic { width: 19px; height: 19px; }
+.exp-verdict { border-color: color-mix(in srgb, var(--c) 45%, transparent); background: linear-gradient(90deg, color-mix(in srgb, var(--c) 9%, transparent), rgba(150, 172, 255, 0.04)); }
+.exp-hist { padding: 8px 12px; }
+.expo-foot { flex-wrap: wrap; }
+.expo-foot .btn.primary { flex: 1 1 250px; min-width: 0; white-space: normal; text-align: center; justify-content: center; }

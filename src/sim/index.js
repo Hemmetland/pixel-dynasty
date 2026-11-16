@@ -17,6 +17,7 @@ export * from './market.js';
 export * from './events.js';
 export * from './awards.js';
 export * from './expo.js';
+export * from './exposhow.js';
 export * from './headlines.js';
 export * from './contracts.js';
 export * from './engines.js';

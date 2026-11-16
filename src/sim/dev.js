@@ -21,6 +21,7 @@ import { liveScopesFor, EXP_SCOPES, LIVE_DEV, canGoLive, launchLive, releaseExpa
 import { KIND, kindOf } from '../data/onlinekinds.js';
 import { takeSeriesHype } from './franchise.js';
 import { beat, lifePick } from './life.js';
+import { settlePromise } from './exposhow.js';
 
 export const RP_RATE = 0.05;
 // Satser som beskriver "per projekt" skalas mot projektets längd (tempo) så att ett längre projekt inte tappar mer hype
@@ -362,6 +363,7 @@ export function releaseGame(G) {
   if (cr.sat < 0.995) game.sat = { n: cr.own, v: Math.round(cr.sat * 100) / 100 };
   game.crowdBy = cr.rivals.slice(0, 3).map((r) => ({ studio: r.studio, title: r.title, future: r.future }));
   startSales(G, game);
+  settlePromise(G, J, game); // löftet från mässans scen prövas mot betyget
   hwRelease(G, game);
   storeRelease(G, game);
   groupRelease(G, game);

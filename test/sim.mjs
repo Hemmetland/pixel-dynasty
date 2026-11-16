@@ -42,6 +42,11 @@ const autoSeason = mmo && args.includes('--autoseason');
 const perks = mmo && args.includes('--perks');
 // --expo=N: går på spelmässan med monter N (1-3) och visar de starkaste sakerna (standard: hoppar över)
 const expoLevel = Math.max(0, Math.min(3, +((args.find((a) => a.startsWith('--expo=')) || '').slice(7)) || 0));
+// --plan=K,D,T,M,S: programmet på mässan (presentation 0-3, demo 0-2, trailer 0-2, möte 0-2, stunt 0-3); utan --plan inget extra
+const expoPlan = (() => {
+  const v = (args.find((a) => a.startsWith('--plan=')) || '').slice(7).split(',').map((x) => +x || 0);
+  return v.length > 1 || v[0] ? { keynote: v[0] || 0, demo: v[1] || 0, trailer: v[2] || 0, meet: v[3] || 0, stunt: v[4] || 0 } : undefined;
+})();
 // --ports: porterar spel med betyg 7+ till den licensierade plattform som väntas ge bäst betyg
 const ports = args.includes('--ports');
 // --publish: ger ut andra studiors spel när demons intervall har mitten 7 eller mer
@@ -232,7 +237,10 @@ function handlePending(G) {
       S.resolveEvent(G, p.id, Math.floor(Math.random() * ev.choices.length));
     } else if (p.type === 'bailout') { S.takeBailout(G); G.pending.shift(); } else if (p.type === 'expo') {
       // med --expo går boten på mässan om pengarna räcker (annars hoppar den över)
-      if (!expoLevel || S.resolveExpo(G, p.id, expoLevel) !== true) S.resolveExpo(G, p.id, 0);
+      if (process.env.EXPODBG3) { const J = G.job; console.log(`   pre ${S.yearOf(G.t)} dev ${J && J.kind === 'game' && J.state === 'dev' ? 'ratio ' + (J.bugs / S.SCOPES[J.scope].bugs).toFixed(2) + ' hype ' + Math.round(J.hype) + ' phase ' + J.phase : '-'}`); }
+      if (!expoLevel || (S.resolveExpo(G, p.id, expoLevel, undefined, expoPlan) !== true && S.resolveExpo(G, p.id, expoLevel) !== true)) S.resolveExpo(G, p.id, 0);
+      // EXPODBG2=1: varje mässa (år, prislistan ours/theirs, betyget R och nivån)
+      if (process.env.EXPODBG2 && G.expoLast && G.expoLast.t === G.t) { const r = G.expoLast; console.log(`   show ${r.year} L${r.level} vis ${r.visitors} q ${r.items.length ? (r.items.reduce((a, x) => a + x.q, 0) / r.items.length).toFixed(2) : '-'} buzz ${r.buzz.toFixed(2)} ${r.prizes.map((x) => x.id + ' ' + x.ours + '/' + x.theirs + (x.win ? '*' : '')).join(' ')} R ${r.verdict.r} T${r.verdict.tier}`); }
     }
     else {
       // AWARDDBG=1: galans vinnare de första åren (kategori, betyg, * = ditt spel, fältet: konkurrenternas spel + dina)
@@ -752,6 +760,7 @@ if (ports) {
   if (rm.length) console.log(`remasters ${rm.length}; revenue $${Math.round(rm.reduce((a, p) => a + p.revenue, 0)).toLocaleString()}; cost $${Math.round(rm.reduce((a, p) => a + p.cost, 0)).toLocaleString()}; scores ${rm.map((p) => p.score).join(' ')}`);
   console.log(`ports ${pr.length}; revenue $${Math.round(pr.reduce((a, p) => a + p.revenue, 0)).toLocaleString()}; cost $${Math.round(pr.reduce((a, p) => a + p.cost, 0)).toLocaleString()}`);
 }
+if (process.env.EXPODBG && G.expoHist) console.log(`   expo ${G.expoHist.length} shows; verdicts ${G.expoHist.map((h) => h.vd).join('')} prizes ${G.expoHist.map((h) => h.pz.length).join('')} visitors ${G.expoHist.map((h) => h.vis).slice(0, 3).join('/')}; promises ${G.games.filter((g) => g.promise).map((g) => (g.promise.kept ? '+' : '-') + g.score).join(' ')}`);
 console.log(G.over ? `GAME OVER ${S.yearOf(G.over.t)} (bankrupt) after ${G.games.length} games` : `Finished ${S.yearOf(G.t)}; money $${Math.round(G.money).toLocaleString()}; games ${G.games.length}; best ${G.stats.bestScore}; ach ${G.ach.length}; ${dt}ms`);
 if (args.includes('--parts')) {
   for (const g of G.games.filter((_, i) => i % 3 === 0)) {

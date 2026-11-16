@@ -302,6 +302,12 @@ def('event', { m: 1, args: '[id|list]', d: L('Utlös en studiohändelse (slumpad
   G.pending.push({ type: 'event', id: G.uid++, ev: ev.id, ...S.eventContext(G, ev) });
   log(L('Händelse utlöst: ', 'Event triggered: ') + ev.id, 'ok');
 } });
+def('expo', { m: 1, d: L('Erbjud Spelmässan nu (låser upp den)', 'Offer the Games Expo now (unlocks it)'), run: (G) => {
+  if (G.pending.length) throw new Error(L('En ruta väntar redan på svar', 'A prompt is already waiting for an answer'));
+  G.u.flags.expo = true;
+  S.expoOffer(G);
+  log(L('Spelmässan erbjuds', 'The Games Expo is offered'), 'ok');
+} });
 def('ach', { m: 1, args: 'all|<id>|list', d: L('Lås upp prestationer', 'Unlock achievements'), run: (G, a) => {
   if (!a[0] || a[0] === 'list') {
     log(ACHIEVEMENTS.map((x) => x.id + (G.ach.includes(x.id) ? '*' : '')).join('  '));

@@ -19,6 +19,7 @@ import { CERTS, certIndex, totalUnits } from '../data/certs.js';
 import { membersOf, leadOf, teamName } from './teams.js';
 import { crisisState } from './crisis.js'; // bara i lifeState (vid anrop)
 import { warState } from './hwwar.js';
+import { expoState } from './exposhow.js';
 import { FACILITIES } from './studio.js'; // bara i lifeText (vid anrop), så importcykeln gör inget
 
 export const LIFE_MAX = 30; // så många händelser sparas
@@ -100,6 +101,18 @@ export const LIFE_KINDS = {
   // hårdvarukriget (hwwar.js): scenen hw (fabriken)
   warMove: { sc: 'hw', v: 7, gap: 0 }, // en konkurrerande tillverkare går efter dig, eller komponentbrist (g = tillverkaren, v 0 prissänkning, 1 exklusivt spel, 2 fankrig, 3 patentstämning, 4 korslicens, 5 komponentbrist, 6 brand)
   warSolved: { sc: 'hw', v: 2, gap: 0 }, // draget är hanterat (g = tillverkaren, a = vilket val, v 0 skonsamt, 1 dyrt eller illa)
+  // spelmässan (expo.js, exposhow.js): scenen expo (mässhallen)
+  expoOpen: { sc: 'expo', v: 2, gap: 0 }, // dörrarna öppnas (a = besökare på hela mässan, v 0 vanlig, 1 stor mässa)
+  expoKeynote: { sc: 'expo', v: 3, gap: 0 }, // presentation på scen (g = det som visas, a = nivån 1-3, v = nivån - 1: ärlig, stor, djärv)
+  expoCrowd: { sc: 'expo', v: 3, gap: 0 }, // hallens reaktion på scenen (a = besökare, v 0 jubel, 1 artigt, 2 tyst)
+  expoDemo: { sc: 'expo', v: 4, gap: 0 }, // demon av spelet i utveckling (g = spelet, v 0 fullbokad, 1 kraschar, 2 smygsläpp lyckas, 3 smygsläpp misslyckas)
+  expoTrailer: { sc: 'expo', v: 3, gap: 0 }, // trailern visas (v 0 enkel, 1 filmisk, 2 sprids på nätet)
+  expoMeet: { sc: 'expo', v: 3, gap: 0 }, // mötet med en rival (g = rivalen, v 0 kaffe, 1 vi vinner uppmärksamheten, 2 rivalen vinner den)
+  expoStunt: { sc: 'expo', v: 4, gap: 0 }, // stunten (v 0 gratisprylar, 1 tävling, 2 kändisgästen kommer, 3 kändisgästen uteblir)
+  expoPrize: { sc: 'expo', v: 5, gap: 0 }, // ett pris till studion (a = hur många hittills, v 0 monter, 1 visning, 2 publikens, 3 mest efterlängtade, 4 teknik)
+  expoVerdict: { sc: 'expo', v: 5, gap: 0 }, // pressens dom (a = betyg 0-100, v 0 flopp ... 4 mässans snackis)
+  expoClose: { sc: 'expo', v: 2, gap: 0 }, // mässan stänger (a = besökare hos oss, v 1 om det var kö)
+  expoPromise: { sc: 'expo', v: 2, gap: 0 }, // löftet från scenen prövas vid släppet (g = spelet, a = betyget, v 0 hölls, 1 bröts)
   // labbet
   resStart: { sc: 'lab', v: 2, gap: 0 }, // en forskning börjar (g = namnet)
   pizza: { sc: 'dev', v: 2, gap: 12 }, // pizza till teamet under övertid
@@ -158,7 +171,7 @@ export function lifeLog(G, sc, since = 0) {
   return LF.items.filter((b) => b.n > since && (!sc || b.sc === sc));
 }
 // Färdig text på spelarens språk
-const NUM_KINDS = new Set(['sold', 'hwParts', 'fans', 'liveSeasonEnd', 'worldChamp', 'hallRecord']); // stora tal skrivs med tusentalsavgränsare
+const NUM_KINDS = new Set(['sold', 'hwParts', 'fans', 'liveSeasonEnd', 'worldChamp', 'hallRecord', 'expoOpen', 'expoCrowd', 'expoClose']); // stora tal skrivs med tusentalsavgränsare
 export const lifeText = (b) => t(`life.${b.k}.${b.v}`, { who: b.who || t('life.someone'), g: b.k === 'built' && FACILITIES[b.g] ? L(FACILITIES[b.g].name) : b.g, a: NUM_KINDS.has(b.k) ? fmtFull(b.a) : b.a });
 
 // Veckovis: den som är mest utsliten under ett pågående projekt. (De andra händelserna skapas där de sker: dev.js, hardware.js,
@@ -208,6 +221,7 @@ export function lifeState(G, sc) {
   if (sc === 'hall') return hallState(G);
   if (sc === 'crisis') return crisisState(G);
   if (sc === 'war') return warState(G);
+  if (sc === 'expo') return expoState(G);
   const J = G.job && G.job.kind === 'game' ? G.job : null;
   const crew = workers(G).map((w) => ({ id: w.id, name: lifeName(w), mood: Math.round(w.mood), fatigue: Math.round((w.fatigue || 0) * 10) / 10, trait: w.trait || null, away: !!w.away }));
   if (!J) return { active: false, phase: 0, pct: 0, bugs: 0, crunch: false, title: '', crew };

@@ -4218,5 +4218,214 @@ ok(!bad.length, `äldre sparning utan ett av ${paths.length} fält går att spel
   ok(!nohw.hwwar && !nohw.hw, 'utan hårdvaruavdelning skapas varken avdelning eller krigsbok');
 }
 
+
+// ── Spelmässan v133: program (scen, demo, trailer, möte, stunt), priser, pressens dom, löftet och livsflödet ──
+{
+  const mkX = (seed = 41, withDev = true) => {
+    const W = S.newGame({ studio: 'Program', seed, difficulty: 'normal' });
+    S.makeCompetitors(W); S.initWorld(W);
+    W.pending = []; W.t = 48 * 14 + 21; W.money = 5e7; W.fans = 6000; W.u.flags.expo = true;
+    for (let i = 0; i < 4; i++) { S.refreshCandidates(W); S.hire(W, W.candidates[0].id); }
+    for (let i = 0; i < 3; i++) W.games.push({ id: 90 + i, title: 'P' + i, t: W.t - 6 - 9 * i, score: 7 + 0.5 * i, genre: 'rpg', topic: 'space', platform: 'pc', scope: 'small', total: 5e5, priceAt: 30, tail: 1, weekly: [], revenue: 0, units: 0, fansGained: 0 });
+    if (withDev) { W.job = S.buildJob(W, { topic: W.u.topics[0], genre: W.u.genres[0], platform: W.licenses[0], scope: W.u.scopes[0], audience: W.u.aud[0], title: 'Stora Löftet' }, W.staff.length); W.job.phase = 2; W.job.hype = 30; }
+    S.expoOffer(W);
+    return W;
+  };
+  const keys = (W, n = 4) => S.expoItems(W).sort((a, b) => (b.k === 'dev') - (a.k === 'dev') || b.q - a.q).slice(0, n).map(S.itemKey);
+  const run = (W, lv, ids, plan) => { const m = S.resolveExpo(W, W.pending[0].id, lv, ids, plan); return m === true ? W.expoLast : m; };
+  const X = mkX();
+  const itemsX = S.expoItems(X);
+  const dev = itemsX.find((x) => x.k === 'dev');
+  ok(dev && itemsX.length >= 4, 'det pågående spelet och de släppta går att visa');
+
+  // programmet kontrolleras mot monter och urval
+  const NP = S.normPlan(1, [], { keynote: 3, demo: 2, trailer: 2, meet: 2, stunt: 3 });
+  ok(NP.keynote === 0 && NP.demo === 0 && NP.trailer === 2 && NP.meet === 2 && NP.stunt === 3, 'scen kräver monter 2 och demo kräver spelet i utveckling');
+  const NQ = S.normPlan(2, [dev], { keynote: 9, demo: 5, trailer: -1, meet: 7, stunt: 99 });
+  ok(NQ.keynote === 3 && NQ.demo === 2 && NQ.trailer === 0 && NQ.meet === 2 && NQ.stunt === 3, 'valen klipps till sina gränser');
+  const PC = S.planCosts(6000, { keynote: 3, demo: 2, trailer: 2, meet: 2, stunt: 3 });
+  ok(PC.total === PC.keynote + PC.demo + PC.trailer + PC.meet + PC.stunt && PC.keynote > S.planCosts(6000, { keynote: 1, demo: 0, trailer: 0, meet: 0, stunt: 0 }).keynote && S.planCosts(6000, S.EXPO_NO_PLAN).total === 0, 'programmets kostnad är summan av delarna och noll utan program');
+  const f0 = S.expoForecast(X, 3, [dev]), f1 = S.expoForecast(X, 3, [dev], { keynote: 3, trailer: 2, stunt: 3 });
+  ok(f0.cost === S.expoCost(X, 3) && f1.cost > f0.cost && f1.visitors > f0.visitors && f1.plan.keynote === 3, 'förhandsvisningen räknar med programmets kostnad och besökare');
+
+  // ett program med bara nollor är samma mässa som inget program
+  const XA = JSON.parse(JSON.stringify(X)), XB = JSON.parse(JSON.stringify(X)), XC = JSON.parse(JSON.stringify(X));
+  const ids = keys(X, 3);
+  const rA = run(XA, 3, ids), rB = run(XB, 3, ids, S.EXPO_NO_PLAN);
+  ok(JSON.stringify(rA) === JSON.stringify(rB) && rA.plan.keynote === 0 && rA.parts.total === 0 && rA.cost === S.expoCost(X, 3), 'ett tomt program ger samma mässa som förut');
+  const rC = run(XC, 3, ids, { keynote: 3, demo: 1, trailer: 2, meet: 1, stunt: 2 });
+  ok(rC.cost === S.expoCost(X, 3) + rC.parts.total && rC.parts.total > 0 && Math.abs(XC.money - (X.money - rC.cost + rC.revenue)) < 1, 'pengarna stämmer med monter plus program');
+  const XD = JSON.parse(JSON.stringify(X));
+  ok(JSON.stringify(run(XD, 3, ids, { keynote: 3, demo: 1, trailer: 2, meet: 1, stunt: 2 })) === JSON.stringify(rC), 'samma frö, år och program ger samma mässa');
+  ok(rC.visitors > rA.visitors, 'scen och trailer ger fler besökare');
+
+  // för lite pengar för programmet: rutan ligger kvar och inget är betalt
+  const XP = JSON.parse(JSON.stringify(X));
+  XP.money = S.expoCost(XP, 3) + 10;
+  const m0 = XP.money;
+  ok(typeof S.resolveExpo(XP, XP.pending[0].id, 3, ids, { keynote: 3, stunt: 3 }) === 'string' && XP.pending.length === 1 && XP.money === m0 && !XP.expoLast, 'utan pengar till programmet ligger mässan kvar');
+
+  // presentationen på scen: förväntan, löfte och hallens reaktion
+  ok(XC.job.promise && XC.job.promise.bar === 8.5 && XC.job.promise.tone === 3 && rC.items.find((x) => x.k === 'dev').promise === 8.5, 'presentationen lägger ett löfte på spelet i utveckling');
+  ok(rC.lines.some((l) => l.k === 'keynote3') && rC.lines.some((l) => /^react[012]$/.test(l.k)) && [0, 1, 2].includes(rC.react), 'scenen får en presentation och en reaktion från hallen');
+  ok(!XA.job.promise, 'utan scen inget löfte');
+  const XK = mkX(41, true);
+  const rK = run(XK, 3, [S.itemKey(S.expoItems(XK).find((x) => x.k === 'game'))], { keynote: 3 });
+  ok(!XK.job.promise && rK.plan.keynote === 3, 'scen utan spel i utveckling ger ingen löfte');
+  const rK1 = run(mkX(41), 1, keys(X, 1), { keynote: 3 });
+  ok(rK1.plan.keynote === 0, 'den lilla montern har ingen scen');
+  const hype = (W, plan) => { const E = JSON.parse(JSON.stringify(W)); run(E, 3, [S.itemKey(S.expoItems(E).find((x) => x.k === 'dev'))], plan); return E.job.hype; };
+  ok(hype(X, { keynote: 3 }) > hype(X, { keynote: 1 }) && hype(X, { keynote: 1 }) > hype(X, {}), 'djärvare presentation ger mer förväntan');
+
+  // demon: säker minskar kraschen, smygsläpp lyckas eller floppar
+  let crash0 = 0, crash1 = 0, hit = 0, flop = 0;
+  for (let sd = 1; sd <= 80; sd++) {
+    const W = mkX(sd);
+    W.job.bugs = S.SCOPES[W.job.scope].bugs * 1.3;
+    const dk = [S.itemKey(S.expoItems(W).find((x) => x.k === 'dev'))];
+    const W1 = JSON.parse(JSON.stringify(W)), W2 = JSON.parse(JSON.stringify(W));
+    if (run(W, 3, dk, { demo: 0 }).items[0].crash) crash0++;
+    if (run(W1, 3, dk, { demo: 1 }).items[0].crash) crash1++;
+    const r2 = run(W2, 3, dk, { demo: 2 });
+    if (r2.items[0].drop === 'hit') hit++; else if (r2.items[0].drop === 'flop') flop++;
+    ok(!r2.items[0].crash && (r2.lines.some((l) => l.k === 'dropHit') || r2.lines.some((l) => l.k === 'dropFlop')) && W2.job.bugs < S.SCOPES[W2.job.scope].bugs * 1.3, 'smygsläppet kraschar inte och rättar några buggar');
+    if (sd > 3) break;
+  }
+  for (let sd = 1; sd <= 80; sd++) {
+    const W = mkX(sd);
+    W.job.bugs = S.SCOPES[W.job.scope].bugs * 1.3;
+    const dk = [S.itemKey(S.expoItems(W).find((x) => x.k === 'dev'))];
+    const W1 = JSON.parse(JSON.stringify(W)), W2 = JSON.parse(JSON.stringify(W));
+    if (run(W, 3, dk, { demo: 0 }).items[0].crash) crash0++;
+    if (run(W1, 3, dk, { demo: 1 }).items[0].crash) crash1++;
+    const r2 = run(W2, 3, dk, { demo: 2 });
+    if (r2.items[0].drop === 'hit') hit++; else flop++;
+  }
+  ok(crash0 > crash1 && crash0 > 10, 'en säker demo kraschar mer sällan (' + crash0 + ' mot ' + crash1 + ' av 84)');
+  ok(hit > 0 && flop > 0 && S.dropChance(0) > S.dropChance(1) && S.dropChance(1.3) < 0.2, 'smygsläppet kan både slå och floppa, och chansen sjunker med buggarna (' + hit + ' / ' + flop + ')');
+
+  // mötet med rivalen
+  const XM = mkX(43);
+  S.crisisOf(XM).heat = 40;
+  const rM = run(XM, 3, keys(XM, 2), { meet: 1 });
+  ok(rM.meet === 'friend' && XM.crisis.heat === 36 && rM.lines.some((l) => l.k === 'meetFriend'), 'kaffe sänker jaktens temperatur');
+  let win = 0, lose = 0, heatUp = true;
+  for (let sd = 1; sd <= 40; sd++) {
+    const W = mkX(sd); S.crisisOf(W).heat = 40;
+    const r = run(W, 3, keys(W, 2), { meet: 2 });
+    if (r.meet === 'win') win++; else if (r.meet === 'lose') lose++;
+    if (W.crisis.heat !== (r.meet === 'win' ? 43 : 41)) heatUp = false;
+  }
+  ok(win > 0 && lose > 0 && heatUp, 'att tävla kan gå åt båda hållen och hettar upp jakten lite (' + win + ' / ' + lose + ')');
+
+  // stunten
+  const XS0 = mkX(44), XS1 = mkX(44), XS3 = mkX(44);
+  const r0 = run(XS0, 3, keys(XS0, 2), {}), r1 = run(XS1, 3, keys(XS1, 2), { stunt: 1 });
+  ok(Math.abs(r1.revenue / r0.revenue - 0.8) < 0.01 && r1.fans > r0.fans && r1.lines.some((l) => l.k === 'giveaway'), 'gratisprylar ger fler fans men mindre pengar');
+  const r3 = run(XS3, 3, keys(XS3, 2), { stunt: 3 });
+  ok(typeof r3.celeb === 'boolean' && r3.lines.some((l) => l.k === (r3.celeb ? 'celebHit' : 'celebMiss')), 'kändisgästen kommer eller uteblir');
+  let c1 = 0;
+  for (let sd = 1; sd <= 60; sd++) { const W = mkX(sd); if (run(W, 3, keys(W, 2), { stunt: 3 }).celeb) c1++; }
+  ok(c1 > 15 && c1 < 50, 'kändisgästen kommer ungefär varannan gång (' + c1 + ' av 60)');
+  const XT = mkX(45), XT0 = mkX(45);
+  const rT = run(XT, 3, keys(XT, 2), { trailer: 2 }), rT0 = run(XT0, 3, keys(XT0, 2), {});
+  ok(rT.visitors > rT0.visitors && rT.lines.some((l) => l.k === 'trailer2'), 'en filmisk trailer ger fler besökare');
+
+  // priser och pressens dom
+  const okBoard = (r, hasDev, hasHw) => {
+    const ids2 = r.prizes.map((p) => p.id);
+    return ids2.includes('booth') && ids2.includes('crowd') && ids2.includes('show') === r.items.length > 0 && ids2.includes('soon') === hasDev && ids2.includes('tech') === hasHw && r.prizes.every((p) => p.ours >= 0 && p.ours <= 1 && p.theirs >= 0 && p.theirs <= 1.2 && p.win === (p.ours > p.theirs) && S.EXPO_PRIZES.includes(p.id));
+  };
+  ok(okBoard(rA, true, false), 'prislistan har rätt klasser med poäng 0 till 1');
+  const rG = run(mkX(46), 3, keys(X, 3).filter((k) => !k.startsWith('dev')), {});
+  ok(okBoard(rG, false, false), 'utan spel i utveckling delas inget pris för mest efterlängtade');
+  ok(rA.verdict && rA.verdict.tier >= 0 && rA.verdict.tier <= 4 && rA.verdict.lift === S.EXPO_VERDICT.lift[rA.verdict.tier] && rA.lines.some((l) => l.k === 'verdict' + rA.verdict.tier), 'pressens dom har en nivå och en rad');
+  const gx = XA.games.filter((g) => g.expo);
+  ok(gx.length > 0 && gx.every((g) => g.expo.until === XA.t + S.EXPO_LIFT_WEEKS && g.expo.mult > 1) && rA.items.filter((x) => x.lift != null).every((x) => x.lift > 0), 'domen ändrar lyftet men det visade spelet säljer ändå mer');
+  const won = rA.prizes.filter((p) => p.win).length;
+  ok((won > 0) === XA.news.some((n) => n.key === 'news.expoPrize') && XA.news[0].key === 'news.expo', 'priser blir en nyhet och mässan är ändå senaste nyheten');
+  let tiers = new Set();
+  for (let sd = 1; sd <= 50; sd++) { const W = mkX(sd, true); W.fans = 300 * sd; const r = run(W, 1 + (sd % 3), keys(W, 3), sd % 2 ? { stunt: 2, trailer: 1 } : {}); if (r.verdict) tiers.add(r.verdict.tier); }
+  ok(tiers.size >= 3, 'pressens dom varierar mellan mässor (' + [...tiers].sort().join('') + ')');
+
+  // historiken
+  ok(XA.expoHist.length === 1 && XA.expoHist[0].y === rA.year && XA.expoHist[0].vis === rA.visitors && XA.expoHist[0].vd === rA.verdict.tier, 'mässan sparas i historiken');
+  const XH = JSON.parse(JSON.stringify(XA));
+  for (let i = 0; i < 25; i++) S.recordShow(XH, rA);
+  ok(XH.expoHist.length === S.HIST_MAX, 'historiken håller de senaste mässorna');
+
+  // löftet vid släppet (hela vägen genom releaseGame, med ett löfte som är omöjligt att hålla och ett som alltid hålls)
+  const mkRel = (bar) => {
+    const W = mkX(47);
+    W.job.promise = { bar, tone: 3, pen: 0.14, keep: 0.06, y: 1994 };
+    W.job.state = 'report';
+    W.job.report = { score: 7, reviews: [], flags: [], insights: [], parts: { know: 0 }, ff: { over: 0, under: 0, fit: 0 } };
+    return W;
+  };
+  const WB = mkRel(10), fansB = WB.fans;
+  const gB = S.releaseGame(WB);
+  ok(gB.promise && gB.promise.kept === false && gB.expo && gB.expo.mult < 1 && gB.expo.until === WB.t + S.PROMISE_WEEKS && WB.fans < fansB && WB.news.some((n) => n.key === 'news.promiseBroken'), 'ett brutet löfte sänker försäljningen och fansen');
+  const WK = mkRel(5), fansK = WK.fans;
+  const gK = S.releaseGame(WK);
+  ok(gK.promise && gK.promise.kept === true && Math.abs(gK.expo.mult - 1.06) < 1e-9 && WK.fans >= fansK && WK.news.some((n) => n.key === 'news.promiseKept'), 'ett hållet löfte ger ett litet lyft');
+  ok(S.lifeLog(WB, 'expo').some((b) => b.k === 'expoPromise' && b.v === 1) && S.lifeLog(WK, 'expo').some((b) => b.k === 'expoPromise' && b.v === 0), 'löftet syns i livsflödet');
+  const WN = mkX(47); WN.job.state = 'report'; WN.job.report = { score: 7, reviews: [], flags: [], insights: [], parts: { know: 0 }, ff: { over: 0, under: 0, fit: 0 } };
+  ok(!S.releaseGame(WN).promise, 'utan löfte händer inget vid släppet');
+  ok(S.expoPromise(mkX(48)) === null && S.expoPromise(XC).bar === 8.5 && S.expoPromise(XC).title === 'Stora Löftet', 'expoPromise ger löftet på spelet i utveckling');
+
+  // livsflödet: scenen expo
+  const lg = S.lifeLog(XC, 'expo');
+  const order = ['expoOpen', 'expoKeynote', 'expoCrowd', 'expoTrailer', 'expoDemo', 'expoMeet', 'expoStunt', 'expoVerdict', 'expoClose'];
+  let at = -1, inOrder = true;
+  for (const k of order) { const i = lg.findIndex((b, n) => b.k === k && n > at); if (i < 0) inOrder = false; else at = i; }
+  ok(inOrder && lg.every((b) => b.sc === 'expo'), 'mässan skriver sina händelser i rätt ordning i scenen expo');
+  setLang('sv'); const sv = lg.map((b) => S.lifeText(b)); setLang('en'); const en = lg.map((b) => S.lifeText(b)); setLang('sv');
+  ok(sv.every((x) => x && !x.includes('{') && !x.startsWith('life.')) && en.every((x) => x && !x.includes('{') && !x.startsWith('life.')) && sv.join() !== en.join(), 'händelserna får färdig text på båda språken');
+  let missE = 0;
+  for (const k of Object.keys(S.LIFE_KINDS).filter((x) => S.LIFE_KINDS[x].sc === 'expo')) for (let v = 0; v < S.LIFE_KINDS[k].v; v++) { const e = STRINGS[`life.${k}.${v}`]; if (!e || !e[0] || !e[1]) { missE++; console.log('saknas', k, v); } }
+  ok(missE === 0, 'varje händelse i scenen expo har text på båda språken');
+  const es = S.lifeState(XC, 'expo');
+  ok(es.open && es.next > 0 && es.last && es.last.year === rC.year && es.last.level === 3 && es.last.plan.keynote === 3 && es.last.picks.length === rC.items.length && es.last.verdict === rC.verdict.tier && es.promise && es.promise.bar === 8.5 && es.shows === 1 && es.last.rivals.length > 0, 'lifeState(expo) ger mässan, programmet, löftet och nästa mässa');
+  const eo = S.lifeState(mkX(49), 'expo');
+  ok(eo.open && eo.last === null && eo.shows === 0 && eo.prizes === 0, 'före första mässan finns ingen senaste mässa');
+  const eL = S.lifeState(S.newGame({ studio: 'Låst', seed: 3 }), 'expo');
+  ok(!eL.open && eL.next === -1 && eL.last === null && eL.promise === null, 'innan Mässmonter är forskad är scenen stängd');
+  // en gammal sparning: mässan utan program, priser och dom
+  const XO = JSON.parse(JSON.stringify(XA));
+  for (const k of ['plan', 'parts', 'prizes', 'verdict', 'react', 'meet', 'trailerHit', 'celeb']) delete XO.expoLast[k];
+  delete XO.expoHist;
+  const eOld = S.lifeState(XO, 'expo');
+  ok(eOld.last && eOld.last.plan.keynote === 0 && eOld.last.verdict === 2 && eOld.last.prizes.length === 0 && eOld.shows === 0, 'en mässa från en äldre sparning går att läsa');
+  XO.pending = []; S.expoOffer(XO);
+  ok(typeof S.resolveExpo(XO, XO.pending[0].id, 2, keys(XO, 2), { stunt: 2 }) === 'boolean' && XO.expoHist.length === 1, 'en gammal sparning kan ställa ut igen');
+
+  // alla rader och priser som mässan kan skriva finns på båda språken
+  const seen = new Set();
+  const plans = [{}, { keynote: 3, demo: 2, trailer: 2, meet: 1, stunt: 3 }, { keynote: 1, demo: 1, trailer: 1, meet: 2, stunt: 1 }, { keynote: 2, demo: 0, trailer: 2, meet: 2, stunt: 2 }];
+  for (let sd = 1; sd <= 60; sd++) {
+    const W = mkX(sd);
+    const P = W.hw ? [] : [];
+    const r = run(W, 1 + (sd % 3), keys(W, 4), plans[sd % plans.length]);
+    for (const l of r.lines) seen.add(l.k);
+    void P;
+  }
+  const missL = [...seen].filter((k) => !STRINGS['expo.n.' + k] || !STRINGS['expo.n.' + k][0] || !STRINGS['expo.n.' + k][1]);
+  ok(missL.length === 0 && seen.size > 15, 'alla rader i mässan har text på båda språken (' + seen.size + ' sorter)' + missL.join());
+  // prestationerna för mässan
+  const chk = (id, W) => ACHIEVEMENTS.find((a) => a.id === id).check(W);
+  const WZ = S.newGame({ studio: 'Pris', seed: 5 });
+  ok(!chk('expo1', WZ) && !chk('expo_prize', WZ) && !chk('expo_sweep', WZ) && !chk('expo_talk', WZ) && !chk('expo_word', WZ), 'mässans prestationer är olåsta från start');
+  WZ.expoHist = [{ y: 1990, lv: 2, vis: 900, fans: 100, rev: 1, cost: 1, kn: 0, pz: [], vd: 2 }];
+  ok(chk('expo1', WZ) && !chk('expo_prize', WZ), 'första mässan låser upp Första mässan');
+  WZ.expoHist.push({ y: 1991, lv: 3, vis: 900, fans: 100, rev: 1, cost: 1, kn: 2, pz: ['booth', 'show', 'crowd'], vd: 4 });
+  ok(chk('expo_prize', WZ) && chk('expo_sweep', WZ) && chk('expo_talk', WZ), 'priser, rent bord och snackis går att låsa upp');
+  WZ.games.push({ id: 1, score: 8.8, promise: { bar: 8.5, kept: true } });
+  ok(chk('expo_word', WZ), 'ett hållet löfte på 8,5 låser upp Ord och inga visor');
+  WZ.games[0].promise = { bar: 7.5, kept: true };
+  ok(!chk('expo_word', WZ), 'ett lägre löfte räcker inte');
+  const missP = S.EXPO_PRIZES.filter((id) => !STRINGS['expo.pz.' + id] || !STRINGS['expo.n.prize_' + id]);
+  ok(missP.length === 0, 'varje pris har namn och rad');
+}
+
 console.log(fails ? `\n${fails} FEL` : '\nAlla tester gick bra');
 process.exit(fails ? 1 : 0);

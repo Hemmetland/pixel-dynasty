@@ -7,6 +7,8 @@ import { SKINS, HAIRS, SHIRTS, PANTS } from '../render/pal.js';
 import { fmtNum, fmtFull } from '../core/util.js';
 import { hashStr, seeded } from '../core/rng.js';
 import { BOOTHS, EXPO_LIFT_WEEKS, expoAttendance, expoCost, expoItems, defaultPicks, expoForecast, resolveExpo, itemKey } from '../sim/expo.js';
+import { dropChance, EXPO_NO_PLAN } from '../sim/exposhow.js';
+import { SCOPES } from '../sim/const.js';
 import { yearOf } from '../sim/const.js';
 import { HW_TYPES } from '../data/hardware.js';
 import { LOGOS } from './hud.js';
@@ -15,12 +17,20 @@ const ICON = { dev: 'hammer', game: 'gamepad', hw: 'cpu', live: 'globe' };
 const COL = { dev: 'var(--hot)', game: 'var(--accent)', hw: 'var(--tech)', live: 'var(--good)' };
 
 // ── Planering ───────────────────────────────────────────────────
+// Programmet: fem val, alla med nollan som "inget extra". Nycklarna skrivs ut så att nyckelkontrollen ser dem.
+const PROG = [
+  { id: 'keynote', ic: 'megaphone', title: 'expo.g.keynote', opts: ['expo.p.kn0', 'expo.p.kn1', 'expo.p.kn2', 'expo.p.kn3'], desc: ['expo.p.kn0.d', 'expo.p.kn1.d', 'expo.p.kn2.d', 'expo.p.kn3.d'] },
+  { id: 'demo', ic: 'gamepad', title: 'expo.g.demo', opts: ['expo.p.dm0', 'expo.p.dm1', 'expo.p.dm2'], desc: ['expo.p.dm0.d', 'expo.p.dm1.d', 'expo.p.dm2.d'] },
+  { id: 'trailer', ic: 'film', title: 'expo.g.trailer', opts: ['expo.p.tr0', 'expo.p.tr1', 'expo.p.tr2'], desc: ['expo.p.tr0.d', 'expo.p.tr1.d', 'expo.p.tr2.d'] },
+  { id: 'meet', ic: 'coffee', title: 'expo.g.meet', opts: ['expo.p.mt0', 'expo.p.mt1', 'expo.p.mt2'], desc: ['expo.p.mt0.d', 'expo.p.mt1.d', 'expo.p.mt2.d'] },
+  { id: 'stunt', ic: 'sparkle', title: 'expo.g.stunt', opts: ['expo.p.st0', 'expo.p.st1', 'expo.p.st2', 'expo.p.st3'], desc: ['expo.p.st0.d', 'expo.p.st1.d', 'expo.p.st2.d', 'expo.p.st3.d'] },
+];
 export function expoPrompt(app, G, p) {
   const year = yearOf(G.t);
   const items = expoItems(G);
   const byKey = (k) => items.find((x) => itemKey(x) === k);
   const afford = (lv) => G.money >= expoCost(G, lv);
-  const st = { level: afford(2) ? 2 : afford(1) ? 1 : 0, picks: [] };
+  const st = { level: afford(2) ? 2 : afford(1) ? 1 : 0, picks: [], plan: { ...EXPO_NO_PLAN } };
   const fill = () => {
     const B = BOOTHS[st.level];
     if (!B) return;
@@ -53,9 +63,31 @@ export function expoPrompt(app, G, p) {
     </button>`;
   };
 
+  // Programmet: ett kort per val med knappar, en rad om vad valet innebär och vad det kostar
+  const progRows = (fc) => {
+    const pl = fc.plan;
+    const dev = chosen().find((x) => x.k === 'dev');
+    const J = dev && G.job && G.job.kind === 'game' ? G.job : null;
+    const gs = G.games.slice(-3);
+    const avg = gs.length ? (gs.reduce((a, g) => a + g.score, 0) / gs.length).toFixed(1) : '–';
+    return PROG.map((g) => {
+      const cur = pl[g.id];
+      const locked = g.id === 'keynote' ? st.level < 2 : g.id === 'demo' ? !dev : false;
+      const cost = fc.parts[g.id];
+      const segs = g.opts.map((key, i) => `<button class="${cur === i ? 'on' : ''}" data-act="ex-prog" data-g="${g.id}" data-i="${i}" ${locked && i ? 'disabled' : ''}>${t(key)}</button>`).join('');
+      let more = '';
+      if (locked) more = t(g.id === 'keynote' ? 'expo.p.needBooth' : 'expo.p.needDev');
+      else {
+        more = t(g.desc[cur]);
+        if (g.id === 'keynote' && cur) more += ' ' + (dev ? t('expo.p.promise', { title: `<b>${esc(L(dev.name))}</b>`, avg }) : t('expo.p.noPromise'));
+        if (g.id === 'demo' && cur === 2 && J) more += ' ' + t('expo.p.dropOdds', { n: Math.round(dropChance(J.bugs / SCOPES[J.scope].bugs) * 100) });
+      }
+      return `<div class="card exp-row"><div class="row" style="gap:8px;align-items:center;flex-wrap:wrap"><b>${icon(g.ic)} ${t(g.title)}</b><span class="sp"></span>${cost ? `<span class="tag" style="--c:var(--money)">${money(cost)}</span>` : ''}</div><div class="seg wrap-seg">${segs}</div><div class="hint" style="margin:0">${more}</div></div>`;
+    }).join('');
+  };
   const draw = () => {
     const B = BOOTHS[st.level];
-    const fc = B ? expoForecast(G, st.level, chosen()) : null;
+    const fc = B ? expoForecast(G, st.level, chosen(), st.plan) : null;
     const slots = B ? B.slots : 0;
     UI.modal(
       `<div class="win-head"><div class="wi" style="--wc:var(--hot)">${icon('megaphone')}</div><h2>${t('expo.title')} ${year}<div class="sub">${t('expo.sub', { n: fmtFull(expoAttendance(year)) })}</div></h2></div>
@@ -63,10 +95,12 @@ export function expoPrompt(app, G, p) {
         <div class="lbl" style="margin:14px 0 8px">${t('expo.booth')}</div>
         <div class="choices">${[1, 2, 3, 0].map(boothCard).join('')}</div>
         ${B ? `<div class="lbl" style="margin:16px 0 4px">${t('expo.show')}</div><div class="hint" style="margin-bottom:8px">${t('expo.showHint', { n: slots })}</div>
-        <div class="choices">${items.length ? items.map(itemCard).join('') : `<div class="hint">${t('expo.noItems')}</div>`}</div>` : ''}
+        <div class="choices">${items.length ? items.map(itemCard).join('') : `<div class="hint">${t('expo.noItems')}</div>`}</div>
+        <div class="lbl" style="margin:16px 0 4px">${t('expo.prog')}</div><div class="hint" style="margin-bottom:8px">${t('expo.progHint')}</div>
+        <div class="col" style="gap:8px">${progRows(fc)}</div>` : ''}
       </div>
-      <div class="win-foot">${B ? `<button class="btn" data-act="ex-skip">${t('expo.o0')}</button>` : ''}<span class="sp"></span>
-        ${B ? `<button class="btn primary lg" data-act="ex-go">${icon('megaphone')}${t('expo.go')} · ${money(fc.cost)} · ${t('expo.about', { n: fmtFull(fc.visitors) })}</button>` : `<button class="btn primary lg" data-act="ex-skip">${t('expo.o0')}</button>`}</div>`,
+      <div class="win-foot expo-foot">${B ? `<button class="btn" data-act="ex-skip">${t('expo.o0')}</button>` : ''}<span class="sp"></span>
+        ${B ? `<button class="btn primary lg" data-act="ex-go" ${G.money < fc.cost ? 'disabled' : ''}>${icon('megaphone')}${t('expo.go')} · ${money(fc.cost)} · ${t('expo.about', { n: fmtFull(fc.visitors) })}</button>` : `<button class="btn primary lg" data-act="ex-skip">${t('expo.o0')}</button>`}</div>`,
       bind,
       'md',
     );
@@ -87,12 +121,16 @@ export function expoPrompt(app, G, p) {
       st.picks = st.picks.includes(k) ? st.picks.filter((x) => x !== k) : [...st.picks, k];
       draw();
     });
+    act('ex-prog', (b) => {
+      st.plan = { ...st.plan, [b.dataset.g]: +b.dataset.i };
+      draw();
+    });
     act('ex-skip', () => {
       resolveExpo(G, p.id, 0);
       close();
     });
     act('ex-go', () => {
-      const r = resolveExpo(G, p.id, st.level, st.picks);
+      const r = resolveExpo(G, p.id, st.level, st.picks, st.plan);
       if (r === true) showHall(app, G, G.expoLast, close);
       else errToast(r);
     });
@@ -116,12 +154,31 @@ function itemLine(G, r, x) {
   const bits = [];
   if (x.hype != null) bits.push(t('expo.r.hype', { n: Math.round(x.hype * 10) / 10 }));
   if (x.crash) bits.push(`<span style="color:var(--bug)">${t('expo.r.crash')}</span>`);
+  if (x.drop === 'hit') bits.push(`<span style="color:var(--good)">${t('expo.r.dropHit')}</span>`);
+  if (x.drop === 'flop') bits.push(`<span style="color:var(--bug)">${t('expo.r.dropFlop')}</span>`);
+  if (x.promise) bits.push(`<span style="color:var(--gold)">${t('expo.r.promise', { bar: x.promise.toFixed(1) })}</span>`);
   if (x.k === 'game' && x.lift != null) bits.push(t('expo.r.lift', { v: Math.round(x.lift * 100), n: EXPO_LIFT_WEEKS }));
   if (x.k === 'hw' && x.lift != null) bits.push(t('expo.r.liftHw', { v: Math.round(x.lift * 100) }));
   if (x.k === 'live' && x.fresh) bits.push(t('expo.r.fresh', { n: x.fresh }));
   if (x.viral) bits.push(`<span style="color:var(--gold)">${t('expo.r.viral')}</span>`);
   const thumb = x.k === 'hw' ? `<span class="exr-ic">${icon(HW_TYPES[x.type]?.ic || ICON[x.k])}</span>` : `<img class="exr-cv" src="${coverURL(coverSpec(G, x), 1)}" width="30" height="40" alt="" draggable="false">`;
   return `<div class="exr-row${x.viral ? ' viral' : ''}" style="--c:${COL[x.k]}">${thumb}<div style="flex:1;min-width:0">${name}<div class="faint" style="font-size:12px">${bits.join(' · ') || '&nbsp;'}</div></div>${x.viral ? `<span class="exr-star">${icon('star')}</span>` : ''}</div>`;
+}
+
+const VERDICT_KEY = ['expo.v0', 'expo.v1', 'expo.v2', 'expo.v3', 'expo.v4'];
+const VERDICT_D = ['expo.vd0', 'expo.vd1', 'expo.vd2', 'expo.vd3', 'expo.vd4'];
+const VERDICT_COL = ['var(--bug)', 'var(--faint)', 'var(--accent)', 'var(--good)', 'var(--gold)'];
+const PRIZE_KEY = { booth: 'expo.pz.booth', show: 'expo.pz.show', crowd: 'expo.pz.crowd', soon: 'expo.pz.soon', tech: 'expo.pz.tech' };
+const sgn = (n) => (n > 0 ? '+' : n < 0 ? '−' : '') + Math.abs(n);
+// Pressens dom och mässpriserna (finns inte i en mässa från en äldre sparning)
+export function verdictHTML(r) {
+  if (!r.verdict) return '';
+  const v = r.verdict;
+  const chips = [t('expo.r.vLift', { v: sgn(Math.round((v.lift - 1) * 100)) }), v.hype ? t('expo.r.vHype', { v: sgn(v.hype) }) : '', t('expo.r.vFans', { v: sgn(Math.round((v.fans - 1) * 100)) })].filter(Boolean).map((x) => `<span class="chip">${x}</span>`).join('');
+  const prizes = (r.prizes || []).map((p) => `<span class="spill" style="--c:${p.win ? 'var(--gold)' : 'var(--faint)'}" data-tip="${esc(t('expo.pz.tip', { a: Math.round(p.ours * 100), b: Math.round(p.theirs * 100) }))}">${icon(p.win ? 'trophy' : 'x')}${t(PRIZE_KEY[p.id])}</span>`).join('');
+  return `<div class="card exp-verdict" style="--c:${VERDICT_COL[v.tier]};margin-top:12px"><div class="row" style="gap:10px;align-items:center;flex-wrap:wrap"><span class="exp-vi">${icon('megaphone')}</span><div style="flex:1;min-width:0"><div class="lbl" style="margin:0">${t('expo.r.verdict')}</div><b class="disp" style="font-size:17px;color:var(--c)">${t(VERDICT_KEY[v.tier])}</b></div></div>
+    <p class="hint" style="margin:6px 0 8px">${t(VERDICT_D[v.tier])}</p><div class="row" style="gap:6px;flex-wrap:wrap">${chips}</div>
+    ${prizes ? `<div class="lbl" style="margin:12px 0 6px">${t('expo.r.prizes')}</div><div class="row" style="gap:6px;flex-wrap:wrap">${prizes}</div>` : ''}</div>`;
 }
 
 export function showHall(app, G, r, close) {
@@ -140,8 +197,9 @@ export function showHall(app, G, r, close) {
           <div class="counter xc" style="--c:var(--accent)"><span class="xc-i">${icon('user')}</span><div class="v num">${fmtFull(r.visitors)}</div><div class="k">${t('expo.visitors')}</div></div>
           <div class="counter xc" style="--c:var(--fans)"><span class="xc-i">${icon('heart')}</span><div class="v num">+${fmtNum(r.fans)}</div><div class="k">${t('expo.r.fans')}</div></div>
           <div class="counter xc" style="--c:var(--money)"><span class="xc-i">${icon('money')}</span><div class="v num">+${money(r.revenue)}</div><div class="k">${t('expo.r.rev')}</div></div>
-          <div class="counter xc" style="--c:var(--bug)"><span class="xc-i">${icon('x')}</span><div class="v num">−${money(r.cost)}</div><div class="k">${t('expo.r.cost')}</div></div>
+          <div class="counter xc" style="--c:var(--bug)" ${r.parts && r.parts.total ? `data-tip="${esc(t('expo.r.costTip', { a: money(r.cost - r.parts.total), b: money(r.parts.total) }))}"` : ''}><span class="xc-i">${icon('x')}</span><div class="v num">−${money(r.cost)}</div><div class="k">${t('expo.r.cost')}</div></div>
         </div>
+        ${verdictHTML(r)}
         ${r.items.length ? `<div class="lbl" style="margin:14px 0 6px">${t('expo.r.items')}</div><div class="col" style="gap:7px">${r.items.map((x) => itemLine(G, r, x)).join('')}</div>` : ''}
         ${r.rivals.length ? `<p class="hint" style="margin-top:12px">${t('expo.rivals', { list: r.rivals.map((c) => esc(c.name)).join(', ') })}</p>` : ''}
       </div>
