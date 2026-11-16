@@ -52,5 +52,5 @@ export function goalsHTML(G) {
     <p class="hint" style="margin:0 0 12px">${t('goal.help')}</p>
     ${ag.length ? `<div class="grid" style="grid-template-columns:repeat(auto-fill,minmax(270px,1fr));margin-bottom:12px">${ag.map((x) => card(G, x)).join('')}</div>` : `<div class="card" style="margin-bottom:12px">${t(done.length >= total ? 'goal.allDone' : 'goal.none')}</div>`}
     ${done.length ? `<details class="goal-done"><summary class="hint">${t('goal.doneList', { n: done.length })}</summary><div class="goal-chips">${done.map((x) => `<span class="chip">${icon('check')} ${L(x.name)}</span>`).join('')}</div></details>` : ''}
-    <div class="lbl" style="margin:18px 0 6px">${t('ach.sec')}</div>`;
+`;
 }

@@ -8,6 +8,7 @@ import { STRINGS } from '../src/data/strings.js';
 import { on as onBus } from '../src/core/bus.js';
 import { setLang } from '../src/core/i18n.js';
 import { ACHIEVEMENTS } from '../src/data/achievements.js';
+import { ACH_CATS, ACH_CAT, ACH_DECADE, ACH_WITH_PROGRESS, achProgress } from '../src/data/achmeta.js';
 import { weeklyOf } from '../src/core/weekly.js';
 import { identityName } from '../src/data/identity.js';
 import { STORE_EVENTS } from '../src/data/storeevents.js';
@@ -3714,6 +3715,153 @@ ok(!bad.length, `äldre sparning utan ett av ${paths.length} fält går att spel
   for (const k of ['worldTier', 'worldLead', 'worldFeud', 'worldFinal', 'worldChamp']) for (let v = 0; v < S.LIFE_KINDS[k].v; v++) { const e = STRINGS[`life.${k}.${v}`]; if (!e || !e[0] || !e[1]) { missW++; console.log('saknas', k, v); } }
   for (const k of Object.keys(STRINGS).filter((x) => x.startsWith('world.'))) if (!STRINGS[k][0] || !STRINGS[k][1]) { missW++; console.log('saknas', k); }
   ok(missW === 0 && S.lifeText(S.lifeLog(G4, 'live').find((b) => b.k === 'worldChamp')).includes(champ4), 'alla texter i världen finns på båda språken');
+}
+
+// ── Prestationer och statistik: trofésamling, historiebok, rekord och statistik ──────────────────────
+{
+  const catIds = ACH_CATS.flatMap((c) => c.ids);
+  const allIds = ACHIEVEMENTS.map((a) => a.id);
+  ok(allIds.length >= 86 && new Set(allIds).size === allIds.length, 'alla prestationer har egna id (' + allIds.length + ')');
+  ok(catIds.length === allIds.length && new Set(catIds).size === catIds.length && catIds.every((id) => allIds.includes(id)) && allIds.every((id) => ACH_CAT[id]), 'varje prestation ligger i exakt en hylla');
+  ok(ACH_WITH_PROGRESS.every((id) => allIds.includes(id)), 'framsteg finns bara för prestationer som finns');
+
+  // en egen studio med hand byggda spel: tre årtionden, två genrer, en serie och ett onlinespel
+  const mkB = () => {
+    const GB = S.newGame({ studio: 'Bok', seed: 9, difficulty: 'normal' });
+    S.makeCompetitors(GB); S.initWorld(GB);
+    GB.pending = []; GB.t = 48 * 33 + 10; GB.money = 5e6; GB.fans = 4000;
+    const add = (id, y, score, units, genre, platform, extra = {}) => GB.games.push({ id, title: 'Bok ' + id, t: 48 * (y - 1980) + 6, score, weekly: [units / 10], total: 0, priceAt: 30, topic: 'fantasy', genre, platform, scope: 'medium', audience: 'everyone', revenue: units * 12, units, ports: [], insights: [], reviews: [], flags: [], ...extra });
+    add(9001, 1985, 7.0, 20000, 'rpg', 'pc');
+    add(9002, 1992, 8.5, 150000, 'action', 'pc', { chart: { top: 3, best: 1, weeks: 8 } });
+    add(9003, 1993, 9.1, 600000, 'action', 'pc', { sequelOf: 9002, chart: { top: 11, best: 1, weeks: 14 } });
+    add(9004, 2005, 6.0, 5000, 'rpg', 'pc');
+    add(9005, 2005, 8.0, 40000, 'rpg', 'pc', { expansionOf: 9004 });
+    return GB;
+  };
+  const GB = mkB();
+  const full = S.fullGames(GB);
+  ok(full.length === 4 && S.fullGames(GB).every((g) => !g.expansionOf), 'expansioner räknas inte som egna spel i boken');
+  const ls = S.lifeStats(GB);
+  ok(ls.games === 4 && ls.expansions === 1 && ls.units === 20000 + 150000 + 600000 + 5000 + 40000 && ls.best >= 0 && ls.years === 33 && ls.discs === 4, 'studions siffror stämmer med spelen (' + ls.games + ' spel, ' + ls.discs + ' skivor)');
+  ok(Math.abs(ls.avg - (7 + 8.5 + 9.1 + 6) / 4) < 1e-9, 'snittbetyget räknas på de egna spelen');
+
+  // årtionden
+  ok(S.decadesOf(GB).join() === '1980,1990,2000,2010' && S.decadeOf(1999) === 1990 && S.decadeOf(2000) === 2000, 'årtiondena räknas upp till nu');
+  const d90 = S.decadeBook(GB, 1990);
+  ok(d90.n === 2 && d90.best.id === 9003 && d90.seller.id === 9003 && d90.over && d90.discs === 2 && d90.years.length === 10, 'årtiondets bok: spel, bäst, storsäljare och skivor');
+  const d10 = S.decadeBook(GB, 2010);
+  ok(d10.n === 0 && d10.best === null && !d10.over && d10.years.length === 4, 'ett pågående årtionde utan spel har ingen bästa spel och bara åren hittills');
+  ok(S.decadeBook(GB, 1980).platforms.every((id) => PLATFORM[id]) && S.decadeBook(GB, 1980).platforms.length >= 1, 'årtiondets nya plattformar finns i världen');
+
+  // rekord
+  const rec = Object.fromEntries(S.studioRecords(GB).map((r) => [r.id, r]));
+  ok(rec.score.g.id === 9003 && rec.score.v === 9.1 && rec.score.y === 1993, 'rekord: högsta betyg med spel och år');
+  ok(rec.units.g.id === 9003 && rec.units.v === 600000 && rec.week.g.id === 9003 && rec.top.v === 11, 'rekord: sålda exemplar, första veckan och veckor som etta');
+  ok(rec.series.v === 2 && rec.series.g.id === 9003 && rec.fans.v >= 4000 && rec.cash.v >= 5e6 && rec.fans.g === null, 'rekord: längsta serien, fans och kassa (utan spel)');
+  ok(!('live' in rec) && S.studioRecords(S.newGame({ studio: 'Tom', seed: 3, difficulty: 'normal' })).every((r) => r.v > 0), 'rekord utan värde visas inte');
+
+  // uppdelning
+  const bg = S.breakdown(GB, 'genre');
+  ok(bg.length === 2 && bg[0].id === 'action' && bg[0].n === 2 && bg.every((r, i) => !i || bg[i - 1].rev >= r.rev) && bg.reduce((a, r) => a + r.n, 0) === 4, 'uppdelning per genre: sorterad på intäkter och alla spel med');
+  ok(['platform', 'topic', 'scope'].every((k) => S.breakdown(GB, k).reduce((a, r) => a + r.n, 0) === 4) && Math.abs(bg[0].avg - 8.8) < 1e-9, 'uppdelning per plattform, tema och storlek, med snittbetyg');
+  ok(S.breakdown(S.newGame({ studio: 'Tom', seed: 3, difficulty: 'normal' }), 'genre').length === 0, 'uppdelning utan spel är tom');
+
+  // boken fylls ur kassahistoriken första gången, och år för år
+  const GH = mkB();
+  GH.hist.revenue = [{ t: 48 * 32 + 20, v: 1000 }, { t: 48 * 32 + 30, v: 500 }, { t: 48 * 33 + 2, v: 200 }];
+  ok(!GH.book, 'boken finns inte förrän den behövs');
+  const rng0 = GH.rng, money0 = GH.money, fans0 = GH.fans;
+  const rows = S.yearRows(GH);
+  ok(GH.book && rows.length === 34 && rows[0].y === 1980 && rows[32].sales === 1500 && rows[33].sales === 200 && rows[10].games === 0, 'boken läser in försäljning per år ur kassahistoriken');
+  ok(rows.find((r) => r.y === 1993).games === 1 && rows.find((r) => r.y === 1993).best === 9.1, 'året visar antal spel och bästa betyg');
+  S.bookMonth(GH);
+  ok(GH.rng === rng0 && GH.money === money0 && GH.fans === fans0, 'historieboken rör varken pengar, fans eller slumptal');
+
+  // månadssteget: en rad per månad in i boken, nytt årtionde, rekord och pokaler
+  const GM = mkB();
+  GM.t = 48 * 29 + 40; GM.hist.revenue = [{ t: 48 * 29 + 38, v: 700 }];
+  S.bookMonth(GM);
+  ok(S.lifeLog(GM, 'hall').length === 0 && GM.book.rec.score === 9.1, 'första månaden ger inga händelser (rekorden bara noteras)');
+  GM.hist.revenue.push({ t: 48 * 29 + 42, v: 300 });
+  S.bookMonth(GM);
+  ok(GM.book.yr[2009] === 1000 && S.lifeLog(GM, 'hall').length === 0, 'varje månad läggs en rad in i året, och bara en gång');
+  const nBeats = GM.news.length;
+  GM.t = 48 * 30 + 2;
+  S.bookMonth(GM);
+  ok(S.lifeLog(GM, 'hall').filter((b) => b.k === 'hallEra' && b.a === 2010).length === 1 && GM.news.length === nBeats + 1, 'ett nytt årtionde ger en nyhet och en scenhändelse');
+  S.bookMonth(GM);
+  ok(S.lifeLog(GM, 'hall').filter((b) => b.k === 'hallEra').length === 1, 'årtiondet firas bara en gång');
+  GM.games.push({ ...GM.games[2], id: 9100, title: 'Rekordspelet', score: 9.6, weekly: [9e6], units: 9e6, chart: { top: 30, best: 1, weeks: 30 }, sequelOf: 0 });
+  S.bookMonth(GM);
+  const recs = S.lifeLog(GM, 'hall').filter((b) => b.k === 'hallRecord');
+  ok(recs.length === 4 && [0, 1, 2, 3].every((v) => recs.some((b) => b.v === v && b.g === 'Rekordspelet')), 'nya rekord ger en scenhändelse var (betyg, exemplar, första veckan, veckor som etta)');
+  S.bookMonth(GM);
+  ok(S.lifeLog(GM, 'hall').filter((b) => b.k === 'hallRecord').length === 4, 'samma rekord kommer inte igen');
+  GM.awards.push({ year: 2010, cat: 'goty', title: 'Rekordspelet' });
+  S.bookMonth(GM);
+  ok(S.lifeLog(GM, 'hall').filter((b) => b.k === 'hallAward' && b.g === 'Rekordspelet' && b.a === 2010).length === 1, 'en ny pokal ger en scenhändelse');
+  S.bookMonth(GM);
+  ok(S.lifeLog(GM, 'hall').filter((b) => b.k === 'hallAward').length === 1, 'pokalen kommer bara en gång');
+
+  // prestationer med datum
+  const GA = mkB();
+  GA.ach = []; delete GA.achT;
+  S.checkAchievements(GA);
+  ok(GA.ach.includes('first_game') && GA.achT && GA.achT.first_game === GA.t && GA.ach.every((id) => GA.achT[id] === GA.t), 'en klarad prestation får veckan den klarades');
+  ok(S.lifeLog(GA, 'hall').filter((b) => b.k === 'hallAch').length === GA.ach.length, 'varje klarad prestation blir en scenhändelse');
+  const log = S.trophyLog(GA);
+  ok(log.length === GA.ach.length && log.every((x, i) => !i || log[i - 1].t >= x.t), 'trofélistan är sorterad med nyast först');
+  const GO = JSON.parse(JSON.stringify(GA)); delete GO.achT; delete GO.book;
+  ok(S.trophyLog(GO).every((x) => x.t === -1) && S.lifeStats(GO).trophies === GA.ach.length && S.decadeBook(GO, 1990).trophies.length === 0, 'en gammal sparning utan datum går att läsa (prestationerna saknar bara datum)');
+  const achBeats = S.lifeLog(GO, 'hall').length;
+  S.bookMonth(GO);
+  ok(GO.book && GO.book.dec === S.decadeOf(S.yearOf(GO.t)) && S.lifeLog(GO, 'hall').length === achBeats, 'en gammal sparning får sin bok utan ett ras av händelser');
+
+  // epokpriserna: plats i branschen per årtionde
+  const GR2 = mkB();
+  GR2.ranks = [{ y: 1985, pos: 2 }, { y: 1995, pos: 4 }, { y: 2003, pos: 1 }];
+  const chk = (id) => ACHIEVEMENTS.find((a) => a.id === id).check(GR2);
+  ok(chk('top3_80') && !chk('top3_90') && chk('top3_00') && !chk('top3_10'), 'epokpriserna kräver topp tre ett år under rätt årtionde');
+  ok(ACH_DECADE.top3_80 === 1980 && ACH_DECADE.top3_10 === 2010 && Object.keys(ACH_DECADE).every((id) => allIds.includes(id)), 'epokpriserna har sina årtionden');
+  GR2.stats.bestScore = 9.1;
+  const pr = S.decadeTrophies(GR2);
+  ok(pr.length === 3 && pr[0].dec === 1980 && pr[1].best.id === 9003 && pr[1].over && pr[2].over && pr[2].best.id === 9004, 'årtiondets troféer finns för varje årtionde med spel');
+
+  // framsteg
+  const progBad = [];
+  for (const GX of [G, GB, S.newGame({ studio: 'Tom', seed: 3, difficulty: 'normal' })]) {
+    for (const id of ACH_WITH_PROGRESS) {
+      const p = achProgress(GX, id);
+      if (!p || !Number.isFinite(p.cur) || !(p.max > 0) || !(p.pct >= 0 && p.pct <= 100) || !['n', 'money', 'score', 'yr'].includes(p.fmt)) progBad.push(id);
+    }
+  }
+  ok(progBad.length === 0 && achProgress(GB, 'first_game') === null, 'framsteget är ett ändligt tal med mål över noll för alla som går att räkna upp ' + progBad.join());
+  const p5 = achProgress(GB, 'five_games');
+  ok(p5.cur === 4 && p5.max === 5 && Math.round(p5.pct) === 80 && achProgress(GB, 'rich2').pct === 100, 'framsteget räknar spel och pengar');
+
+  // scenens tillstånd
+  const hs = S.lifeState(GA, 'hall');
+  ok(hs.open && hs.ach === GA.ach.length && hs.total === ACHIEVEMENTS.length && hs.recent.length === Math.min(6, GA.ach.length) && hs.discs.length === 4 && hs.discs.reduce((a, n) => a + n, 0) === 4 && hs.best && hs.best.title === 'Bok 9003', 'lifeState(hall) ger trofésalens läge');
+  ok(!S.lifeState(S.newGame({ studio: 'Tom', seed: 3, difficulty: 'normal' }), 'hall').open, 'en tom studio har en tom trofésal');
+
+  // texter på båda språken
+  let missB = 0;
+  const need = (k) => { const e = STRINGS[k]; if (!e || !e[0] || !e[1]) { missB++; console.log('saknas', k); } };
+  for (const k of ['hallAch', 'hallAward', 'hallRecord', 'hallEra']) for (let v = 0; v < S.LIFE_KINDS[k].v; v++) need(`life.${k}.${v}`);
+  for (const c of ACH_CATS) need('ach.cat.' + c.id);
+  for (const d of S.DECADES) need('book.era.' + d);
+  for (const id of ['score', 'units', 'revenue', 'week', 'top', 'year', 'live', 'series', 'fans', 'cash']) need('rec.' + id);
+  for (const k of ['genre', 'platform', 'topic', 'scope']) need('stat.by.' + k);
+  for (let i = 0; i < 4; i++) need('ach.level.' + i);
+  for (const k of Object.keys(STRINGS).filter((x) => /^(ach|book|rec|stat)\./.test(x))) need(k);
+  setLang('en');
+  const tx = [S.lifeLog(GM, 'hall').find((b) => b.k === 'hallRecord' && b.v === 1), S.lifeLog(GA, 'hall').find((b) => b.k === 'hallAch')].map((b) => S.lifeText(b));
+  setLang('sv');
+  const tz = [S.lifeLog(GM, 'hall').find((b) => b.k === 'hallEra'), S.lifeLog(GA, 'hall').find((b) => b.k === 'hallAch')].map((b) => S.lifeText(b));
+  ok(missB === 0 && tx[0].includes('Rekordspelet') && tx[0].includes('9 000 000') && !/[{}]|\[object/.test(tx.join() + tz.join()) && tz[0].includes('2010'), 'alla texter finns på båda språken och fylls i rätt: ' + tx[0] + ' | ' + tz[1]);
+
+  // det som sparas är litet och går att spara och läsa tillbaka
+  ok(JSON.stringify(JSON.parse(JSON.stringify(GM.book))) === JSON.stringify(GM.book) && Object.keys(GM.book).length <= 8 && JSON.stringify(GM.book).length < 2000, 'boken är liten och går att spara och läsa tillbaka');
 }
 
 console.log(fails ? `\n${fails} FEL` : '\nAlla tester gick bra');

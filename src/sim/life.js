@@ -13,7 +13,9 @@ import { t, L } from '../core/i18n.js';
 import { hashStr } from '../core/rng.js';
 import { fmtFull } from '../core/util.js';
 import { workers, fatigueOver } from './people.js';
-import { TICKS_PER_WEEK, WEEKS_PER_YEAR, yfOf, engineNeed, engineEff } from './const.js';
+import { TICKS_PER_WEEK, WEEKS_PER_YEAR, yfOf, yearOf, engineNeed, engineEff } from './const.js';
+import { ACHIEVEMENTS } from '../data/achievements.js';
+import { CERTS, certIndex, totalUnits } from '../data/certs.js';
 import { membersOf, leadOf, teamName } from './teams.js';
 import { FACILITIES } from './studio.js'; // bara i lifeText (vid anrop), så importcykeln gör inget
 
@@ -84,6 +86,11 @@ export const LIFE_KINDS = {
   worldFeud: { sc: 'live', v: 2, gap: 0 }, // två gillen möts i final igen: en fejd (g = "A – B", a = antal finaler)
   worldFinal: { sc: 'live', v: 2, gap: 0 }, // finalen börjar (g = spelet, a = sändningen -1 ingen, 0 egen kanal, 1 studio, 2 hela världen, v 0 sänds, 1 sänds inte)
   worldChamp: { sc: 'live', v: 2, gap: 0 }, // mästaren kröns (g = gillet, a = tittare, v 0 sänds, 1 sänds inte)
+  // trofésalen (book.js): prestationer, pokaler, rekord och nya årtionden
+  hallAch: { sc: 'hall', v: 2, gap: 0 }, // en ny prestation (g = namnet, a = antal klara)
+  hallAward: { sc: 'hall', v: 2, gap: 0 }, // en ny pokal från galan (g = spelet, a = året)
+  hallRecord: { sc: 'hall', v: 4, gap: 0 }, // ett nytt rekord (v 0 betyg, 1 sålda exemplar, 2 första veckan, 3 veckor som etta; g = spelet, a = värdet)
+  hallEra: { sc: 'hall', v: 2, gap: 0 }, // ett nytt årtionde börjar (g = årtalet, a = årtalet)
   // labbet
   resStart: { sc: 'lab', v: 2, gap: 0 }, // en forskning börjar (g = namnet)
   pizza: { sc: 'dev', v: 2, gap: 12 }, // pizza till teamet under övertid
@@ -142,7 +149,7 @@ export function lifeLog(G, sc, since = 0) {
   return LF.items.filter((b) => b.n > since && (!sc || b.sc === sc));
 }
 // Färdig text på spelarens språk
-const NUM_KINDS = new Set(['sold', 'hwParts', 'fans', 'liveSeasonEnd', 'worldChamp']); // stora tal skrivs med tusentalsavgränsare
+const NUM_KINDS = new Set(['sold', 'hwParts', 'fans', 'liveSeasonEnd', 'worldChamp', 'hallRecord']); // stora tal skrivs med tusentalsavgränsare
 export const lifeText = (b) => t(`life.${b.k}.${b.v}`, { who: b.who || t('life.someone'), g: b.k === 'built' && FACILITIES[b.g] ? L(FACILITIES[b.g].name) : b.g, a: NUM_KINDS.has(b.k) ? fmtFull(b.a) : b.a });
 
 // Veckovis: den som är mest utsliten under ett pågående projekt. (De andra händelserna skapas där de sker: dev.js, hardware.js,
@@ -189,6 +196,7 @@ export function lifeState(G, sc) {
   if (sc === 'store') return storeState(G);
   if (sc === 'live') return liveState(G);
   if (sc === 'lab') return labState(G);
+  if (sc === 'hall') return hallState(G);
   const J = G.job && G.job.kind === 'game' ? G.job : null;
   const crew = workers(G).map((w) => ({ id: w.id, name: lifeName(w), mood: Math.round(w.mood), fatigue: Math.round((w.fatigue || 0) * 10) / 10, trait: w.trait || null, away: !!w.away }));
   if (!J) return { active: false, phase: 0, pct: 0, bugs: 0, crunch: false, title: '', crew };
@@ -291,6 +299,37 @@ function worldScene(G, g) {
     champ: W.champ,
     prod: W.auto ? 'auto' : W.prod,
     final: F ? { round: F.w >= 2 ? 2 : 1, prod: F.prod, a: F.final[0], b: F.final[1], semis: F.semis.map((x) => [...x]), viewers: Math.round(F.viewers) } : null,
+  };
+}
+// hall: trofésalen. ach/total = klara prestationer, recent = de sex senaste (id, name, t = veckan, -1 om datum saknas), awards = pokaler från galan, galas = år med pokal,
+// discs = antal skivor per nivå (silver, guld, platina, diamant), decade = årtiondets första år, best/seller = bästa spel och storsäljare (title, v) eller null, no1 = listettor
+function hallState(G) {
+  const T = G.achT || {};
+  const recent = ACHIEVEMENTS.filter((a) => G.ach.includes(a.id))
+    .map((a) => ({ id: a.id, name: L(a.name), t: T[a.id] == null ? -1 : T[a.id] }))
+    .sort((a, b) => b.t - a.t)
+    .slice(0, 6);
+  const discs = CERTS.map(() => 0);
+  for (const g of G.games) {
+    const i = g.cert ?? certIndex(totalUnits(g));
+    if (i >= 0) discs[i]++;
+  }
+  const full = G.games.filter((g) => !g.expansionOf);
+  const top = (f) => full.reduce((b, g) => (f(g) > (b ? f(b) : 0) ? g : b), null);
+  const bs = top((g) => g.score);
+  const sl = top((g) => totalUnits(g));
+  return {
+    open: G.games.length > 0,
+    ach: G.ach.length,
+    total: ACHIEVEMENTS.length,
+    recent,
+    awards: G.awards.length,
+    galas: new Set(G.awards.map((a) => a.year)).size,
+    discs,
+    decade: Math.floor(yearOf(G.t) / 10) * 10,
+    best: bs ? { title: L(bs.title), v: Math.round(bs.score * 10) / 10 } : null,
+    seller: sl ? { title: L(sl.title), v: Math.round(totalUnits(sl)) } : null,
+    no1: G.stats.no1 || 0,
   };
 }
 // lab: forskningen. active = pågående forskning (pct 0-1), done = antal klara, team = forskningsteamen

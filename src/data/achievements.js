@@ -1,5 +1,7 @@
 // Prestationer. check(G) körs varje månad och efter lansering.
 import { certIndex, totalUnits } from './certs.js';
+import { PLATFORM, launchTime } from './platforms.js';
+import { START_YEAR, WEEKS_PER_YEAR } from '../sim/const.js';
 const A = (id, glyph, sv, en, dsv, den, check) => ({ id, glyph, name: { sv, en }, desc: { sv: dsv, en: den }, check });
 const best = (G) => G.stats.bestScore;
 // Hur många spel serien som g avslutar har (g, föregångaren, dess föregångare …)
@@ -19,6 +21,45 @@ const galaWins = (G) => {
   for (const a of G.awards) (by[a.year] || (by[a.year] = new Set())).add(a.cat);
   return by;
 };
+// spel som studion gett ut själv i den ordning de kom (expansioner räknas inte)
+export const fullGames = (G) => G.games.filter((g) => !g.expansionOf);
+export const decadeOf = (year) => Math.floor(year / 10) * 10;
+const yearOfT = (t) => START_YEAR + Math.floor(t / WEEKS_PER_YEAR);
+// längsta följd av spel i rad med minst betyget min
+export function streak(G, min) {
+  let best = 0;
+  let run = 0;
+  for (const g of fullGames(G)) {
+    run = g.score >= min ? run + 1 : 0;
+    best = Math.max(best, run);
+  }
+  return best;
+}
+// flest spel som kom ut samma kalenderår
+export function mostInYear(G) {
+  const by = {};
+  for (const g of fullGames(G)) by[yearOfT(g.t)] = (by[yearOfT(g.t)] || 0) + 1;
+  return Math.max(0, ...Object.values(by));
+}
+// olika plattformar, genrer, teman och årtionden som studion gett ut spel i
+export const distinct = (G, f) => new Set(fullGames(G).map(f)).size;
+// ett spel för en plattform inom ett år efter att plattformen kom ut (egna plattformar och datorn räknas inte)
+export const pioneered = (G) =>
+  fullGames(G).some((g) => {
+    const p = PLATFORM[g.platform];
+    if (!p || p.own || p.id === 'pc') return false;
+    const at = (launchTime(p) - START_YEAR) * WEEKS_PER_YEAR;
+    return g.t >= at && g.t - at <= WEEKS_PER_YEAR;
+  });
+// längsta serien
+export function longestSeries(G) {
+  let best = 0;
+  for (const g of G.games) best = Math.max(best, seriesLen(G, g));
+  return best;
+}
+// toppplats i branschen (1 = störst) ett år inom ett visst årtionde
+export const rankedIn = (G, dec, pos) => (G.ranks || []).some((r) => r.pos <= pos && r.y >= dec && r.y <= dec + 9);
+export const unitsTotal = (G) => G.games.reduce((a, g) => a + totalUnits(g), 0);
 const liveEvents = (G) => G.games.reduce((a, g) => a + ((g.live && g.live.events) || 0), 0);
 export const ACHIEVEMENTS = [
   A('first_game', 'a_game', 'Första spelet', 'First Release', 'Släpp ditt första spel.', 'Release your first game.', (G) => G.games.length >= 1),
@@ -64,7 +105,7 @@ export const ACHIEVEMENTS = [
   A('known', 'a_bulb', 'Ett namn i branschen', 'A Name in the Industry', 'Få ett rykte: branschen börjar kalla studion något.', 'Earn a reputation: the industry starts calling the studio something.', (G) => !!G.flags.ident),
   A('hitfactory', 'a_star', 'Hitfabriken', 'The Hit Factory', 'Bli känd som Hitfabriken.', 'Become known as the hit factory.', (G) => G.flags.ident === 'hits'),
   A('outlast', 'a_globe', 'Sist kvar', 'Last One Standing', 'Ha ett onlinespel igång när en konkurrents MMO stänger.', 'Have an online game running when a rival MMO shuts down.', (G) => (G.stats.outlasted || 0) >= 1),
-  A('comeback', 'a_heart', 'Comeback', 'Comeback', 'Låt ett onlinespel växa tillbaka efter en lång nedgång.', 'Let an online game grow back after a long decline.', (G) => (G.stats.liveComeback || 0) >= 1),
+  A('live_comeback', 'a_heart', 'Comeback', 'Comeback', 'Låt ett onlinespel växa tillbaka efter en lång nedgång.', 'Let an online game grow back after a long decline.', (G) => (G.stats.liveComeback || 0) >= 1),
   A('seasons5', 'a_globe', 'Säsongskungen', 'Season King', 'Genomför fem säsonger i dina onlinespel.', 'Complete five seasons in your online games.', (G) => (G.stats.liveSeasons || 0) >= 5),
   A('ports3', 'a_globe', 'Överallt', 'Everywhere', 'Porta ett spel till tre andra plattformar.', 'Port one game to three other platforms.', (G) => G.games.some((g) => (g.ports || []).filter((p) => p.kind !== 'remaster').length >= 3)),
   A('timeless', 'a_star', 'Tidlös', 'Timeless', 'Släpp en remaster med betyg 8 eller mer.', 'Release a remaster scoring 8 or more.', (G) => G.games.some((g) => (g.ports || []).some((p) => p.kind === 'remaster' && p.score >= 8))),
@@ -85,6 +126,28 @@ export const ACHIEVEMENTS = [
   A('hw_vr', 'a_chip', 'En annan verklighet', 'Another Reality', 'Lansera ett eget VR-headset.', 'Launch a VR headset of your own.', (G) => (G.hw?.products || []).some((P) => P.type === 'vr')),
   A('esport1', 'a_star', 'Arrangören', 'The Organiser', 'Håll en e-sporttävling i ett av dina onlinespel.', 'Host an e-sport tournament in one of your online games.', (G) => (G.stats.esports || 0) >= 1),
   A('esport_million', 'a_crown', 'Miljonpublik', 'Million Viewers', 'Få en miljon tittare till dina e-sportevent sammanlagt.', 'Get a million viewers to your e-sport events in total.', (G) => (G.stats.esportViewers || 0) >= 1e6),
+  // genom spelen, pengarna och epokerna
+  A('platforms5', 'a_game', 'Plattformsbytare', 'Platform Hopper', 'Släpp spel för fem olika plattformar.', 'Release games for five different platforms.', (G) => distinct(G, (g) => g.platform) >= 5),
+  A('genres6', 'a_bulb', 'Allsidig', 'All-Rounder', 'Släpp spel i sex olika genrer.', 'Release games in six different genres.', (G) => distinct(G, (g) => g.genre) >= 6),
+  A('topics12', 'a_bulb', 'Världsbyggare', 'World Builder', 'Släpp spel med tolv olika teman.', 'Release games with twelve different topics.', (G) => distinct(G, (g) => g.topic) >= 12),
+  A('quick3', 'a_clock', 'Tre på ett år', 'Three in a Year', 'Släpp tre spel under samma kalenderår.', 'Release three games in the same calendar year.', (G) => mostInYear(G) >= 3),
+  A('streak5', 'a_star', 'Jämn kvalitet', 'Steady Quality', 'Släpp fem spel i rad med betyg 7 eller mer.', 'Release five games in a row scoring 7 or more.', (G) => streak(G, 7) >= 5),
+  A('streak3_8', 'a_star', 'Hattrick', 'Hat Trick', 'Släpp tre spel i rad med betyg 8 eller mer.', 'Release three games in a row scoring 8 or more.', (G) => streak(G, 8) >= 3),
+  A('pioneer', 'a_chip', 'Pionjären', 'The Pioneer', 'Släpp ett spel för en ny plattform inom ett år efter att den kommit ut.', 'Release a game for a new platform within a year of its launch.', pioneered),
+  A('series5', 'a_game', 'Långlivad serie', 'Long-Running Series', 'Släpp det femte spelet i en serie.', 'Release the fifth game in a series.', (G) => longestSeries(G) >= 5),
+  A('hits10', 'a_star', 'Tio succéer', 'Ten Hits', 'Släpp tio spel med betyg 8 eller mer.', 'Release ten games scoring 8 or more.', (G) => G.stats.hits >= 10),
+  A('rev100m', 'a_coin', 'Hundra miljoner', 'A Hundred Million', 'Sälj spel för 100 miljoner dollar sammanlagt.', 'Earn $100 million from games in total.', (G) => G.stats.revenue >= 1e8),
+  A('rev1b', 'a_coin', 'Miljardbolaget', 'The Billion-Dollar Studio', 'Sälj spel för en miljard dollar sammanlagt.', 'Earn $1 billion from games in total.', (G) => G.stats.revenue >= 1e9),
+  A('units10m', 'a_disc', 'Tio miljoner exemplar', 'Ten Million Copies', 'Sälj tio miljoner exemplar sammanlagt.', 'Sell ten million copies in total.', (G) => unitsTotal(G) >= 1e7),
+  A('award10', 'a_trophy', 'Pokalskåpet', 'The Trophy Cabinet', 'Vinn tio priser.', 'Win ten awards.', (G) => G.awards.length >= 10),
+  A('team100', 'a_team', 'Hundra på golvet', 'A Hundred on the Floor', 'Ha hundra anställda.', 'Employ a hundred people.', (G) => G.staff.length >= 100),
+  A('team300', 'a_team', 'En stad i staden', 'A Town Within a Town', 'Ha trehundra anställda.', 'Employ three hundred people.', (G) => G.staff.length >= 300),
+  A('teams5', 'a_team', 'Chef över chefer', 'Boss of Bosses', 'Ha fem team igång samtidigt.', 'Run five teams at once.', (G) => (G.teams || []).length >= 5),
+  A('top3_80', 'a_crown', 'Toppstudio på 80-talet', 'Top Studio of the 80s', 'Bli en av de tre största studiorna ett år på 80-talet.', 'Be one of the three biggest studios in a year in the 1980s.', (G) => rankedIn(G, 1980, 3)),
+  A('top3_90', 'a_crown', 'Toppstudio på 90-talet', 'Top Studio of the 90s', 'Bli en av de tre största studiorna ett år på 90-talet.', 'Be one of the three biggest studios in a year in the 1990s.', (G) => rankedIn(G, 1990, 3)),
+  A('top3_00', 'a_crown', 'Toppstudio på 00-talet', 'Top Studio of the 00s', 'Bli en av de tre största studiorna ett år på 00-talet.', 'Be one of the three biggest studios in a year in the 2000s.', (G) => rankedIn(G, 2000, 3)),
+  A('top3_10', 'a_crown', 'Toppstudio på 10-talet', 'Top Studio of the 10s', 'Bli en av de tre största studiorna ett år på 10-talet.', 'Be one of the three biggest studios in a year in the 2010s.', (G) => rankedIn(G, 2010, 3)),
+  A('era_all', 'a_clock', 'Genom epokerna', 'Through the Eras', 'Släpp spel på 80-, 90-, 00- och 10-talet.', 'Release games in the 80s, 90s, 00s and 10s.', (G) => [1980, 1990, 2000, 2010].every((d) => fullGames(G).some((g) => decadeOf(yearOfT(g.t)) === d))),
   A('legend', 'a_clock', 'Legend', 'Legend', 'Spela till år 2020.', 'Play until the year 2020.', (G) => G.t >= 48 * 40),
 ];
 export const ACH = Object.fromEntries(ACHIEVEMENTS.map((a) => [a.id, a]));

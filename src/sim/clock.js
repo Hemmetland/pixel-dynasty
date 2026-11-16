@@ -41,6 +41,7 @@ import { missionWeek } from './autoteam.js';
 import { rentOf, facUpkeep, loanInterest, spend } from './studio.js';
 import { note } from './news.js';
 import { beat, lifeWeek } from './life.js';
+import { bookMonth } from './book.js';
 
 // Ett tick = en fjärdedels vecka. Returnerar false om spelet väntar på spelaren.
 export function stepTick(G) {
@@ -182,6 +183,7 @@ function monthly(G, d) {
   headlineWatch(G);
   checkAchievements(G);
   checkGoals(G);
+  bookMonth(G); // historieboken: försäljning per år, rekord och nya årtionden (läser bara)
   emit('month', G);
 }
 
@@ -189,7 +191,9 @@ export function checkAchievements(G) {
   for (const a of ACHIEVEMENTS) {
     if (!G.ach.includes(a.id) && a.check(G)) {
       G.ach.push(a.id);
+      (G.achT || (G.achT = {}))[a.id] = G.t; // veckan prestationen klarades (en sparning från före datumen saknar den)
       const item = note(G, 'news.ach', { name: a.name }, 'award', true);
+      beat(G, 'hallAch', { g: a.name, a: G.ach.length });
       emit('achievement', { ...a, item });
     }
   }

@@ -7,7 +7,6 @@ import { identityName } from '../data/identity.js';
 import { CERTS } from '../data/certs.js';
 import { lang } from '../core/i18n.js';
 import { music, ambience } from '../audio/sfx.js';
-import { ACHIEVEMENTS } from '../data/achievements.js';
 import { MKT } from '../data/research.js';
 import { marketingOptions, launchMarketing } from '../sim/dev.js';
 import { MUSIC_STYLES } from '../audio/director.js';
@@ -15,10 +14,8 @@ import { paceOf, paceSeg } from './pace.js';
 import { pfocusOf, pfocusSeg } from './pfocus.js';
 import { saveGame, exportCode, importCode, freeSlot, useSlot, activeSlot } from '../core/store.js';
 import { devCode } from './devconsole.js';
-import { goalsHTML, goalsDone } from './goals.js';
-import { GOALS } from '../data/goals.js';
 
-const AIC = { a_game: 'gamepad', a_star: 'star', a_coin: 'money', a_house: 'building', a_team: 'team', a_heart: 'heart', a_flask: 'flask', a_aaa: 'rocket', a_trophy: 'trophy', a_brief: 'hammer', a_engine: 'cpu', a_clock: 'clock', a_globe: 'globe', a_bulb: 'bulb', a_crown: 'crown', a_disc: 'disc', a_chip: 'gpu' };
+export const AIC = { a_game: 'gamepad', a_star: 'star', a_coin: 'money', a_house: 'building', a_team: 'team', a_heart: 'heart', a_flask: 'flask', a_aaa: 'rocket', a_trophy: 'trophy', a_brief: 'hammer', a_engine: 'cpu', a_clock: 'clock', a_globe: 'globe', a_bulb: 'bulb', a_crown: 'crown', a_disc: 'disc', a_chip: 'gpu' };
 const MIC = { press: 'mail', ads: 'book', tv: 'film', online: 'globe', influencer: 'heart' };
 
 // ── Marknadsföring under utveckling ──
@@ -52,24 +49,6 @@ act('mk-go', (el) => {
   UI.refresh();
 });
 
-// ── Prestationer ──
-regWin({
-  id: 'achievements',
-  icon: 'award',
-  color: 'var(--gold)',
-  size: 'lg',
-  title: () => t('ach.title'),
-  sub: (G) => `${t('goal.title')} ${goalsDone(G)}/${GOALS.length} · ${t('ach.sec')} ${G.ach.length}/${ACHIEVEMENTS.length}`,
-  render(G) {
-    G.flags.goalsSeen = 1; // handledningen har visat var målen finns
-    return `${goalsHTML(G)}<div class="bar" style="--c:var(--gold);margin-bottom:16px"><i style="width:${(G.ach.length / ACHIEVEMENTS.length) * 100}%"></i></div>
-      <div class="grid" style="grid-template-columns:repeat(auto-fill,minmax(250px,1fr))">${ACHIEVEMENTS.map((a) => {
-        const on = G.ach.includes(a.id);
-        return `<div class="card row ach ${on ? 'on' : ''}" style="gap:12px"><div class="ai">${icon(AIC[a.glyph] || 'star')}</div><div style="flex:1"><b>${L(a.name)}</b><div class="hint">${L(a.desc)}</div></div>${on ? icon('check') : icon('lock')}</div>`;
-      }).join('')}</div>`;
-  },
-});
-
 // ── Nyheter ──
 // Fliken Historia: studions milstolpar, äldst först, med ett årtal per år. Grundandet läggs till först.
 const NW = { tab: 'news', only: false, since: -1 };
@@ -90,10 +69,10 @@ const boldVars = (o) => {
   for (const [k, v] of Object.entries(o || {})) vars[k] = k === 'quote' ? `<i>${esc(L(v))}</i>` : typeof v === 'string' || (v && typeof v === 'object') ? `<b>${esc(L(v))}</b>` : v;
   return vars;
 };
-function storyTab(G) {
-  const rows = [{ t: 0, key: 'hist.founded', vars: { studio: G.studio } }, ...storyOf(G)];
+// Raderna i en tidslinje (milstolpar med datum): ett årtal över varje nytt år. Används av fliken Historia och av epokerna i Prestationer och statistik.
+export function storyList(rows) {
   let year = 0;
-  const list = rows
+  return rows
     .map((m) => {
       const d = dateOf(m.t);
       const [ic, col] = STORY_IC[m.key] || (m.key.startsWith('live.') || LIVE_HIST.has(m.key) ? ['globe', 'var(--good)'] : ['star', 'var(--accent)']);
@@ -106,6 +85,10 @@ function storyTab(G) {
       return `${head}<div class="st-row" style="--c:${cert ? cert.color : col}"><span class="st-dot">${icon(ic)}</span><div style="flex:1;min-width:0"><div>${t(m.key, vars)}</div><div class="faint" style="font-size:11px">${MONTHS[lang][d.month]} ${d.year}</div></div></div>`;
     })
     .join('');
+}
+function storyTab(G) {
+  const rows = [{ t: 0, key: 'hist.founded', vars: { studio: G.studio } }, ...storyOf(G)];
+  const list = storyList(rows);
   // överst: studion i siffror
   const games = G.games.filter((g) => !g.expansionOf).length;
   const sum = [
