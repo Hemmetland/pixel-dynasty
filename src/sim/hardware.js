@@ -1301,3 +1301,83 @@ export function ownPlatOpt(G, J) {
   return !!e && yfOf(G.t) - e.built <= OPT_AGE;
 }
 export const engineCap = (G, J) => (ownPlatOpt(G, J) ? OPT_CAP : 1.4);
+
+// ── Hårdvarukriget ──────────────────────────────────────────────
+// sim/hwwar.js frågar här vad studion har på marknaden, och valen i dess händelserutor ändrar hårdvaran bara genom dessa funktioner.
+// Alla utom warFront tar dry = true för förhandsvisning (visar effekten utan att ändra något).
+// Vad kriget kan riktas mot: den största egna plattformen (konsol, bärbar, VR), en produkt som kan stämmas för patent och en produkt
+// som tillverkas hos en partner (inte egen fabrik, som saknar brist). Tomt (null) när inget säljs.
+export function warFront(G) {
+  const H = G.hw;
+  const mk = H ? H.products.filter((p) => p.state === 'market') : [];
+  if (!mk.length) return null;
+  const plat = mk.filter((p) => p.plat && PLAT_TYPES.has(p.type)).sort((a, b) => (b.base || 0) - (a.base || 0))[0] || null;
+  const arch = mk.find((p) => p.arch === 'own') || mk.find((p) => PLAT_TYPES.has(p.type)) || null;
+  const sup = mk.filter((p) => p.partner && p.partner !== FAB).sort((a, b) => (b.dem || 0) - (a.dem || 0))[0] || null;
+  return { plat, arch, sup, rev: yearRev(H), n: mk.length };
+}
+// ryktet bland köpare (0–100)
+export function warRep(G, n, dry) {
+  if (!G.hw) return 0;
+  const v = clamp(G.hw.rep + n, 0, 100) - G.hw.rep;
+  if (!dry) G.hw.rep += v;
+  return v;
+}
+// den installerade basen på den största egna plattformen ändras med en andel; svarar hur många enheter
+export function warBase(G, f, dry) {
+  const F = warFront(G);
+  if (!F || !F.plat) return 0;
+  const d = Math.max(-(F.plat.base || 0), Math.round((F.plat.base || 0) * f));
+  if (!dry) F.plat.base = (F.plat.base || 0) + d;
+  return d;
+}
+// en konkurrent sänker priset: samma sak som när din plattform kommer ut (andelen sjunker de närmaste veckorna)
+export function warCut(G, weeks, dry) {
+  const F = warFront(G);
+  if (!F || !F.plat) return 0;
+  if (!dry) F.plat.cut = Math.max(F.plat.cut || 0, G.t + weeks);
+  return weeks;
+}
+// komponentbrist hos de partners som tillverkar åt dig: kapaciteten blir k (0–1) av den vanliga i weeks veckor. Svarar antal partners.
+export function warShort(G, weeks, k, dry) {
+  const H = G.hw;
+  if (!H) return 0;
+  const ids = [...new Set(H.products.filter((p) => p.state === 'market' && p.partner && p.partner !== FAB).map((p) => p.partner))];
+  if (!dry)
+    for (const id of ids) {
+      const S = partnerState(H, id);
+      // en pågående brist ersätts bara av en som är värre eller varar längre
+      if (S.short <= G.t || S.shortK > k || S.short < G.t + weeks) {
+        S.shortK = S.short > G.t ? Math.min(S.shortK, k) : k;
+        S.short = Math.max(S.short, G.t + weeks);
+      }
+    }
+  return ids.length;
+}
+// en kostnad (f < 0) eller intäkt (f > 0) som andel av årets hårdvaruintäkt, med ett golv så att den finns även när intäkten är liten
+// (som patentförlikningen). Svarar summan med tecken.
+export function warPay(G, f, dry) {
+  const H = G.hw;
+  if (!H || !f) return 0;
+  const floor = Math.round((PATENT_MIN * msRatio(G, 2000)) / 1000) * 1000;
+  const v = Math.round(Math.max(Math.abs(f) * yearRev(H), Math.abs(f) * 100 * floor) / 10) * 10 * Math.sign(f);
+  if (!dry) {
+    if (v < 0) pay(G, H, 'issue', -v);
+    else {
+      earn(G, v, 'hwLic');
+      book(H, 'issue', -v);
+    }
+  }
+  return v;
+}
+// brist hos partnern just nu: { partner, left (veckor kvar) } eller null
+export function warShortNow(G) {
+  const H = G.hw;
+  if (!H) return null;
+  let best = null;
+  for (const id of Object.keys(H.partners)) {
+    const S = H.partners[id];
+    if (id !== FAB && S.short > G.t && (!best || S.short > best.until)) best = { partner: id, left: S.short - G.t, until: S.short };
+  }
+  return best;
+}

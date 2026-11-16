@@ -18,6 +18,7 @@ import { ACHIEVEMENTS } from '../data/achievements.js';
 import { CERTS, certIndex, totalUnits } from '../data/certs.js';
 import { membersOf, leadOf, teamName } from './teams.js';
 import { crisisState } from './crisis.js'; // bara i lifeState (vid anrop)
+import { warState } from './hwwar.js';
 import { FACILITIES } from './studio.js'; // bara i lifeText (vid anrop), så importcykeln gör inget
 
 export const LIFE_MAX = 30; // så många händelser sparas
@@ -96,6 +97,9 @@ export const LIFE_KINDS = {
   huntMove: { sc: 'crisis', v: 5, gap: 0 }, // rivalen gör ett drag mot dig (g = rivalen, v 0 släpp på ditt släpp, 1 värvning, 2 rykten, 3 kopia, 4 rivalen floppar)
   crisisHit: { sc: 'crisis', v: 3, gap: 0 }, // en kris (g = spelet, v 0 läcka, 1 strejk, 2 flopp)
   crisisSolved: { sc: 'crisis', v: 2, gap: 0 }, // krisen eller draget är hanterat (g = rivalen eller spelet, a = vilket val, v 0 skonsamt, 1 dyrt eller illa)
+  // hårdvarukriget (hwwar.js): scenen hw (fabriken)
+  warMove: { sc: 'hw', v: 7, gap: 0 }, // en konkurrerande tillverkare går efter dig, eller komponentbrist (g = tillverkaren, v 0 prissänkning, 1 exklusivt spel, 2 fankrig, 3 patentstämning, 4 korslicens, 5 komponentbrist, 6 brand)
+  warSolved: { sc: 'hw', v: 2, gap: 0 }, // draget är hanterat (g = tillverkaren, a = vilket val, v 0 skonsamt, 1 dyrt eller illa)
   // labbet
   resStart: { sc: 'lab', v: 2, gap: 0 }, // en forskning börjar (g = namnet)
   pizza: { sc: 'dev', v: 2, gap: 12 }, // pizza till teamet under övertid
@@ -203,6 +207,7 @@ export function lifeState(G, sc) {
   if (sc === 'lab') return labState(G);
   if (sc === 'hall') return hallState(G);
   if (sc === 'crisis') return crisisState(G);
+  if (sc === 'war') return warState(G);
   const J = G.job && G.job.kind === 'game' ? G.job : null;
   const crew = workers(G).map((w) => ({ id: w.id, name: lifeName(w), mood: Math.round(w.mood), fatigue: Math.round((w.fatigue || 0) * 10) / 10, trait: w.trait || null, away: !!w.away }));
   if (!J) return { active: false, phase: 0, pct: 0, bugs: 0, crunch: false, title: '', crew };

@@ -7,6 +7,7 @@
 // dras och fylls i som {name} och {title} i texterna.
 // fx.res = { sv, en }: text som visas efter valet (även i slumpgrenar).
 import { CRISIS_EVENTS } from './crisis-events.js';
+import { HWWAR_EVENTS } from './hwwar-events.js';
 const E = (id, kind, weight, when, title, body, choices, needs) => ({ id, kind, weight, when, title, body, choices, needs });
 const C = (sv, en, fx, dsv, den) => ({ label: { sv, en }, fx, hint: dsv ? { sv: dsv, en: den } : null });
 const R = (sv, en) => ({ sv, en });
@@ -349,8 +350,8 @@ const BASE_EVENTS = [
     [C('Låt fansen rösta', 'Let the fans vote', { fans: 40, res: R('Fansen väljer namnet "Pixel-Pelle". Förbluffande populärt.', 'The fans pick the name "Pixel Pete". Astonishingly popular.') }),
       C('Teamet bestämmer', 'The team decides', { mood: 5, res: R('Efter en lång diskussion vinner det första förslaget.', 'After a long discussion the very first suggestion wins.') })]),
 ];
-// Rivaler och kriser (data/crisis-events.js) dras av sim/crisis.js, inte av månadsslumpen
-export const EVENTS = [...BASE_EVENTS, ...CRISIS_EVENTS];
+// Rivaler och kriser (data/crisis-events.js) och hårdvarukriget (data/hwwar-events.js) dras av sim/crisis.js och sim/hwwar.js, inte av månadsslumpen
+export const EVENTS = [...BASE_EVENTS, ...CRISIS_EVENTS, ...HWWAR_EVENTS];
 export const EV = Object.fromEntries(EVENTS.map((e) => [e.id, e]));
 
 // Kontrakt (uppdragsgivare + uppdrag)

@@ -5,6 +5,7 @@ import { EVENTS, EV } from '../src/data/events.js';
 import { exportCode, importCode, recordRun, loadHall, saveGame, loadGame, deleteSave, slotList, latestSlot, freeSlot, activeSlot, useSlot, hasSave, saveMeta, SLOTS } from '../src/core/store.js';
 import { PLATFORM, PLATFORMS } from '../src/data/platforms.js';
 import { STRINGS } from '../src/data/strings.js';
+import { warOpponent } from '../src/data/hwwar-events.js';
 import { on as onBus } from '../src/core/bus.js';
 import { setLang } from '../src/core/i18n.js';
 import { ACHIEVEMENTS } from '../src/data/achievements.js';
@@ -4040,6 +4041,181 @@ ok(!bad.length, `äldre sparning utan ett av ${paths.length} fält går att spel
   const old = structuredClone(W); delete old.crisis;
   ok(S.crisisMonth(old) === '' || true, 'en gammal sparfil utan krisbok kan köras');
   ok(old.crisis && old.crisis.heat >= 0 && S.crisisState(old).handled === 0, 'krisboken skapas när den behövs');
+}
+
+// ── Hårdvarukriget: konkurrentens drag, patentstrider och komponentbrist ─────────────────────────────
+{
+  const wars = EVENTS.filter((e) => e.kind === 'hwwar');
+  ok(wars.length === 7 && S.WAR_IDS.length === 7 && S.WAR_IDS.every((id) => EV[id] && EV[id].kind === 'hwwar'), 'sju händelser i hårdvarukriget: konsolkrig, patent och brist');
+  ok(wars.every((e) => e.choices.length >= 2 && e.choices.length <= 3 && e.choices.every((c) => c.label.sv && c.label.en && c.fx)), 'varje händelse har två eller tre val med text på båda språken');
+  ok(EVENTS.filter((e) => e.kind !== 'hwwar').every((e) => !S.WAR_IDS.includes(e.id)), 'händelserna har egna id');
+  const knownW = new Set(['rival', 'rplat', 'prod', 'partner', 'name', 'title']);
+  const varsW = (o) => [...(o.sv + o.en).matchAll(/\{(\w+)\}/g)].map((m) => m[1]);
+  const resW = (fx) => [fx.res, ...(fx.rand || []).map(([, f]) => f.res)].filter(Boolean);
+  ok(wars.every((e) => varsW(e.title).concat(varsW(e.body)).every((v) => knownW.has(v)) && e.choices.every((c) => resW(c.fx).every((r) => r.sv && r.en && varsW(r).every((v) => knownW.has(v))))), 'texterna använder bara kända variabler');
+  ok(wars.every((e) => (!/\{rival\}|\{rplat\}/.test(JSON.stringify([e.title, e.body, e.choices.map((c) => resW(c.fx))])) || (e.needs || []).includes('opp')) && (!/\{prod\}/.test(JSON.stringify([e.title, e.body])) || (e.needs || []).some((n) => n === 'plat' || n === 'arch')) && (!/\{partner\}/.test(JSON.stringify([e.title, e.body])) || (e.needs || []).includes('partner'))), 'texter som nämner rival, produkt eller tillverkare har rätt behov');
+
+  // konkurrenten
+  const at = (year) => ({ t: 48 * (year - 1980) + 10 });
+  ok(warOpp(at(1981), 'console') === null && warOpp(at(2010), 'console').maker && warOpp(at(2010), 'console').kind === 'console', 'konkurrenten finns först när det finns en konsol att möta');
+  ok(warOpp(at(2018), 'vr').kind === 'vr' && warOpp(at(1990), 'vr').kind === 'console', 'ett annat slag än det som finns faller tillbaka på konsol');
+  function warOpp(o, kind) { return warOpponent({ t: o.t }, kind); }
+
+  // en studio med hårdvara: en konsol på marknaden hos en partner, egen arkitektur
+  const mkH = (seed = 71) => {
+    const W = S.newGame({ studio: 'Krig', seed, difficulty: 'normal' });
+    S.makeCompetitors(W); S.initWorld(W);
+    W.pending = []; W.t = 48 * 30 + 8; W.money = 5e7; W.fans = 6000;
+    for (let i = 0; i < 4; i++) { S.refreshCandidates(W); S.hire(W, W.candidates[0].id); }
+    W.games.push({ id: 8101, title: 'Krigsspel', t: W.t - 30, score: 8, weekly: [100], total: 0, priceAt: 30, topic: 'fantasy', genre: 'action', platform: 'pc', scope: 'medium', audience: 'everyone', revenue: 5e5, units: 2e4, ports: [], insights: [], reviews: [], flags: [] });
+    W.u.flags.hw = 1;
+    const H = S.hwOf(W);
+    H.t0 = W.t - 100;
+    H.products.push({ id: W.uid++, type: 'console', cls: 'mid', qual: 'normal', arch: 'own', name: 'Testkonsolen', state: 'market', plat: 'own9001', base: 600000, partner: 'kaori', dem: 5000, price: 300, hist: [5000, 5000, 5000], boost: 0, t: W.t - 80 });
+    return W;
+  };
+  const W = mkH();
+  const F0 = S.warFront(W);
+  ok(F0 && F0.plat && F0.plat.name === 'Testkonsolen' && F0.arch && F0.sup && F0.sup.partner === 'kaori' && F0.rev === 5000 * 3 * 300 && F0.n === 1, 'warFront hittar plattformen, produkten för patent och tillverkaren');
+  ok(S.warFront(S.newGame({ studio: 'Tom', seed: 5, difficulty: 'normal' })) === null && !W.hwwar, 'utan hårdvara på marknaden finns ingen front, och boken skapas först när den behövs');
+
+  // hjälparna: förhandsvisning ändrar inget
+  const base0 = F0.plat.base, rep0 = W.hw.rep, money0 = W.money;
+  ok(S.warBase(W, -0.1, true) === -60000 && S.warRep(W, 100, true) === 100 - rep0 && S.warPay(W, -0.01, true) < 0 && S.warShort(W, 10, 0.5, true) === 1 && S.warCut(W, 20, true) === 20 && F0.plat.base === base0 && W.hw.rep === rep0 && W.money === money0 && !F0.plat.cut, 'förhandsvisningen ändrar ingenting');
+  ok(S.warBase(W, -0.1) === -60000 && F0.plat.base === 540000 && S.warBase(W, 5) === 2700000 && S.warBase(W, -2) === -(540000 + 2700000), 'spelarna på plattformen ändras med en andel och går aldrig under noll');
+  F0.plat.base = 600000;
+  ok(S.warRep(W, 200) > 0 && W.hw.rep === 100 && S.warRep(W, -500) < 0 && W.hw.rep === 0, 'ryktet håller sig mellan 0 och 100');
+  W.hw.rep = 50;
+  S.warCut(W, 20);
+  ok(F0.plat.cut === W.t + 20, 'ett priskrig sätter plattformens prissänkning');
+  S.warShort(W, 10, 0.5);
+  const sh = S.warShortNow(W);
+  ok(sh && sh.partner === 'kaori' && sh.left === 10 && S.partnerCap(W, 'kaori') < S.partnerCap(mkH(72), 'kaori'), 'komponentbrist sänker tillverkarens kapacitet i så många veckor');
+  S.warShort(W, 4, 0.9);
+  ok(S.warShortNow(W).left === 10 && W.hw.partners.kaori.shortK === 0.5, 'en lindrigare och kortare brist ersätter inte en pågående');
+  const m1 = W.money;
+  const pay1 = S.warPay(W, -0.01);
+  ok(pay1 < 0 && Math.abs(m1 - W.money + pay1) < 1 && S.warPay(W, -0.04) < pay1 * 3.9 && S.warPay(W, 0.02, true) > 0, 'kostnader som andel av årets intäkt har ett golv och kostar pengar');
+  const m2 = W.money;
+  const gain = S.warPay(W, 0.02);
+  ok(gain > 0 && Math.abs(W.money - m2 - gain) < 1, 'en intäkt betalas in');
+  ok(S.warPay(W, 0) === 0 && S.warPay(S.newGame({ studio: 'Tom', seed: 5, difficulty: 'normal' }), -0.1) === 0, 'utan hårdvara eller belopp händer inget');
+
+  // beredskapen
+  const sh0 = S.warShield(W);
+  ok(sh0.parts.length === 5 && sh0.total <= 0.5 && Math.abs(sh0.total - sh0.parts.reduce((a, p) => a + (p.on ? p.v : 0), 0)) < 1e-9, 'beredskapen i hårdvaran är fem delar och högst femtio procent');
+  const WS = mkH(73);
+  WS.money = 0; WS.hw.rep = 10; WS.hw.products[0].arch = 'std';
+  const none = S.warShield(WS);
+  WS.money = 1e12; WS.hw.rep = 80; WS.hw.partners.kaori = { rel: 90, short: 0, shortK: 1, fx: 1, fxUntil: 0 }; WS.hw.products[0].arch = 'own'; WS.hw.fab = { lvl: 1 };
+  const all = S.warShield(WS);
+  ok(none.parts.every((p) => !p.on) && all.parts.every((p) => p.on) && Math.abs(all.total - 0.5) < 1e-9, 'varje del slår på sin egen sak: fabrik, rykte, partner, egen arkitektur och kassa');
+
+  // temperaturen
+  const T = mkH(74);
+  S.hwwarMonth(T);
+  ok(S.warOf(T).heat >= 2 && S.warOf(T).heat <= 3, 'kriget hettar upp när en egen plattform säljer (' + S.warOf(T).heat + ')');
+  S.warOf(T).heat = 100; S.hwwarMonth(T);
+  ok(S.warOf(T).heat <= 100, 'kriget går aldrig över hundra');
+  const T2 = mkH(75); T2.hw.products[0].state = 'ended'; S.warOf(T2).heat = 50;
+  ok(S.hwwarMonth(T2) === '' && Math.abs(S.warOf(T2).heat - 46) < 1e-9, 'utan något på marknaden bara lugnas kriget');
+
+  // en lång sträcka: händelser kommer deterministiskt, utan G.rng, med vila mellan likadana
+  const runW = (W0, months, pick = 0) => {
+    const X = structuredClone(W0);
+    let moved = false;
+    const got = [];
+    for (let i = 0; i < months; i++) {
+      X.t += 4;
+      X.money = Math.max(X.money, 1e7);
+      X.hw.products.filter((p) => p.state === 'market').forEach((p) => (p.hist = [5000, 5000, 5000]));
+      const r0 = X.rng;
+      const id = S.hwwarMonth(X);
+      if (X.rng !== r0) moved = true;
+      if (id) {
+        got.push({ id, t: X.t, ev: X.pending[0] });
+        S.resolveEvent(X, X.pending[0].id, Math.min(pick, EV[id].choices.length - 1));
+      }
+      X.pending.length = 0;
+    }
+    return { X, got, rngSame: !moved };
+  };
+  const A = runW(W, 400), B = runW(W, 400);
+  ok(A.got.length >= 15 && JSON.stringify(A.got.map((x) => [x.id, x.t])) === JSON.stringify(B.got.map((x) => [x.id, x.t])), 'samma start ger samma händelser (' + A.got.length + ' på 400 månader)');
+  ok(A.rngSame, 'att en händelse dras rör inte spelets slumptal');
+  let gapW = true;
+  const lastW = {};
+  for (const e of A.got) { if (lastW[e.id] != null && e.t - lastW[e.id] <= S.WAR_COOLDOWN) gapW = false; lastW[e.id] = e.t; }
+  ok(gapW, 'samma händelse kommer inte oftare än vart ' + S.WAR_COOLDOWN + ':e vecka');
+  ok(new Set(A.got.map((x) => x.id)).size >= 5, 'många sorter dyker upp (' + [...new Set(A.got.map((x) => x.id))].join(',') + ')');
+  ok(A.got.every((x) => x.ev && x.ev.ev === x.id && (!(EV[x.id].needs || []).includes('opp') || (x.ev.opp && x.ev.opp.maker && x.ev.opp.plat)) && (!(EV[x.id].needs || []).includes('partner') || x.ev.partner) && (!(EV[x.id].needs || []).some((n) => n === 'plat' || n === 'arch') || x.ev.prod)), 'rutan får konkurrenten, produkten och tillverkaren den behöver');
+  const Cw = S.warOf(A.X);
+  ok(Cw.log.length === Math.min(24, A.got.length) && Cw.n === A.got.length && Cw.log.every((e) => EV[e.ev] && typeof e.c === 'number'), 'loggen håller de senaste och räknaren de hanterade');
+  ok(JSON.stringify(JSON.parse(JSON.stringify(A.X.hwwar))) === JSON.stringify(A.X.hwwar) && JSON.stringify(A.X.hwwar).length < 6000, 'hårdvarukrigets bok är liten och går att spara och läsa tillbaka');
+  const shielded = mkH(); shielded.hw.fab = { lvl: 1 }; shielded.hw.rep = 80;
+  ok(runW(shielded, 400).got.length < A.got.length, 'en bättre beredskap ger färre händelser');
+  const none2 = structuredClone(W); none2.hw.products[0].state = 'ended';
+  ok(runW(none2, 100).got.length === 0, 'inga händelser utan något på marknaden');
+  const early = structuredClone(W); early.hw.t0 = early.t - 4;
+  ok(S.hwwarMonth(early) === '', 'inga händelser den första tiden efter att avdelningen öppnats');
+  ok(S.hwwarMonth(structuredClone(mkH(76))) === '' || true, 'en månad går att köra');
+
+  // alla val går att göra och ger spår i boken och livsflödet
+  let allW = true, beatsW = 0, total = 0;
+  for (const ev of wars)
+    ev.choices.forEach((ch, i) => {
+      total++;
+      const X = mkH(80 + i);
+      const F = S.warFront(X);
+      X.pending.push({ type: 'event', id: X.uid++, ev: ev.id, opp: { maker: 'Nova Interactive', plat: 'Gamingstation 3' }, prod: F.plat.name, partner: 'Kaori Precision' });
+      let out;
+      try { out = S.resolveEvent(X, X.pending[0].id, i); } catch (e) { allW = false; console.log('kastade', ev.id, i, e.message); return; }
+      const Cx = S.warOf(X);
+      if (!out || Cx.n !== 1 || Cx.log.length !== 1 || Cx.log[0].ev !== ev.id || Cx.log[0].c !== i || !(Cx.heat >= 0 && Cx.heat <= 100) || X.hw.rep < 0 || X.hw.rep > 100 || F.plat.base < 0) { allW = false; console.log('fel', ev.id, i); }
+      if (S.lifeLog(X, 'hw').filter((b) => b.k === 'warSolved').length === 1) beatsW++;
+    });
+  ok(allW && beatsW === total, 'alla val går att göra och varje ger en händelse i livsflödet (' + beatsW + ' av ' + total + ')');
+
+  // effekterna
+  const E1 = mkH(90);
+  S.applyFx(E1, { hwLic: 144, war: 7, hwBase: 0.02 }, [], {});
+  ok(S.warOf(E1).lic === E1.t + 144 && S.warOf(E1).heat === 7 && E1.hw.products[0].base === 612000, 'korslicens, krigets temperatur och spelarna på plattformen sätts av valen');
+  ok(!EV.war_patent_sue.when(E1) && EV.war_patent_license.when(Object.assign(structuredClone(mkH(91)), {})) === false, 'med korslicens kommer ingen patentstämning, och erbjudandet kommer först när kriget är lite hett');
+  const E2 = mkH(92); S.warOf(E2).heat = 40;
+  ok(EV.war_patent_sue.when(E2) && EV.war_patent_license.when(E2) && EV.war_pricecut.when(E2) && EV.war_short.when(E2), 'rätt händelser kan komma när något säljs');
+  const dryW = S.previewFx(E2, { hwShort: [10, 0.5], hwCut: 20, hwLic: 144, war: -6, hwRev: -0.01 }, {});
+  ok(dryW.some((o) => o.k === 'hwShort' && o.v === 10 && o.cap === 50) && dryW.some((o) => o.k === 'hwCut') && dryW.some((o) => o.k === 'hwLic' && o.v === 3) && dryW.some((o) => o.k === 'war' && o.v === -6) && dryW.some((o) => o.k === 'money' && o.v < 0) && !S.warShortNow(E2) && S.warOf(E2).heat === 40 && !S.warOf(E2).lic, 'förhandsvisningen visar brist, priskrig, korslicens, temperatur och kostnad utan att ändra något');
+
+  // livsflödet
+  const lw = S.lifeLog(A.X, 'hw').filter((b) => b.k === 'warMove' || b.k === 'warSolved');
+  ok(lw.some((b) => b.k === 'warMove') && lw.some((b) => b.k === 'warSolved') && lw.filter((b) => b.k === 'warMove').every((b) => b.v >= 0 && b.v < 7 && b.g), 'livsflödet har dragen och lösningarna i scenen hw');
+  const ws = S.lifeState(A.X, 'war');
+  ok(ws.open && ws.opp && ws.opp.maker && ws.opp.plat && ws.own && ws.own.name === 'Testkonsolen' && ws.level >= 0 && ws.level <= 3 && ws.shield >= 0 && ws.shield <= 50 && ws.handled === Cw.n && ws.recent.length === 6 && ws.patent.on && ws.supply.on, 'lifeState(war) ger konkurrenten, plattformen, kriget, beredskapen och de senaste');
+  const wsNone = S.lifeState(S.newGame({ studio: 'Tom', seed: 5, difficulty: 'normal' }), 'war');
+  ok(!wsNone.open && wsNone.opp === null && wsNone.own === null && wsNone.recent.length === 0, 'utan hårdvara är scenens läge tomt');
+  const E3 = mkH(93); S.warShort(E3, 8, 0.5);
+  ok(S.lifeState(E3, 'war').supply.short.left === 8 && S.lifeState(E3, 'war').supply.short.partner === 'Kaori Precision', 'scenens läge visar en pågående brist');
+
+  // texter
+  setLang('en');
+  const tW = S.lifeText(lw.find((b) => b.k === 'warMove'));
+  setLang('sv');
+  const tS = S.lifeText(lw.find((b) => b.k === 'warMove'));
+  ok(tW !== tS && !/[{}]/.test(tW + tS) && tW.length > 10, 'dragen får färdig text på båda språken: ' + tW);
+  let missW = 0;
+  const needW = (k) => { const e = STRINGS[k]; if (!e || !e[0] || !e[1]) { missW++; console.log('saknas', k); } };
+  for (const k of ['warMove', 'warSolved']) for (let v = 0; v < S.LIFE_KINDS[k].v; v++) needW(`life.${k}.${v}`);
+  for (const k of ['hwRep', 'hwBase', 'hwCut', 'hwCutTip', 'hwShort', 'hwShortTip', 'hwLic', 'hwLicTip', 'war']) needW('ev.fx.' + k);
+  for (const k of ['rw.heat.d.0', 'rw.heat.d.1', 'rw.heat.d.2', 'rw.heat.d.3', 'rw.shield.fab', 'rw.shield.rep', 'rw.shield.rel', 'rw.shield.arch', 'rw.shield.cash']) needW(k);
+  for (const k of Object.keys(STRINGS).filter((x) => /^(rw\.|rv\.tab|ev\.hwwar)/.test(x))) needW(k);
+  ok(missW === 0, 'alla texter för hårdvarukriget finns på båda språken');
+
+  // gamla sparfiler utan hårdvara eller krigsbok
+  const old = structuredClone(W); delete old.hwwar;
+  ok(S.hwwarMonth(old) === '' || true, 'en gammal sparfil utan krigsbok kan köras');
+  const nohw = S.newGame({ studio: 'Tom', seed: 6, difficulty: 'normal' }); S.makeCompetitors(nohw); S.initWorld(nohw);
+  S.hwwarMonth(nohw);
+  ok(!nohw.hwwar && !nohw.hw, 'utan hårdvaruavdelning skapas varken avdelning eller krigsbok');
 }
 
 console.log(fails ? `\n${fails} FEL` : '\nAlla tester gick bra');

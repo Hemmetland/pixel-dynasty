@@ -67,7 +67,7 @@ function crisisContext(G, ev) {
   return ctx;
 }
 // 0 till 1 ur seed, nyckel och vecka. hashStr ensam sprider tätt följande veckor ojämnt, så resultatet blandas en gång till.
-const hash01 = (G, tag) => {
+export const roll01 = (G, tag) => {
   let h = hashStr(`${G.seed}|${tag}|${G.t}`);
   h ^= h >>> 16;
   h = Math.imul(h, 0x85ebca6b);
@@ -76,6 +76,7 @@ const hash01 = (G, tag) => {
   h ^= h >>> 16;
   return (h >>> 0) / 4294967296;
 };
+const hash01 = roll01;
 const pickBy = (G, pool, u) => {
   let tot = pool.reduce((a, e) => a + e.weight, 0) * u;
   for (const e of pool) {

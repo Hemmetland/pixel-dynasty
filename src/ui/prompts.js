@@ -303,11 +303,16 @@ function eventVars(G, p) {
   const g = G.games.find((x) => x.id === p.game) || (G.job && G.job.kind === 'game' ? G.job : null);
   const foe = rivalOf(G);
   const rl = rivalLast(G);
+  // hårdvarukriget (data/hwwar-events.js): rivalen är en tillverkare, och rutan bär med sig produkten och tillverkaren
+  const opp = p.opp || null;
   return {
     name: s ? esc(s.name) : t('ev.someone'),
     title: g && g.title ? `<i>${esc(g.title)}</i>` : t('ev.lastGame'),
-    rival: foe ? esc(foe.name) : t('ev.rival'),
+    rival: opp ? esc(opp.maker) : foe ? esc(foe.name) : t('ev.rival'),
     rtitle: rl ? `<i>${esc(L(rl.title))}</i>` : t('ev.theirGame'),
+    rplat: opp ? `<i>${esc(opp.plat)}</i>` : t('ev.theirGame'),
+    prod: p.prod ? `<i>${esc(p.prod)}</i>` : t('ev.lastGame'),
+    partner: p.partner ? esc(p.partner) : t('ev.someone'),
   };
 }
 const capFirst = (s) => s.charAt(0).toUpperCase() + s.slice(1);
@@ -324,7 +329,7 @@ function eventPrompt(app, G, p, finish) {
   const vars = eventVars(G, p);
   const live = (ev.needs || []).includes('live');
   // rubriken: ikon, färg och undertext efter sort (rivalens drag och kriser har egna)
-  const hd = ev.kind === 'hunt' ? { ic: 'target', col: 'var(--hot)', sub: 'ev.hunt' } : ev.kind === 'crisis' ? { ic: 'fire', col: 'var(--bug)', sub: 'ev.crisis' } : { ic: ev.kind === 'dev' ? 'wrench' : live ? 'globe' : 'mail', col: live ? 'var(--good)' : 'var(--warn)', sub: ev.kind === 'dev' ? 'ev.dev' : live ? 'ev.live' : 'ev.studio' };
+  const hd = ev.kind === 'hwwar' ? { ic: 'factory', col: 'var(--tech)', sub: 'ev.hwwar' } : ev.kind === 'hunt' ? { ic: 'target', col: 'var(--hot)', sub: 'ev.hunt' } : ev.kind === 'crisis' ? { ic: 'fire', col: 'var(--bug)', sub: 'ev.crisis' } : { ic: ev.kind === 'dev' ? 'wrench' : live ? 'globe' : 'mail', col: live ? 'var(--good)' : 'var(--warn)', sub: ev.kind === 'dev' ? 'ev.dev' : live ? 'ev.live' : 'ev.studio' };
   const choices = ev.choices
     .map((c, i) => {
       const chips = previewChips(G, c.fx, p);
@@ -365,9 +370,9 @@ function eventPrompt(app, G, p, finish) {
   );
   sfx.play('notify');
 }
-const FX_TIP = { money: 'hud.money', rp: 'hud.rp', fans: 'hud.fans', hype: 'stat.hype', design: 'stat.design', tech: 'stat.tech', bugs: 'stat.bugs', mood: 'ev.fx.mood', sales: 'ev.fx.sales', staff: 'ev.fx.staff', raise: 'ev.fx.raiseTip', risk: 'ev.fx.riskTip', subs: 'ev.fx.subs', fresh: 'ev.fx.fresh', season: 'ev.fx.season', heat: 'ev.fx.heat' };
+const FX_TIP = { money: 'hud.money', rp: 'hud.rp', fans: 'hud.fans', hype: 'stat.hype', design: 'stat.design', tech: 'stat.tech', bugs: 'stat.bugs', mood: 'ev.fx.mood', sales: 'ev.fx.sales', staff: 'ev.fx.staff', raise: 'ev.fx.raiseTip', risk: 'ev.fx.riskTip', subs: 'ev.fx.subs', fresh: 'ev.fx.fresh', season: 'ev.fx.season', heat: 'ev.fx.heat', war: 'ev.fx.war', hwRep: 'ev.fx.hwRep', hwBase: 'ev.fx.hwBase' };
 function fxChip(o) {
-  const map = { money: ['money', 'var(--money)'], rp: ['flask', 'var(--rp)'], fans: ['heart', 'var(--fans)'], hype: ['fire', 'var(--hot)'], design: ['bulb', 'var(--design)'], tech: ['cpu', 'var(--tech)'], bugs: ['bug', 'var(--bug)'], mood: ['coffee', 'var(--warn)'], sales: ['chart', 'var(--accent)'], staff: ['team', 'var(--bug)'], raise: ['money', 'var(--warn)'], crunch: ['hourglass', 'var(--warn)'], season: ['calendar', 'var(--gold)'], risk: ['dice', 'var(--accent)'], subs: ['globe', 'var(--good)'], fresh: ['sparkle', 'var(--accent)'], heat: ['target', 'var(--good)'] };
+  const map = { money: ['money', 'var(--money)'], rp: ['flask', 'var(--rp)'], fans: ['heart', 'var(--fans)'], hype: ['fire', 'var(--hot)'], design: ['bulb', 'var(--design)'], tech: ['cpu', 'var(--tech)'], bugs: ['bug', 'var(--bug)'], mood: ['coffee', 'var(--warn)'], sales: ['chart', 'var(--accent)'], staff: ['team', 'var(--bug)'], raise: ['money', 'var(--warn)'], crunch: ['hourglass', 'var(--warn)'], season: ['calendar', 'var(--gold)'], risk: ['dice', 'var(--accent)'], subs: ['globe', 'var(--good)'], fresh: ['sparkle', 'var(--accent)'], heat: ['target', 'var(--good)'], war: ['target', 'var(--good)'], hwRep: ['star', 'var(--tech)'], hwBase: ['gamepad', 'var(--tech)'], hwCut: ['trend', 'var(--bug)'], hwShort: ['truck', 'var(--bug)'], hwLic: ['shield', 'var(--good)'] };
   const [ic, col] = map[o.k] || ['info', 'var(--accent)'];
   let v = typeof o.v === 'number' ? (o.k === 'money' ? (o.v > 0 ? '+' : '') + money(o.v) : (o.v > 0 ? '+' : '') + fmtNum(o.v)) : o.v;
   let tip = FX_TIP[o.k] ? t(FX_TIP[o.k]) : '';
@@ -377,9 +382,15 @@ function fxChip(o) {
     tip = t('ev.fx.crunchTip', { n: o.v });
   } else if (o.k === 'risk') v = t('ev.fx.risk');
   else if (o.k === 'season') v = esc(L(o.v));
-  else if (o.k === 'heat') v = t(o.v < 0 ? 'ev.fx.heatDown' : 'ev.fx.heatUp');
+  else if (o.k === 'heat' || o.k === 'war') v = t(o.v < 0 ? 'ev.fx.heatDown' : 'ev.fx.heatUp');
+  else if (o.k === 'hwBase') v = (o.v > 0 ? '+' : '') + o.v + ' %';
+  else if (o.k === 'hwCut' || o.k === 'hwShort' || o.k === 'hwLic') {
+    const [kv, kt] = o.k === 'hwCut' ? ['ev.fx.hwCut', 'ev.fx.hwCutTip'] : o.k === 'hwShort' ? ['ev.fx.hwShort', 'ev.fx.hwShortTip'] : ['ev.fx.hwLic', 'ev.fx.hwLicTip'];
+    v = t(kv, { n: o.v });
+    tip = t(kt, { n: o.v, p: o.cap });
+  }
   // tvärtom: fler buggar och en hetare jakt är dåligt, färre är bra
-  const bad = (typeof o.v === 'number' && o.k !== 'crunch' && (((o.k === 'bugs' || o.k === 'heat') && o.v > 0) || (o.k !== 'bugs' && o.k !== 'heat' && o.v < 0))) || (typeof o.v === 'string' && /^[-\u2212]/.test(o.v) && o.k !== 'bugs');
+  const bad = (typeof o.v === 'number' && o.k !== 'crunch' && (((o.k === 'bugs' || o.k === 'heat' || o.k === 'war') && o.v > 0) || (o.k !== 'bugs' && o.k !== 'heat' && o.k !== 'war' && o.v < 0))) || (typeof o.v === 'string' && /^[-\u2212]/.test(o.v) && o.k !== 'bugs');
   return `<span class="chip c" style="--c:${bad ? 'var(--bug)' : col}"${tip ? ` data-tip="${esc(tip)}"` : ''}>${icon(ic)}<b class="num">${v}</b></span>`;
 }
 

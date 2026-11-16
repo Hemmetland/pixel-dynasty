@@ -43,6 +43,7 @@ import { note } from './news.js';
 import { beat, lifeWeek } from './life.js';
 import { bookMonth } from './book.js';
 import { crisisMonth } from './crisis.js';
+import { hwwarMonth } from './hwwar.js';
 
 // Ett tick = en fjärdedels vecka. Returnerar false om spelet väntar på spelaren.
 export function stepTick(G) {
@@ -185,6 +186,7 @@ function monthly(G, d) {
   checkAchievements(G);
   checkGoals(G);
   crisisMonth(G); // rivalens jakt och kriser (händelserutor med val)
+  hwwarMonth(G); // hårdvarukriget: konkurrentens drag, patentstrider och komponentbrist
   bookMonth(G); // historieboken: försäljning per år, rekord och nya årtionden (läser bara)
   emit('month', G);
 }

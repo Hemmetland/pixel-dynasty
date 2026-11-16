@@ -2,12 +2,14 @@ import { clamp } from '../core/util.js';
 import { rnd, chance, weighted, pick } from '../core/rng.js';
 import { emit } from '../core/bus.js';
 import { EVENTS, EV } from '../data/events.js';
-import { SCOPES, yearOf, moneyScale, dateOf, TICKS_PER_WEEK } from './const.js';
+import { SCOPES, yearOf, moneyScale, dateOf, TICKS_PER_WEEK, WEEKS_PER_YEAR } from './const.js';
 import { SCOPE_TEMPO } from './tempo.js';
 import { earn, spend } from './studio.js';
 import { parPerTick } from './score.js';
 import { note } from './news.js';
 import { crisisOf, monthRev, crisisAfter } from './crisis.js';
+import { warOf, hwwarAfter } from './hwwar.js';
+import { warRep, warBase, warCut, warShort, warPay } from './hardware.js';
 import { payroll } from './people.js';
 import { subPrices, payBase, SEASON, liveSeasonCost, startLiveSeason, seasonReadyIn } from './live.js';
 
@@ -125,6 +127,35 @@ export function applyFx(G, fx, out = [], ctx = {}, dry = false) {
   if (fx.heat) {
     if (!dry) crisisOf(G).heat = clamp(crisisOf(G).heat + fx.heat, 0, 100);
     out.push({ k: 'heat', v: fx.heat });
+  }
+  // hårdvarukriget (data/hwwar-events.js): kostnad som andel av årets hårdvaruintäkt, rykte, spelare på din plattform, priskrig, brist och korslicens
+  if (fx.hwRev) {
+    const v = warPay(G, fx.hwRev, dry);
+    if (v) out.push({ k: 'money', v });
+  }
+  if (fx.hwRep) {
+    warRep(G, fx.hwRep, dry);
+    out.push({ k: 'hwRep', v: fx.hwRep });
+  }
+  if (fx.hwBase) {
+    warBase(G, fx.hwBase, dry);
+    out.push({ k: 'hwBase', v: Math.round(fx.hwBase * 100) });
+  }
+  if (fx.hwCut) {
+    warCut(G, fx.hwCut, dry);
+    out.push({ k: 'hwCut', v: fx.hwCut });
+  }
+  if (fx.hwShort) {
+    warShort(G, fx.hwShort[0], fx.hwShort[1], dry);
+    out.push({ k: 'hwShort', v: fx.hwShort[0], cap: Math.round((1 - fx.hwShort[1]) * 100) });
+  }
+  if (fx.hwLic) {
+    if (!dry) warOf(G).lic = G.t + fx.hwLic;
+    out.push({ k: 'hwLic', v: Math.round(fx.hwLic / WEEKS_PER_YEAR) });
+  }
+  if (fx.war) {
+    if (!dry) warOf(G).heat = clamp(warOf(G).heat + fx.war, 0, 100);
+    out.push({ k: 'war', v: fx.war });
   }
   if (fx.rp) {
     if (!dry) G.rp = Math.max(0, G.rp + fx.rp);
@@ -258,6 +289,7 @@ export function resolveEvent(G, promptId, idx) {
   G.pending.splice(i, 1);
   const out = applyFx(G, ch.fx, [], { who: pr.who, game: pr.game });
   crisisAfter(G, pr, ev, idx, out);
+  hwwarAfter(G, pr, ev, idx, out);
   G.stats.events++;
   emit('eventResolved', { ev, idx, out });
   return out;
