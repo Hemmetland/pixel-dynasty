@@ -74,6 +74,7 @@ const STATE = {
     const h = lifeState(G, 'hall');
     return { ...h, games: (G.games || []).slice(-8).map((g) => ({ id: g.id, score: g.score || 0 })), n: (G.games || []).length, fans: G.fans || 0 };
   },
+  crisis: (G) => ({ ...lifeState(G, 'crisis'), looks: (G.staff || []).filter((x) => !x.away).map((x) => x.look) }),
   bank: (G) => ({ money: G.money, hist: (G.hist && G.hist.cash ? G.hist.cash.slice(-40).map((p) => p.v) : []), looks: (G.staff || []).filter((x) => !x.away).map((x) => x.look) }),
   live: (G, cfg) => {
     const l = lifeState(G, 'live');
@@ -86,8 +87,8 @@ const STATE = {
     return { ...l, looks: staff };
   },
 };
-const TICK_SC = { studio: ['dev', 'studio'], factory: ['hw'], engine: ['eng'], group: ['group'], lab: ['lab'], shop: ['store'], live: ['live'], bank: ['dev', 'studio'], market: ['dev'], hall: ['hall'] };
-const LOG_SC = { studio: 'dev', factory: 'hw', engine: 'eng', group: 'group', lab: 'lab', shop: 'store', live: 'live', bank: 'studio', market: 'dev', hall: 'hall' };
+const TICK_SC = { studio: ['dev', 'studio'], factory: ['hw'], engine: ['eng'], group: ['group'], lab: ['lab'], shop: ['store'], live: ['live'], bank: ['dev', 'studio'], market: ['dev'], hall: ['hall'], crisis: ['crisis'] };
+const LOG_SC = { studio: 'dev', factory: 'hw', engine: 'eng', group: 'group', lab: 'lab', shop: 'store', live: 'live', bank: 'studio', market: 'dev', hall: 'hall', crisis: 'crisis' };
 function refresh(kind, cfg) {
   try {
     cfg.st = STATE[kind](cfg.G, cfg);
@@ -100,6 +101,7 @@ function caption(kind, cfg) {
   if (kind === 'studio') return !st ? t('ls.studio') : st.active ? t('ls.studio.on', { title: st.title || '…' }) : st.report ? t('ls.studio.report') : t('ls.studio.idle');
   if (kind === 'engine') return st && st.active ? t('ls.engine.on', { name: st.name }) : st && st.team ? t('ls.engine.team', { team: st.team.name }) : t('ls.engine');
   if (kind === 'market') return t('ls.market');
+  if (kind === 'crisis') return !st || !st.rival ? t('ls.crisis.none') : t(['ls.crisis.0', 'ls.crisis.1', 'ls.crisis.2', 'ls.crisis.3'][st.level] || 'ls.crisis.0', { name: st.rival.name });
   if (kind === 'hall') return !st || !st.n ? t('ls.hall.empty') : st.ach ? t('ls.hall.ach', { n: st.n, a: st.ach, m: st.total }) : t('ls.hall', { n: st.n });
   if (kind === 'bank') return !st ? t('ls.bank') : st.money < 0 ? t('ls.bank.red') : t('ls.bank');
   if (kind === 'live') return !st || !st.g ? t('ls.live') : st.g.world && st.g.world.final ? t('ls.live.final') : st.g.world && st.g.world.feud ? t('ls.live.feud', { a: st.g.world.feud.a, b: st.g.world.feud.b }) : st.g.ops && !st.g.event ? t('ls.live.ops') : st.g.event ? t('ls.live.ev') : st.g.patch ? t('ls.live.patch') : st.g.season ? t('ls.live.season') : t('ls.live.on', { n: fmtNum(st.g.subs) });
@@ -1058,6 +1060,92 @@ function drawHall(ctx, W, tm, cfg) {
   darken(ctx, W, 0.04, '#ffd8ff');
 }
 
+// ── Rivaler och kriser ──
+function drawCrisis(ctx, W, tm, cfg) {
+  const fy = H - 6;
+  const st = cfg.st || { rival: null, heat: 0, level: 0, shield: 0, open: '', looks: [] };
+  const lv = st.level | 0;
+  const war = lv >= 3;
+  const hit = recent(['crisisHit'], 9, tm);
+  const move = recent(['huntMove'], 8, tm);
+  const solved = recent(['crisisSolved'], 3, tm);
+  const leak = hit.some((e) => e.b.v === 0), strike = hit.some((e) => e.b.v === 1), flop = hit.some((e) => e.b.v === 2);
+  // himmel: mörkare och rödare ju hetare
+  R(ctx, 0, 0, W, H, ['#101a40', '#1a1a44', '#2a1a3c', '#3a1a30'][lv]);
+  R(ctx, 0, 16, W, 12, ['#162248', '#221f4c', '#34203e', '#4a2030'][lv]);
+  for (let i = 0; i < Math.floor(W / 14); i++) R(ctx, Math.floor(V.hash(i * 5) * W), 2 + Math.floor(V.hash(i * 11) * 14), 1, 1, war ? '#6a3a4a' : Math.floor(tm * 1.2 + i) % 4 ? '#ffffff' : '#6a78b8');
+  const gy = H - 12;
+  R(ctx, 0, gy, W, 12, '#26283a');
+  R(ctx, 0, gy, W, 1, '#4a4e6a');
+  for (let x = 0; x < W; x += 12) R(ctx, x, gy + 6, 6, 1, '#3a3e58');
+  // din studio till vänster
+  const sx = W >= 200 ? 84 : 10, sw = 54, sh = 31;
+  R(ctx, sx, gy - sh, sw, sh, '#2a3470');
+  R(ctx, sx, gy - sh, sw, 2, '#5a6ab0');
+  for (let r = 0; r < 3; r++) for (let c = 0; c < 4; c++) if (Math.floor(tm * 0.4 + r * 3 + c) % 9) R(ctx, sx + 5 + c * 12, gy - sh + 5 + r * 8, 7, 5, '#ffd36a');
+  R(ctx, sx + 22, gy - 12, 10, 12, '#0c1230');
+  V.neonText(ctx, 'STUDIO', sx + 7, gy - sh - 7, '#ffffff', '#4de1d0', 1);
+  // skölden: en ljusbåge runt studion, tjockare med högre skydd
+  const sa = 0.07 + st.shield * 0.004 + (solved.length ? 0.2 * Math.abs(Math.sin(tm * 8)) : 0);
+  ctx.globalAlpha = Math.min(0.5, sa);
+  for (let a = Math.PI; a < Math.PI * 2; a += 0.06) R(ctx, Math.round(sx + sw / 2 + Math.cos(a) * 36), Math.round(gy + Math.sin(a) * 44), 2, 2, '#7cf2ff');
+  ctx.globalAlpha = 1;
+  // rivalens byggnad till höger
+  const rx = W - 66, rw = 50, rh = 34;
+  const col = (st.rival && st.rival.color) || '#6a7a9a';
+  R(ctx, rx, gy - rh, rw, rh, '#1c2040');
+  R(ctx, rx, gy - rh, rw, 3, col);
+  const wcol = ['#cfe8ff', '#ffd36a', '#ff9a4a', '#ff4a3c'][lv];
+  for (let r = 0; r < 3; r++) for (let c = 0; c < 4; c++) if (st.rival && (lv < 2 || Math.floor(tm * (lv + 1) + r * 2 + c) % 4)) R(ctx, rx + 5 + c * 11, gy - rh + 7 + r * 9, 6, 5, wcol);
+  if (st.rival) V.neonText(ctx, String(st.rival.name).slice(0, 7).toUpperCase(), rx + 3, gy - rh - 7, '#ffffff', col, 1);
+  // gatlampa och gata
+  const lx = Math.round((sx + sw + rx) / 2);
+  R(ctx, lx, gy - 20, 1, 20, '#6a728a');
+  R(ctx, lx - 2, gy - 22, 5, 2, '#6a728a');
+  ctx.globalAlpha = 0.12;
+  R(ctx, lx - 6, gy - 20, 13, 20, '#ffe9a8');
+  ctx.globalAlpha = 1;
+  // blixtar och regn vid hett läge
+  if (lv >= 2 && Math.floor(tm * 1.3) % 3 === 0) {
+    let bx = rx - 2, by = 6;
+    for (let k = 0; k < 9; k++) { R(ctx, Math.round(bx), by + k * 3, 2, 3, '#fff2a0'); bx -= (rx - sx - sw) / 9 * (0.6 + V.hash(k + Math.floor(tm * 1.3)) * 0.8); }
+  }
+  if (war) for (let i = 0; i < 30; i++) R(ctx, Math.round((V.hash(i * 3) * W + tm * 20) % W), Math.round((tm * 40 + V.hash(i * 7) * 50) % gy), 1, 3, '#7a8aaa');
+  // folk: din personal vid dörren, strejkande med plakat vid kris
+  const lk = (i) => (st.looks && st.looks[i]) || cfg.looks[i];
+  if (strike) {
+    for (let i = 0; i < 3; i++) {
+      const px = sx + 10 + i * 14 + Math.round(Math.sin(tm * 1.5 + i) * 4);
+      person(ctx, px, fy + 2, lk(i), 'walk', tm, i % 2 ? -1 : 1, false, i);
+      R(ctx, px + 2, fy - 22, 1, 12, '#c8b890');
+      R(ctx, px - 3, fy - 28, 10, 7, '#f4f0e4');
+      R(ctx, px - 1, fy - 25, 6, 1, '#e8504a');
+    }
+  } else {
+    person(ctx, sx + 12, fy + 2, lk(0), 'stand', tm, 1, false, 0.3);
+    person(ctx, sx + 38, fy + 2, lk(1), 'talk', tm, -1, false, 0.9);
+  }
+  // rivalens drag: spion (värvning), rykten, kopia, flopp
+  for (const e of move) {
+    const age = tm - e.t0, v = e.b.v;
+    if (v === 1) {
+      const px = lerp(rx - 6, sx + sw + 4, Math.min(1, age / 3));
+      person(ctx, px, fy + 3, cfg.looks[3], age < 3 ? 'walk' : 'notes', tm, -1, false, 1.2);
+      R(ctx, Math.round(px) - 2, fy - 20, 8, 3, '#2a2f3c');
+    } else if (v === 2) bubble(ctx, sx + 30, gy - sh - 10, 'question', age, 2.2, tm);
+    else if (v === 3) { ctx.globalAlpha = 0.5; R(ctx, lx + 8, gy - 26, 12, 16, '#e9eefb'); ctx.globalAlpha = 1; R(ctx, lx + 10, gy - 22, 8, 1, '#5a6a9a'); }
+    else if (v === 4 && st.rival) steam(ctx, rx + 24, gy - rh, tm, 4, 0.6, '#aab4c8');
+    else if (v === 0) { const k = Math.min(1, age / 3); R(ctx, Math.round(lerp(rx, sx + sw, k)), Math.round(gy - 40 - Math.sin(k * Math.PI) * 6), 5, 3, '#ff7ab8'); }
+  }
+  // läckt demo: skärm på gatan; flopp: moln över studion
+  if (leak) { V.wallScreen(ctx, lx - 8, gy - 16, 16, 10, 'chart', 2); bubble(ctx, lx, gy - 26, 'exclam', (tm * 1.0) % 2, 1.8, tm); }
+  if (flop) { ctx.globalAlpha = 0.75; for (let k = 0; k < 4; k++) R(ctx, sx + 4 + k * 12, gy - sh - 12 + (k % 2) * 3, 14, 6, '#4a4e66'); ctx.globalAlpha = 1; bubble(ctx, sx + 28, gy - sh - 20, 'sweat', (tm * 1.0) % 2, 1.8, tm); }
+  // ett öppet beslut: studions lampa blinkar rött
+  if (st.open && Math.floor(tm * 3) % 2) { R(ctx, sx + sw - 4, gy - sh - 5, 4, 4, '#ff4a3c'); ctx.globalAlpha = 0.25; R(ctx, sx + sw - 8, gy - sh - 9, 12, 12, '#ff4a3c'); ctx.globalAlpha = 1; }
+  for (const e of solved) if (e.b.v === 0) confetti(ctx, W, tm - e.t0, e.b.n);
+  darken(ctx, W, 0.04 + lv * 0.02, lv >= 2 ? '#ff7a6a' : '#7ca8ff');
+}
+
 // ── Koncernen ──
 function drawGroup(ctx, W, tm, cfg) {
   const fy = H - 6;
@@ -1154,7 +1242,7 @@ function drawGroup(ctx, W, tm, cfg) {
   ctx.globalAlpha = 1;
   for (const e of recent(['party', 'anniv', 'fans', 'film', 'grpDone'], 4.6, tm)) confetti(ctx, W, tm - e.t0, e.b.n);
 }
-const DRAW = { studio: drawStudio, factory: drawFactory, engine: drawEngine, group: drawGroup, lab: drawLab, shop: drawShop, live: drawLive, bank: drawBank, market: drawMarket, hall: drawHall };
+const DRAW = { studio: drawStudio, factory: drawFactory, engine: drawEngine, group: drawGroup, lab: drawLab, shop: drawShop, live: drawLive, bank: drawBank, market: drawMarket, hall: drawHall, crisis: drawCrisis };
 
 // ── Timer ──
 let timer = 0;

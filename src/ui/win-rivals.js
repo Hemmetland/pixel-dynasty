@@ -1,5 +1,6 @@
 // Rivaler och kriser: rivalens jakt (temperaturen), krisberedskapen och det som hänt. Läser bara spelet (sim/crisis.js):
 // själva dragen och kriserna kommer som vanliga händelserutor med val (data/crisis-events.js), inga val görs här.
+import { sceneHTML } from './livescene.js';
 import { esc, icon, t, L, UI, act, regWin, bar, MONTHS } from './core.js';
 import { Lf, lang } from '../core/i18n.js';
 import { dateOf } from '../sim/const.js';
@@ -93,7 +94,7 @@ regWin({
   },
   render(G) {
     const S = crisisState(G);
-    return `${sec(t('rv.hunt'))}${huntCard(G, S)}${sec(t('rv.shield'))}${shieldCard(G)}${sec(t('rv.log'))}${logList(G, S)}`;
+    return `${sceneHTML('crisis', G)}${sec(t('rv.hunt'))}${huntCard(G, S)}${sec(t('rv.shield'))}${shieldCard(G)}${sec(t('rv.log'))}${logList(G, S)}`;
   },
 });
 
