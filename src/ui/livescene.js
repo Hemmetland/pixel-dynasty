@@ -70,7 +70,10 @@ const STATE = {
     try { top = topSellers(G, 12, 5); } catch { top = []; }
     return { top, looks: (G.staff || []).filter((x) => !x.away).map((x) => x.look) };
   },
-  hall: (G) => ({ games: (G.games || []).slice(-8).map((g) => ({ id: g.id, score: g.score || 0 })), n: (G.games || []).length, awards: (G.awards || []).length, fans: G.fans || 0 }),
+  hall: (G) => {
+    const h = lifeState(G, 'hall');
+    return { ...h, games: (G.games || []).slice(-8).map((g) => ({ id: g.id, score: g.score || 0 })), n: (G.games || []).length, fans: G.fans || 0 };
+  },
   bank: (G) => ({ money: G.money, hist: (G.hist && G.hist.cash ? G.hist.cash.slice(-40).map((p) => p.v) : []), looks: (G.staff || []).filter((x) => !x.away).map((x) => x.look) }),
   live: (G, cfg) => {
     const l = lifeState(G, 'live');
@@ -83,8 +86,8 @@ const STATE = {
     return { ...l, looks: staff };
   },
 };
-const TICK_SC = { studio: ['dev', 'studio'], factory: ['hw'], engine: ['eng'], group: ['group'], lab: ['lab'], shop: ['store'], live: ['live'], bank: ['dev', 'studio'], market: ['dev'], hall: ['dev', 'studio'] };
-const LOG_SC = { studio: 'dev', factory: 'hw', engine: 'eng', group: 'group', lab: 'lab', shop: 'store', live: 'live', bank: 'studio', market: 'dev', hall: 'dev' };
+const TICK_SC = { studio: ['dev', 'studio'], factory: ['hw'], engine: ['eng'], group: ['group'], lab: ['lab'], shop: ['store'], live: ['live'], bank: ['dev', 'studio'], market: ['dev'], hall: ['hall'] };
+const LOG_SC = { studio: 'dev', factory: 'hw', engine: 'eng', group: 'group', lab: 'lab', shop: 'store', live: 'live', bank: 'studio', market: 'dev', hall: 'hall' };
 function refresh(kind, cfg) {
   try {
     cfg.st = STATE[kind](cfg.G, cfg);
@@ -97,7 +100,7 @@ function caption(kind, cfg) {
   if (kind === 'studio') return !st ? t('ls.studio') : st.active ? t('ls.studio.on', { title: st.title || '…' }) : st.report ? t('ls.studio.report') : t('ls.studio.idle');
   if (kind === 'engine') return st && st.active ? t('ls.engine.on', { name: st.name }) : st && st.team ? t('ls.engine.team', { team: st.team.name }) : t('ls.engine');
   if (kind === 'market') return t('ls.market');
-  if (kind === 'hall') return !st || !st.n ? t('ls.hall.empty') : t('ls.hall', { n: st.n });
+  if (kind === 'hall') return !st || !st.n ? t('ls.hall.empty') : st.ach ? t('ls.hall.ach', { n: st.n, a: st.ach, m: st.total }) : t('ls.hall', { n: st.n });
   if (kind === 'bank') return !st ? t('ls.bank') : st.money < 0 ? t('ls.bank.red') : t('ls.bank');
   if (kind === 'live') return !st || !st.g ? t('ls.live') : st.g.world && st.g.world.final ? t('ls.live.final') : st.g.world && st.g.world.feud ? t('ls.live.feud', { a: st.g.world.feud.a, b: st.g.world.feud.b }) : st.g.ops && !st.g.event ? t('ls.live.ops') : st.g.event ? t('ls.live.ev') : st.g.patch ? t('ls.live.patch') : st.g.season ? t('ls.live.season') : t('ls.live.on', { n: fmtNum(st.g.subs) });
   if (kind === 'shop') return !st || !st.open ? t('ls.shop') : st.paused ? t('ls.shop.closed') : st.ev ? t('ls.shop.ev', { name: st.ev }) : t('ls.shop.on');
@@ -948,15 +951,18 @@ function drawMarket(ctx, W, tm, cfg) {
 // ── Spelhyllan (biblioteket) ──
 function drawHall(ctx, W, tm, cfg) {
   const fy = H - 6;
-  const st = cfg.st || { games: [], n: 0, awards: 0, fans: 0 };
+  const st = cfg.st || { games: [], n: 0, awards: 0, fans: 0, ach: 0, total: 1, discs: [0, 0, 0, 0], decade: 0, no1: 0, best: null };
   R(ctx, 0, 0, W, H, '#2a2036');
   for (let x = 0; x < W; x += 16) R(ctx, x, 0, 1, H - 12, '#312640');
   R(ctx, 0, H - 12, W, 12, '#3e3040');
   R(ctx, 0, H - 12, W, 1, '#7a6488');
   R(ctx, 0, H - 4, W, 1, '#241a2c');
-  // inramade affischer: en per spel, ljusare färg ju bättre betyg
-  const slots = Math.max(3, Math.min(8, Math.floor((W - 90) / 28)));
+  const wide = W >= 330;
+  // inramade affischer: en per spel, ljusare färg ju bättre betyg, bästa spelet får en stjärnglans och listettor en krona
+  const slots = Math.max(2, Math.min(8, Math.floor((W - (wide ? 190 : 90)) / 28)));
   const gs = st.games.slice(-slots);
+  let bestI = -1;
+  gs.forEach((g, i) => { if (bestI < 0 || g.score > gs[bestI].score) bestI = i; });
   for (let i = 0; i < slots; i++) {
     const x = 10 + i * 28;
     const g = gs[i];
@@ -969,26 +975,61 @@ function drawHall(ctx, W, tm, cfg) {
       R(ctx, x + 5, 14, 12, 3, 'rgba(255,255,255,.55)');
       R(ctx, x + 5, 20, 8, 1, 'rgba(255,255,255,.4)');
       for (let k = 0; k < Math.min(5, Math.round(g.score / 2)); k++) R(ctx, x + 4 + k * 3, 29, 2, 2, '#ffe27a');
+      if (i === bestI && Math.floor(tm * 1.2) % 3 === 0) R(ctx, x + 18, 11 + (Math.floor(tm * 3) % 2), 2, 2, '#ffffff');
+      if (i === bestI && st.no1 > 0) { R(ctx, x + 7, 4, 8, 3, '#ffd36a'); R(ctx, x + 7, 3, 2, 2, '#ffd36a'); R(ctx, x + 10, 2, 2, 3, '#ffd36a'); R(ctx, x + 13, 3, 2, 2, '#ffd36a'); }
     } else R(ctx, x + 2, 10, 18, 24, '#241c30');
-    // spotlight
     ctx.globalAlpha = 0.06;
     R(ctx, x - 2, 0, 26, 8, '#fff0b0');
     ctx.globalAlpha = 1;
   }
-  // trofébyrå till höger: en pokal per vunnet pris
+  // ny rekordbetalning: ljuskäglan ligger på bästa affischen
+  if (bestI >= 0 && recent(['hallRecord'], 4, tm).length) {
+    ctx.globalAlpha = 0.18 + 0.08 * Math.sin(tm * 6);
+    for (let k = 0; k < 10; k++) R(ctx, 10 + bestI * 28 + 11 - k, 8 + k * 3, 2 + k * 2, 3, '#fff0b0');
+    ctx.globalAlpha = 1;
+  }
   const tx = W - 70;
+  if (wide) {
+    // prestationsväggen: ett band per tolv prestationer, de klara lyser
+    const mx0 = 10 + slots * 28 + 6;
+    const medals = 12;
+    const lit = st.ach ? Math.max(1, Math.round((medals * st.ach) / Math.max(1, st.total))) : 0;
+    const fresh = recent(['hallAch'], 3, tm).length;
+    for (let i = 0; i < medals; i++) {
+      const col = ['#e8504a', '#4a90e0', '#f2c84a', '#6cc86a', '#b46bff', '#ff7ab8'][i % 6];
+      const mx = mx0 + (i % 6) * 8, my = 10 + Math.floor(i / 6) * 13;
+      R(ctx, mx + 2, my, 1, 5, '#8a7a4a');
+      if (i < lit) {
+        R(ctx, mx, my + 4, 5, 5, col);
+        R(ctx, mx + 1, my + 5, 3, 1, 'rgba(255,255,255,.5)');
+        if (fresh && i === lit - 1 && Math.floor(tm * 6) % 2) R(ctx, mx - 1, my + 3, 7, 7, 'rgba(255,255,255,.4)');
+      } else R(ctx, mx, my + 4, 5, 5, '#231b2e');
+    }
+    // skivorna: silver, guld, platina och diamant, en lysande skiva per nivå som finns
+    ['#c8d0dc', '#ffd36a', '#e8f0ff', '#7cf2ff'].forEach((c, i) => {
+      const dx = mx0 + i * 12, dy = 38;
+      const has = (st.discs[i] || 0) > 0;
+      R(ctx, dx + 1, dy, 6, 6, has ? c : '#2a2236');
+      R(ctx, dx + 3, dy + 2, 2, 2, '#1a1424');
+      if (has && Math.floor(tm * 1.4 + i * 1.3) % 5 === 0) R(ctx, dx + 1, dy, 1, 1, '#ffffff');
+    });
+  }
+  // trofébyrå: en pokal per vunnet pris, nya pokaler glimmar
   R(ctx, tx, 22, 56, 22, '#3a2a20');
   R(ctx, tx + 1, 23, 54, 20, '#1a1410');
   const cups = Math.min(7, st.awards);
+  const newAward = recent(['hallAward'], 4, tm).length;
   for (let i = 0; i < 7; i++) {
     const cx = tx + 4 + i * 7;
     if (i < cups) {
       R(ctx, cx, 30, 5, 5, '#ffd36a');
       R(ctx, cx + 1, 35, 3, 3, '#e8b848');
       R(ctx, cx - 1, 38, 7, 2, '#b8882a');
-      if (Math.floor(tm * 1.5 + i * 1.7) % 6 === 0) R(ctx, cx + 1, 29, 1, 1, '#ffffff');
+      if (Math.floor(tm * 1.5 + i * 1.7) % 6 === 0 || (newAward && i === cups - 1 && Math.floor(tm * 8) % 2)) R(ctx, cx + 1, 29, 1, 1, '#ffffff');
     } else R(ctx, cx + 1, 38, 3, 2, '#2a2018');
   }
+  // årtiondet på skylten över skåpet
+  if (st.decade) V.neonText(ctx, String(st.decade), tx + 12, 10, '#ffffff', '#c89aff', 1);
   // besökare går förbi och tittar, fler ju fler fans
   const vis = st.n ? Math.min(3, 1 + Math.floor(Math.log10(Math.max(10, st.fans)) / 2)) : 0;
   for (let i = 0; i < vis; i++) {
@@ -1000,7 +1041,20 @@ function drawHall(ctx, W, tm, cfg) {
     else if (k < 10) person(ctx, xa, fy + 2, look, 'notes', tm, 1, false, i);
     else person(ctx, lerp(xa, W + 8, (k - 10) / (period - 10)), fy + 2, look, 'walk', tm, 1, false, i);
   }
-  for (const e of recent(['launch', 'done', 'disc', 'anniv'], 4.6, tm)) confetti(ctx, W, tm - e.t0, e.b.n);
+  // fyrverkerier när ett nytt årtionde börjar
+  for (const e of recent(['hallEra'], 6, tm)) {
+    for (let f = 0; f < 3; f++) {
+      const k = ((tm - e.t0) * 0.7 + f * 0.3) % 1;
+      const fx = 30 + Math.round(V.hash(f * 7 + e.b.n) * (W - 60)), fyy = 12 + f * 4;
+      for (let a2 = 0; a2 < 10; a2++) {
+        const an = (a2 / 10) * Math.PI * 2;
+        ctx.globalAlpha = 1 - k;
+        R(ctx, Math.round(fx + Math.cos(an) * k * 12), Math.round(fyy + Math.sin(an) * k * 12), 1, 1, ['#ff7ab8', '#ffd36a', '#7cf2ff'][f % 3]);
+      }
+      ctx.globalAlpha = 1;
+    }
+  }
+  for (const e of recent(['launch', 'done', 'disc', 'anniv', 'hallAward', 'hallAch', 'hallRecord'], 4.6, tm)) confetti(ctx, W, tm - e.t0, e.b.n);
   darken(ctx, W, 0.04, '#ffd8ff');
 }
 
