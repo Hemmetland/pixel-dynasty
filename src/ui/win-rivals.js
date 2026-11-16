@@ -100,7 +100,6 @@ function logList(S, empty = 'rv.log.empty') {
 
 // Flik Hårdvara: konkurrentens tillverkare, kriget, de tre fronterna och beredskapen
 function warTab(G) {
-  // (Grafiktråden lägger en scen överst här när den finns: sceneHTML('war', G) mot lifeState(G, 'war'))
   const S = warState(G);
   const head = !S.open
     ? `<div class="card rvl-top"><p class="hint" style="margin:0">${icon('info')} ${t('rw.none')}</p></div>`
@@ -121,7 +120,7 @@ function warTab(G) {
   const patTxt = S.patent.lic ? t('rw.f.patent.lic', { n: S.patent.lic }) : S.patent.on ? t('rw.f.patent.on') : t('rw.f.patent.off');
   const supTxt = S.supply.short ? t('rw.f.supply.short', { partner: esc(S.supply.short.partner), n: S.supply.short.left }) : S.supply.on ? t('rw.f.supply.on') : t('rw.f.supply.off');
   const fronts = `${sec(t('rw.fronts'))}<div class="col" style="gap:8px">${fr('console', 'rw.f.plat', platTxt, !!(S.own && S.opp))}${fr('shield', 'rw.f.patent', patTxt, !!(S.patent.lic || S.patent.on))}${fr('truck', 'rw.f.supply', supTxt, !!S.supply.on)}</div>`;
-  return `${sec(t('rw.war'))}${head}${S.open ? fronts : ''}${sec(t('rw.shield'))}${shieldCard(warShield(G), WSHIELD_KEY, WSHIELD_IC, 'rw.shield.help')}${sec(t('rw.log'))}${logList(S, 'rw.log.empty')}`;
+  return `${S.open ? sceneHTML('war', G) : ''}${sec(t('rw.war'))}${head}${S.open ? fronts : ''}${sec(t('rw.shield'))}${shieldCard(warShield(G), WSHIELD_KEY, WSHIELD_IC, 'rw.shield.help')}${sec(t('rw.log'))}${logList(S, 'rw.log.empty')}`;
 }
 
 regWin({
