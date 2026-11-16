@@ -2047,6 +2047,7 @@ export const STRINGS = {
   'ls.engine.team': ['Motorteamet {team} väntar på nästa bygge', 'Engine team {team} waits for the next build'],
   'ls.market': ['Marknadsrummet följer topplistan', 'The market room follows the charts'],
   'ls.hall': ['Dina {n} spel står på hyllan', 'Your {n} games are on the shelf'],
+  'ls.hall.ach': ['Dina {n} spel och {a} av {m} prestationer', 'Your {n} games and {a} of {m} achievements'],
   'ls.hall.empty': ['Här hamnar dina spel', 'Your games will end up here'],
   'ls.bank': ['Ekonomiavdelningen räknar pengar', 'The finance department is counting money'],
   'ls.bank.red': ['Kassan är tom, dags att rädda ekonomin', 'The cash is gone, time to save the finances'],
