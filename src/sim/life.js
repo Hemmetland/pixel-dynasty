@@ -17,6 +17,7 @@ import { TICKS_PER_WEEK, WEEKS_PER_YEAR, yfOf, yearOf, engineNeed, engineEff } f
 import { ACHIEVEMENTS } from '../data/achievements.js';
 import { CERTS, certIndex, totalUnits } from '../data/certs.js';
 import { membersOf, leadOf, teamName } from './teams.js';
+import { crisisState } from './crisis.js'; // bara i lifeState (vid anrop)
 import { FACILITIES } from './studio.js'; // bara i lifeText (vid anrop), så importcykeln gör inget
 
 export const LIFE_MAX = 30; // så många händelser sparas
@@ -91,6 +92,10 @@ export const LIFE_KINDS = {
   hallAward: { sc: 'hall', v: 2, gap: 0 }, // en ny pokal från galan (g = spelet, a = året)
   hallRecord: { sc: 'hall', v: 4, gap: 0 }, // ett nytt rekord (v 0 betyg, 1 sålda exemplar, 2 första veckan, 3 veckor som etta; g = spelet, a = värdet)
   hallEra: { sc: 'hall', v: 2, gap: 0 }, // ett nytt årtionde börjar (g = årtalet, a = årtalet)
+  // rivaler och kriser (crisis.js)
+  huntMove: { sc: 'crisis', v: 5, gap: 0 }, // rivalen gör ett drag mot dig (g = rivalen, v 0 släpp på ditt släpp, 1 värvning, 2 rykten, 3 kopia, 4 rivalen floppar)
+  crisisHit: { sc: 'crisis', v: 3, gap: 0 }, // en kris (g = spelet, v 0 läcka, 1 strejk, 2 flopp)
+  crisisSolved: { sc: 'crisis', v: 2, gap: 0 }, // krisen eller draget är hanterat (g = rivalen eller spelet, a = vilket val, v 0 skonsamt, 1 dyrt eller illa)
   // labbet
   resStart: { sc: 'lab', v: 2, gap: 0 }, // en forskning börjar (g = namnet)
   pizza: { sc: 'dev', v: 2, gap: 12 }, // pizza till teamet under övertid
@@ -197,6 +202,7 @@ export function lifeState(G, sc) {
   if (sc === 'live') return liveState(G);
   if (sc === 'lab') return labState(G);
   if (sc === 'hall') return hallState(G);
+  if (sc === 'crisis') return crisisState(G);
   const J = G.job && G.job.kind === 'game' ? G.job : null;
   const crew = workers(G).map((w) => ({ id: w.id, name: lifeName(w), mood: Math.round(w.mood), fatigue: Math.round((w.fatigue || 0) * 10) / 10, trait: w.trait || null, away: !!w.away }));
   if (!J) return { active: false, phase: 0, pct: 0, bugs: 0, crunch: false, title: '', crew };

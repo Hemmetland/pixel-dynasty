@@ -7,6 +7,8 @@ import { SCOPE_TEMPO } from './tempo.js';
 import { earn, spend } from './studio.js';
 import { parPerTick } from './score.js';
 import { note } from './news.js';
+import { crisisOf, monthRev, crisisAfter } from './crisis.js';
+import { payroll } from './people.js';
 import { subPrices, payBase, SEASON, liveSeasonCost, startLiveSeason, seasonReadyIn } from './live.js';
 
 // Det största onlinespelet som är igång, eller null
@@ -55,7 +57,7 @@ function soonStop(G) {
   }
   return false;
 }
-const breathing = (G) => G.t - (G.stopT ?? -99) < BREATH || soonStop(G);
+export const breathing = (G) => G.t - (G.stopT ?? -99) < BREATH || soonStop(G);
 export function rollStudioEvent(G, force) {
   if (G.pending.length) return false;
   if (!force) {
@@ -108,6 +110,21 @@ export function applyFx(G, fx, out = [], ctx = {}, dry = false) {
       else spend(G, -v, 'events');
     }
     out.push({ k: 'money', v });
+  }
+  // rev = andel av en vanlig månads intäkter, payroll = andel av en månadslön för alla (båda ± så att kostnaden följer studions storlek)
+  for (const key of ['rev', 'payroll']) {
+    if (!fx[key]) continue;
+    const v = Math.round((fx[key] * (key === 'rev' ? monthRev(G) : payroll(G))) / 10) * 10;
+    if (!dry && v) {
+      if (v > 0) earn(G, v, 'events');
+      else spend(G, -v, 'events');
+    }
+    if (v) out.push({ k: 'money', v });
+  }
+  // heat = rivalens jakt (minus lugnar ner den)
+  if (fx.heat) {
+    if (!dry) crisisOf(G).heat = clamp(crisisOf(G).heat + fx.heat, 0, 100);
+    out.push({ k: 'heat', v: fx.heat });
   }
   if (fx.rp) {
     if (!dry) G.rp = Math.max(0, G.rp + fx.rp);
@@ -240,6 +257,7 @@ export function resolveEvent(G, promptId, idx) {
   const ch = ev.choices[idx];
   G.pending.splice(i, 1);
   const out = applyFx(G, ch.fx, [], { who: pr.who, game: pr.game });
+  crisisAfter(G, pr, ev, idx, out);
   G.stats.events++;
   emit('eventResolved', { ev, idx, out });
   return out;

@@ -191,7 +191,7 @@ function rivalsTab(G) {
     const lead = me.rev >= them.rev;
     // de senaste avslutade duellerna, nyast först
     const past = rivalLog(G).slice(-4).reverse().map((x) => `<span class="chip">${esc(x.name)} <b class="num">${x.w}–${x.l}</b> <span class="faint">${t(END_KEY[x.end] || END_KEY.done)}</span></span>`).join('');
-    return `<div class="card duel" style="margin-bottom:10px"><div class="row" style="gap:8px;margin-bottom:8px;flex-wrap:wrap"><span class="ii" style="color:var(--hot)">${icon('target')}</span><b style="flex:1;min-width:0">${t('mkt.rival.head', { rival: esc(foe.name) })}</b><span class="tag" style="--c:var(--hot)">${t('mkt.rival.score', { w: R.w, l: R.l })}</span></div>
+    return `<div class="card duel" style="margin-bottom:10px"><div class="row" style="gap:8px;margin-bottom:8px;flex-wrap:wrap"><span class="ii" style="color:var(--hot)">${icon('target')}</span><b style="flex:1;min-width:0">${t('mkt.rival.head', { rival: esc(foe.name) })}</b><span class="tag" style="--c:var(--hot)">${t('mkt.rival.score', { w: R.w, l: R.l })}</span><button class="btn ghost sm" data-act="rv-open">${t('rv.link')}</button></div>
       <div class="col" style="gap:7px">${line(G.studio, me, 'var(--accent)')}${line(foe.name, them, foe.color)}</div>
       <p class="hint" style="margin-top:8px"><span style="color:${lead ? 'var(--good)' : 'var(--bug)'}">${t(lead ? 'mkt.rival.lead' : 'mkt.rival.trail', { v: money(Math.abs(me.rev - them.rev)), rival: esc(foe.name) })}</span> ${t('mkt.rival.help')} <span class="faint">${t('mkt.rival.since', { y: R.since })}</span></p>${past ? `<div class="lbl" style="margin:10px 0 6px">${t('mkt.rival.past')}</div><div class="row" style="gap:6px;flex-wrap:wrap">${past}</div>` : ''}</div>`;
   };

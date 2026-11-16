@@ -41,6 +41,7 @@ export * from './goals.js';
 export * from './esports.js';
 export * from './world.js';
 export * from './book.js';
+export * from './crisis.js';
 export * from './campus.js';
 export * from './hrdept.js';
 export * from './life.js';

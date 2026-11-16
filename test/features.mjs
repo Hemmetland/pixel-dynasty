@@ -3864,5 +3864,183 @@ ok(!bad.length, `äldre sparning utan ett av ${paths.length} fält går att spel
   ok(JSON.stringify(JSON.parse(JSON.stringify(GM.book))) === JSON.stringify(GM.book) && Object.keys(GM.book).length <= 8 && JSON.stringify(GM.book).length < 2000, 'boken är liten och går att spara och läsa tillbaka');
 }
 
+// ── Rivaler och kriser: rivalens jakt, kriser, krisberedskap och livsflödet ─────────────────────────────
+{
+  const hunt = EVENTS.filter((e) => e.kind === 'hunt');
+  const crisis = EVENTS.filter((e) => e.kind === 'crisis');
+  ok(hunt.length === 5 && crisis.length === 3 && S.CRISIS_IDS.length === 8 && S.CRISIS_IDS.every((id) => EV[id]), 'fem drag från rivalen och tre kriser finns som händelser');
+  ok([...hunt, ...crisis].every((e) => e.choices.length >= 2 && e.choices.length <= 3 && e.choices.every((c) => c.label.sv && c.label.en && c.fx)), 'varje händelse har två eller tre val med text på båda språken');
+  ok(EVENTS.filter((e) => e.kind === 'studio' || e.kind === 'dev').every((e) => !S.CRISIS_IDS.includes(e.id)), 'månadsslumpen drar aldrig rivalens drag eller kriser');
+  // texterna: bara kända {variabler}
+  const known = new Set(['rival', 'rtitle', 'name', 'title']);
+  const vars = (o) => [...(o.sv + o.en).matchAll(/\{(\w+)\}/g)].map((m) => m[1]);
+  const fxTexts = (fx) => [fx.res, ...(fx.rand || []).map(([, f]) => f.res)].filter(Boolean);
+  ok([...hunt, ...crisis].every((e) => vars(e.title).concat(vars(e.body)).every((v) => known.has(v)) && e.choices.every((c) => fxTexts(c.fx).every((r) => r.sv && r.en && vars(r).every((v) => known.has(v))))), 'händelsetexterna använder bara kända variabler');
+  ok(hunt.every((e) => !(e.title.sv + e.body.sv).includes('{title}') || (e.needs || []).includes('game')) && crisis.every((e) => !(e.title.sv + e.body.sv).includes('{name}') || (e.needs || []).includes('staff')), 'texter som nämner en person eller ett spel har rätt behov');
+
+  // en studio med rival, folk och spel
+  const mkR = (seed = 31) => {
+    const W = S.newGame({ studio: 'Jakt', seed, difficulty: 'normal' });
+    S.makeCompetitors(W); S.initWorld(W);
+    W.pending = []; W.t = 48 * 12; W.money = 5e7; W.fans = 6000;
+    for (let i = 0; i < 4; i++) { S.refreshCandidates(W); S.hire(W, W.candidates[0].id); }
+    const add = (id, tt, score, genre) => W.games.push({ id, title: 'Jaktspel ' + id, t: tt, score, weekly: [100], total: 0, priceAt: 30, topic: 'fantasy', genre, platform: 'pc', scope: 'medium', audience: 'everyone', revenue: 5e5, units: 2e4, ports: [], insights: [], reviews: [], flags: [] });
+    add(8001, W.t - 90, 7.5, 'rpg'); add(8002, W.t - 6, 8.0, 'action');
+    const c = W.comps.find((x) => !x.owned);
+    W.rival = { id: c.id, name: c.name, since: 1985, w: 1, l: 2, run: -1, lead: true, flipT: 0 };
+    W.market.releases.push({ id: W.uid++, t: W.t - 4, comp: c.id, studio: c.name, color: c.color, title: { sv: 'Rivalspelet', en: 'The Rival Game' }, score: 5.4, platform: 'pc', genre: 'action', topic: 'fantasy', scope: 'medium', yours: false });
+    W.job = S.buildJob(W, { topic: W.u.topics[0], genre: W.u.genres[0], platform: W.licenses[0], scope: W.u.scopes[0], audience: W.u.aud[0], title: 'Nästa bygge' }, W.staff.length);
+    W.job.phase = 2;
+    return W;
+  };
+  const W = mkR();
+  ok(S.rivalOf(W) && !W.crisis, 'rivalen finns och krisboken skapas först när den behövs');
+  const cs0 = S.crisisState(W);
+  ok(W.crisis && cs0.rival && cs0.rival.name === W.rival.name && cs0.heat === 0 && cs0.level === 0 && cs0.handled === 0 && cs0.recent.length === 0 && cs0.open === '', 'crisisState ger rivalen, jaktens läge och en tom logg');
+
+  // mätaren och beredskapen
+  ok(S.heatLevel(0) === 0 && S.heatLevel(24.9) === 0 && S.heatLevel(25) === 1 && S.heatLevel(55) === 2 && S.heatLevel(80) === 3 && S.heatLevel(100) === 3, 'jaktens fyra lägen: Lugnt, Spänt, Het och Krig');
+  const sh0 = S.crisisShield(W);
+  ok(sh0.parts.length === 5 && sh0.parts.every((p) => typeof p.on === 'boolean') && Math.abs(sh0.total - sh0.parts.reduce((a, p) => a + (p.on ? p.v : 0), 0)) < 1e-9 && sh0.total <= 0.5, 'krisberedskapen är fem delar och högst femtio procent');
+  const WS = mkR(32);
+  WS.money = 0;
+  WS.staff.forEach((x) => (x.mood = 20));
+  WS.fans = 100;
+  const shNone = S.crisisShield(WS);
+  WS.money = 1e12; WS.staff.forEach((x) => (x.mood = 90)); WS.fans = 6000; WS.u.flags.hrAuto = 1; WS.facilities = WS.facilities || {};
+  const shAll = S.crisisShield(WS);
+  ok(shNone.parts.filter((p) => p.id !== 'qa').every((p) => !p.on) && shAll.parts.filter((p) => p.id !== 'qa').every((p) => p.on) && shAll.total >= shNone.total + 0.4, 'varje del slår på sin egen sak (kassa, stämning, personalavdelning, fans)');
+  ok(S.SHIELD_PARTS.reduce((a, p) => a + p.v, 0) === 0.5 || Math.abs(S.SHIELD_PARTS.reduce((a, p) => a + p.v, 0) - 0.5) < 1e-9, 'alla delar tillsammans är exakt taket');
+
+  // månaden: temperaturen, utan slump från spelet
+  const H = mkR(33);
+  S.crisisMonth(H); // t är 0 mod 4 → värmen justeras
+  ok(S.crisisOf(H).heat === 3, 'jakten stiger tre per månad när du leder över rivalen (' + S.crisisOf(H).heat + ')');
+  H.rival.lead = false;
+  const h1 = S.crisisOf(H).heat;
+  H.pending.push({ type: 'event', id: 999, ev: 'fan_mail' }); // en ruta väntar: ingen ny händelse, bara temperaturen
+  S.crisisMonth(H);
+  ok(Math.abs(S.crisisOf(H).heat - (h1 * 0.92 + 1)) < 1e-9, 'jakten stiger bara ett per månad när rivalen leder, och tiden lugnar den');
+  S.crisisOf(H).heat = 100; H.rival.lead = true; S.crisisMonth(H);
+  ok(S.crisisOf(H).heat <= 100, 'jakten går aldrig över hundra');
+  const NR = mkR(34); NR.rival = null; S.crisisOf(NR).heat = 50; S.crisisMonth(NR);
+  ok(Math.abs(S.crisisOf(NR).heat - 46) < 1e-9, 'utan rival bara lugnas jakten');
+
+  // en lång sträcka: händelser kommer, deterministiskt, utan G.rng, med vila mellan likadana
+  const run = (W0, months, pick = 0, hook = null) => {
+    const X = structuredClone(W0);
+    let moved = false;
+    const got = [];
+    for (let i = 0; i < months; i++) {
+      X.t += 4;
+      X.staff.forEach((x) => (x.mood = 70));
+      X.money = Math.max(X.money, 1e7);
+      if (X.job) X.job.phase = 2;
+      const r0 = X.rng;
+      const id = S.crisisMonth(X);
+      if (X.rng !== r0) moved = true;
+      if (id) {
+        got.push({ id, t: X.t, ev: X.pending[0] });
+        if (hook) hook(X, id);
+        S.resolveEvent(X, X.pending[0].id, Math.min(pick, EV[id].choices.length - 1));
+      }
+      X.pending.length = 0;
+    }
+    return { X, got, rngSame: !moved };
+  };
+  const A = run(W, 400), B = run(W, 400);
+  const noRngRun = run(W, 100, 2);
+  ok(A.got.length >= 20 && JSON.stringify(A.got.map((x) => [x.id, x.t])) === JSON.stringify(B.got.map((x) => [x.id, x.t])), 'samma start ger samma händelser (' + A.got.length + ' på 400 månader)');
+  ok(A.rngSame && noRngRun.rngSame, 'att en händelse dras rör inte spelets slumptal');
+  let gapOk = true;
+  const lastAt = {};
+  for (const e of A.got) { if (lastAt[e.id] != null && e.t - lastAt[e.id] <= S.CRISIS_COOLDOWN) gapOk = false; lastAt[e.id] = e.t; }
+  ok(gapOk, 'samma händelse kommer inte oftare än vart ' + S.CRISIS_COOLDOWN + ':e vecka');
+  ok(new Set(A.got.map((x) => x.id)).size >= 3 && A.got.some((x) => EV[x.id].kind === 'hunt') && A.got.some((x) => EV[x.id].kind === 'crisis'), 'både rivalens drag och kriser dyker upp, i många sorter (' + [...new Set(A.got.map((x) => x.id))].join(',') + ')');
+  ok(A.got.every((x) => x.ev && x.ev.ev === x.id && (!(EV[x.id].needs || []).includes('staff') || x.ev.who)), 'händelsen får sin person eller sitt spel när den behöver det');
+  const C = S.crisisOf(A.X);
+  ok(C.log.length === Math.min(24, A.got.length) && C.n === A.got.length && C.log.every((e) => EV[e.ev] && typeof e.c === 'number'), 'loggen håller de senaste ' + C.log.length + ' och räknaren de ' + C.n + ' hanterade');
+  ok(S.crisisState(A.X).recent.length === 6 && S.crisisState(A.X).recent[0].t >= S.crisisState(A.X).recent[5].t, 'de sex senaste visas med nyast först');
+  ok(JSON.stringify(JSON.parse(JSON.stringify(A.X.crisis))) === JSON.stringify(A.X.crisis) && JSON.stringify(A.X.crisis).length < 6000, 'krisboken är liten och går att spara och läsa tillbaka');
+
+  // alla val fungerar, och beredskapen skyddar
+  const early = structuredClone(W); early.t = 48 * 1 + 4; early.pending = [];
+  ok(S.crisisMonth(early) === '' && early.pending.length === 0, 'inga kriser förrän studion funnits i två år');
+  const noGame = structuredClone(W); noGame.games = []; noGame.pending = [];
+  ok(S.crisisMonth(noGame) === '', 'inga kriser utan släppta spel');
+  const WN = structuredClone(W); WN.rival = null; WN.comps.forEach((c) => (c.owned = false));
+  const noRival = run(WN, 400);
+  ok(noRival.got.length > 0 && noRival.got.every((x) => EV[x.id].kind === 'crisis') && noRival.got.length < A.got.length, 'utan rival kommer bara kriser, och färre');
+  const shielded = structuredClone(W); shielded.u.flags.hrAuto = 1;
+  const calmRun = run(shielded, 400, 0, null);
+  const cnt = (r) => r.got.length;
+  ok(cnt(calmRun) <= cnt(A), 'en bättre krisberedskap ger färre händelser (' + cnt(calmRun) + ' mot ' + cnt(A) + ')');
+
+  // varje val i varje händelse går att göra och ger rätt spår i boken och livsflödet
+  let allOk = true, beats = 0;
+  for (const ev of [...hunt, ...crisis]) {
+    ev.choices.forEach((ch, i) => {
+      const X = mkR(40 + i);
+      X.pending.push({ type: 'event', id: X.uid++, ev: ev.id, who: X.staff.find((s) => !s.isFounder).id, game: X.games[X.games.length - 1].id });
+      const m0 = X.money, st0 = X.staff.length;
+      let out;
+      try { out = S.resolveEvent(X, X.pending[0].id, i); } catch (e) { allOk = false; console.log('kastade', ev.id, i, e.message); return; }
+      const Cx = S.crisisOf(X);
+      if (!out || Cx.n !== 1 || Cx.log.length !== 1 || Cx.log[0].ev !== ev.id || Cx.log[0].c !== i || X.money > m0 + 1e9 || X.staff.length > st0) { allOk = false; console.log('fel', ev.id, i); }
+      const sol = S.lifeLog(X, 'crisis').filter((b) => b.k === 'crisisSolved');
+      if (sol.length === 1) beats++;
+      if (!(Cx.heat >= 0 && Cx.heat <= 100)) allOk = false;
+    });
+  }
+  ok(allOk && beats === [...hunt, ...crisis].reduce((a, e) => a + e.choices.length, 0), 'alla val går att göra och varje ger en händelse i livsflödet (' + beats + ')');
+
+  // pengar och jakt i effekterna
+  const F = mkR(50);
+  const rev0 = S.monthRev(F);
+  const mb = F.money;
+  const o1 = S.applyFx(F, { rev: -0.1 }, [], {});
+  ok(o1.some((o) => o.k === 'money' && Math.abs(o.v + Math.round(rev0 * 0.1 / 10) * 10) <= 10) && Math.abs(mb - F.money - rev0 * 0.1) <= 10, 'rev kostar en andel av en vanlig månads intäkter');
+  ok(rev0 >= 1500, 'en vanlig månad är aldrig noll, så kostnaden finns även för en ny studio');
+  const mp = F.money;
+  S.applyFx(F, { payroll: -0.5 }, [], {});
+  ok(mp - F.money > 0 && Math.abs(mp - F.money - Math.round(S.payroll(F) * 0.5 / 10) * 10) <= 10, 'payroll kostar en andel av en månadslön för alla');
+  S.crisisOf(F).heat = 4;
+  S.applyFx(F, { heat: -10 }, [], {});
+  ok(S.crisisOf(F).heat === 0, 'jakten går inte under noll');
+  const dry = S.previewFx(F, { heat: 6, rev: -0.05 }, {});
+  ok(dry.some((o) => o.k === 'heat' && o.v === 6) && S.crisisOf(F).heat === 0, 'förhandsvisningen visar jakten utan att ändra den');
+
+  // livsflödet
+  const lbeat = S.lifeLog(A.X, 'crisis');
+  ok(lbeat.length > 0 && lbeat.every((b) => b.sc === 'crisis') && lbeat.some((b) => b.k === 'huntMove') && lbeat.some((b) => b.k === 'crisisHit') && lbeat.some((b) => b.k === 'crisisSolved'), 'livsflödet har drag, kriser och lösningar i scenen crisis');
+  ok(lbeat.filter((b) => b.k === 'huntMove').every((b) => b.g === A.X.rival.name && b.v >= 0 && b.v < 5) && lbeat.filter((b) => b.k === 'crisisHit').every((b) => b.v >= 0 && b.v < 3 && b.g), 'dragen bär rivalens namn och kriserna spelets titel');
+  const ls = S.lifeState(A.X, 'crisis');
+  ok(ls.rival && ls.rival.id === A.X.rival.id && ls.rival.color && typeof ls.heat === 'number' && ls.level >= 0 && ls.level <= 3 && ls.shield >= 0 && ls.shield <= 50 && ls.handled === C.n && Array.isArray(ls.recent), 'lifeState(crisis) ger rivalen, jakten, beredskapen och de senaste');
+  const noRv = S.lifeState(WN, 'crisis');
+  ok(noRv.rival === null && noRv.open === '', 'utan rival är rivalen tom i scenens läge');
+  const leakG = mkR(60); leakG.pending.push({ type: 'event', id: leakG.uid++, ev: 'crisis_leak' });
+  ok(S.crisisState(leakG).open === 'crisis_leak', 'ett öppet beslut syns i scenens läge');
+  S.resolveEvent(leakG, leakG.pending[0].id, 0);
+  ok(S.crisisOf(leakG).log[0].title === 'Nästa bygge', 'läckan gäller bygget som är under arbete');
+
+  // texter
+  setLang('en');
+  const txE = S.lifeText(lbeat.find((b) => b.k === 'huntMove'));
+  setLang('sv');
+  const txS = S.lifeText(lbeat.find((b) => b.k === 'huntMove'));
+  ok(txE.includes(A.X.rival.name) && txS.includes(A.X.rival.name) && txE !== txS && !/[{}]/.test(txE + txS), 'rivalens drag får färdig text på båda språken: ' + txE);
+  let missR = 0;
+  const needR = (k) => { const e = STRINGS[k]; if (!e || !e[0] || !e[1]) { missR++; console.log('saknas', k); } };
+  for (const k of ['huntMove', 'crisisHit', 'crisisSolved']) for (let v = 0; v < S.LIFE_KINDS[k].v; v++) needR(`life.${k}.${v}`);
+  for (const k of ['rv.heat.0', 'rv.heat.1', 'rv.heat.2', 'rv.heat.3', 'rv.heat.d.0', 'rv.heat.d.1', 'rv.heat.d.2', 'rv.heat.d.3', 'rv.shield.cash', 'rv.shield.mood', 'rv.shield.hr', 'rv.shield.qa', 'rv.shield.fans']) needR(k);
+  for (const k of Object.keys(STRINGS).filter((x) => /^(rv\.|menu\.rivals)/.test(x))) needR(k);
+  ok(missR === 0, 'alla texter för rivaler och kriser finns på båda språken');
+
+  // gamla sparfiler utan krisbok
+  const old = structuredClone(W); delete old.crisis;
+  ok(S.crisisMonth(old) === '' || true, 'en gammal sparfil utan krisbok kan köras');
+  ok(old.crisis && old.crisis.heat >= 0 && S.crisisState(old).handled === 0, 'krisboken skapas när den behövs');
+}
+
 console.log(fails ? `\n${fails} FEL` : '\nAlla tester gick bra');
 process.exit(fails ? 1 : 0);

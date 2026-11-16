@@ -156,7 +156,7 @@ regWin({
     const grp = (k, body) => `<div class="mgrp"><div class="lbl">${t('menu.g.' + k)}</div><div class="mgrid">${body}</div></div>`;
     return `<button class="mresume" data-act="mn-resume">${icon('play')}<span>${t('menu.resume')}</span><kbd>Esc</kbd></button>
       ${grp('game', c('mn-save', 'save', 'menu.save', 'var(--good)') + c('mn-slots', 'folder', 'menu.slots', 'var(--gold)'))}
-      ${grp('studio', c('mn-news', 'bell', 'menu.news', 'var(--design)', un ? `<i class="badge">${un > 9 ? '9+' : un}</i>` : '') + c('mn-ach', 'award', 'menu.ach', 'var(--fans)'))}
+      ${grp('studio', c('mn-news', 'bell', 'menu.news', 'var(--design)', un ? `<i class="badge">${un > 9 ? '9+' : un}</i>` : '') + c('mn-ach', 'award', 'menu.ach', 'var(--fans)') + c('mn-rivals', 'target', 'menu.rivals', 'var(--hot)'))}
       ${grp('system', c('mn-set', 'settings', 'menu.settings', 'var(--accent)') + c('mn-help', 'info', 'menu.help', 'var(--rp)') + c('mn-title', 'back', 'menu.title', 'var(--bug)'))}`;
   },
 });
@@ -169,6 +169,7 @@ act('mn-save', () => {
 act('mn-slots', () => UI.open('slots', null, { force: true }));
 act('mn-news', () => UI.open('news', null, { force: true }));
 act('mn-ach', () => UI.open('achievements', null, { force: true }));
+act('mn-rivals', () => UI.open('rivals', null, { force: true }));
 act('mn-set', () => UI.open('settings', null, { force: true }));
 act('mn-help', () => UI.open('help', null, { force: true }));
 act('mn-title', () => {

@@ -42,6 +42,7 @@ import { rentOf, facUpkeep, loanInterest, spend } from './studio.js';
 import { note } from './news.js';
 import { beat, lifeWeek } from './life.js';
 import { bookMonth } from './book.js';
+import { crisisMonth } from './crisis.js';
 
 // Ett tick = en fjärdedels vecka. Returnerar false om spelet väntar på spelaren.
 export function stepTick(G) {
@@ -183,6 +184,7 @@ function monthly(G, d) {
   headlineWatch(G);
   checkAchievements(G);
   checkGoals(G);
+  crisisMonth(G); // rivalens jakt och kriser (händelserutor med val)
   bookMonth(G); // historieboken: försäljning per år, rekord och nya årtionden (läser bara)
   emit('month', G);
 }
