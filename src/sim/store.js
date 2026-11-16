@@ -9,6 +9,7 @@ import { curveFor, unitRev } from './sales.js';
 import { PUB_SHARE } from './publish.js';
 import { note } from './news.js';
 import { beat } from './life.js';
+import { hypeLevel } from './hype.js';
 import { hwReach, digitalOf, platStore, PLAT_CUT } from './hardware.js';
 import { STORE_EVENTS, EVENT_BY_ID, LEVEL_NAMES } from '../data/storeevents.js';
 
@@ -171,7 +172,7 @@ export function storeRelease(G, g) {
   // önskelistan: spelet fanns i butiken innan det släpptes, och de som väntat köper direkt
   const wish = wishOf(G, g.hype || 0);
   if (wish > 0) {
-    g.total *= 1 + WISH_LIFT * (clamp(g.hype, 0, 100) / 100) * S.reach;
+    g.total *= 1 + WISH_LIFT * Math.min(2, hypeLevel(g.hype)) * S.reach;
     g.wish = wish;
     if (wish >= 1000) note(G, 'news.storeWish', { title: g.title, n: fmtNum(Math.round(wish / 100) * 100) }, 'good');
   }
@@ -717,7 +718,7 @@ function recordWatch(G, S, week, game) {
 export const wishOf = (G, hype) => {
   const S = G.store;
   if (!S || S.paused) return 0;
-  return Math.round(storeUsers(G, S) * Math.pow(clamp(hype, 0, 100) / 100, 1.5) * 0.06);
+  return Math.round(storeUsers(G, S) * Math.pow(Math.min(2, hypeLevel(hype)), 1.5) * 0.06);
 };
 export function wishNow(G) {
   const J = G.job;

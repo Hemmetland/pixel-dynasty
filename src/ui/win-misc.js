@@ -14,6 +14,7 @@ import { paceOf, paceSeg } from './pace.js';
 import { pfocusOf, pfocusSeg } from './pfocus.js';
 import { saveGame, exportCode, importCode, freeSlot, useSlot, activeSlot } from '../core/store.js';
 import { devCode } from './devconsole.js';
+import { hypeRateText, hypePartsHTML } from './hypeui.js';
 
 export const AIC = { a_game: 'gamepad', a_star: 'star', a_coin: 'money', a_house: 'building', a_team: 'team', a_heart: 'heart', a_flask: 'flask', a_aaa: 'rocket', a_trophy: 'trophy', a_brief: 'hammer', a_engine: 'cpu', a_clock: 'clock', a_globe: 'globe', a_bulb: 'bulb', a_crown: 'crown', a_disc: 'disc', a_chip: 'gpu' };
 const MIC = { press: 'mail', ads: 'book', tv: 'film', online: 'globe', influencer: 'heart' };
@@ -31,12 +32,13 @@ regWin({
     if (!J || J.kind !== 'game') return `<div class="empty">${icon('megaphone')}<div>${t('mk.none')}</div></div>`;
     const opts = marketingOptions(G);
     return `<p class="hint" style="margin-bottom:14px">${t('mk.help')} ${t('mk.cap')}</p>
-      <div class="bar tall" style="--c:var(--hot);margin-bottom:18px"><i style="width:${Math.min(100, J.hype)}%"></i></div>
+      <div class="bar tall${J.hype > 100 ? ' over' : ''}" style="--c:var(--hot);margin-bottom:14px"><i style="width:${Math.min(100, J.hype)}%"></i></div>
+      <div class="card hy-card"><div class="row" style="gap:10px;align-items:center;margin-bottom:6px"><span class="exp-vi">${icon('fire')}</span><div style="flex:1;min-width:0"><b>${t('hy.title')}</b><div class="faint" style="font-size:12.5px">${hypeRateText(G, J)}</div></div></div>${hypePartsHTML(G, J)}<p class="hint" style="margin:8px 0 0">${t('hy.help')}</p></div>
       <div class="col" style="gap:10px">${opts
         .map(
           (o) => `<div class="card row" style="gap:14px;${o.used ? 'opacity:.55' : ''}"><div class="fi" style="width:44px;height:44px;border-radius:13px;display:grid;place-items:center;background:rgba(255,92,157,.14);color:var(--hot)">${icon(MIC[o.id])}</div>
-          <div style="flex:1"><b class="h3">${L(o.name)}</b><div class="hint">+${Math.round(o.gain)} ${t('stat.hype')}</div></div>
-          ${o.used ? `<span class="tag" style="--c:var(--good)">${t('mk.used')}</span>` : `<button class="btn hot" data-act="mk-go" data-id="${o.id}" ${G.money < o.cost ? 'disabled' : ''}>${money(o.cost)}</button>`}</div>`,
+          <div style="flex:1"><b class="h3">${L(o.name)}</b><div class="hint">${o.gain < 0.5 && !o.used ? t('mk.atCap') : `+${Math.round(o.gain)} ${t('stat.hype')}`}</div></div>
+          ${o.used ? `<span class="tag" style="--c:var(--good)">${t('mk.used')}</span>` : `<button class="btn hot" data-act="mk-go" data-id="${o.id}" ${G.money < o.cost || o.gain < 0.5 ? 'disabled' : ''}>${money(o.cost)}</button>`}</div>`,
         )
         .join('')}</div>`;
   },

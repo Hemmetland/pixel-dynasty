@@ -11,6 +11,7 @@ import { platFit } from './score.js';
 import { forecast, curveFor } from './sales.js';
 import { note } from './news.js';
 import { storeRelease } from './store.js';
+import { hypeLevel } from './hype.js';
 
 // Porteringar: ett externt team för över ett släppt spel till en annan plattform som studion har licens för. Teamet
 // jobbar vid sidan av studions eget projekt, ett spel i taget. Porten säljer till den nya plattformens publik, men spelet
@@ -97,7 +98,7 @@ export function portForecast(G, g, pid, at, kind = 'port') {
   const rem = kind === 'remaster';
   const copy = {
     ...g, platform: pid, t: at, score: portScore(G, g, pid, at, kind), sequelOf: null, novel: false, crowd: 1,
-    hype: (rem ? 20 : 15) + (rem ? 0.25 : 0.2) * (g.hype || 0),
+    hype: (rem ? 20 : 15) + (rem ? 0.25 : 0.2) * 100 * hypeLevel(g.hype || 0),
     parts: { bugRatio: rem ? 0 : (g.parts?.bugRatio ?? 0) * (g.patched ? 0.2 : 1) },
     salesMult: rem ? REMASTER.mult : PORT_MULT * Math.pow(0.8, portsOf(g).filter((p) => p.kind !== 'remaster').length),
   };

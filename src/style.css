@@ -1737,3 +1737,14 @@ button.pr-rec { width: 100%; }
 .exp-hist { padding: 8px 12px; }
 .expo-foot { flex-wrap: wrap; }
 .expo-foot .btn.primary { flex: 1 1 250px; min-width: 0; white-space: normal; text-align: center; justify-content: center; }
+
+/* Förväntan utan tak: räknaren blir guld över 100, pilen visar åt vilket håll den rör sig, Snacket listas i marknadsföringsrutan */
+.counter.over .v { color: var(--gold); text-shadow: 0 0 10px color-mix(in srgb, var(--gold) 55%, transparent); }
+.counter .v .hd { font: 700 9px/1 var(--disp); font-style: normal; margin-left: 2px; vertical-align: 5px; }
+.counter .v .hd.up { color: var(--good); }
+.counter .v .hd.down { color: var(--bug); }
+.bar.over > i { background: linear-gradient(90deg, var(--hot), var(--gold)); box-shadow: 0 0 12px color-mix(in srgb, var(--gold) 70%, transparent); }
+.hy-card { margin-bottom: 14px; }
+.hy-row { display: flex; justify-content: space-between; gap: 10px; font-size: 13px; padding: 3px 0; border-top: 1px solid var(--line); }
+.hy-row:first-of-type { border-top: 0; }
+.hy-row.faint { color: var(--faint); }

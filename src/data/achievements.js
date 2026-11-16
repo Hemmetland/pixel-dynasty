@@ -4,6 +4,7 @@ import { PLATFORM, launchTime } from './platforms.js';
 import { START_YEAR, WEEKS_PER_YEAR } from '../sim/const.js';
 const A = (id, glyph, sv, en, dsv, den, check) => ({ id, glyph, name: { sv, en }, desc: { sv: dsv, en: den }, check });
 const best = (G) => G.stats.bestScore;
+const topHype = (G) => Math.max(0, ...G.games.map((g) => g.hype || 0));
 // Hur många spel serien som g avslutar har (g, föregångaren, dess föregångare …)
 function seriesLen(G, g) {
   let n = 1;
@@ -140,6 +141,8 @@ export const ACHIEVEMENTS = [
   A('rev1b', 'a_coin', 'Miljardbolaget', 'The Billion-Dollar Studio', 'Sälj spel för en miljard dollar sammanlagt.', 'Earn $1 billion from games in total.', (G) => G.stats.revenue >= 1e9),
   A('units10m', 'a_disc', 'Tio miljoner exemplar', 'Ten Million Copies', 'Sälj tio miljoner exemplar sammanlagt.', 'Sell ten million copies in total.', (G) => unitsTotal(G) >= 1e7),
   A('award10', 'a_trophy', 'Pokalskåpet', 'The Trophy Cabinet', 'Vinn tio priser.', 'Win ten awards.', (G) => G.awards.length >= 10),
+  A('hype150', 'a_star', 'Hela stan pratar', 'Talk of the Town', 'Släpp ett spel med förväntan 150 eller mer.', 'Release a game with hype of 150 or more.', (G) => topHype(G) >= 150),
+  A('hype250', 'a_crown', 'Snöbollen', 'The Snowball', 'Släpp ett spel med förväntan 250 eller mer.', 'Release a game with hype of 250 or more.', (G) => topHype(G) >= 250),
   A('expo1', 'a_game', 'Första mässan', 'First Expo', 'Ställ ut på Spelmässan.', 'Exhibit at the Games Expo.', (G) => (G.expoHist || []).length >= 1),
   A('expo_prize', 'a_trophy', 'Mässvinnare', 'Expo Winner', 'Vinn ett pris på Spelmässan.', 'Win a prize at the Games Expo.', (G) => (G.expoHist || []).some((h) => h.pz && h.pz.length >= 1)),
   A('expo_sweep', 'a_trophy', 'Rent bord', 'Clean Sweep', 'Vinn tre priser på samma mässa.', 'Win three prizes at the same expo.', (G) => (G.expoHist || []).some((h) => h.pz && h.pz.length >= 3)),

@@ -4427,5 +4427,109 @@ ok(!bad.length, `äldre sparning utan ett av ${paths.length} fält går att spel
   ok(missP.length === 0, 'varje pris har namn och rad');
 }
 
+// ── Förväntan utan tak v134: öppen skala, reklam till 100, Snacket (demo, mässa, rykte) växer vidare ──
+{
+  // skalan: som förut upp till 100, därefter en logaritm som aldrig tar slut
+  const oldMult = (h) => 1 + (Math.min(100, Math.max(0, h)) / 100) * 1.25;
+  ok([0, 10, 37, 64, 99, 100].every((h) => Math.abs(S.hypeMult(h) - oldMult(h)) < 1e-9), 'under 100 räknas försäljningen som förut');
+  ok(Math.abs(S.hypeMult(100) - 2.25) < 1e-9 && Math.abs(S.hypeLevel(100.0001) - S.hypeLevel(100)) < 1e-5, 'kurvan är obruten vid 100');
+  let mono = true;
+  for (let h = 0; h < 2000; h += 5) mono = mono && S.hypeMult(h + 5) > S.hypeMult(h);
+  ok(mono && S.hypeMult(1e6) > S.hypeMult(1e3) && Number.isFinite(S.hypeMult(1e9)), 'mer förväntan ger alltid mer försäljning, utan tak');
+  ok(S.hypeMult(200) < oldMult(100) + 1.25 * 1 && S.hypeMult(200) > S.hypeMult(150), 'över 100 ger varje poäng mindre än under');
+  ok(S.hypeMult(-5) === 1 && S.hypeMult(NaN) === 1, 'ogiltig förväntan räknas som noll');
+
+  const W = S.newGame({ studio: 'Snack', seed: 52, difficulty: 'normal' });
+  S.makeCompetitors(W); S.initWorld(W);
+  W.pending = []; W.t = 48 * 14 + 21; W.money = 5e7; W.fans = 6000; W.u.flags.expo = true;
+  for (let i = 0; i < 4; i++) { S.refreshCandidates(W); S.hire(W, W.candidates[0].id); }
+  for (let i = 0; i < 3; i++) W.games.push({ id: 90 + i, title: 'P' + i, t: W.t - 6 - 9 * i, score: 7 + 0.5 * i, genre: 'rpg', topic: 'space', platform: 'pc', scope: 'small', total: 5e5, priceAt: 30, tail: 1, weekly: [], revenue: 0, units: 0, fansGained: 0, hype: 10 });
+  W.job = S.buildJob(W, { topic: W.u.topics[0], genre: W.u.genres[0], platform: W.licenses[0], scope: W.u.scopes[0], audience: W.u.aud[0], title: 'Snackspelet' }, W.staff.length);
+  W.job.phase = 2; W.job.hype = 30; W.job.ticks = Math.ceil(W.job.devTicks * 0.5);
+  W.u.mkt = ['press', 'ads', 'tv', 'online', 'influencer'];
+  const base = { t: W.t, platform: 'pc', scope: 'medium', score: 7.5, topic: 'space', genre: 'rpg', audience: 'everyone' };
+  const f = (h) => S.forecast(W, { ...base, hype: h }, { noise: false });
+  ok(f(250) > f(150) && f(150) > f(100) && f(100) > f(50) && f(50) > f(0), 'försäljningsprognosen följer förväntan även över 100');
+
+  // reklam når högst 100
+  ok(S.prGain(95, 14) === 5 && S.prGain(100, 40) === 0 && S.prGain(140, 40) === 0 && S.prGain(20, 7) === 7, 'en kampanj ger bara det som får plats under 100');
+  const WM = JSON.parse(JSON.stringify(W));
+  WM.job.hype = 130;
+  ok(S.marketingOptions(WM).length === 5 && S.marketingOptions(WM).every((o) => o.gain === 0), 'över 100 ger kampanjerna ingen förväntan');
+  const before = WM.job.hype;
+  const id0 = S.marketingOptions(WM)[0].id;
+  S.launchMarketing(WM, id0);
+  ok(WM.job.hype === before, 'en kampanj över 100 sänker eller höjer inget');
+
+  // Snacket: växer vidare, klingar av, och utan Snack sjunker förväntan sakta som förut
+  const mkJ = (talk) => ({ scope: 'medium', hype: 100, talk: talk ? { ...talk } : undefined });
+  const A = mkJ({ demo: 0.7 }), B = mkJ(), C = mkJ({ demo: -0.3 });
+  for (let i = 0; i < 112; i++) { S.hypeTick(W, A); S.hypeTick(W, B); S.hypeTick(W, C); }
+  ok(A.hype > 100 && A.hype > B.hype && B.hype < 100 && B.hype > 85 && C.hype < B.hype, 'Snack lyfter förväntan över 100, utan Snack sjunker den sakta, dåligt Snack drar ner');
+  ok(A.talk && A.talk.demo < 0.7 * 0.5, 'Snacket klingar av med tiden');
+  const D = mkJ({ demo: 0.7 });
+  for (let i = 0; i < 4 * 80; i++) S.hypeTick(W, D);
+  ok(D.hype < A.hype * 1.2 && Object.keys(D.talk || {}).length === 0, 'efter ett tag är Snacket slut och förväntan sjunker igen');
+  const E0 = { scope: 'small', hype: 0 };
+  for (let i = 0; i < 40; i++) S.hypeTick(W, E0);
+  ok(E0.hype === 0, 'ingen förväntan och inget Snack ger noll');
+  const OLD = { scope: 'large', hype: 80 };
+  S.hypeTick(W, OLD);
+  ok(OLD.hype < 80 && OLD.hype > 79, 'ett gammalt projekt utan Snack-fält tickar som förut');
+  ok(S.talkParts(W, { scope: 'small', hype: 5 }).length === 0 && S.talkRate(W, { scope: 'small', hype: 5 }) === 0, 'utan Snack finns inga delar');
+
+  // rykte: förstärker positivt Snack, ger inget av sig självt
+  const rich = JSON.parse(JSON.stringify(W)), poor = JSON.parse(JSON.stringify(W));
+  rich.fans = 5e6; rich.games.forEach((g) => { g.score = 9; }); rich.awards = Array.from({ length: 12 }, (_, i) => ({ id: i }));
+  poor.fans = 50; poor.games = [];
+  const J1 = { scope: 'medium', hype: 80, talk: { demo: 0.6, stage: 0.4 } };
+  const rep = (G) => (S.talkParts(G, J1).find((p) => p.k === 'rep') || { v: 0 }).v;
+  ok(S.repScore(rich) > S.repScore(poor) && S.repScore(rich) <= 1 && S.repScore(poor) >= 0 && rep(rich) > rep(poor), 'ett bättre rykte ger mer av samma Snack');
+  ok(S.talkRate(rich, J1) > S.talkRate(poor, J1), 'sammanlagt Snack följer ryktet');
+  ok(!S.talkParts(rich, { scope: 'medium', hype: 80, talk: { demo: -0.5 } }).some((p) => p.k === 'rep'), 'rykte förstärker inte dåligt Snack');
+  ok(Math.abs(S.talkRate(rich, { scope: 'medium', hype: 1, talk: { a: 50 } })) <= S.TALK_MAX && S.talkRate(rich, { scope: 'medium', hype: 1, talk: { a: -50 } }) >= -3, 'Snacket har en övre och en nedre gräns');
+
+  // milstolpar
+  const M = { hype: 99 };
+  ok(S.hypeMark(M) === 0, 'ingen milstolpe under 100');
+  M.hype = 104; ok(S.hypeMark(M) === 1 && S.hypeMark(M) === 0, 'första gången över 100 ger en nyhet, sedan inte mer');
+  M.hype = 230; ok(S.hypeMark(M) === 2 && S.hypeMark(M) === 0, 'första gången över 200 ger en nyhet till');
+
+  // mässan ger Snack, och samma frö ger samma Snack
+  const plan = { keynote: 3, demo: 2, trailer: 2, meet: 1, stunt: 3 };
+  const WN = JSON.parse(JSON.stringify(W)); S.expoOffer(WN);
+  const pick = (X) => S.expoItems(X).sort((a, b) => (b.k === 'dev') - (a.k === 'dev') || b.q - a.q).slice(0, 3).map(S.itemKey);
+  const go = (X, pl) => { const m = S.resolveExpo(X, X.pending[0].id, 3, pick(X), pl); return m === true ? X.expoLast : m; };
+  const X1 = JSON.parse(JSON.stringify(WN)), X2 = JSON.parse(JSON.stringify(WN)), X3 = JSON.parse(JSON.stringify(WN));
+  const r1 = go(X1, plan);
+  go(X2, plan);
+  go(X3, S.EXPO_NO_PLAN);
+  ok(JSON.stringify(X1.job.talk) === JSON.stringify(X2.job.talk) && X1.job.talk && Object.keys(X1.job.talk).length >= 3, 'samma frö och program ger samma Snack');
+  ok(r1.talk && Object.keys(r1.talk).length >= 3 && Object.values(r1.talk).every((v) => Number.isFinite(v)), 'mässans resultat listar Snacket per källa');
+  const tot = (j) => Object.values(j.talk || {}).reduce((a, v) => a + v, 0);
+  ok(tot(X1.job) > tot(X3.job) && X3.job.talk && X3.job.talk.demo > 0, 'ett helt program ger mer Snack än bara en monter, och en demo ger alltid lite');
+  ok(X1.job.hype <= 102 && X3.job.hype <= 102, 'själva uppmärksamheten på mässan räknas som reklam och går inte över 100');
+  // och förväntan växer sedan över 100 av Snacket
+  const XG = JSON.parse(JSON.stringify(X1)); XG.job.hype = 100;
+  for (let i = 0; i < 4 * 8; i++) S.hypeTick(XG, XG.job);
+  ok(XG.job.hype > 100, 'efter mässan växer förväntan över 100 vecka för vecka');
+
+  // sidoeffekter av mycket hög förväntan är begränsade och ändliga
+  const WS = JSON.parse(JSON.stringify(W));
+  const w200 = S.wishOf(WS, 200), w9000 = S.wishOf(WS, 9000);
+  ok(Number.isFinite(w9000) && w9000 === w200, 'önskelistan växer inte okontrollerat med förväntan');
+
+  // prestationerna
+  const chk = (id, G) => ACHIEVEMENTS.find((a) => a.id === id).check(G);
+  const WA = S.newGame({ studio: 'Hype', seed: 6 });
+  ok(!chk('hype150', WA) && !chk('hype250', WA), 'förväntansprestationerna är olåsta från start');
+  WA.games.push({ id: 1, score: 7, hype: 120 }); ok(!chk('hype150', WA), 'förväntan 120 räcker inte');
+  WA.games.push({ id: 2, score: 7, hype: 163 }); ok(chk('hype150', WA) && !chk('hype250', WA), '150 låser upp Hela stan pratar');
+  WA.games.push({ id: 3, score: 7, hype: 262 }); ok(chk('hype250', WA), '250 låser upp Snöbollen');
+  ok(ACH_CAT.hype150 === 'games' && ACH_CAT.hype250 === 'games', 'prestationerna ligger på hyllan Spel');
+  const missH = ['rateUp', 'rateDown', 'rateFlat', 'title', 'help', 'none', 'src.rep', 'src.demo', 'src.stage', 'src.trailer', 'src.celeb', 'src.prize', 'src.press', 'src.fade'].filter((k) => !STRINGS['hy.' + k] || !STRINGS['hy.' + k][0] || !STRINGS['hy.' + k][1]);
+  ok(missH.length === 0 && STRINGS['news.hype1'] && STRINGS['news.hype2'] && STRINGS['expo.r.talk'], 'texterna för Snacket finns på båda språken ' + missH.join());
+}
+
 console.log(fails ? `\n${fails} FEL` : '\nAlla tester gick bra');
 process.exit(fails ? 1 : 0);

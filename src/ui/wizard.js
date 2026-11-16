@@ -593,7 +593,7 @@ act('w-start', () => {
     return;
   }
   if (G.flags.hypeNext) {
-    r.hype = Math.min(100, r.hype + G.flags.hypeNext);
+    r.hype += G.flags.hypeNext;
     G.flags.hypeNext = 0;
   }
   W.used = true;

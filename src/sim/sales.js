@@ -8,6 +8,7 @@ import { DIFFICULTY } from './state.js';
 import { earn } from './studio.js';
 import { platFit, techWeight } from './score.js';
 import { beat } from './life.js';
+import { hypeMult } from './hype.js';
 
 // Försäljning per enhet och år. Bas och årlig tillväxt är de två reglagen för hur snabbt kassan växer.
 export const UNIT_REV_BASE = 400;
@@ -54,7 +55,7 @@ export function forecast(G, game, opts = {}) {
   const pot = Math.max(0.4, potential(plat, yf));
   const scoreMult = Math.exp(0.62 * (game.score - 6.5));
   const scope = SCOPES[game.scope].rev;
-  const hype = 1 + (clamp(game.hype, 0, 100) / 100) * 1.25;
+  const hype = hypeMult(game.hype || 0);
   const fans = 1 + Math.log10(1 + (opts.fans ?? G.fans) / 150) * 0.55;
   const trend = trendMult(G, game.topic, game.genre);
   const aud = AUD[game.audience].reach;

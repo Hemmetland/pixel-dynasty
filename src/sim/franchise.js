@@ -84,7 +84,7 @@ export function takeSeriesHype(G, prev) {
 function addHype(G, sid, h) {
   const J = G.job;
   const prev = J && J.sequelOf ? G.games.find((g) => g.id === J.sequelOf) : null;
-  if (prev && rootOf(G, prev).id === sid) J.hype = clamp(J.hype + h, 0, 100);
+  if (prev && rootOf(G, prev).id === sid) J.hype = Math.max(0, J.hype + h);
   else G.fr.hype[sid] = clamp((G.fr.hype[sid] || 0) + h, -HYPE_CAP, HYPE_CAP);
 }
 

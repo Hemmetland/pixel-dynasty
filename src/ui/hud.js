@@ -28,6 +28,7 @@ import { GOALS } from '../data/goals.js';
 import { activeGoals, goalProg } from '../sim/goals.js';
 import { progText, goalsTip, goalsDone } from './goals.js';
 import { crowdChip } from './crowd.js';
+import { hypeArrow, hypeTipHTML } from './hypeui.js';
 import { REQ, reqValue, reqPct } from './win-studio.js';
 
 export const LOGOS = ['c_gameplay', 'g_action', 't_space', 't_fantasy', 't_robots', 't_pirates', 'g_casual', 't_magic'];
@@ -351,7 +352,7 @@ function taskRows(G, job) {
   let mkt = null;
   if (J && J.kind === 'game' && J.marketing?.length) {
     const n = J.marketing.length;
-    mkt = { id: 'mkt', grp: 2, ic: 'megaphone', c: 'var(--hot)', name: t('pn.rowMkt'), sub: n === 1 ? t('pn.rowMktSub1') : t('pn.rowMktSub', { n }), pct: J.hype, tip: t('pn.rowMktTip', { n, title: esc(J.title) }), go: 'marketing' };
+    mkt = { id: 'mkt', grp: 2, ic: 'megaphone', c: 'var(--hot)', name: t('pn.rowMkt'), sub: n === 1 ? t('pn.rowMktSub1') : t('pn.rowMktSub', { n }), pct: Math.min(100, J.hype), tip: t('pn.rowMktTip', { n, title: esc(J.title) }), go: 'marketing' };
   }
   let port = null;
   const P = G.port;
@@ -682,7 +683,12 @@ function updateDevGame(G, J, el) {
   $('#dv-d', el).textContent = Math.round(J.D);
   $('#dv-t', el).textContent = Math.round(J.T);
   $('#dv-b', el).textContent = Math.round(J.bugs);
-  $('#dv-h', el).textContent = Math.round(J.hype);
+  const hEl = $('#dv-h', el);
+  const hArrow = hypeArrow(G, J);
+  hEl.innerHTML = Math.round(J.hype) + (hArrow ? `<i class="hd ${hArrow}">${hArrow === 'up' ? '▲' : '▼'}</i>` : '');
+  const hBox = hEl.closest('.counter');
+  hBox.classList.toggle('over', J.hype > 100);
+  hBox.dataset.tip = hypeTipHTML(G, J);
   // trängsel vid släpp (räknas om varje vecka och när släppet flyttas)
   const crEl = $('#dv-crowd', el);
   const ckey = [G.t, J.phase, J.extended, J.state, lang].join('|');

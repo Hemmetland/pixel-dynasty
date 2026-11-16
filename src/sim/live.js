@@ -14,6 +14,7 @@ import { facLevel, earn, spend } from './studio.js';
 import { forecast } from './sales.js';
 import { note } from './news.js';
 import { beat } from './life.js';
+import { hypeLevel } from './hype.js';
 import { KIND } from '../data/onlinekinds.js';
 
 // Storlekar som går att göra som onlinespel, och som expansion
@@ -490,7 +491,7 @@ export function liveWeek(G) {
     // fullt på servrarna: nya spelare kommer inte in och några tröttnar på köerna
     if (over > 0) target = Math.min(target, L.subs * (1 - Math.min(0.05, over * 0.1)));
     const d = target - L.subs;
-    const grow = 0.09 + (G.t < L.boost ? 0.06 + (L.hype / 100) * 0.12 : 0);
+    const grow = 0.09 + (G.t < L.boost ? 0.06 + Math.min(2, hypeLevel(L.hype)) * 0.12 : 0);
     L.subs = Math.max(0, L.subs + d * (d > 0 ? grow : 0.05));
     L.peak = Math.max(L.peak, L.subs);
     // evenemangets sista vecka har räknats: summera vad det gav

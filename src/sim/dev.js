@@ -22,6 +22,7 @@ import { KIND, kindOf } from '../data/onlinekinds.js';
 import { takeSeriesHype } from './franchise.js';
 import { beat, lifePick } from './life.js';
 import { settlePromise } from './exposhow.js';
+import { hypeTick, hypeMark, prGain } from './hype.js';
 
 export const RP_RATE = 0.05;
 // Satser som beskriver "per projekt" skalas mot projektets längd (tempo) så att ett längre projekt inte tappar mer hype
@@ -34,7 +35,7 @@ export function platformOpen(G, id) {
   return lifecycle(p, yf) > 0 && yf < (p.y1 >= 2100 ? 9999 : p.y1 + 1.5);
 }
 export function baseHype(G) {
-  return clamp(Math.log10(1 + G.fans) * 4.5, 0, 28);
+  return Math.max(0, Math.log10(1 + G.fans) * 4.5);
 }
 
 export function startProject(G, cfg) {
@@ -84,7 +85,7 @@ export function buildJob(G, cfg, crewSize) {
     polishDone: 0,
     phase: 0,
     focus: [normFocus(phaseCats(G, 0), cfg.focus0 || f0[0]), normFocus(phaseCats(G, 1), f0[1]), normFocus(phaseCats(G, 2), f0[2])],
-    D: 0, T: 0, bugs: 0, hype: clamp(baseHype(G) + (sequel ? Math.min(18, sequel.score * 1.6) + takeSeriesHype(G, sequel) : 0), 0, 100),
+    D: 0, T: 0, bugs: 0, hype: Math.max(0, baseHype(G) + (sequel ? Math.min(18, sequel.score * 1.6) + takeSeriesHype(G, sequel) : 0)),
     marketing: [],
     crunch: false,
     cost: 0,
@@ -118,20 +119,19 @@ export function expectedRevenue(G, J) {
   return forecast(G, { t: G.t, platform: J.platform, scope: J.scope, score, hype: 0, topic: J.topic, genre: J.genre, genre2: J.genre2, audience: J.audience, chain: J.chain, sequelOf: J.sequelOf, novel: isNovel(G, J) }, { noise: false });
 }
 // Kampanjer och mässmontrar kostar minst sin andel av den väntade intäkten (annars betalade de sig hundratals gånger
-// om när försäljningen växer snabbare än penningvärdet). Alla fem kostar ungefär en tjugondel av vad spelet drar in och
-// betalar sig 10–20 gånger om, så länge hypen inte redan slår i taket (100): det som går över är bortkastat.
+// om när försäljningen växer snabbare än penningvärdet). Alla fem kostar ungefär en tjugondel av vad spelet drar in.
+// Reklamen lyfter Förväntan till som mest 100 (PR_CEILING i hype.js). Över det växer den bara av Snacket, utan tak.
 const MKT_SHARE = { press: 0.005, ads: 0.01, tv: 0.02, online: 0.03, influencer: 0.045 };
 export function promoPrice(G, base, share) {
   const J = G.job && G.job.kind === 'game' ? G.job : null;
   return Math.max(base * moneyScale(yearOf(G.t)), J ? share * expectedRevenue(G, J) : 0);
 }
-export const hypeGain = (hype, add) => Math.max(0, Math.min(add, 100 - hype));
 export function marketingCost(G, id) {
   return Math.round((promoPrice(G, MKT[id].cost, MKT_SHARE[id] || 0) * mktCostMult(G)) / 50) * 50;
 }
 export function marketingOptions(G) {
   const hype = G.job?.hype ?? 0;
-  return G.u.mkt.map((id) => ({ ...MKT[id], cost: marketingCost(G, id), gain: hypeGain(hype, MKT[id].hype * mktHypeMult(G)), used: !!G.job?.marketing.includes(id) }));
+  return G.u.mkt.map((id) => ({ ...MKT[id], cost: marketingCost(G, id), gain: prGain(hype, MKT[id].hype * mktHypeMult(G)), used: !!G.job?.marketing.includes(id) }));
 }
 export function launchMarketing(G, id) {
   const J = G.job;
@@ -142,8 +142,8 @@ export function launchMarketing(G, id) {
   spend(G, cost, 'marketing');
   J.cost += cost;
   J.marketing.push(id);
-  const add = hypeGain(J.hype, MKT[id].hype * mktHypeMult(G));
-  J.hype = Math.min(100, J.hype + add);
+  const add = prGain(J.hype, MKT[id].hype * mktHypeMult(G));
+  J.hype += add;
   beat(G, 'ad', { g: J.title, a: Math.round(add) });
   emit('marketing', { id, add });
   return true;
@@ -253,7 +253,11 @@ export function stepJob(G, J, ws, auto) {
     if (!auto && J.ticks === Math.floor(J.devTicks / 4)) beat(G, 'quarter', { g: J.title });
     if (!auto && J.ticks === Math.floor(J.devTicks / 2)) beat(G, 'half', { g: J.title });
     if (!auto && J.ticks === Math.floor((J.devTicks * 3) / 4)) beat(G, 'almost', { g: J.title });
-    J.hype *= Math.pow(0.9988, 1 / tempoOf(J));
+    hypeTick(G, J);
+    if (!auto) {
+      const m = hypeMark(J);
+      if (m) note(G, 'news.hype' + m, { title: J.title }, 'good');
+    }
     // fasbyte
     const phaseLen = J.devTicks / 3;
     if (J.ticks >= J.devTicks) {

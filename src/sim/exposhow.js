@@ -35,6 +35,10 @@ export const EXPO_PRIZES = ['booth', 'show', 'crowd', 'soon', 'tech'];
 export const EXPO_PRIZE_FANS = 0.03; // nya fans per pris, som andel av besökarna
 // Pressens dom: nivå 0-4 av betyget R (0-1)
 export const VERDICT_STEPS = [0.25, 0.42, 0.6, 0.78];
+// Snacket (procent i veckan, se hype.js) som programmet ger spelet i utveckling; det klingar av med tiden. demo: en vanlig demo
+// (fast del + del av spelets styrka, 0-1), drop: smygsläpp som lyckas, stage: presentationen per nivå gånger publikens
+// reaktion (tyst, artig, jubel), trailer: per nivå eller en träff, celeb: kändisen kom, prize: per vunnet pris, verdict: pressens dom.
+export const EXPO_TALK = { demo: 0.08, demoQ: 0.24, drop: 0.7, dropFlop: -0.12, crash: -0.25, stage: [0, 0.14, 0.26, 0.4], react: [0.2, 1, 1.3], trailer: [0, 0.1, 0.2], trailerHit: 0.4, celeb: 0.2, prize: 0.12, verdict: [-0.3, -0.08, 0.06, 0.36, 0.72] };
 export const EXPO_VERDICT = { lift: [0.8, 0.92, 1, 1.08, 1.15], hype: [-3, -1, 0, 1, 2], fans: [0.92, 0.97, 1, 1.05, 1.12] };
 export const verdictTier = (R) => VERDICT_STEPS.filter((x) => R >= x).length;
 

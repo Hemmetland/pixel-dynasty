@@ -4,7 +4,8 @@ import { emit } from '../core/bus.js';
 import { t } from '../core/i18n.js';
 import { yearOf, priceOf, SCOPES } from './const.js';
 import { spend, earn } from './studio.js';
-import { promoPrice, hypeGain } from './dev.js';
+import { promoPrice } from './dev.js';
+import { addTalk, prGain, talkWeekly } from './hype.js';
 import { note } from './news.js';
 import { liveGames } from './live.js';
 import { scoreOf } from './hardware.js';
@@ -12,7 +13,7 @@ import { beat } from './life.js';
 import { rivalOf } from './rival.js';
 import { crisisOf } from './crisis.js';
 import { releaseWeek } from './market.js';
-import { KEYNOTES, DEMOS, TRAILERS, EXPO_PRIZES, dropChance, rivalForm, CELEB_P, KEY_REACT, EXPO_VERDICT, EXPO_PRIZE_FANS, normPlan, planCosts, planCrowd, planBuzz, expoRoll, prizeBoard, verdictTier, recordShow } from './exposhow.js';
+import { KEYNOTES, DEMOS, TRAILERS, EXPO_PRIZES, EXPO_TALK, dropChance, rivalForm, CELEB_P, KEY_REACT, EXPO_VERDICT, EXPO_PRIZE_FANS, normPlan, planCosts, planCrowd, planBuzz, expoRoll, prizeBoard, verdictTier, recordShow } from './exposhow.js';
 
 // Spelmässan: varje maj, efter forskningen Mässmonter. Spelaren väljer storlek på monter och vad som ska visas upp (ett
 // pågående spel, nyligen släppta spel som ännu säljer, egna hårdvaruprodukter, ett onlinespel). Besökarna avgörs av
@@ -166,6 +167,10 @@ function runExpo(G, B, picks, cost, plan, parts) {
     beat(G, 'expoTrailer', { v: trailerHit ? 2 : TR.id - 1 });
   }
   const keyMult = 1 + 0.1 * (K ? K.id : 0); // scenen sätter också de visade sakerna i rampljuset
+  const talk = {}; // Snacket (hype.js) som programmet ger spelet i utveckling, per källa
+  const tk = (k, v) => {
+    if (v) talk[k] = (talk[k] || 0) + v;
+  };
   const contest = plan.stunt === 2 ? 1.25 : 1;
   for (const x of picks) {
     const row = { k: x.k, id: x.id, name: x.name, q: x.q };
@@ -181,12 +186,14 @@ function runExpo(G, B, picks, cost, plan, parts) {
         row.drop = good ? 'hit' : 'flop';
         if (good) {
           add = B.hype * 1.6 * hv;
+          tk('demo', EXPO_TALK.drop);
           fanBonus += 0.5;
           mood += 0.6;
           J.bugs *= 0.88;
           lines.push({ k: 'dropHit', title: x.name });
         } else {
           add = B.hype * 0.4 * hv;
+          tk('demo', EXPO_TALK.dropFlop);
           J.hype = Math.max(0, J.hype - 3);
           fanLoss += 0.25;
           mood -= 0.6;
@@ -196,6 +203,7 @@ function runExpo(G, B, picks, cost, plan, parts) {
         beat(G, 'expoDemo', { g: x.name, v: good ? 2 : 3 });
       } else if (J && u < clamp((ratio - 0.5) * 0.8, 0, 0.5) * (DM.crash ?? 1)) {
         J.hype = Math.max(0, J.hype - 5);
+        tk('demo', EXPO_TALK.crash);
         row.crash = true;
         fanLoss += 0.3;
         mood -= 0.5;
@@ -203,6 +211,7 @@ function runExpo(G, B, picks, cost, plan, parts) {
         beat(G, 'expoDemo', { g: x.name, v: 1 });
       } else if (J) {
         add = B.hype * hv * (DM.hype ?? 1);
+        tk('demo', (EXPO_TALK.demo + EXPO_TALK.demoQ * x.q) * (DM.hype ?? 1));
         lines.push({ k: 'demo', title: x.name });
         beat(G, 'expoDemo', { g: x.name, v: 0 });
       }
@@ -211,10 +220,13 @@ function runExpo(G, B, picks, cost, plan, parts) {
         add += B.hype * K.hype * hv * (react === 2 ? 1.2 : react === 0 ? 0.6 : 1);
         J.promise = { bar: K.bar, tone: K.id, pen: K.pen, keep: K.keep, y: year };
         row.promise = K.bar;
+        tk('stage', EXPO_TALK.stage[K.id] * EXPO_TALK.react[react]);
       }
+      if (J && TR.id) tk('trailer', trailerHit ? EXPO_TALK.trailerHit : EXPO_TALK.trailer[TR.id]);
+      if (J && celeb === true) tk('celeb', EXPO_TALK.celeb);
       if (J && add > 0) {
-        row.hype = hypeGain(J.hype, add);
-        J.hype = Math.min(100, J.hype + row.hype);
+        row.hype = prGain(J.hype, add); // själva uppmärksamheten räknas som reklam (till 100), det som växer vidare är Snacket
+        J.hype += row.hype;
       }
     } else if (x.k === 'game') {
       const g = G.games.find((y) => y.id === x.id);
@@ -322,6 +334,7 @@ function runExpo(G, B, picks, cost, plan, parts) {
   beat(G, 'expoClose', { a: visitors, v: visitors > att * B.hall * 1.25 ? 1 : 0 });
   // domen flyttar försäljningslyftet och förväntan, sedan läggs lyften på de visade sakerna
   let dh = 0;
+  let talkPct = 0; // vad programmet gav i Snack, procent i veckan
   for (const row of items) {
     if (row.k === 'game') {
       const g = G.games.find((y) => y.id === row.id);
@@ -337,7 +350,11 @@ function runExpo(G, B, picks, cost, plan, parts) {
       }
     } else if (row.k === 'dev' && G.job) {
       dh = EXPO_VERDICT.hype[tier];
-      G.job.hype = clamp(G.job.hype + dh, 0, 100);
+      G.job.hype = Math.max(0, G.job.hype + dh);
+      tk('prize', EXPO_TALK.prize * won.length);
+      tk('press', EXPO_TALK.verdict[tier]);
+      for (const k of Object.keys(talk)) addTalk(G.job, k, talk[k]);
+      talkPct = talkWeekly(G.job, Object.values(talk).reduce((a, v) => a + v, 0));
     }
   }
   const fans = Math.max(0, Math.round((visitors * 0.1 * (0.6 + 0.8 * q) * (1 + fanBonus) * (1 - Math.min(0.6, fanLoss)) + won.length * visitors * EXPO_PRIZE_FANS) * EXPO_VERDICT.fans[tier]));
@@ -349,6 +366,6 @@ function runExpo(G, B, picks, cost, plan, parts) {
     rivals: comps.slice(0, 6).map((c) => ({ name: c.name, color: c.color })),
     t: G.t, plan, parts, prizes,
     verdict: { tier, r: Math.round(R * 100) / 100, lift: vm, hype: dh, fans: EXPO_VERDICT.fans[tier] },
-    trailerHit, celeb, react, meet,
+    trailerHit, celeb, react, meet, talk, talkPct,
   };
 }

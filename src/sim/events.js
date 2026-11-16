@@ -172,7 +172,7 @@ export function applyFx(G, fx, out = [], ctx = {}, dry = false) {
     out.push({ k: 'fans', v });
   }
   if (fx.hype) {
-    if (J && !dry) J.hype = clamp(J.hype + fx.hype, 0, 100);
+    if (J && !dry) J.hype = Math.max(0, J.hype + fx.hype);
     out.push({ k: 'hype', v: fx.hype });
   }
   if (fx.hypeNext) {

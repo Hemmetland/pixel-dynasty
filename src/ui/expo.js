@@ -12,6 +12,7 @@ import { SCOPES } from '../sim/const.js';
 import { yearOf } from '../sim/const.js';
 import { HW_TYPES } from '../data/hardware.js';
 import { LOGOS } from './hud.js';
+import { talkText } from './hypeui.js';
 
 const ICON = { dev: 'hammer', game: 'gamepad', hw: 'cpu', live: 'globe' };
 const COL = { dev: 'var(--hot)', game: 'var(--accent)', hw: 'var(--tech)', live: 'var(--good)' };
@@ -153,6 +154,7 @@ function itemLine(G, r, x) {
   const name = `<b>${esc(L(x.name))}</b>`;
   const bits = [];
   if (x.hype != null) bits.push(t('expo.r.hype', { n: Math.round(x.hype * 10) / 10 }));
+  if (x.k === 'dev' && r.talkPct && Math.abs(r.talkPct) >= 0.1) bits.push(`<span style="color:var(--${r.talkPct < 0 ? 'bug' : 'good'})">${talkText(r.talkPct)}</span>`);
   if (x.crash) bits.push(`<span style="color:var(--bug)">${t('expo.r.crash')}</span>`);
   if (x.drop === 'hit') bits.push(`<span style="color:var(--good)">${t('expo.r.dropHit')}</span>`);
   if (x.drop === 'flop') bits.push(`<span style="color:var(--bug)">${t('expo.r.dropFlop')}</span>`);
