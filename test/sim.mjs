@@ -237,12 +237,16 @@ function handlePending(G) {
       const ev = EV[p.ev];
       S.resolveEvent(G, p.id, Math.floor(Math.random() * ev.choices.length));
     } else if (p.type === 'bailout') { S.takeBailout(G); G.pending.shift(); } else if (p.type === 'expmeet') {
-      // expansionsmötet: boten väljer teamets favorit om pengarna räcker och skjuter annars upp (--meet=0: alltid upp)
+      // teammötet: boten väljer teamets favorit om pengarna räcker och skjuter annars upp (--meet=0: alltid upp; --meet=plain: den
+      // vanliga uppföljaren och första idén, alltså som när teamet valde själv, men favoriten för expansioner)
       const M = S.expMeetOptions(G, p);
-      const o = M && opt('meet', '1') !== '0' ? M.opts.find((x) => x.ok === true) : null;
-      if (process.env.MEETDBG && M) console.log(`   meet ${S.yearOf(G.t)} ${M.game.title} ${M.reason} fresh ${M.fresh} gap ${M.gap} money ${Math.round(G.money / 1e6)}M: ` + M.opts.map((x) => x.dir + ' ' + (x.quote ? Math.round(x.quote.cost / 1e3) + 'k ' + x.quote.scope + ' ' + x.quote.weeks + 'w' : '-') + ' ' + x.ok).join(' | '));
-      if (o) meetStat[o.dir] = (meetStat[o.dir] || 0) + 1; else meetStat.later = (meetStat.later || 0) + 1;
-      if (S.resolveExpMeet(G, p.id, o ? o.dir : 'later') !== true) S.resolveExpMeet(G, p.id, 'later');
+      const mode = opt('meet', '1');
+      const plain = mode === 'plain' && M && M.kind !== 'expansion' ? M.opts.find((x) => x.key === (M.kind === 'sequel' ? 'same' : 'n0') && x.ok === true) : null;
+      const o = M && mode !== '0' ? plain || (mode === 'plain' && M.kind !== 'expansion' ? null : M.opts.find((x) => x.ok === true)) : null;
+      if (process.env.MEETDBG && M) console.log(`   meet ${S.yearOf(G.t)} ${M.kind} ${M.game ? M.game.title : ''} ${M.reason} fresh ${M.fresh} gap ${M.gap} money ${Math.round(G.money / 1e6)}M: ` + M.opts.map((x) => x.key + ' ' + (x.quote ? Math.round(x.quote.cost / 1e3) + 'k ' + x.quote.scope + ' ' + x.quote.weeks + 'w' : '-') + ' ' + x.ok).join(' | '));
+      const sk = M ? M.kind + ':' + (o ? o.key : 'later') : 'gone';
+      meetStat[sk] = (meetStat[sk] || 0) + 1;
+      if (S.resolveExpMeet(G, p.id, o ? o.key : 'later') !== true) S.resolveExpMeet(G, p.id, 'later');
       if (G.pending[0] === p) G.pending.shift();
     } else if (p.type === 'expo') {
       // med --expo går boten på mässan om pengarna räcker (annars hoppar den över)

@@ -7,6 +7,7 @@ import { GENRE, GENRES } from '../data/genres.js';
 import { TEAM_SIZE, teamMax, holds, endRole, teamsOf, teamName, membersOf, teamOfStaff, teamsOpen, createTeam, disbandTeam, addMember, removeMember, courseInfo, canTrainTeam, trainTeam, teamAvg, leadOf, setLead } from '../sim/teams.js';
 import { capacity, seated, outCount, seatCap, RES_TECH } from '../sim/studio.js';
 import { clamp } from '../core/util.js';
+import { askMeet } from '../sim/expmeet.js';
 import { autoOpen, canMission, eligibleBases, missionQuote, startMission, cancelMission, missionProgress, missionWeeksLeft, samspel, SAMSPEL_MAX, MISSION_KINDS, MISSION_MIN } from '../sim/autoteam.js';
 import { opsOpen, opsInfo, opsNeed, canOps, assignOps, RUTIN_MAX } from '../sim/opsteam.js';
 import { hwTeamOpen, hwInfo, hwLines, canHwTeam, assignHw, HW_NEED } from '../sim/hwteam.js';
@@ -284,7 +285,7 @@ function opsBlock(G, team) {
       <div class="faint" style="font-size:12px;margin-top:2px" data-tip="${esc(t('tm.ops.rutinTip'))}">${t('tm.ops.rutin', { n: inf.rutin, m: RUTIN_MAX })}</div>
       <div class="muted" style="font-size:12px;margin-top:6px">${gives}</div>
       <div class="row" style="margin-top:8px"><span class="sp"></span><button class="btn sm" data-act="tm-endrole" data-tid="${team.id}" ${team.mission ? 'disabled' : ''} data-tip="${esc(t('tm.ops.endTip'))}">${t('tm.ops.end')}</button></div></div>
-    ${autoOpen(G) ? toggleRow('tm-repeat', team.id, !!team.repeat, t('tm.ops.repeat'), t('tm.ops.repeatHelp')) : ''}
+    ${autoOpen(G) ? toggleRow('tm-repeat', team.id, !!team.repeat, t('tm.ops.repeat'), t('tm.ops.repeatHelp')) + (team.repeat ? toggleRow('tm-meet', team.id, askMeet(team), t('tm.meet'), t('tm.meetHelp')) : '') : ''}
     ${team.mission ? missionBlock(G, team) : ''}</div>`;
 }
 // Personalavdelningen: planen (antal spelteam och storlek) och läget
@@ -343,7 +344,7 @@ function missionBlock(G, team) {
   const m = team.mission;
   const sp = samspel(team);
   const stats = `<div class="faint" style="font-size:12px;margin-top:8px" data-tip="${esc(t('tm.mis.statsTip'))}">${t('tm.mis.stats', { n: sp, m: SAMSPEL_MAX, g: (team.games || []).length, b: team.best ? team.best.toFixed(1) : '–' })}</div>`;
-  const toggles = team.role === 'ops' ? '' : toggleRow('tm-repeat', team.id, !!team.repeat, t('tm.mis.repeat'), t('tm.mis.repeatHelp')) + toggleRow('tm-atrain', team.id, team.autoTrain !== false, t('tm.mis.train'), t('tm.mis.trainHelp'));
+  const toggles = team.role === 'ops' ? '' : toggleRow('tm-repeat', team.id, !!team.repeat, t('tm.mis.repeat'), t('tm.mis.repeatHelp')) + (team.repeat ? toggleRow('tm-meet', team.id, askMeet(team), t('tm.meet'), t('tm.meetHelp')) : '') + toggleRow('tm-atrain', team.id, team.autoTrain !== false, t('tm.mis.train'), t('tm.mis.trainHelp'));
   let body;
   if (m) {
     const J = m.J;
@@ -631,6 +632,11 @@ act('tm-cancel', (el) => {
 act('tm-repeat', (el) => {
   const team = UI.app.G.teams.find((x) => x.id === +el.dataset.tid);
   if (team) team.repeat = !team.repeat;
+  UI.refresh();
+});
+act('tm-meet', (el) => {
+  const team = UI.app.G.teams.find((x) => x.id === +el.dataset.tid);
+  if (team) team.meet = !askMeet(team);
   UI.refresh();
 });
 act('tm-atrain', (el) => {

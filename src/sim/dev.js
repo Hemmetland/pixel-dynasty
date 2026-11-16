@@ -24,6 +24,7 @@ import { beat, lifePick } from './life.js';
 import { settlePromise } from './exposhow.js';
 import { hypeTick, hypeMark, prGain } from './hype.js';
 import { logBuild } from './builds.js';
+import { SEQ_DIRS } from './expdirs.js';
 
 export const RP_RATE = 0.05;
 // Satser som beskriver "per projekt" skalas mot projektets längd (tempo) så att ett längre projekt inte tappar mer hype
@@ -390,6 +391,9 @@ export function releaseGame(G) {
       game.fansGained += fans;
       note(G, 'news.seqBetter', { title: game.title, prev: prev.title }, 'good');
     } else if (game.score < prev.score) note(G, 'news.seqWorse', { title: game.title, prev: prev.title }, 'info');
+    // en ny vändning (riktningen på mötet, expdirs.js) gör serien fräschare
+    const sd = SEQ_DIRS[J.dir];
+    if (sd && sd.fat) game.fatigue = Math.max(0, game.fatigue - sd.fat);
   }
   if (J.live) launchLive(G, game, J.liveKind);
   else if (J.expansionOf) releaseExpansion(G, game);

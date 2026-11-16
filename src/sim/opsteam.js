@@ -12,8 +12,8 @@ import { tr } from './tr.js';
 import { skillCap } from './people.js';
 import { teamsOf, teamById, teamName, membersOf, leadOf, bestLead, leadScore, endRole, setOut, seatFree, deskFree } from './teams.js';
 import { liveGames, payBase, regionsOpen, regionGain, liveRegionCost, startLiveRegion, eventReadyIn, liveEventCost, startLiveEvent, AUTO_BUFFER, RENO_FLOOR, TM_RENO } from './live.js';
-import { autoOpen, canMission } from './autoteam.js';
-import { expansionDue, meetBlocked, openExpMeeting } from './expmeet.js';
+import { autoOpen, canMission, startMission } from './autoteam.js';
+import { expansionDue, meetBlocked, openExpMeeting, askMeet } from './expmeet.js';
 
 export const OPS_MIN = 2;
 export const RUTIN_WEEKS = 24; // veckor på samma spel per steg i rutin
@@ -122,7 +122,10 @@ function autoOps(G, team, g) {
   // till möte, där spelaren väljer riktning (expmeet.js)
   if (team.repeat && !team.mission && autoOpen(G) && membersOf(G, team).length >= 3) {
     const due = expansionDue(G, g);
-    if (due && !meetBlocked(G, g) && canMission(G, team, 'expansion', g.id) === true) openExpMeeting(G, team, g, due);
+    if (due && canMission(G, team, 'expansion', g.id) === true) {
+      if (!askMeet(team)) startMission(G, team.id, 'expansion', g.id);
+      else if (!meetBlocked(G, g)) openExpMeeting(G, team, g, due);
+    }
   }
 }
 

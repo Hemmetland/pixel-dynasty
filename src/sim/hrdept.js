@@ -69,6 +69,7 @@ export function hrWeek(G) {
       tm.hr = true;
       tm.want = p.size;
       tm.repeat = true;
+      tm.meet = false; // Personalavdelningens team sköter sig själva, utan möten
       tm.autoTrain = true;
     }
   }

@@ -6,7 +6,7 @@ import { lang } from '../core/i18n.js';
 import { dateOf } from '../sim/const.js';
 import { MKT } from '../data/research.js';
 import { buildsOf, buildInfo } from '../sim/builds.js';
-import { DIR_IDS } from '../sim/expdirs.js';
+import { LOG_DIRS } from '../sim/expdirs.js';
 import { liveGames } from '../sim/live.js';
 import { expansionStatus } from '../sim/expmeet.js';
 import { hypeArrow, hypeRateText, hypePartsHTML } from './hypeui.js';
@@ -37,7 +37,7 @@ function logLine(e) {
     case 'hype2': return { s: t('bl.hype2'), c: 'good' };
     case 'event': return { s: t(e.a >= 0 ? 'bl.event.up' : 'bl.event.down', { n: Math.abs(e.a) }), c: e.a >= 0 ? 'good' : 'bad' };
     case 'crunch': return { s: t('bl.crunch.' + (e.v ? 1 : 0)), c: '' };
-    case 'dir': return { s: t('bl.dir', { name: t('exd.' + (DIR_IDS[e.a] || 'more') + '.n') }), c: '' };
+    case 'dir': return { s: t('bl.dir', { name: t('exd.' + (LOG_DIRS[e.a] || 'more') + '.n') }), c: '' };
     default: return null;
   }
 }

@@ -1177,7 +1177,7 @@ ok(true, 'alla händelser körda');
   ok(ex && ex.auto === T.id && l0.exps.includes(ex.id) && GA.news.some((n) => n.key === 'live.news.expansion'), 'expansionen släpps till onlinespelet');
   ok(S.samspel(T) === 2, 'samspelet växer för varje spel');
   // automatiskt nästa uppdrag och kurs mellan uppdragen
-  T.repeat = true; T.autoTrain = false;
+  T.repeat = true; T.meet = false; T.autoTrain = false; // utan möten tar teamet nästa uppdrag själv
   const before = GA.games.length;
   guard = 0;
   while (GA.games.length < before + 2 && guard++ < 6000) { if (GA.pending.length) GA.pending.length = 0; S.stepTick(GA); }
@@ -4722,6 +4722,140 @@ ok(!bad.length, `äldre sparning utan ett av ${paths.length} fält går att spel
     'bd.live.meeting', 'bd.live.building', 'bd.live.later', 'bd.live.due', 'bd.live.dueNoTeam', 'bd.live.wait', 'bd.kind.new', 'bd.kind.sequel', 'bd.kind.expansion', 'bd.kind.live',
     'bl.start', 'bl.phase', 'bl.camp', 'bl.demo.0', 'bl.demo.1', 'bl.demo.2', 'bl.demo.3', 'bl.stage', 'bl.react.0', 'bl.react.1', 'bl.react.2', 'bl.press', 'bl.press.prizes', 'bl.hype1', 'bl.hype2', 'bl.event.up', 'bl.event.down', 'bl.crunch.1', 'bl.crunch.0', 'bl.dir']) if (!STRINGS[k] || !STRINGS[k][0] || !STRINGS[k][1]) missB.push(k);
   ok(missB.length === 0, 'texterna för flera bygge och mötet finns på båda språken ' + missB.join());
+}
+
+// ── Möten för uppföljare och nya spel v136 ──
+{
+  const G = S.newGame({ studio: 'Möten', seed: 62, difficulty: 'normal' });
+  S.makeCompetitors(G); S.initWorld(G);
+  G.pending = []; G.t = 48 * 20 + 10; G.money = 5e8; G.fans = 80000; G.office.tier = 4;
+  Object.assign(G.u.flags, { training: true, autoTeams: true, opsTeams: true, sequels: true });
+  G.u.scopes = ['small', 'medium', 'large', 'aaa'];
+  for (const x of ['fantasy', 'space', 'pirates']) if (!G.u.topics.includes(x)) G.u.topics.push(x);
+  for (const x of ['rpg', 'action', 'strategy']) if (!G.u.genres.includes(x)) G.u.genres.push(x);
+  for (let i = 0; i < 10; i++) { S.refreshCandidates(G); G.money += G.candidates[0].fee; S.hire(G, G.candidates[0].id); }
+  const mk = (id, title, score, age) => ({ id, title, platform: 'pc', genre: 'rpg', topic: 'fantasy', scope: 'large', audience: 'everyone', score, total: 3e6, t: G.t - age, tail: 1, priceAt: 30, weekly: [1], revenue: 5e6, units: 1e5, fansGained: 0, hype: 40 });
+  G.games.push(mk(9501, 'Drakens Dal', 8.6, 90), mk(9502, 'Mellanspelet', 6.2, 80));
+  const crew = G.staff.filter((x) => !x.isFounder);
+  const T = S.createTeam(G); for (const x of crew.slice(0, 4)) S.addMember(G, T.id, x.id);
+
+  // vilka team som frågar först
+  ok(S.askMeet({}) === true && S.askMeet({ meet: true }) === true && S.askMeet({ meet: false }) === false && S.askMeet({ hr: true }) === false && S.askMeet({ hr: true, meet: true }) === true, 'team frågar först som standard, utom Personalavdelningens team och de där spelaren stängt av det');
+
+  // ett team som fortsätter själv kallar till möte om en uppföljare till ett spel som gått riktigt bra
+  T.repeat = true;
+  S.missionWeek(G);
+  const ps = G.pending.find((x) => x.type === 'expmeet');
+  ok(ps && ps.kind === 'sequel' && ps.game === 9501 && ps.team === T.id && !T.mission && S.meetingOf(G, 9501) && G.news.some((n) => n.key === 'news.seqMeet'), 'ett team kallar till möte om uppföljaren i stället för att starta den');
+  ok(ps.props.length === 3 && new Set(ps.props).size === 3 && ps.props.every((d) => S.SEQ_IDS.includes(d)) && G.games.find((x) => x.id === 9501).meetNext > G.t, 'tre olika förslag på riktning, och frågan skjuts fram tills spelaren svarat');
+  S.missionWeek(G);
+  ok(G.pending.filter((x) => x.type === 'expmeet').length === 1 && !T.mission, 'det kallar inte igen så länge mötet väntar');
+  const MS = S.expMeetOptions(G, ps);
+  ok(MS && MS.kind === 'sequel' && MS.game.id === 9501 && MS.opts.length === 3 && MS.score === 8.6 && MS.opts[0].rec && !MS.opts[1].rec && MS.opts.every((o) => o.key === o.dir && o.ok === true && o.quote && o.quote.cost > 0), 'rutans uppgifter: spelet, betyget och tre förslag med pris');
+  ok(JSON.stringify(S.expMeetOptions(G, ps).opts.map((o) => o.key)) === JSON.stringify(MS.opts.map((o) => o.key)), 'förslagen är desamma varje gång (deterministiskt)');
+  const cs = (d) => S.missionQuote(G, T, 'sequel', 9501, { dir: d }).cost;
+  ok(cs('bigger') > cs('same') && cs('quick') < cs('same') && cs('twist') > cs('same'), 'priset följer riktningen');
+  ok(S.resolveExpMeet(G, ps.id, 'later') === true && !G.pending.some((x) => x.type === 'expmeet') && G.games.find((x) => x.id === 9501).meetNext >= G.t + S.MEET_LATER, 'uppskjutet');
+  for (let i = 0; i < 10; i++) S.missionWeek(G);
+  ok(!G.pending.some((x) => x.type === 'expmeet') && !T.mission, 'ett uppskjutet möte kommer inte tillbaka direkt, och teamet kommer inte med en annan fråga i stället');
+
+  // svaret startar uppdraget med riktningen
+  G.games.find((x) => x.id === 9501).meetNext = 0; T.meetNext = 0;
+  S.missionWeek(G);
+  const ps2 = G.pending.find((x) => x.type === 'expmeet');
+  ok(ps2 && ps2.kind === 'sequel', 'det tas upp igen när tiden gått');
+  ok(S.resolveExpMeet(G, ps2.id, 'bogus') === false && G.pending.includes(ps2), 'en okänd riktning gör ingenting');
+  const m0 = G.money;
+  const pickD = ps2.props[1];
+  ok(S.resolveExpMeet(G, ps2.id, pickD) === true && T.mission && T.mission.kind === 'sequel' && T.mission.J.dir === pickD && T.mission.J.dirCost === S.SEQ_DIRS[pickD].cost && !G.pending.some((x) => x.type === 'expmeet') && G.money < m0, 'valet startar uppföljaren med den riktningen och drar budgeten');
+  ok(G.news.some((n) => n.key === 'news.seqGo.' + pickD) && T.mission.J.log.some((e) => e.k === 'dir' && S.LOG_DIRS[e.a] === pickD), 'beskedet och loggen på bygget nämner riktningen');
+  S.cancelMission(G, T.id);
+
+  // riktningarna: pris, buggar och Förväntan vid start
+  const startWith = (d) => { const r = S.startMission(G, T.id, 'sequel', 9501, d ? { dir: d } : {}); const J = r === true ? T.mission.J : null; const o = J && { cost: J.cost, bug: J.autoBug, hype: J.hype, dir: J.dir, talk: J.talk && J.talk.dir }; if (r === true) S.cancelMission(G, T.id); return o; };
+  const d0 = startWith(null), dSame = startWith('same'), dBig = startWith('bigger'), dTw = startWith('twist'), dQ = startWith('quick');
+  ok(d0 && dSame && d0.cost === dSame.cost && d0.bug === dSame.bug && d0.hype === dSame.hype && !d0.dir, 'samma recept är precis som när teamet valde själv');
+  ok(dBig.bug > dSame.bug && dBig.cost > dSame.cost && dBig.hype > dSame.hype && dTw.hype - dSame.hype === S.SEQ_DIRS.twist.hype && dQ.cost < dSame.cost, 'större ger fler buggar och mer Förväntan, vändningen mer Förväntan och den snabba blir billigare');
+  const q0 = S.missionQuote(G, T, 'sequel', 9501, { dir: 'quick' });
+  ok(q0 && q0.weeks > 0 && q0.cost === dQ.cost, 'priset i rutan är det som dras när bygget startar');
+  ok(S.dirFor('sequel', 'world') === null && S.dirFor('expansion', 'same') === null && S.dirFor('sequel', 'twist') === S.SEQ_DIRS.twist && S.dirOf('twist') === S.SEQ_DIRS.twist && S.dirOf('world') === S.EXP_DIRS.world, 'en uppföljare kan inte få en expansions riktning och tvärtom');
+  ok(S.LOG_DIRS.length === S.DIR_IDS.length + S.SEQ_IDS.length && S.LOG_DIRS.slice(0, 5).join() === S.DIR_IDS.join(), 'loggens index för riktningarna är oförändrade');
+
+  // en ny vändning gör serien fräschare när spelet släpps
+  const finish = (dir) => {
+    const C = JSON.parse(JSON.stringify(G));
+    const CT = C.teams.find((x) => x.id === T.id);
+    C.games.find((x) => x.id === 9501).fatigue = 2;
+    if (S.startMission(C, CT.id, 'sequel', 9501, dir ? { dir } : {}) !== true) return null;
+    for (let i = 0; i < 400 && CT.mission; i++) { C.t++; S.missionWeek(C); C.pending = C.pending.filter((x) => x.type === 'expmeet'); C.money = Math.max(C.money, 1e8); }
+    return C.games.find((x) => x.sequelOf === 9501 || x.seqOf === 9501) || C.games[C.games.length - 1];
+  };
+  const fTw = finish('twist'), fSame = finish('same');
+  ok(fTw && fSame && fTw.id !== 9501 && fSame.id !== 9501 && (fSame.fatigue || 0) >= 2 && (fTw.fatigue || 0) === Math.max(0, (fSame.fatigue || 0) - 1), 'en ny vändning minskar seriens trötthet vid släppet med ett steg');
+
+  // utan "fråga först" startar teamet själv som förut
+  G.games.find((x) => x.id === 9501).meetNext = 0; T.meetNext = 0; G.pending = [];
+  T.meet = false;
+  S.missionWeek(G);
+  ok(T.mission && T.mission.kind === 'sequel' && !T.mission.J.dir && !G.pending.some((x) => x.type === 'expmeet'), 'ett team som inte frågar först startar uppföljaren själv');
+  S.cancelMission(G, T.id);
+
+  // möte om ett helt nytt spel när det inte finns något annat att ta
+  T.meet = undefined; G.pending = [];
+  G.games.find((x) => x.id === 9501).meetNext = G.t + 500;
+  const ge = G.games.find((x) => x.id === 9501); ge.chain = 9;
+  S.missionWeek(G);
+  const pn = G.pending.find((x) => x.type === 'expmeet');
+  ok(pn && pn.kind === 'new' && pn.game === null && pn.combos.length === 3 && !T.mission && G.news.some((n) => n.key === 'news.newMeet') && T.meetNext > G.t, 'finns ingen uppföljare att ta kallar teamet till möte om idéer till ett nytt spel');
+  ok(new Set(pn.combos.map((c) => c.genre)).size >= 2 && pn.combos.every((c) => G.u.topics.includes(c.topic) && G.u.genres.includes(c.genre)), 'idéerna är olika genrer som studion kan');
+  const MN = S.expMeetOptions(G, pn);
+  ok(MN.kind === 'new' && MN.game === null && MN.opts.length === 3 && MN.opts.map((o) => o.key).join() === 'n0,n1,n2' && MN.opts.every((o) => o.combo && o.quote && o.compat >= 1 && o.compat <= 4 && typeof o.known === 'boolean' && typeof o.novel === 'boolean'), 'rutans idéer har nyckel, pris, passform och om studion känner genren');
+  ok(JSON.stringify(S.conceptsFor(G, T)) === JSON.stringify(pn.combos) && JSON.stringify(S.conceptsFor(G, T, 2)) === JSON.stringify(pn.combos.slice(0, 2)), 'idéerna följer teamets egen rangordning och räknas ut på samma sätt varje gång');
+  S.missionWeek(G);
+  ok(G.pending.filter((x) => x.type === 'expmeet').length === 1, 'bara ett möte per team');
+  ok(S.resolveExpMeet(G, pn.id, 'n9') === false && S.resolveExpMeet(G, pn.id, 'more') === false && G.pending.includes(pn), 'fel nyckel gör ingenting');
+  const mN = G.money;
+  ok(S.resolveExpMeet(G, pn.id, 'n1') === true && T.mission && T.mission.kind === 'new' && T.mission.J.genre === pn.combos[1].genre && T.mission.J.topic === pn.combos[1].topic && G.money < mN && T.meetNext === 0 && G.news.some((n) => n.key === 'news.newGo'), 'valet startar ett nytt spel med den idén');
+  S.cancelMission(G, T.id);
+  S.missionWeek(G);
+  const pn2 = G.pending.find((x) => x.type === 'expmeet');
+  ok(pn2 && pn2.kind === 'new' && S.resolveExpMeet(G, pn2.id, 'later') === true && T.meetNext >= G.t + S.MEET_LATER && !G.pending.length, 'ett uppskjutet möte om ett nytt spel väntar fyra månader');
+  for (let i = 0; i < 8; i++) S.missionWeek(G);
+  ok(!G.pending.length && !T.mission, 'teamet väntar tills dess');
+  T.meetNext = 0; T.meet = false;
+  S.missionWeek(G);
+  ok(T.mission && T.mission.kind === 'new' && !G.pending.length, 'utan "fråga först" väljer teamet själv, som förut');
+  S.cancelMission(G, T.id);
+
+  // pengarna räcker inte
+  T.meet = undefined; T.meetNext = 0;
+  S.missionWeek(G);
+  const pm = G.pending.find((x) => x.type === 'expmeet');
+  G.money = 100;
+  const MP = S.expMeetOptions(G, pm);
+  ok(pm && MP.opts.every((o) => o.ok === 'money') && typeof S.resolveExpMeet(G, pm.id, 'n0') === 'string' && G.pending.includes(pm), 'räcker inte pengarna ligger mötet kvar med ett felmeddelande');
+  G.money = 5e8;
+  // teamet kan inte längre bygga: mötet faller
+  T.members = T.members.slice(0, 1);
+  ok(typeof S.resolveExpMeet(G, pm.id, 'n0') === 'string' && !G.pending.includes(pm) && T.meetNext >= G.t + S.MEET_LATER, 'ett team som blivit för litet får mötet att falla och tar upp det senare');
+
+  // äldre sparning: ett möte utan sort är en expansion
+  const OLD = { type: 'expmeet', id: 777, game: 9304, team: T.id, reason: 'fresh', props: ['more', 'world', 'systems'], t: G.t };
+  ok(S.meetKind(OLD) === 'expansion' && S.meetKind(pn) === 'new', 'ett möte från en äldre sparning räknas som expansion');
+
+  // HR-teamen sköter sig själva
+  G.u.flags.hrDept = true;
+  const hrT = S.createTeam(G); hrT.hr = true; hrT.meet = false;
+  ok(S.askMeet(hrT) === false, 'ett team från Personalavdelningen frågar inte först');
+
+  // texterna
+  const missC = [];
+  for (const k of ['tm.meet', 'tm.meetHelp', 'em.title.sequel', 'em.title.new', 'em.intro.sequel', 'em.intro.new', 'em.new.d', 'em.tag.known', 'em.tag.novel', 'em.laterNew', 'em.went.new', 'news.seqMeet', 'news.newMeet', 'news.newGo',
+    ...S.SEQ_IDS.flatMap((d) => ['exd.' + d + '.n', 'exd.' + d + '.d', 'news.seqGo.' + d]), ...S.SEQ_IDS.flatMap((d) => S.SEQ_DIRS[d].tags.map((tg) => 'exd.tag.' + tg))]) {
+    const v = STRINGS[k];
+    if (!v || !v[0] || !v[1] || v[0] === v[1]) missC.push(k);
+  }
+  ok(missC.length === 0, 'texterna för möten om uppföljare och nya spel finns på båda språken ' + missC.join());
 }
 
 console.log(fails ? `\n${fails} FEL` : '\nAlla tester gick bra');
