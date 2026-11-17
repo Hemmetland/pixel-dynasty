@@ -24,6 +24,8 @@ import { expoState } from './exposhow.js';
 import { folkState } from './folk.js'; // bara i lifeState (vid anrop)
 import { fanState } from './community.js'; // bara i lifeState (vid anrop)
 import { magState } from './mag.js'; // bara i lifeState (vid anrop)
+import { histState } from './history.js'; // bara i lifeState (vid anrop)
+import { reactState } from './reaction.js'; // bara i lifeState (vid anrop)
 import { FACILITIES } from './studio.js'; // bara i lifeText (vid anrop), så importcykeln gör inget
 
 export const LIFE_MAX = 30; // så många händelser sparas
@@ -149,6 +151,9 @@ export const LIFE_KINDS = {
   streamer: { sc: 'fans', v: 3, gap: 0, ch: 'fans' }, // en streamare spelar spelet (who = hens namn)
   viralUp: { sc: 'fans', v: 3, gap: 0, ch: 'fans' }, // en tråd går viralt och fler vill köpa
   viralDown: { sc: 'fans', v: 3, gap: 0, ch: 'fans' }, // missnöjet sprids och fler tvekar
+  trendSwing: { sc: 'world', v: 3, gap: 0, ch: 'world' }, // branschen svänger (g = genren, who = spelet eller förlaget; v 0 efter din succé, 1 efter ditt magplask, 2 efter konkurrentens succé)
+  clone: { sc: 'world', v: 2, gap: 0, ch: 'world' }, // en konkurrent släpper en kopia av ditt spel (g = ditt spel, who = förlaget; v 0 bra kopia, 1 slarvig)
+  memory: { sc: 'staff', v: 4, gap: 0, ch: 'studio' }, // en veteran minns (g = spelet eller genren, a = betyg eller år; v 0 gick bra, 1 gick dåligt, 2 jubileum, 3 första gången)
   issue: { sc: 'press', v: 12, gap: 0, ch: 'press' }, // nytt nummer av branschtidningen (v = omslagets sort, se mag.js; g = vad omslaget handlar om)
   // hårdvara
   hwStart: { sc: 'hw', v: 2, gap: 0 }, // en konstruktion påbörjas
@@ -272,6 +277,8 @@ export function lifeState(G, sc) {
   if (sc === 'staff') return folkState(G);
   if (sc === 'fans') return fanState(G);
   if (sc === 'press') return magState(G);
+  if (sc === 'history') return histState(G);
+  if (sc === 'react') return reactState(G);
   const J = G.job && G.job.kind === 'game' ? G.job : null;
   const crew = workers(G).map((w) => ({ id: w.id, name: lifeName(w), mood: Math.round(w.mood), fatigue: Math.round((w.fatigue || 0) * 10) / 10, trait: w.trait || null, away: !!w.away }));
   // alla bygge som pågår (spelarens och teamens): key 'p' är ordinarie teamets, 't<id>' ett teams uppdrag (builds.js)

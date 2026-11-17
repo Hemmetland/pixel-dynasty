@@ -13,6 +13,8 @@ import { RESEARCH } from '../data/research.js';
 import { note } from './news.js';
 import { subRelease, subCadence, subPlatform, fpTotal } from './group.js';
 import { groupPlatRelease, boughtPlatform } from './hardware.js';
+import { reactToRival } from './reaction.js';
+import { beat } from './life.js';
 
 export function makeCompetitors(G) {
   const picks = shuffle(G, COMPETITORS).slice(0, 10);
@@ -109,6 +111,7 @@ export function releaseComp(G, c) {
     platform: plat.id, genre: genre.id, topic: topic.id, scope, yours: false, price: priceOf(year), tail: SALES_TAIL,
   };
   if (fr) rel.fr = fr.id;
+  if (nx.clone) rel.clone = nx.clone; // en kopia av ditt spel (reaction.js)
   G.market.releases.push(rel);
   if (G.market.releases.length > 260) G.market.releases.shift();
   if (bought) rel.ex = true;
@@ -125,11 +128,16 @@ export function releaseComp(G, c) {
     G.market.hitT = G.t;
     note(G, 'news.rivalHit', { studio: c.name, title, v: score.toFixed(1) }, 'info', true);
   }
+  if (nx.clone && !c.owned) {
+    beat(G, 'clone', { g: nx.cloneOf || '', who: c.name, v: score >= 7 ? 0 : 1 });
+    note(G, 'news.clone', { rival: c.name, title: rel.title, mine: nx.cloneOf || '' }, 'info', true);
+  }
+  reactToRival(G, rel, c);
   emit('compRelease', rel);
   return rel;
 }
 // Konkurrentens nästa spel: tema och genre (som rykte i marknadsfönstret innan det släpps).
-const COMP_GENRES = ['action', 'adventure', 'strategy', 'rpg', 'simulation', 'casual', 'shooter', 'racing'];
+export const COMP_GENRES = ['action', 'adventure', 'strategy', 'rpg', 'simulation', 'casual', 'shooter', 'racing'];
 function rollNext(G, year, c) {
   const topicsAvail = TOPICS.filter((t) => t.start || RESEARCH.some((r) => (r.unlock.topics || []).includes(t.id) && r.year <= year + 1));
   const topic = pick(G, topicsAvail);
@@ -215,7 +223,7 @@ export function monthlyMarket(G) {
 // startar ett projekt oftast gäller när spelet släpps (då räknas försäljningen). Bara utgångna platser byts, mot id som
 // inte redan är trendiga. until = veckan då trenden byts; gamla sparfiler saknar den och byts vid nästa halvår.
 export const TREND_STEP = 24;
-const TREND_MULT = { genre: [1.28, 1.14, 0.82], topic: [1.3, 1.15, 0.85] };
+export const TREND_MULT = { genre: [1.28, 1.14, 0.82], topic: [1.3, 1.15, 0.85] };
 export function updateTrends(G) {
   const year = yearOf(G.t);
   const topicsAvail = TOPICS.filter((t) => t.start || RESEARCH.some((r) => (r.unlock.topics || []).includes(t.id) && r.year <= year));

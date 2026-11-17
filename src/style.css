@@ -1826,3 +1826,21 @@ button.pr-rec { width: 100%; }
 .mg-nav .prev .ic { transform: rotate(90deg); } .mg-nav .next .ic { transform: rotate(-90deg); }
 @media (max-width: 900px) { .mg-cols { grid-template-columns: 1fr; } }
 @media (max-width: 560px) { .mg-head { flex-wrap: wrap; } .mg-hl { font-size: 16px; } .mg-ch { grid-template-columns: 22px minmax(0, 1fr) 54px; } .mg-ch .num { display: none; } }
+
+/* v139: Historia (väggen med ramar) och Världen (trendtavlan) */
+.hs-wall { display: grid; grid-template-columns: repeat(auto-fill, minmax(112px, 1fr)); gap: 12px; }
+.hs-fr { --fr: var(--line); display: flex; flex-direction: column; align-items: center; gap: 3px; padding: 8px 6px 9px; text-align: center; border-radius: 6px; border: 3px solid var(--fr); background: color-mix(in srgb, var(--fr) 7%, var(--panel, transparent)); position: relative; min-width: 0; }
+.hs-fr.gold { --fr: var(--gold); box-shadow: 0 0 14px color-mix(in srgb, var(--gold) 28%, transparent); }
+.hs-fr.silver { --fr: #c9d2e3; }
+.hs-fr.bronze { --fr: #c98a52; }
+.hs-fr .ell { display: block; max-width: 100%; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; font-size: 12.5px; }
+.hs-pic { padding: 3px; background: #0e1018; border: 1px solid color-mix(in srgb, var(--fr) 60%, transparent); }
+.hs-pic img { display: block; }
+.hs-mks { display: flex; gap: 4px; margin-top: 2px; }
+.hs-mk { color: var(--c); display: grid; place-items: center; }
+.hs-mk .ic { width: 14px; height: 14px; }
+.rx-cols { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 16px; }
+.rx-row { display: flex; justify-content: space-between; align-items: center; gap: 10px; padding: 8px 10px; margin-bottom: 6px; border-radius: 10px; border: 1px solid var(--line); }
+.rx-row.hot { border-color: color-mix(in srgb, var(--hot) 55%, transparent); background: color-mix(in srgb, var(--hot) 8%, transparent); }
+.rx-row .lf-mood { min-width: 52px; }
+@media (max-width: 700px) { .rx-cols { grid-template-columns: 1fr; } .hs-wall { grid-template-columns: repeat(auto-fill, minmax(96px, 1fr)); gap: 8px; } }

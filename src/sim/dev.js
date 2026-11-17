@@ -21,6 +21,8 @@ import { liveScopesFor, EXP_SCOPES, LIVE_DEV, canGoLive, launchLive, releaseExpa
 import { KIND, kindOf } from '../data/onlinekinds.js';
 import { takeSeriesHype } from './franchise.js';
 import { beat, lifePick } from './life.js';
+import { memoryStart } from './history.js';
+import { reactToLaunch } from './reaction.js';
 import { settlePromise } from './exposhow.js';
 import { hypeTick, hypeMark, prGain } from './hype.js';
 import { logBuild } from './builds.js';
@@ -47,6 +49,7 @@ export function startProject(G, cfg) {
   G.job = job;
   logBuild(G, job, 'start');
   emit('jobStart', job);
+  memoryStart(G, job);
   return job;
 }
 // Bygger ett spelprojekt (eller ger ett felmeddelande). Används också av självgående team (autoteam.js), som inte sätter G.job.
@@ -416,6 +419,7 @@ export function releaseGame(G) {
   }
   G.job = null;
   beat(G, 'launch', { g: game.title, a: Math.round(game.score * 10) / 10, v: game.score >= 8 ? 0 : game.score >= 6 ? 1 : 2 });
+  reactToLaunch(G, game);
   emit('released', game);
   return game;
 }

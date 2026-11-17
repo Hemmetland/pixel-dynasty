@@ -5183,12 +5183,12 @@ ok(!bad.length, `äldre sparning utan ett av ${paths.length} fält går att spel
   ok(ms.issue && ms.issue.n === GM.mag.n && ms.count === GM.mag.issues.length && ms.cover && Array.isArray(ms.reviews) && Array.isArray(ms.gossip) && Array.isArray(ms.chart) && ms.year >= 2001, 'lifeState press ger senaste numret');
   ok(S.lifeState({ ...GM, mag: undefined }, 'press').issue === null, 'inget nummer än ger ett tomt läge');
   // prestationerna på hyllan Studiolivet
-  const LIFE_ACH = ['fr_friends', 'fr_couple', 'fr_wedding', 'fr_dream', 'fr_viral', 'fr_cover'];
-  ok(LIFE_ACH.every((id) => ACHIEVEMENTS.some((a) => a.id === id) && ACH_CAT[id] === 'life') && ACH_CATS.find((c) => c.id === 'life').ids.length === 6, 'sex prestationer ligger på hyllan Studiolivet');
+  const LIFE_ACH = ['fr_friends', 'fr_couple', 'fr_wedding', 'fr_dream', 'fr_viral', 'fr_cover', 'fr_trend', 'fr_copied', 'fr_jubilee'];
+  ok(LIFE_ACH.every((id) => ACHIEVEMENTS.some((a) => a.id === id) && ACH_CAT[id] === 'life') && ACH_CATS.find((c) => c.id === 'life').ids.length === 9, 'nio prestationer ligger på hyllan Studiolivet');
   const GA = JSON.parse(JSON.stringify(G)); GA.ach = [];
   S.checkAchievements(GA);
   ok(!LIFE_ACH.some((id) => GA.ach.includes(id)), 'ingen av dem är klar från start');
-  Object.assign(GA.stats, { fr: 5, cp: 1, wed: 1, dreams: 1, viral: 1, covers: 1 });
+  Object.assign(GA.stats, { fr: 5, cp: 1, wed: 1, dreams: 1, viral: 1, covers: 1, hot: 1, copied: 1, jubilee: 1 });
   S.checkAchievements(GA);
   ok(LIFE_ACH.every((id) => GA.ach.includes(id)), 'de klaras när räknarna nått målen');
   ok(achProgress({ ...GA, stats: { ...GA.stats, fr: 3 } }, 'fr_friends').cur === 3, 'vänskaperna har ett framsteg');
@@ -5201,6 +5201,139 @@ ok(!bad.length, `äldre sparning utan ett av ${paths.length} fält går att spel
   const GO = JSON.parse(JSON.stringify(G)); delete GO.mag; GO.games.push(mk(9880, 7.2, 3)); delete GO.games[0].viral; delete GO.games[0].comm;
   for (let i = 0; i < 12; i++) { GO.t++; S.salesWeek(GO); S.communityWeek(GO); if (GO.t % 4 === 0) S.magMonth(GO); }
   ok(Number.isFinite(GO.money) && GO.games[0].weekly.length > 2, 'en sparning från före fansen och tidningen fortsätter som vanligt');
+}
+
+// ── Historia och världen v139 ──
+{
+  const G = S.newGame({ studio: 'Historia', seed: 91, difficulty: 'normal' });
+  S.makeCompetitors(G); S.initWorld(G);
+  G.pending = []; G.t = S.tOf(2006, 4, 1); G.money = 5e8; G.fans = 40000; G.stopT = G.t - 60; G.office.tier = 4;
+  for (const x of G.staff) x.hired = 0;
+  const mk = (id, score, age, extra = {}) => ({ id, title: 'Testspelet ' + id, platform: 'pc', genre: 'rpg', topic: 'fantasy', scope: 'large', audience: 'everyone', score, total: 2e6, t: G.t - age, tail: 1, priceAt: 30, weekly: [1, 1], revenue: 2e6, units: 1e4, fansGained: 0, hype: 40, parts: { bugRatio: 0.2 }, ff: {}, flags: [], reviews: [{ id: 'bitbyte', score: Math.round(score) }], insights: [], ...extra });
+  ok(S.LIFE_KINDS.trendSwing.v === 3 && S.LIFE_KINDS.clone.v === 2 && S.LIFE_KINDS.memory.v === 4 && ['trendSwing', 'clone', 'memory'].every((k) => S.LIFE_KINDS[k].ch), 'sorterna för världen och minnena finns');
+
+  // ── trenden ──
+  const GT = JSON.parse(JSON.stringify(G));
+  const rng0 = JSON.stringify(GT.rng);
+  ok(S.heatTrend(GT, 'genre', 'rpg', true, 'you') === true, 'en genre kan hettas till');
+  const tg = GT.market.trend.genre;
+  ok(tg.length === 3 && tg[0].id === 'rpg' && tg[0].mult === S.TREND_MULT.genre[0] && tg[0].src === 'you' && new Set(tg.map((x) => x.id)).size === 3 && tg.every((x, i) => x.mult === S.TREND_MULT.genre[i]), 'den hetaste platsen går till genren, tre olika, rätt faktor per plats');
+  ok(S.heatTrend(GT, 'genre', 'rpg', true, 'you') === false && GT.market.trend.genre[0].until >= tg[0].until, 'samma genre hettas inte om, men tiden förlängs');
+  ok(S.heatTrend(GT, 'genre', 'racing', false, 'you') === true && GT.market.trend.genre[2].id === 'racing' && GT.market.trend.genre[2].mult === S.TREND_MULT.genre[2] && GT.market.trend.genre[0].id === 'rpg', 'en kall genre hamnar sist och den heta ligger kvar');
+  ok(S.heatTrend(GT, 'topic', 'fantasy', true, 'you') && GT.market.trend.topic[0].id === 'fantasy' && GT.market.trend.topic.length === 3, 'ett ämne kan också hettas');
+  ok(JSON.stringify(GT.rng) === rng0, 'trenden drar inget G.rng');
+
+  // ── din succé ──
+  const GH = JSON.parse(JSON.stringify(G));
+  for (const [i, c] of GH.comps.entries()) { c.owned = false; c.nextT = GH.t + 12 + i * 3; c.next = { topic: 'military', genre: 'action' }; }
+  const hit = mk(9901, 9.4, 0); GH.games.push(hit);
+  const r0 = JSON.stringify(GH.rng);
+  S.reactToLaunch(GH, hit);
+  ok(JSON.stringify(GH.rng) === r0, 'reaktionen drar inget G.rng');
+  ok(GH.market.trend.genre[0].id === 'rpg' && GH.market.trend.topic[0].id === 'fantasy', 'en succé över 9 hettar både genre och ämne');
+  const cl = GH.comps.filter((c) => c.next.clone === 9901);
+  ok(cl.length === 2 && cl.every((c) => c.next.genre === 'rpg' && c.next.topic === 'fantasy' && c.next.cloneOf === hit.title), 'ett betyg över 9,2 väcker två kopior med samma genre och tema');
+  ok(S.chronLog(GH, 'world', 20).some((b) => b.k === 'trendSwing' && b.v === 0) && GH.news.some((n) => n.key === 'news.swingHot') && GH.stats.hot === 1, 'branschens sväng syns i krönikan och nyheterna och räknas');
+  const hit2 = mk(9902, 9.5, 0); GH.games.push(hit2);
+  const before = JSON.stringify(GH.comps.map((c) => c.next));
+  S.reactToLaunch(GH, hit2);
+  ok(JSON.stringify(GH.comps.map((c) => c.next)) === before && GH.stats.hot === 1, 'samma genre reagerar inte igen inom ' + S.REACT_GAP + ' veckor');
+  GH.t += S.REACT_GAP;
+  const hit3 = mk(9903, 8.6, 0, { genre: 'strategy', topic: 'military' }); GH.games.push(hit3);
+  S.reactToLaunch(GH, hit3);
+  ok(GH.market.trend.genre[0].id === 'strategy' && GH.market.trend.topic[0].id === 'fantasy' && GH.comps.filter((c) => c.next.clone === 9903).length === 1, 'betyg 8,5 till 9 hettar bara genren och väcker en kopia');
+  const GN = JSON.parse(JSON.stringify(G));
+  for (const [id, g] of [[1, mk(9910, 7.2, 0)], [2, mk(9911, 9.9, 0, { auto: true })], [3, mk(9912, 9.9, 0, { expansionOf: 5 })]]) { S.reactToLaunch(GN, g); ok(JSON.stringify(GN.market.trend) === JSON.stringify(G.market.trend) && !GN.react, 'ett spel som inte är succé, auto eller expansion rör inte branschen (' + id + ')'); }
+
+  // ── ditt magplask ──
+  const GF = JSON.parse(JSON.stringify(G));
+  const flop = mk(9920, 3.1, 0, { genre: 'casual', topic: 'sports' }); GF.games.push(flop);
+  S.reactToLaunch(GF, flop);
+  const lastG = GF.market.trend.genre[2];
+  ok(lastG.id === 'casual' && lastG.mult === S.TREND_MULT.genre[2] && GF.market.trend.genre[0].id !== 'casual', 'ett magplask kyler genren: sist i trenden');
+  ok(S.chronLog(GF, 'world', 20).some((b) => b.k === 'trendSwing' && b.v === 1) && GF.news.some((n) => n.key === 'news.swingCold') && !GF.comps.some((c) => c.next && c.next.clone), 'magplasket syns i krönikan och väcker inga kopior');
+
+  // ── kopiorna släpps ──
+  const GR = JSON.parse(JSON.stringify(GH));
+  const c1 = GR.comps.find((c) => c.next.clone === 9901);
+  c1.nextT = GR.t;
+  const rel = S.releaseComp(GR, c1);
+  ok(rel.clone === 9901 && rel.genre === 'rpg' && rel.topic === 'fantasy', 'kopian släpps med märket och samma genre och tema');
+  ok(GR.react.clones.length === 1 && GR.react.clones[0].mine === hit.title && GR.react.clones[0].studio === c1.name && GR.stats.copied === 1, 'kopian hamnar i listan över kopior och räknas');
+  ok(S.chronLog(GR, 'world', 30).some((b) => b.k === 'clone' && b.who === c1.name && b.g === hit.title) && GR.news.some((n) => n.key === 'news.clone'), 'kopian syns i krönikan och nyheterna');
+  const rs = S.reactState(GR);
+  ok(rs.coming.length >= 1 && rs.coming[0].in >= 1 && rs.clones.length === 1 && rs.genre.length === 3 && rs.topic.length === 3 && rs.genre[0].pct === 28 && rs.genre[0].left >= 1, 'läget för världen: trend, kopior på väg och släppta');
+  // en konkurrents succé hettar genren
+  const GV = JSON.parse(JSON.stringify(G));
+  const rv = GV.comps.find((c) => !c.owned);
+  S.reactToRival(GV, { id: 1, title: { sv: 'Rivalen', en: 'The Rival' }, score: 9.4, genre: 'shooter', topic: 'military' }, rv);
+  ok(GV.market.trend.genre[0].id === 'shooter' && GV.market.trend.genre[0].src === 'rival' && S.chronLog(GV, 'world', 10).some((b) => b.k === 'trendSwing' && b.v === 2), 'en konkurrents succé hettar genren');
+  const GV2 = JSON.parse(JSON.stringify(G));
+  S.reactToRival(GV2, { id: 1, title: { sv: 'Rivalen', en: 'The Rival' }, score: 7.9, genre: 'shooter', topic: 'military' }, GV2.comps.find((c) => !c.owned));
+  ok(JSON.stringify(GV2.market.trend) === JSON.stringify(G.market.trend), 'en vanlig konkurrentsläpp rör inte trenden');
+  // determinism: samma start ger samma kopior
+  const GH2 = JSON.parse(JSON.stringify(G));
+  for (const [i, c] of GH2.comps.entries()) { c.owned = false; c.nextT = GH2.t + 12 + i * 3; c.next = { topic: 'military', genre: 'action' }; }
+  GH2.games.push(mk(9901, 9.4, 0)); S.reactToLaunch(GH2, GH2.games[GH2.games.length - 1]);
+  ok(GH2.comps.filter((c) => c.next.clone).map((c) => c.id).sort((a, b) => a - b).join() === cl.map((c) => c.id).sort((a, b) => a - b).join(), 'samma start väcker samma konkurrenter varje gång');
+
+  // ── studions historia: veteranerna minns ──
+  const gm = (job) => ({ id: 77, genre: 'rpg', topic: 'fantasy', ...job });
+  const GM = JSON.parse(JSON.stringify(G));
+  GM.games.push(mk(9930, 8.8, 100), mk(9931, 7.2, 90, { genre: 'racing', topic: 'sports' }), mk(9932, 5.1, 80, { genre: 'casual', topic: 'space' }));
+  const mem0 = JSON.stringify(GM.rng);
+  ok(S.memoryStart(GM, gm({})) === true && GM.recall.mem.length === 1 && GM.recall.mem[0].v === 0 && GM.recall.mem[0].g === 'Testspelet 9930', 'en veteran minns hur det gick förra gången (bra)');
+  ok(JSON.stringify(GM.rng) === mem0, 'minnet drar inget G.rng');
+  ok(S.memoryStart(GM, gm({ id: 78 })) === false && GM.recall.mem.length === 1, 'minnen kommer med minst ' + S.MEM_GAP + ' veckors mellanrum');
+  GM.t += S.MEM_GAP;
+  ok(S.memoryStart(GM, gm({ id: 79, genre: 'casual', topic: 'space' })) === true && GM.recall.mem[1].v === 1, 'en veteran minns också när det gick dåligt');
+  GM.t += S.MEM_GAP;
+  ok(S.memoryStart(GM, gm({ id: 80, genre: 'racing', topic: 'sports' })) === false, 'ett vanligt betyg ger inget minne');
+  ok(S.memoryStart(GM, gm({ id: 81, expansionOf: 9930 })) === false, 'en expansion ger inget minne');
+  GM.t += S.MEM_GAP;
+  ok(S.memoryStart(GM, gm({ id: 82, genre: 'action', topic: 'military' })) === true && GM.recall.mem[2].v === 3 && typeof GM.recall.mem[2].g === 'object', 'en ny genre ger ett första-gången-minne');
+  const GY = JSON.parse(JSON.stringify(G)); GY.games.push(mk(9930, 8.8, 100));
+  for (const x of GY.staff) x.hired = GY.t - 40;
+  ok(S.memoryStart(GY, gm({})) === false, 'ingen minns om ingen varit med i två år');
+  ok(S.chronLog(GM, 'studio', 30).filter((b) => b.k === 'memory').length === 3 && S.memoryVars(GM.recall.mem[0]).g === 'Testspelet 9930', 'minnena syns i krönikan');
+
+  // jubileum
+  const GJ = JSON.parse(JSON.stringify(G)); GJ.fans = 100000;
+  GJ.games.push(mk(9940, 9.0, 144), mk(9941, 7.9, 144), mk(9942, 9.0, 145));
+  S.memoryWeek(GJ);
+  ok(GJ.recall.mem.length === 1 && GJ.recall.mem[0].v === 2 && GJ.recall.mem[0].a === 3 && GJ.recall.mem[0].g === 'Testspelet 9940' && GJ.fans === 101000 && GJ.stats.jubilee === 1, 'ett toppspel fyller tre år: jubileum, lite fler fans');
+  GJ.t += 1; S.memoryWeek(GJ);
+  ok(GJ.recall.mem.length === 1, 'bara en gång per mellanrum');
+  const GJ5 = JSON.parse(JSON.stringify(G)); GJ5.games.push(mk(9943, 9.1, 240)); S.memoryWeek(GJ5);
+  ok(GJ5.recall && GJ5.recall.mem.length === 1 && GJ5.recall.mem[0].a === 5, 'fem år efter släppet blir det jubileum igen');
+  const GJ4 = JSON.parse(JSON.stringify(G)); GJ4.games.push(mk(9944, 9.1, 192), mk(9945, 9.4, 144, { auto: true })); S.memoryWeek(GJ4);
+  ok(!GJ4.recall || GJ4.recall.mem.length === 0, 'inget jubileum vid fyra år eller för automatiska spel');
+
+  // väggen och läget
+  const GW = JSON.parse(JSON.stringify(G));
+  GW.games.push(mk(9950, 9.2, 200), mk(9951, 8.1, 150), mk(9952, 7.1, 100), mk(9953, 5.0, 50, { genre: 'racing' }), mk(9954, 9.9, 20, { expansionOf: 9950 }));
+  const wall = S.wallOf(GW);
+  ok(wall.length === 4 && wall[0].id === 9953 && wall[3].id === 9950 && wall.map((w) => w.frame).join() === 'plain,bronze,silver,gold', 'väggen: nyast först, expansioner utanför, ram efter betyg');
+  const hs = S.histState(GW);
+  ok(hs.wall.length === 4 && Array.isArray(hs.milestones) && Array.isArray(hs.memories) && Array.isArray(hs.veterans) && hs.veterans.length === GW.staff.length && hs.veterans.every((v) => v.years >= 2), 'läget för historiken');
+  ok(hs.milestones.every((m) => typeof m.key === 'string' && typeof m.t === 'number'), 'milstolparna har nyckel och vecka (som tidslinjen vill ha dem)');
+  ok(JSON.stringify(S.lifeState(GW, 'history')) === JSON.stringify(S.histState(GW)) && JSON.stringify(S.lifeState(GW, 'react')) === JSON.stringify(S.reactState(GW)), 'lifeState ger historiken och världen till scenerna');
+
+  // texterna
+  const miss = [];
+  const need = [];
+  for (const [k, n] of [['trendSwing', 3], ['clone', 2], ['memory', 4]]) for (let i = 0; i < n; i++) need.push(`life.${k}.${i}`);
+  need.push('news.swingHot', 'news.swingCold', 'news.clone', 'lf.tab.hist', 'lf.tab.react', 'lf.hist.help', 'lf.hist.wall', 'lf.hist.wallEmpty', 'lf.hist.frameTip', 'lf.hist.mem', 'lf.hist.memEmpty', 'lf.hist.miles', 'lf.react.help', 'lf.react.genre', 'lf.react.topic', 'lf.react.left', 'lf.react.clones', 'lf.react.cloneRow', 'lf.react.coming', 'lf.react.cloneEmpty', 'lf.react.swings', 'lf.react.sw.hotYou', 'lf.react.sw.hotRival', 'lf.react.sw.cold', 'lf.react.swEmpty', 'lf.react.src.you', 'lf.react.src.cold', 'lf.react.src.rival', 'lf.react.src.plain');
+  for (const k of need) { const v = STRINGS[k]; if (!v || !v[0] || !v[1]) miss.push(k); }
+  ok(miss.length === 0, 'texterna för historiken och världen finns på båda språken ' + miss.slice(0, 5).join());
+  const sample = S.lifeText({ k: 'memory', v: 1, who: 'Anna', g: 'Rymdäventyr', a: 5.1 });
+  ok(sample.includes('Anna') && sample.includes('Rymdäventyr') && sample.includes('5.1'), 'minnestexten fylls i');
+
+  // en sparning från före historiken och världen fortsätter som vanligt
+  const GO = JSON.parse(JSON.stringify(G)); delete GO.react; delete GO.recall;
+  GO.games.push(mk(9960, 9.3, 144));
+  S.memoryWeek(GO); S.reactToLaunch(GO, mk(9961, 9.5, 0)); S.reactState(GO); S.histState(GO);
+  ok(GO.recall.mem.length === 1 && GO.react.last.rpg === GO.t && Number.isFinite(GO.money), 'en sparning från före historiken och världen fortsätter som vanligt');
 }
 
 console.log(fails ? `\n${fails} FEL` : '\nAlla tester gick bra');

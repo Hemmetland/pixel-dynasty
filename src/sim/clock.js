@@ -29,6 +29,7 @@ import { chartWeek, rankYear } from './charts.js';
 import { fanWeek } from './fans.js';
 import { communityWeek } from './community.js';
 import { magMonth } from './mag.js';
+import { memoryWeek } from './history.js';
 import { storyWeek } from './news.js';
 import { monthlyMarket, updateTrends } from './market.js';
 import { rollDevEvent, rollStudioEvent } from './events.js';
@@ -82,6 +83,7 @@ function weekly(G) {
   chartWeek(G);
   fanWeek(G);
   communityWeek(G);
+  memoryWeek(G);
   storyWeek(G);
   pubWeek(G);
   frWeek(G);

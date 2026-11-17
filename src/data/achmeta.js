@@ -9,7 +9,7 @@ export const ACH_CATS = [
   { id: 'quality', ic: 'star', ids: ['score8', 'score9', 'score10', 'streak5', 'streak3_8', 'hits10', 'hit_aaa', 'chart1', 'disc_gold', 'disc_platinum', 'disc_diamond', 'disc_wall', 'units10m', 'boxoffice'] },
   { id: 'money', ic: 'money', ids: ['rich1', 'rich2', 'rich3', 'rev100m', 'rev1b'] },
   { id: 'studio', ic: 'building', ids: ['office1', 'office3', 'office5', 'team10', 'team30', 'team100', 'team300', 'teams5', 'fans1k', 'fans1m', 'research20', 'research_all', 'contracts5', 'known', 'hitfactory'] },
-  { id: 'life', ic: 'heart', ids: ['fr_friends', 'fr_couple', 'fr_wedding', 'fr_dream', 'fr_viral', 'fr_cover'] },
+  { id: 'life', ic: 'heart', ids: ['fr_friends', 'fr_couple', 'fr_wedding', 'fr_dream', 'fr_viral', 'fr_cover', 'fr_trend', 'fr_copied', 'fr_jubilee'] },
   { id: 'online', ic: 'globe', ids: ['live1', 'subs1m', 'exp3', 'live_world', 'events10', 'three_live', 'f2p1m', 'outlast', 'live_comeback', 'seasons5', 'esport1', 'esport_million'] },
   { id: 'industry', ic: 'crown', ids: ['top_studio', 'top_decade', 'empire', 'conglomerate', 'launcher', 'label5', 'hw_platform', 'hw_factory', 'hw_vr'] },
   { id: 'awards', ic: 'trophy', ids: ['award1', 'award5', 'award10', 'goty', 'slam', 'regular', 'expo1', 'expo_prize', 'expo_sweep', 'expo_talk', 'expo_word'] },

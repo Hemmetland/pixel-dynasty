@@ -162,6 +162,9 @@ export const ACHIEVEMENTS = [
   A('fr_dream', 'a_bulb', 'Drömmen blev verklig', 'Dream Come True', 'Låt en medarbetare göra klart sitt drömspel.', 'Let a team member finish their dream game.', (G) => (G.stats.dreams || 0) >= 1),
   A('fr_viral', 'a_star', 'Gick viralt', 'Gone Viral', 'Få en tråd om ett av dina spel att gå viralt.', 'Have a thread about one of your games go viral.', (G) => (G.stats.viral || 0) >= 1),
   A('fr_cover', 'a_trophy', 'På omslaget', 'On the Cover', 'Hamna på omslaget av Pixelposten med ett toppbetyg.', 'Make the cover of The Pixel Post with a top score.', (G) => (G.stats.covers || 0) >= 1),
+  A('fr_trend', 'a_globe', 'Trendsättare', 'Trendsetter', 'Få hela branschen att svänga mot genren i ett av dina spel.', 'Make the whole industry swing towards the genre of one of your games.', (G) => (G.stats.hot || 0) >= 1),
+  A('fr_copied', 'a_crown', 'Efterapad', 'Copied', 'Låt en konkurrent släppa en kopia av ett av dina spel.', 'Have a rival release a copy of one of your games.', (G) => (G.stats.copied || 0) >= 1),
+  A('fr_jubilee', 'a_clock', 'Tidens tand', 'Test of Time', 'Fira jubileum för ett toppspel som fortfarande pratas om.', 'Celebrate the anniversary of a top game people still talk about.', (G) => (G.stats.jubilee || 0) >= 1),
   A('legend', 'a_clock', 'Legend', 'Legend', 'Spela till år 2020.', 'Play until the year 2020.', (G) => G.t >= 48 * 40),
 ];
 export const ACH = Object.fromEntries(ACHIEVEMENTS.map((a) => [a.id, a]));

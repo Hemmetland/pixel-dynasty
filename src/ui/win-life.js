@@ -2,6 +2,7 @@
 // världen och dramat) i en tidslinje, och Folket visar vem som är vän med vem, personligheter, födelsedagar och drömmar. Bara läsning:
 // allt kommer ur sim/life.js (krönikan) och sim/folk.js.
 import { esc, icon, t, L, UI, act, regWin, MONTHS } from './core.js';
+import { fmtNum } from '../core/util.js';
 import { lang } from '../core/i18n.js';
 import { avatarImg } from '../render/people.js';
 import { dateOf } from '../sim/const.js';
@@ -10,6 +11,11 @@ import { QUIRKS } from '../data/folk.js';
 import { persona, ageOf, bdayIn, bondsOf, friendsOf, partnerOf, folkOf, dreamName } from '../sim/folk.js';
 import { fanTalk } from '../sim/community.js';
 import { magOf, coverText, gossipText, rumorText, quoteText, outletName } from '../sim/mag.js';
+import { histState, memoryVars } from '../sim/history.js';
+import { reactState } from '../sim/reaction.js';
+import { coverImg } from '../render/covers.js';
+import { CERTS } from '../data/certs.js';
+import { storyList } from './win-misc.js';
 import { GENRE } from '../data/genres.js';
 import { TOPIC } from '../data/topics.js';
 
@@ -155,11 +161,69 @@ function magTab(G) {
     <div class="faint" style="font-size:12px;margin:14px 0 6px">${t('lf.mag.older')}</div><div class="row wrap" style="gap:6px">${older}</div>`;
 }
 
+// ── Historia: väggen med inramade släpp, veteranernas minnen och milstolparna ──
+const MEM_IC = ['star', 'rain', 'trophy', 'bulb'];
+const MEM_COL = ['var(--good)', 'var(--warn)', 'var(--gold)', 'var(--design)'];
+function frameCard(w) {
+  const cert = CERTS.find((c) => c.id === w.cert);
+  const marks = [
+    cert ? `<span class="hs-mk" style="--c:${cert.color}" data-tip="${esc(L(cert.name))}">${icon('disc')}</span>` : '',
+    w.top ? `<span class="hs-mk" style="--c:var(--gold)" data-tip="${esc(t('lf.hist.top'))}">${icon('crown')}</span>` : '',
+    w.live ? `<span class="hs-mk" style="--c:var(--good)" data-tip="${esc(t('lf.hist.live'))}">${icon('globe')}</span>` : '',
+  ].join('');
+  const title = tx(w.title);
+  return `<div class="hs-fr ${w.frame}" data-tip="${esc(`${title} · ${w.score.toFixed(1)} · ${t('lf.hist.sold', { n: fmtNum(w.units) })}`)}"><div class="hs-pic">${coverImg({ id: w.id, title, topic: w.topic, genre: w.genre, platform: w.platform }, 72)}</div>
+    <b class="ell">${esc(title)}</b><span class="faint" style="font-size:11.5px">${w.year} · <b style="color:${scoreCol(w.score)}">${w.score.toFixed(1)}</b></span>${marks ? `<div class="hs-mks">${marks}</div>` : ''}</div>`;
+}
+function histTab(G) {
+  const h = histState(G);
+  const wall = h.wall.length ? `<div class="hs-wall">${h.wall.map(frameCard).join('')}</div><p class="hint" style="margin-top:8px">${icon('info')} ${t('lf.hist.frameTip')}</p>` : `<div class="empty">${icon('trophy')}<div>${t('lf.hist.wallEmpty')}</div></div>`;
+  const mem = h.memories.length
+    ? `<div class="lf-list">${h.memories.slice(0, 8).map((m) => `<div class="lf-row"><span class="lf-ic" style="--c:${MEM_COL[m.v]}">${icon(MEM_IC[m.v])}</span><span class="lf-tx">${esc(t('life.memory.' + m.v, memoryVars(m)))}</span><span class="lf-when faint">${when(m.t)}</span></div>`).join('')}</div>`
+    : `<p class="hint">${t('lf.hist.memEmpty')}</p>`;
+  const vets = h.veterans.length ? `<div class="faint" style="font-size:12px;margin-top:8px">${icon('user')} ${t('lf.hist.vets', { names: esc(h.veterans.map((v) => t('lf.hist.vet', { name: v.name.split(' ')[0], n: v.years })).join(', ')) })}</div>` : '';
+  const miles = h.milestones.length ? `<div class="story">${storyList([{ t: 0, key: 'hist.founded', vars: { studio: G.studio } }, ...h.milestones])}</div><p class="hint" style="margin-top:8px">${t('lf.hist.milesAll')}</p>` : '';
+  return `<p class="hint" style="margin:0 0 10px">${icon('info')} ${t('lf.hist.help')}</p>
+    <h4 class="mg-h">${icon('trophy')}${t('lf.hist.wall')}</h4>${wall}
+    <h4 class="mg-h" style="margin-top:18px">${icon('bulb')}${t('lf.hist.mem')}</h4>${mem}${vets}
+    <h4 class="mg-h" style="margin-top:18px">${icon('book')}${t('lf.hist.miles')}</h4>${miles}`;
+}
+
+// ── Världen: trenden, kopiorna och svängningarna ──
+const sgn = (n) => (n > 0 ? `+${n}%` : n < 0 ? `−${Math.abs(n)}%` : '0%');
+function trendRow(x) {
+  const col = x.pct > 0 ? 'var(--good)' : x.pct < 0 ? 'var(--bug)' : 'var(--faint)';
+  const src = x.src === 'rival' ? 'lf.react.src.rival' : x.src === 'you' ? (x.pct < 0 ? 'lf.react.src.cold' : 'lf.react.src.you') : 'lf.react.src.plain';
+  return `<div class="rx-row${x.hottest && x.src ? ' hot' : ''}"><div style="min-width:0"><b class="ell" style="display:block">${esc(x.name)}</b><span class="faint" style="font-size:11.5px">${t(src)} · ${t('lf.react.left', { n: x.left })}</span></div><span class="lf-mood" style="--c:${col}" data-tip="${esc(t('lf.react.help'))}">${sgn(x.pct)}</span></div>`;
+}
+const swingName = (s) => {
+  const ref = s.kind === 'genre' ? GENRE[s.id] : TOPIC[s.id];
+  return ref ? L(ref.name) : '';
+};
+function reactTab(G) {
+  const r = reactState(G);
+  const clones = [
+    ...r.coming.map((c) => `<div class="lf-row"><span class="lf-ic" style="--c:var(--warn)">${icon('clock')}</span><span class="lf-tx">${t('lf.react.coming', { studio: `<b>${esc(c.studio)}</b>`, mine: `<b>${esc(c.mine)}</b>`, n: c.in })}</span><span class="lf-when faint"></span></div>`),
+    ...r.clones.slice(0, 6).map((c) => `<div class="lf-row"><span class="lf-ic" style="--c:var(--hot)">${icon('crown')}</span><span class="lf-tx">${t('lf.react.cloneRow', { studio: `<b>${esc(c.studio)}</b>`, title: `<b>${esc(tx(c.title))}</b>`, mine: `<b>${esc(c.mine)}</b>` })}</span><span class="lf-when faint">${t('lf.fans.ago', { n: Math.max(0, G.t - c.t) })}</span></div>`),
+  ];
+  const swings = r.swings.slice(0, 6).map((s) => {
+    const key = s.k === 'cold' ? 'lf.react.sw.cold' : s.src === 'rival' ? 'lf.react.sw.hotRival' : 'lf.react.sw.hotYou';
+    return `<div class="lf-row"><span class="lf-ic" style="--c:${s.k === 'cold' ? 'var(--bug)' : 'var(--hot)'}">${icon(s.k === 'cold' ? 'rain' : 'fire')}</span><span class="lf-tx">${t(key, { name: `<b>${esc(swingName(s))}</b>` })}</span><span class="lf-when faint">${t('lf.fans.ago', { n: Math.max(0, G.t - s.t) })}</span></div>`;
+  });
+  return `<p class="hint" style="margin:0 0 10px">${icon('info')} ${t('lf.react.help')}</p>
+    <div class="rx-cols"><section><h4 class="mg-h">${icon('gamepad')}${t('lf.react.genre')}</h4>${r.genre.map(trendRow).join('')}</section>
+      <section><h4 class="mg-h">${icon('bulb')}${t('lf.react.topic')}</h4>${r.topic.map(trendRow).join('')}</section></div>
+    <h4 class="mg-h" style="margin-top:18px" data-tip="${esc(t('lf.react.cloneTip'))}">${icon('crown')}${t('lf.react.clones')}</h4>${clones.length ? `<div class="lf-list">${clones.join('')}</div>` : `<p class="hint">${t('lf.react.cloneEmpty')}</p>`}
+    <h4 class="mg-h" style="margin-top:18px">${icon('trend')}${t('lf.react.swings')}</h4>${swings.length ? `<div class="lf-list">${swings.join('')}</div>` : `<p class="hint">${t('lf.react.swEmpty')}</p>`}`;
+}
+
 const TABS = [
   ['chron', 'lf.tab.chron', 'book'],
   ['folk', 'lf.tab.folk', 'heart'],
   ['fans', 'lf.tab.fans', 'user'],
   ['mag', 'lf.tab.mag', 'book'],
+  ['hist', 'lf.tab.hist', 'trophy'],
+  ['react', 'lf.tab.react', 'globe'],
 ];
 regWin({
   id: 'life',
@@ -173,7 +237,7 @@ regWin({
     if (arg && arg.tab && TABS.some((x) => x[0] === arg.tab)) LS.tab = arg.tab;
   },
   render(G) {
-    return LS.tab === 'folk' ? folkTab(G) : LS.tab === 'fans' ? fansTab(G) : LS.tab === 'mag' ? magTab(G) : chronTab(G);
+    return LS.tab === 'folk' ? folkTab(G) : LS.tab === 'fans' ? fansTab(G) : LS.tab === 'mag' ? magTab(G) : LS.tab === 'hist' ? histTab(G) : LS.tab === 'react' ? reactTab(G) : chronTab(G);
   },
 });
 act('lf-tab', (el) => {
