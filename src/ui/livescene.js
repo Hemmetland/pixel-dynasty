@@ -78,6 +78,8 @@ const STATE = {
   crisis: (G) => ({ ...lifeState(G, 'crisis'), looks: (G.staff || []).filter((x) => !x.away).map((x) => x.look) }),
   war: (G) => ({ ...lifeState(G, 'war'), looks: (G.staff || []).filter((x) => !x.away).map((x) => x.look) }),
   press: (G) => lifeState(G, 'press'),
+  history: (G) => lifeState(G, 'history'),
+  react: (G) => lifeState(G, 'react'),
   fans: (G) => lifeState(G, 'fans'),
   expo: (G) => ({ ...lifeState(G, 'expo'), looks: (G.staff || []).filter((x) => !x.away).map((x) => x.look) }),
   bank: (G) => ({ money: G.money, hist: (G.hist && G.hist.cash ? G.hist.cash.slice(-40).map((p) => p.v) : []), looks: (G.staff || []).filter((x) => !x.away).map((x) => x.look) }),
@@ -92,8 +94,8 @@ const STATE = {
     return { ...l, looks: staff };
   },
 };
-const TICK_SC = { studio: ['dev', 'studio'], factory: ['hw'], engine: ['eng'], group: ['group'], lab: ['lab'], shop: ['store'], live: ['live'], bank: ['dev', 'studio'], market: ['dev'], hall: ['hall'], crisis: ['crisis'], war: ['hw'], expo: ['expo'], press: ['press'], fans: ['fans'] };
-const LOG_SC = { studio: 'dev', factory: 'hw', engine: 'eng', group: 'group', lab: 'lab', shop: 'store', live: 'live', bank: 'studio', market: 'dev', hall: 'hall', crisis: 'crisis', war: 'hw', expo: 'expo', press: 'press', fans: 'fans' };
+const TICK_SC = { studio: ['dev', 'studio'], factory: ['hw'], engine: ['eng'], group: ['group'], lab: ['lab'], shop: ['store'], live: ['live'], bank: ['dev', 'studio'], market: ['dev'], hall: ['hall'], crisis: ['crisis'], war: ['hw'], expo: ['expo'], press: ['press'], fans: ['fans'], history: ['staff'], react: ['world'] };
+const LOG_SC = { studio: 'dev', factory: 'hw', engine: 'eng', group: 'group', lab: 'lab', shop: 'store', live: 'live', bank: 'studio', market: 'dev', hall: 'hall', crisis: 'crisis', war: 'hw', expo: 'expo', press: 'press', fans: 'fans', history: 'staff', react: 'world' };
 function refresh(kind, cfg) {
   try {
     cfg.st = STATE[kind](cfg.G, cfg);
@@ -105,6 +107,8 @@ function caption(kind, cfg) {
   const st = cfg.st;
   if (kind === 'studio') return !st ? t('ls.studio') : st.active ? t('ls.studio.on', { title: st.title || '…' }) : st.report ? t('ls.studio.report') : t('ls.studio.idle');
   if (kind === 'engine') return st && st.active ? t('ls.engine.on', { name: st.name }) : st && st.team ? t('ls.engine.team', { team: st.team.name }) : t('ls.engine');
+  if (kind === 'history') return !st || !st.wall.length ? t('ls.hist.none') : t('ls.hist', { n: st.wall.length });
+  if (kind === 'react') return !st ? t('ls.react') : st.coming.length ? t('ls.react.coming', { n: st.coming.length }) : t('ls.react');
   if (kind === 'press') return !st || !st.issue ? t('ls.press.none') : t('ls.press', { n: st.issue.n });
   if (kind === 'fans') return !st || !st.games.length ? t('ls.fans.none') : st.hot ? t('ls.fans.hot') : st.angry ? t('ls.fans.angry') : t('ls.fans', { n: st.games.length });
   if (kind === 'market') return t('ls.market');
@@ -1814,7 +1818,160 @@ function drawFans(ctx, W, tm, cfg) {
   drawCat(ctx, sx + 58, fy + 3, 'sleep', Math.floor(tm * 1.5), 1, 0);
 }
 
-const DRAW = { studio: drawStudio, factory: drawFactory, engine: drawEngine, group: drawGroup, lab: drawLab, shop: drawShop, live: drawLive, bank: drawBank, market: drawMarket, hall: drawHall, crisis: drawCrisis, war: drawWar, expo: drawExpo, press: drawPress, fans: drawFans };
+// ── Historien och världen ──
+const FRAME_COL = { gold: ['#e8c040', '#fff0a0'], silver: ['#aab4c8', '#eef2ff'], bronze: ['#b87a4a', '#f0c09a'], plain: ['#4a4a5a', '#8a8a9a'] };
+function drawHistory(ctx, W, tm, cfg) {
+  const fy = H - 6;
+  const st = cfg.st || { wall: [], veterans: [], milestones: [] };
+  const memE = recent(['memory'], 11, tm)[0];
+  R(ctx, 0, 0, W, H, '#2a2236');
+  R(ctx, 0, 0, W, 30, '#322840');
+  R(ctx, 0, 30, W, 1, '#4a3c58');
+  R(ctx, 0, H - 11, W, 11, '#5a3d27');
+  for (let x = 0; x < W; x += 18) R(ctx, x, H - 11, 1, 11, '#47301e');
+  R(ctx, 0, H - 11, W, 1, '#7a5636');
+  // väggen med de senaste inramade spelen, en strålkastare över varje
+  const n = Math.max(3, Math.min(st.wall.length || 3, Math.floor((W - 160) / 22)));
+  const x0 = 56;
+  for (let i = 0; i < n; i++) {
+    const w = st.wall[i];
+    const fx = x0 + i * 22;
+    const fc = FRAME_COL[(w && w.frame) || 'plain'];
+    ctx.globalAlpha = 0.08;
+    ctx.fillStyle = '#ffe9a8';
+    ctx.beginPath(); ctx.moveTo(fx + 8, 0); ctx.lineTo(fx + 16, 30); ctx.lineTo(fx, 30); ctx.closePath(); ctx.fill();
+    ctx.globalAlpha = 1;
+    R(ctx, fx, 4, 18, 24, fc[0]);
+    R(ctx, fx, 4, 18, 1, fc[1]);
+    R(ctx, fx + 2, 6, 14, 20, '#14141e');
+    const hue = ((w ? w.id : i) * 47 + (w ? w.genre.length : 3) * 31) % 360;
+    R(ctx, fx + 3, 7, 12, 12, `hsl(${hue},45%,40%)`);
+    R(ctx, fx + 3, 14, 12, 5, `hsl(${(hue + 40) % 360},40%,28%)`);
+    R(ctx, fx + 6, 9, 5, 5, `hsl(${(hue + 160) % 360},50%,70%)`);
+    R(ctx, fx + 3, 20, 12, 1, '#c8c8d8');
+    R(ctx, fx + 4, 22, 10, 2, w ? (w.score >= 8 ? '#e8c040' : w.score >= 7 ? '#8a94aa' : '#6a5a4a') : '#4a4a5a');
+    if (w && w.cert) R(ctx, fx + 14, 24, 3, 3, '#e8e8f4');
+    if (w && w.top) { R(ctx, fx + 7, 1, 4, 2, '#ffd84a'); R(ctx, fx + 6, 2, 1, 1, '#ffd84a'); R(ctx, fx + 11, 2, 1, 1, '#ffd84a'); }
+    // glansen som sveper över ramarna
+    const sw = ((tm * 0.35 + i * 0.06) % 3);
+    if (sw < 0.3) R(ctx, fx + 2 + Math.round(sw / 0.3 * 14), 6, 2, 20, 'rgba(255,255,255,.35)');
+  }
+  // vitrinskåp med skivor och pokaler till höger
+  const cx0 = W - 80;
+  R(ctx, cx0, 6, 34, 40, '#3a2e22');
+  R(ctx, cx0 + 2, 8, 30, 36, '#1a1a28');
+  for (let r = 0; r < 3; r++) {
+    R(ctx, cx0 + 2, 18 + r * 12, 30, 1, '#6a5a44');
+    for (let k = 0; k < 4; k++) {
+      const x = cx0 + 4 + k * 7;
+      if (r === 1) { R(ctx, x, 21, 5, 5, ['#e8c040', '#c8d0e0', '#e8c040', '#9ad0ff'][k]); R(ctx, x + 2, 23, 1, 1, '#14141e'); }
+      else { R(ctx, x + 1, 10 + r * 12, 3, 3, '#ffd84a'); R(ctx, x + 2, 13 + r * 12, 1, 3, '#c89a2a'); R(ctx, x, 16 + r * 12, 5, 1, '#c89a2a'); }
+    }
+  }
+  // soffan med veteranen som minns och en yngre som lyssnar
+  const sx = Math.round(W * 0.5);
+  R(ctx, sx - 4, fy - 10, 38, 10, '#6a3a48');
+  R(ctx, sx - 4, fy - 14, 38, 5, '#8a4a5a');
+  R(ctx, sx - 6, fy - 12, 4, 12, '#5a2a38');
+  R(ctx, sx + 32, fy - 12, 4, 12, '#5a2a38');
+  const staff = cfg.G.staff || [];
+  const vet = staff.slice().sort((a, b) => (a.hired || 0) - (b.hired || 0))[0];
+  const vlook = vet && vet.look ? { ...vet.look, hairColor: 5 } : FALLBACK[2];
+  const youngLook = cfg.looks[Math.min(cfg.looks.length - 1, 1)];
+  person(ctx, sx + 6, fy - 4, vlook, memE ? 'talk' : 'sitIdle', tm, 1, true, 0.3);
+  person(ctx, sx + 22, fy - 4, youngLook, memE ? 'sitIdle' : 'read', tm, -1, true, 0.7);
+  R(ctx, sx + 30, fy - 9, 3, 3, '#f4f4ff');
+  steam(ctx, sx + 31, fy - 10, tm, 2, 0.4);
+  if (memE) {
+    // en tankebubbla med en liten bild från minnet
+    const age = tm - memE.t0;
+    const bx = sx + 8, by = 0;
+    const a = Math.min(1, age * 2) * Math.min(1, (11 - age) * 2);
+    ctx.globalAlpha = a;
+    R(ctx, bx, by, 28, 18, '#f6f6ff');
+    R(ctx, bx + 2, by + 18, 3, 2, '#f6f6ff');
+    const v = memE.b.v;
+    R(ctx, bx + 2, by + 2, 24, 14, v === 1 ? '#5a3a4a' : v === 2 ? '#3a3a6a' : v === 3 ? '#3a5a4a' : '#3a6a4a');
+    if (v === 0) { R(ctx, bx + 11, by + 5, 6, 5, '#ffd84a'); R(ctx, bx + 13, by + 10, 2, 3, '#ffd84a'); R(ctx, bx + 10, by + 13, 8, 1, '#c89a2a'); }
+    else if (v === 1) { for (let k = 0; k < 6; k++) R(ctx, bx + 6 + k * 3, by + 5 + k, 1, 6, '#7a90d8'); }
+    else if (v === 2) { for (let k = 0; k < 3; k++) { R(ctx, bx + 6 + k * 7, by + 8 - k % 2 * 3, 2, 6, '#ffd84a'); R(ctx, bx + 5 + k * 7, by + 6 - k % 2 * 3, 4, 2, '#ff6a6a'); } }
+    else sparkle(ctx, bx + 14, by + 9, '#fff2a0');
+    ctx.globalAlpha = 1;
+  }
+  // gamla spel på en hylla med konsol
+  R(ctx, 4, fy - 4, 24, 4, '#4a3a58');
+  R(ctx, 8, fy - 8, 12, 4, '#8a94aa');
+  R(ctx, 10, fy - 7, 6, 1, '#14141e');
+  if (recent(['launch', 'done', 'hallAward'], 4, tm).length) confetti(ctx, W, tm % 4.6, 3);
+}
+
+function drawReact(ctx, W, tm, cfg) {
+  const fy = H - 6;
+  const st = cfg.st || { genre: [], topic: [], clones: [], coming: [], swings: [] };
+  const swE = recent(['trendSwing'], 7, tm)[0];
+  const clE = recent(['clone'], 9, tm)[0];
+  R(ctx, 0, 0, W, H, '#161a30');
+  R(ctx, 0, 0, W, 30, '#1c2140');
+  R(ctx, 0, H - 11, W, 11, '#2a2a40');
+  for (let x = 0; x < W; x += 20) R(ctx, x, H - 11, 1, 11, '#222236');
+  R(ctx, 0, H - 11, W, 1, '#4a4a68');
+  // världskartan med blinkande punkter där spel säljs
+  const mx = 8, mw = Math.min(70, Math.round(W * 0.3));
+  R(ctx, mx, 5, mw, 30, '#0e2236');
+  R(ctx, mx, 5, mw, 1, '#3a4a6a');
+  for (let y = 0; y < 8; y++) for (let x = 0; x < mw / 3; x++) {
+    const land = V.hash(x * 3 + y * 17 + 2) > 0.52 && Math.abs(y - 4) < 4 - Math.abs(x - mw / 6) / (mw / 12);
+    if (land) R(ctx, mx + 2 + x * 3, 8 + y * 3, 2, 2, '#2a6a4a');
+  }
+  for (let k = 0; k < 6; k++) if (Math.floor(tm * 1.5 + k * 2) % 4) R(ctx, mx + 4 + Math.floor(V.hash(k * 11) * (mw - 10)), 9 + Math.floor(V.hash(k * 7 + 1) * 22), 2, 2, k % 2 ? '#ffd84a' : '#7cf2ff');
+  // trendtavlan: staplar för de varmaste genrerna och ämnena, grönt upp och rött ner
+  const bx = mx + mw + 8;
+  R(ctx, bx, 5, 64, 30, '#0c1022');
+  R(ctx, bx, 5, 64, 1, '#3a4a6a');
+  const rows = [...st.genre.slice(0, 2), ...st.topic.slice(0, 2)];
+  for (let i = 0; i < 4; i++) {
+    const r = rows[i];
+    const pct = r ? r.pct : 0;
+    const len = Math.min(26, Math.round(Math.abs(pct) / 4) + 2);
+    const col = pct > 0 ? '#4ad07a' : pct < 0 ? '#e8504a' : '#6a7a98';
+    R(ctx, bx + 4, 9 + i * 7, 18, 1, '#4a5a80');
+    R(ctx, bx + 4, 11 + i * 7, 18, 2, '#222a48');
+    R(ctx, bx + 34, 8 + i * 7, 2, 5, '#4a5a80');
+    R(ctx, bx + (pct < 0 ? 35 - len : 35), 9 + i * 7, len, 3, col);
+    if (swE && r && ((swE.b.v === 1 && pct < 0) || (swE.b.v !== 1 && pct > 0)) && Math.floor(tm * 6) % 2) R(ctx, bx + 3, 8 + i * 7, 58, 5, 'rgba(255,255,255,.2)');
+  }
+  if (swE) {
+    const up = swE.b.v !== 1;
+    for (let k = 0; k < 5; k++) { const ph = ((tm - swE.t0) * 0.6 + k * 0.2) % 1; R(ctx, bx + 46 + (k % 3) * 4, Math.round(up ? 32 - ph * 26 : 8 + ph * 24), 2, 3, up ? '#4ad07a' : '#e8504a'); }
+  }
+  // kopiatorn: spottar ut kopior av ens spel när en konkurrent släpper en kopia
+  const kx = Math.round(W * 0.58);
+  R(ctx, kx, fy - 18, 28, 18, '#8a94aa');
+  R(ctx, kx, fy - 18, 28, 2, '#c8d0e0');
+  R(ctx, kx + 3, fy - 14, 22, 4, '#2a3248');
+  R(ctx, kx + 4, fy - 6, 16, 2, '#4a5470');
+  const on = !!clE || st.coming.length > 0;
+  R(ctx, kx + 22, fy - 7, 3, 3, on && Math.floor(tm * 4) % 2 ? '#4ad07a' : '#2a4a3a');
+  if (clE) {
+    const age = tm - clE.t0;
+    const sh = Math.floor(age * 6) % 2;
+    R(ctx, kx + 3, fy - 13 + sh, 22, 1, '#fffff0');
+    for (let k = 0; k < 4; k++) {
+      const ph = Math.min(1, Math.max(0, age * 0.8 - k * 0.2));
+      if (ph > 0 && ph < 1) { R(ctx, kx + 4 + k * 5, fy - 4 + Math.round(ph * 6), 4, 5, '#f4f4f0'); R(ctx, kx + 5 + k * 5, fy - 3 + Math.round(ph * 6), 2, 2, k % 2 ? '#d84a7a' : '#4a7ad8'); }
+    }
+    drawText(ctx, 'KOPIA', kx + 1, fy - 24, '#ff7a7a', 1);
+  }
+  // konkurrenten i kostym som tittar på (och lite surt eller nöjt)
+  const rival = { skin: 2, hair: 0, hairColor: 0, shirt: 14, pants: 0, acc: 0, body: 0 };
+  person(ctx, kx + 40, fy + 2, rival, clE ? 'wave' : 'stand', tm, -1);
+  if (clE) bubble(ctx, kx + 41, fy - 32, clE.b.v === 1 ? 'sweat' : 'exclam', tm - clE.t0, 3, tm);
+  // analytikern vid skärmen
+  F.desk2(ctx, Math.round(W * 0.82), fy, 2, 5, 2);
+  person(ctx, Math.round(W * 0.82) + 6, fy, cfg.looks[0], Math.floor(tm / 8) % 2 ? 'think' : 'type', tm, 1, true);
+}
+
+const DRAW = { studio: drawStudio, factory: drawFactory, engine: drawEngine, group: drawGroup, lab: drawLab, shop: drawShop, live: drawLive, bank: drawBank, market: drawMarket, hall: drawHall, crisis: drawCrisis, war: drawWar, expo: drawExpo, press: drawPress, fans: drawFans, history: drawHistory, react: drawReact };
 
 // ── Timer ──
 let timer = 0;

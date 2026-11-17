@@ -184,7 +184,7 @@ function histTab(G) {
     : `<p class="hint">${t('lf.hist.memEmpty')}</p>`;
   const vets = h.veterans.length ? `<div class="faint" style="font-size:12px;margin-top:8px">${icon('user')} ${t('lf.hist.vets', { names: esc(h.veterans.map((v) => t('lf.hist.vet', { name: v.name.split(' ')[0], n: v.years })).join(', ')) })}</div>` : '';
   const miles = h.milestones.length ? `<div class="story">${storyList([{ t: 0, key: 'hist.founded', vars: { studio: G.studio } }, ...h.milestones])}</div><p class="hint" style="margin-top:8px">${t('lf.hist.milesAll')}</p>` : '';
-  return `<p class="hint" style="margin:0 0 10px">${icon('info')} ${t('lf.hist.help')}</p>
+  return `${sceneHTML('history', G)}<p class="hint" style="margin:0 0 10px">${icon('info')} ${t('lf.hist.help')}</p>
     <h4 class="mg-h">${icon('trophy')}${t('lf.hist.wall')}</h4>${wall}
     <h4 class="mg-h" style="margin-top:18px">${icon('bulb')}${t('lf.hist.mem')}</h4>${mem}${vets}
     <h4 class="mg-h" style="margin-top:18px">${icon('book')}${t('lf.hist.miles')}</h4>${miles}`;
@@ -211,7 +211,7 @@ function reactTab(G) {
     const key = s.k === 'cold' ? 'lf.react.sw.cold' : s.src === 'rival' ? 'lf.react.sw.hotRival' : 'lf.react.sw.hotYou';
     return `<div class="lf-row"><span class="lf-ic" style="--c:${s.k === 'cold' ? 'var(--bug)' : 'var(--hot)'}">${icon(s.k === 'cold' ? 'rain' : 'fire')}</span><span class="lf-tx">${t(key, { name: `<b>${esc(swingName(s))}</b>` })}</span><span class="lf-when faint">${t('lf.fans.ago', { n: Math.max(0, G.t - s.t) })}</span></div>`;
   });
-  return `<p class="hint" style="margin:0 0 10px">${icon('info')} ${t('lf.react.help')}</p>
+  return `${sceneHTML('react', G)}<p class="hint" style="margin:0 0 10px">${icon('info')} ${t('lf.react.help')}</p>
     <div class="rx-cols"><section><h4 class="mg-h">${icon('gamepad')}${t('lf.react.genre')}</h4>${r.genre.map(trendRow).join('')}</section>
       <section><h4 class="mg-h">${icon('bulb')}${t('lf.react.topic')}</h4>${r.topic.map(trendRow).join('')}</section></div>
     <h4 class="mg-h" style="margin-top:18px" data-tip="${esc(t('lf.react.cloneTip'))}">${icon('crown')}${t('lf.react.clones')}</h4>${clones.length ? `<div class="lf-list">${clones.join('')}</div>` : `<p class="hint">${t('lf.react.cloneEmpty')}</p>`}
