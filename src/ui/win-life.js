@@ -1,6 +1,7 @@
 // Studiolivet: ett gemensamt fönster för det som gör studion levande. Krönikan samlar allt som hänt (personalen, fansen, tidningen,
 // världen och dramat) i en tidslinje, och Folket visar vem som är vän med vem, personligheter, födelsedagar och drömmar. Bara läsning:
 // allt kommer ur sim/life.js (krönikan) och sim/folk.js.
+import { sceneHTML } from './livescene.js';
 import { esc, icon, t, L, UI, act, regWin, MONTHS } from './core.js';
 import { fmtNum } from '../core/util.js';
 import { lang } from '../core/i18n.js';
@@ -90,7 +91,7 @@ function folkTab(G) {
   const friends = F.bonds.filter((b) => b.k === 'friend').length;
   const people = G.staff.slice().sort((a, b) => (b.isFounder ? 1 : 0) - (a.isFounder ? 1 : 0) || a.id - b.id);
   const next = people.map((s) => ({ s, in: bdayIn(G, s) })).sort((a, b) => a.in - b.in || a.s.id - b.s.id).slice(0, 3);
-  return `<p class="hint" style="margin:0 0 10px">${icon('info')} ${t('lf.folk.help')}</p>
+  return `${sceneHTML('studio', G)}<p class="hint" style="margin:0 0 10px">${icon('info')} ${t('lf.folk.help')}</p>
     <div class="row wrap" style="gap:8px;margin-bottom:12px"><span class="chip c" style="--c:var(--good)">${icon('user')}${t('lf.folk.friends', { n: friends })}</span><span class="chip c" style="--c:var(--fans)">${icon('heart')}${t('lf.folk.couples', { n: couples })}</span>
       ${next.map((x) => `<span class="chip">${icon('calendar')}${t(x.in === 0 ? 'lf.folk.bdayNow' : 'lf.folk.bday', { name: esc(x.s.name.split(' ')[0]), n: x.in })}</span>`).join('')}</div>
     <div class="grid lf-grid">${people.map((s) => personCard(G, s)).join('')}</div>`;
@@ -112,7 +113,7 @@ function talkCard(G, x) {
 }
 function fansTab(G) {
   const list = fanTalk(G, 12);
-  return `<p class="hint" style="margin:0 0 10px">${icon('info')} ${t('lf.fans.help')}</p>
+  return `${sceneHTML('fans', G)}<p class="hint" style="margin:0 0 10px">${icon('info')} ${t('lf.fans.help')}</p>
     ${list.length ? `<div class="grid lf-grid">${list.map((x) => talkCard(G, x)).join('')}</div>` : `<div class="empty">${icon('user')}<div>${t('lf.fans.empty')}</div></div>`}`;
 }
 
@@ -134,7 +135,7 @@ function chartRows(ch) {
 }
 function magTab(G) {
   const M = magOf(G);
-  if (!M.issues.length) return `<div class="empty">${icon('book')}<div>${t('lf.mag.empty')}</div></div>`;
+  if (!M.issues.length) return `${sceneHTML('press', G)}<div class="empty">${icon('book')}<div>${t('lf.mag.empty')}</div></div>`;
   let i = LS.issue;
   if (i < 0 || i >= M.issues.length) i = M.issues.length - 1;
   LS.issue = i;
@@ -145,7 +146,7 @@ function magTab(G) {
   const nav = `<div class="row mg-nav" style="gap:6px"><button class="btn sm prev" data-act="lf-issue" data-id="${i - 1}"${i <= 0 ? 'disabled' : ''} data-tip="${esc(t('lf.mag.prev'))}">${icon('chevron')}</button><button class="btn sm next" data-act="lf-issue" data-id="${i + 1}" ${i >= M.issues.length - 1 ? 'disabled' : ''} data-tip="${esc(t('lf.mag.next'))}">${icon('chevron')}</button></div>`;
   const gossip = is.gossip.length ? is.gossip.map((x) => `<div class="mg-gs">${icon('mail')}<span>${esc(gossipText(x))}</span></div>`).join('') : `<div class="faint" style="font-size:12.5px">${t('lf.mag.noGossip')}</div>`;
   const older = M.issues.map((x, n) => ({ x, n })).reverse().slice(0, 12).map(({ x, n }) => `<button class="chip lf-chip ${n === i ? 'on' : ''}" data-act="lf-issue" data-id="${n}">${MONTHS[lang][dateOf(x.t).month]} ${dateOf(x.t).year}</button>`).join('');
-  return `<p class="hint" style="margin:0 0 10px">${icon('info')} ${t('lf.mag.help')}</p>
+  return `${sceneHTML('press', G)}<p class="hint" style="margin:0 0 10px">${icon('info')} ${t('lf.mag.help')}</p>
     <div class="mg">
       <div class="mg-head"><div><b class="mg-name">${t('mag.name')}</b><span class="faint"> · ${t('lf.mag.no', { n: is.n })} · ${MONTHS[lang][d.month]} ${d.year}</span></div>${nav}</div>
       <div class="mg-cover" style="--c:${COVER_COL[c.k]}"><span class="lf-ic" style="--c:${COVER_COL[c.k]}">${icon(COVER_IC[c.k])}</span><b class="mg-hl">${esc(coverText(c))}</b></div>
