@@ -4,7 +4,7 @@
 // med länge vill göra sitt drömspel: spelaren väljer mellan pengar och hjärta (händelserna i data/folk-events.js).
 // Allt som avgör om och när något händer dras med hashStr, aldrig G.rng: utan en händelse är slumpföljden densamma som utan systemet.
 // Bara utfallet av ett val med slump (när spelaren valt) använder G.rng, som i alla andra händelser.
-import { hashStr } from '../core/rng.js';
+import { dice } from './dice.js';
 import { clamp } from '../core/util.js';
 import { WEEKS_PER_YEAR } from './const.js';
 import { QUIRKS, QUIRK_IDS } from '../data/folk.js';
@@ -34,17 +34,7 @@ const DREAM_WEEKS = { go: 24, free: 36 };
 const FRIEND_MOOD = 1.5; // humör per vän (högst två)
 const COUPLE_MOOD = 3;
 
-// 0 till 4294967295 ur seed och nyckel (hashStr sprider tätt följande tal ojämnt, så resultatet blandas en gång till)
-function h32(G, tag) {
-  let h = hashStr(`${G.seed || 0}|folk|${tag}`);
-  h ^= h >>> 16;
-  h = Math.imul(h, 0x85ebca6b);
-  h ^= h >>> 13;
-  h = Math.imul(h, 0xc2b2ae35);
-  h ^= h >>> 16;
-  return h >>> 0;
-}
-const u01 = (G, tag) => h32(G, tag) / 4294967296;
+const { h32, u01 } = dice('folk');
 
 export const folkOf = (G) => G.folk || (G.folk = { bonds: [], cool: {}, dreams: {}, last: {} });
 
@@ -89,6 +79,7 @@ function addBond(G, a, b, k) {
   const F = folkOf(G);
   const bd = { a: lo(a.id, b.id), b: hi(a.id, b.id), k, t0: G.t, na: a.id < b.id ? lifeName(a) : lifeName(b), nb: a.id < b.id ? lifeName(b) : lifeName(a) };
   F.bonds.push(bd);
+  if (k === 'friend') G.stats.fr = (G.stats.fr || 0) + 1; // för prestationerna
   return bd;
 }
 
@@ -192,6 +183,7 @@ function formBonds(G, F) {
     if (b.k !== 'friend' || G.t - b.t0 < COUPLE_AFTER || !free(b.a) || !free(b.b)) continue;
     if (u01(G, `cp:${b.a}:${b.b}:${G.t}`) >= P_COUPLE) continue;
     b.k = 'couple';
+    G.stats.cp = (G.stats.cp || 0) + 1;
     b.t0 = G.t;
     beat(G, 'couple', { staff: staffById(G, b.a), staff2: staffById(G, b.b) });
     break;
@@ -289,6 +281,7 @@ function dreamsMonth(G, F) {
 function finishDream(G, s, d) {
   const go = d.state === 'go';
   d.state = 'done';
+  G.stats.dreams = (G.stats.dreams || 0) + 1;
   const cap = skillCap(G);
   const gain = go ? 2 : 1;
   s.design = Math.min(cap, s.design + gain);
@@ -326,6 +319,7 @@ export function folkAfter(G, pr, ev, idx) {
   if (ev.id === 'folk_wedding') {
     const b = bondOf(G, pr.who, pr.who2);
     if (b) b.wed = G.t;
+    G.stats.wed = (G.stats.wed || 0) + 1;
     beat(G, 'wedding', { staff: staffById(G, pr.who), staff2: staffById(G, pr.who2), v: idx === 0 ? 0 : 1 });
     note(G, 'news.folkWedding', { a: (staffById(G, pr.who) || {}).name || '', b: pr.partner || '' }, 'info');
   } else if (ev.id === 'folk_headhunt' || ev.id === 'folk_headhunt_pair') {

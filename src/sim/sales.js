@@ -99,6 +99,8 @@ export function salesWeek(G) {
     if (g.patched) rev *= 1 + (g.patchBoost ?? 0.12);
     // mässan: ett visat spel säljer mer under några veckor
     if (g.expo && G.t <= g.expo.until) rev *= g.expo.mult;
+    // fansen: en tråd som går viralt lyfter försäljningen några veckor, missnöje drar ner den (community.js)
+    if (g.viral && G.t <= g.viral.until) rev *= g.viral.mult;
     // ett exklusivt pc-spel säljs bara i den egna butiken och står still medan den är pausad
     const shut = g.storeEx && G.store?.paused;
     if (shut) rev = 0;

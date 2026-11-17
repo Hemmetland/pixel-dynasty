@@ -22,6 +22,8 @@ import { buildsOf, buildInfo } from './builds.js'; // bara i lifeState (vid anro
 import { warState } from './hwwar.js';
 import { expoState } from './exposhow.js';
 import { folkState } from './folk.js'; // bara i lifeState (vid anrop)
+import { fanState } from './community.js'; // bara i lifeState (vid anrop)
+import { magState } from './mag.js'; // bara i lifeState (vid anrop)
 import { FACILITIES } from './studio.js'; // bara i lifeText (vid anrop), så importcykeln gör inget
 
 export const LIFE_MAX = 30; // så många händelser sparas
@@ -140,6 +142,14 @@ export const LIFE_KINDS = {
   dreamNo: { sc: 'drama', v: 2, gap: 0, ch: 'drama' }, // svaret blev inte nu
   dreamDone: { sc: 'drama', v: 2, gap: 0, ch: 'drama' }, // drömspelet är klart (g = spelet)
   dreamQuit: { sc: 'drama', v: 2, gap: 0, ch: 'drama' }, // någon tröttnar och går för att göra sitt eget
+  // fansen och tidningen (community.js, mag.js): g = spelet, who = en spelare eller streamare; v väljs efter epok (se community.js)
+  thread: { sc: 'fans', v: 8, gap: 0, ch: 'fans' }, // en tråd om spelet (v 0-1 insändare, 2-4 forum, 5-7 flödet)
+  meme: { sc: 'fans', v: 3, gap: 0, ch: 'fans' }, // en meme (v 0 efter en bugg, 1 om något älskat, 2 om ett misslyckande)
+  fanart: { sc: 'fans', v: 3, gap: 0, ch: 'fans' }, // fanart sprids
+  streamer: { sc: 'fans', v: 3, gap: 0, ch: 'fans' }, // en streamare spelar spelet (who = hens namn)
+  viralUp: { sc: 'fans', v: 3, gap: 0, ch: 'fans' }, // en tråd går viralt och fler vill köpa
+  viralDown: { sc: 'fans', v: 3, gap: 0, ch: 'fans' }, // missnöjet sprids och fler tvekar
+  issue: { sc: 'press', v: 12, gap: 0, ch: 'press' }, // nytt nummer av branschtidningen (v = omslagets sort, se mag.js; g = vad omslaget handlar om)
   // hårdvara
   hwStart: { sc: 'hw', v: 2, gap: 0 }, // en konstruktion påbörjas
   hwHalf: { sc: 'hw', v: 2, gap: 0 }, // ritningarna halvvägs
@@ -155,7 +165,7 @@ export const LIFE_KINDS = {
 
 // Krönikan: studions gemensamma tidslinje. Varje händelse av en sort med ch (området) sparas också här, i större antal än i scenernas
 // flöde, så att fönstret Studiolivet kan visa vad som hänt med personalen, fansen, tidningen och världen (lifeText ger texten).
-export const CHRON_MAX = 160;
+export const CHRON_MAX = 240;
 export const CHRON_AREAS = ['folk', 'fans', 'press', 'world', 'drama', 'studio'];
 export const chronOf = (G) => G.chron || (G.chron = { items: [] });
 function chronAdd(G, item) {
@@ -173,6 +183,8 @@ export const chronLog = (G, area, n = 40) => {
 
 export const lifeOf = (G) => G.life || (G.life = { n: 0, last: {}, items: [] });
 const nowTick = (G) => G.t * TICKS_PER_WEEK + (G.tick || 0);
+// Svensk genitiv: ett namn på s, x eller z får inget extra s ({whoG} i de svenska texterna)
+export const svGen = (n) => (!n || /[sxz]$/i.test(n) ? n : n + 's');
 export const lifeName = (s) => (s && s.name ? String(s.name).split(' ')[0] : '');
 
 // Välj en av flera (personal, projekt) utan slump ur G.rng: samma tillstånd ger samma val.
@@ -191,7 +203,7 @@ export function beat(G, k, d = {}) {
   LF.last[k] = now;
   const n = ++LF.n;
   const s = d.staff || null;
-  const item = { n, t: G.t, k, sc: K.sc, gid: d.gid || 0, s: s ? s.id : 0, who: lifeName(s), s2: d.staff2 ? d.staff2.id : 0, who2: lifeName(d.staff2), g: d.g ? (typeof d.g === 'object' ? L(d.g) : String(d.g)) : '', a: d.a == null ? 0 : d.a, v: d.v != null ? Math.max(0, Math.min(K.v - 1, d.v)) : hashStr(`${G.seed || 0}:life:${k}:${n}`) % K.v };
+  const item = { n, t: G.t, k, sc: K.sc, gid: d.gid || 0, s: s ? s.id : 0, who: d.who ? String(d.who) : lifeName(s), s2: d.staff2 ? d.staff2.id : 0, who2: lifeName(d.staff2), g: d.g ? (typeof d.g === 'object' ? L(d.g) : String(d.g)) : '', a: d.a == null ? 0 : d.a, v: d.v != null ? Math.max(0, Math.min(K.v - 1, d.v)) : hashStr(`${G.seed || 0}:life:${k}:${n}`) % K.v };
   LF.items.push(item);
   if (LF.items.length > LIFE_MAX) LF.items.shift();
   if (K.ch) chronAdd(G, item);
@@ -207,7 +219,7 @@ export function lifeLog(G, sc, since = 0) {
 }
 // Färdig text på spelarens språk
 const NUM_KINDS = new Set(['sold', 'hwParts', 'fans', 'liveSeasonEnd', 'worldChamp', 'hallRecord', 'expoOpen', 'expoCrowd', 'expoClose']); // stora tal skrivs med tusentalsavgränsare
-export const lifeText = (b) => t(`life.${b.k}.${b.v}`, { who: b.who || t('life.someone'), who2: b.who2 || t('life.someone'), g: b.k === 'built' && FACILITIES[b.g] ? L(FACILITIES[b.g].name) : b.g, a: NUM_KINDS.has(b.k) ? fmtFull(b.a) : b.a });
+export const lifeText = (b) => t(`life.${b.k}.${b.v}`, { who: b.who || t('life.someone'), who2: b.who2 || t('life.someone'), whoG: svGen(b.who || t('life.someone')), who2G: svGen(b.who2 || t('life.someone')), g: b.k === 'built' && FACILITIES[b.g] ? L(FACILITIES[b.g].name) : b.g, a: NUM_KINDS.has(b.k) ? fmtFull(b.a) : b.a });
 
 // Veckovis: den som är mest utsliten under ett pågående projekt. (De andra händelserna skapas där de sker: dev.js, hardware.js,
 // people.js, studio.js och charts.js.)
@@ -258,6 +270,8 @@ export function lifeState(G, sc) {
   if (sc === 'war') return warState(G);
   if (sc === 'expo') return expoState(G);
   if (sc === 'staff') return folkState(G);
+  if (sc === 'fans') return fanState(G);
+  if (sc === 'press') return magState(G);
   const J = G.job && G.job.kind === 'game' ? G.job : null;
   const crew = workers(G).map((w) => ({ id: w.id, name: lifeName(w), mood: Math.round(w.mood), fatigue: Math.round((w.fatigue || 0) * 10) / 10, trait: w.trait || null, away: !!w.away }));
   // alla bygge som pågår (spelarens och teamens): key 'p' är ordinarie teamets, 't<id>' ett teams uppdrag (builds.js)

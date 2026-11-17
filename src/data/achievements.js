@@ -156,6 +156,12 @@ export const ACHIEVEMENTS = [
   A('top3_00', 'a_crown', 'Toppstudio på 00-talet', 'Top Studio of the 00s', 'Bli en av de tre största studiorna ett år på 00-talet.', 'Be one of the three biggest studios in a year in the 2000s.', (G) => rankedIn(G, 2000, 3)),
   A('top3_10', 'a_crown', 'Toppstudio på 10-talet', 'Top Studio of the 10s', 'Bli en av de tre största studiorna ett år på 10-talet.', 'Be one of the three biggest studios in a year in the 2010s.', (G) => rankedIn(G, 2010, 3)),
   A('era_all', 'a_clock', 'Genom epokerna', 'Through the Eras', 'Släpp spel på 80-, 90-, 00- och 10-talet.', 'Release games in the 80s, 90s, 00s and 10s.', (G) => [1980, 1990, 2000, 2010].every((d) => fullGames(G).some((g) => decadeOf(yearOfT(g.t)) === d))),
+  A('fr_friends', 'a_heart', 'Ett lag av vänner', 'A Team of Friends', 'Låt fem vänskaper uppstå i studion.', 'Let five friendships form in the studio.', (G) => (G.stats.fr || 0) >= 5),
+  A('fr_couple', 'a_heart', 'Kärlek på kontoret', 'Office Romance', 'Låt två kollegor bli ett par.', 'Let two colleagues become a couple.', (G) => (G.stats.cp || 0) >= 1),
+  A('fr_wedding', 'a_heart', 'Bröllopsklockor', 'Wedding Bells', 'Ha ett bröllop i studion.', 'Hold a wedding at the studio.', (G) => (G.stats.wed || 0) >= 1),
+  A('fr_dream', 'a_bulb', 'Drömmen blev verklig', 'Dream Come True', 'Låt en medarbetare göra klart sitt drömspel.', 'Let a team member finish their dream game.', (G) => (G.stats.dreams || 0) >= 1),
+  A('fr_viral', 'a_star', 'Gick viralt', 'Gone Viral', 'Få en tråd om ett av dina spel att gå viralt.', 'Have a thread about one of your games go viral.', (G) => (G.stats.viral || 0) >= 1),
+  A('fr_cover', 'a_trophy', 'På omslaget', 'On the Cover', 'Hamna på omslaget av Pixelposten med ett toppbetyg.', 'Make the cover of The Pixel Post with a top score.', (G) => (G.stats.covers || 0) >= 1),
   A('legend', 'a_clock', 'Legend', 'Legend', 'Spela till år 2020.', 'Play until the year 2020.', (G) => G.t >= 48 * 40),
 ];
 export const ACH = Object.fromEntries(ACHIEVEMENTS.map((a) => [a.id, a]));

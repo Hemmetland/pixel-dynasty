@@ -27,6 +27,8 @@ import { resWeek } from './resteam.js';
 import { hrWeek } from './hrdept.js';
 import { chartWeek, rankYear } from './charts.js';
 import { fanWeek } from './fans.js';
+import { communityWeek } from './community.js';
+import { magMonth } from './mag.js';
 import { storyWeek } from './news.js';
 import { monthlyMarket, updateTrends } from './market.js';
 import { rollDevEvent, rollStudioEvent } from './events.js';
@@ -79,6 +81,7 @@ function weekly(G) {
   portWeek(G);
   chartWeek(G);
   fanWeek(G);
+  communityWeek(G);
   storyWeek(G);
   pubWeek(G);
   frWeek(G);
@@ -169,6 +172,7 @@ function monthly(G, d) {
   refreshContracts(G);
   monthlyMarket(G);
   if (d.month === 0 || d.month === 6) updateTrends(G);
+  magMonth(G);
   if (d.month === 0 && G.t > 0) {
     G.lastYear = { year: yearOf(G.t) - 1, bd: G.yr || {}, part: G.yrT != null };
     G.yr = {};

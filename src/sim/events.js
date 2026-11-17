@@ -293,6 +293,15 @@ export function applyFx(G, fx, out = [], ctx = {}, dry = false) {
     if (!dry) folkDream(G, ctx.who, fx.dream);
     out.push({ k: 'dream', v: fx.dream });
   }
+  // en lyft eller dämpning av spelets försäljning (community.js): 'end' lägger stormen, 'soften' dämpar den
+  if (fx.viral) {
+    const vg = G.games.find((x) => x.id === ctx.game);
+    if (!dry && vg && vg.viral) {
+      if (fx.viral === 'end') delete vg.viral;
+      else vg.viral.mult = Math.max(vg.viral.mult, 0.96);
+    }
+    out.push({ k: 'viral', v: fx.viral });
+  }
   if (fx.res) out.push({ k: 'text', v: fx.res });
   if (fx.rand && dry) out.push({ k: 'risk' });
   else if (fx.rand) {

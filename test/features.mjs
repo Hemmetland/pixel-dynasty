@@ -5029,5 +5029,179 @@ ok(!bad.length, `äldre sparning utan ett av ${paths.length} fält går att spel
   ok(QUIRK_IDS.length === 10 && QUIRK_IDS.every((q) => QUIRKS[q].name.sv && QUIRKS[q].name.en && QUIRKS[q].desc.sv && QUIRKS[q].desc.en && QUIRKS[q].fr > 0), 'tio personligheter med namn och beskrivning på båda språken');
 }
 
+// ── Fansen och tidningen v138 ──
+{
+  const G = S.newGame({ studio: 'Fansen', seed: 83, difficulty: 'normal' });
+  S.makeCompetitors(G); S.initWorld(G);
+  G.pending = []; G.t = S.tOf(2001, 5, 1); G.money = 5e8; G.fans = 40000; G.stopT = G.t - 60; G.office.tier = 4;
+  Object.assign(G.u.flags, { training: true });
+  for (let i = 0; i < 4; i++) { S.refreshCandidates(G); G.money += G.candidates[0].fee; S.hire(G, G.candidates[0].id); }
+  const mk = (id, score, age, extra = {}, T = G.t) => ({ id, title: 'Testspelet ' + id, platform: 'pc', genre: 'rpg', topic: 'fantasy', scope: 'large', audience: 'everyone', score, total: 2e6, t: T - age, tail: 1, priceAt: 30, weekly: [1, 1], revenue: 2e6, units: 1e4, fansGained: 0, hype: 40, parts: { bugRatio: 0.2 }, ff: {}, flags: [], reviews: [{ id: 'bitbyte', score: Math.round(score) }, { id: 'gazette', score: Math.round(score) }, { id: 'pulse', score: Math.round(score) }, { id: 'critic', score: Math.max(1, Math.round(score) - 1) }], insights: [], ...extra });
+  ok(S.COVER_KINDS.length === 12 && S.LIFE_KINDS.issue.v === 12 && S.LIFE_KINDS.thread.v === 8 && ['thread', 'meme', 'fanart', 'streamer', 'viralUp', 'viralDown', 'issue'].every((k) => S.LIFE_KINDS[k] && S.LIFE_KINDS[k].ch), 'fansens och tidningens sorter finns i krönikan');
+
+  // ── fansen ──
+  const GC = JSON.parse(JSON.stringify(G));
+  GC.games.push(mk(9801, 8.6, 3));
+  const rng0 = JSON.stringify(GC.rng);
+  for (let i = 0; i < 70; i++) { GC.t++; S.communityWeek(GC); }
+  const cg = GC.games[0];
+  ok(cg.comm && cg.comm.list.length > 0 && cg.comm.list.length <= 4, 'spelen får händelser i fansen, de fyra senaste sparas');
+  const fk = S.chronLog(GC, 'fans', 100).filter((b) => ['thread', 'meme', 'fanart', 'streamer', 'viralUp', 'viralDown'].includes(b.k));
+  const wk = fk.map((b) => b.t).sort((a, b) => a - b);
+  ok(fk.length >= 2 && wk.every((w, i) => i === 0 || w - wk[i - 1] >= S.COMM_GAP), 'händelserna kommer med minst ' + S.COMM_GAP + ' veckors mellanrum');
+  ok(wk.every((w) => w - cg.t <= S.TALK_WEEKS + 1), 'ett spel pratas bara om i ' + S.TALK_WEEKS + ' veckor');
+  ok(JSON.stringify(GC.rng) === rng0, 'fansen drar inget G.rng');
+  const GC2 = JSON.parse(JSON.stringify(G)); GC2.games.push(mk(9801, 8.6, 3));
+  for (let i = 0; i < 70; i++) { GC2.t++; S.communityWeek(GC2); }
+  ok(JSON.stringify(GC2.chron) === JSON.stringify(GC.chron) && JSON.stringify(GC2.games[0].viral) === JSON.stringify(cg.viral), 'samma start ger samma fans varje gång');
+
+  // epoker: insändare, forum och flöde
+  const eras = { 1990: [0, 1], 2000: [2, 4], 2012: [5, 7] };
+  for (const [yr, [lo, hi]] of Object.entries(eras)) {
+    const vs = [];
+    for (let sd = 1; sd <= 14; sd++) {
+      const GE = JSON.parse(JSON.stringify(G)); GE.seed = sd; GE.t = S.tOf(+yr, 3, 0);
+      GE.games.push(mk(9810, 6.5, 2, {}, GE.t));
+      for (let i = 0; i < 40; i++) { GE.t++; S.communityWeek(GE); }
+      for (const b of S.chronLog(GE, 'fans', 100)) if (b.k === 'thread') vs.push(b.v);
+    }
+    ok(vs.length >= 3 && vs.every((v) => v >= lo && v <= hi), 'trådarna ' + yr + ' låter som sin tid (' + vs.length + ' st, varianter ' + lo + ' till ' + hi + ')');
+  }
+
+  // viral tråd och missnöje: kommer av sig själva, lyfter eller drar ner försäljningen
+  let up = null, down = null, stream = null;
+  for (let sd = 1; sd <= 60 && !(up && down && stream); sd++) {
+    const GV = JSON.parse(JSON.stringify(G)); GV.seed = sd; GV.games.length = 0;
+    GV.t = S.tOf(2014, 2, 1);
+    GV.games.push(mk(9820, 8.8, 2, { hype: 70 }, GV.t), mk(9821, 5.0, 2, { hype: 70 }, GV.t));
+    for (let i = 0; i < 16; i++) { GV.t++; S.communityWeek(GV); }
+    if (!up && GV.games[0].viral && GV.games[0].viral.k === 'up') up = GV;
+    if (!down && GV.games[1].viral && GV.games[1].viral.k === 'down') down = GV;
+    if (!stream && GV.games[0].viral && GV.games[0].viral.k === 'streamer') stream = GV;
+  }
+  ok(up && up.games[0].viral.mult === S.VIRAL.up.mult && up.games[0].viral.until - (up.games[0].viral.until - S.VIRAL.up.weeks) === S.VIRAL.up.weeks && up.news.some((n) => n.key === 'news.viralUp') && S.chronLog(up, 'fans', 100).some((b) => b.k === 'viralUp'), 'ett bra spel kan gå viralt (lyft i försäljningen, nyhet och krönika)');
+  ok(down && down.games[1].viral.mult === S.VIRAL.down.mult && down.news.some((n) => n.key === 'news.viralDown') && S.chronLog(down, 'fans', 100).some((b) => b.k === 'viralDown'), 'ett överhypat eller buggigt spel kan få missnöjet mot sig');
+  ok(stream && stream.games[0].viral.mult === S.VIRAL.streamer.mult && S.chronLog(stream, 'fans', 100).some((b) => b.k === 'streamer' && b.who.startsWith('@')), 'från 2010 kan en streamare spela ett bra spel');
+  ok(!G.games.some((g) => g.viral), 'ingen lyft på spel som inte pratats om');
+
+  // försäljningen: lyft 15 %, dämpning 12 %, och efter att tiden gått är det som förut
+  const sale = (viral) => {
+    const GS = JSON.parse(JSON.stringify(G)); GS.games.length = 0;
+    const g = mk(9830, 7.4, 3); g.weekly = [1, 1, 1]; g.revenue = 3; g.total = 2e6; g.tail = 1; if (viral) g.viral = viral;
+    GS.games.push(g);
+    S.salesWeek(GS);
+    return GS.games[0].weekly[GS.games[0].weekly.length - 1];
+  };
+  const base = sale(null);
+  ok(Math.abs(sale({ k: 'up', until: G.t + 3, mult: 1.12 }) / base - 1.12) < 1e-9, 'en viral tråd lyfter veckans försäljning med 12 %');
+  ok(Math.abs(sale({ k: 'down', until: G.t + 3, mult: 0.88 }) / base - 0.88) < 1e-9, 'missnöje drar ner den med 12 %');
+  ok(sale({ k: 'up', until: G.t - 1, mult: 1.15 }) === base, 'när tiden gått är försäljningen som förut');
+
+  // händelsen när missnöjet sprids
+  ok(EV.comm_storm.kind === 'comm' && EV.comm_storm.choices.length === 3 && !EVENTS.some((e) => e.kind === 'studio' && e.id.startsWith('comm_')), 'missnöjeshändelsen har tre svar och ligger utanför slumppoolen');
+  const GQ = JSON.parse(JSON.stringify(down || G));
+  const qg = GQ.games[1] || mk(9840, 5, 2);
+  if (!GQ.games[1]) GQ.games.push(qg);
+  const mkStorm = (id) => { qg.viral = { k: 'down', until: GQ.t + 5, mult: 0.88 }; GQ.pending.length = 0; GQ.pending.push({ type: 'event', id, ev: 'comm_storm', game: qg.id }); };
+  const m0 = GQ.money, f0 = GQ.fans;
+  mkStorm(9901); S.resolveEvent(GQ, 9901, 0);
+  ok(!qg.viral && GQ.money < m0 && GQ.fans > f0, 'att rätta till det kostar pengar, lägger stormen och ger fans');
+  mkStorm(9902); const m1 = GQ.money; S.resolveEvent(GQ, 9902, 1);
+  ok(qg.viral && qg.viral.mult === 0.96 && GQ.money === m1, 'att svara öppet är gratis och dämpar det');
+  mkStorm(9903); S.resolveEvent(GQ, 9903, 2);
+  ok(qg.viral && qg.viral.mult === 0.88, 'att låta det blåsa över ändrar ingenting');
+  ok(S.applyFx(GQ, EV.comm_storm.choices[0].fx, [], { game: qg.id }, true).some((o) => o.k === 'viral'), 'förhandsvisningen visar vad rättningen gör');
+  ok(GQ.pending.length === 0, 'inga kvarglömda frågor');
+
+  // fönstret: spelen som pratas om
+  const GT = JSON.parse(JSON.stringify(G)); GT.games.push(mk(9850, 8.2, 5), mk(9851, 6.1, 90));
+  GT.games[0].viral = { k: 'up', until: GT.t + 2, mult: 1.12 }; GT.games[0].comm = { t: GT.t - 2, list: [{ k: 'thread', t: GT.t - 5 }, { k: 'fanart', t: GT.t - 2 }] };
+  const tk = S.fanTalk(GT);
+  ok(tk.length === 1 && tk[0].id === 9850 && tk[0].viral.pct === 12 && tk[0].viral.left === 2 && tk[0].happened[0].k === 'fanart' && tk[0].voice && tk[0].voice.text.sv && tk[0].voice.text.en, 'fanTalk ger spel med lyft, händelser och en röst, och bara nya spel');
+  const fs = S.lifeState(GT, 'fans');
+  ok(fs.games.length === 1 && fs.hot === true && fs.angry === false, 'lifeState fans ger spelen och om något är hett');
+
+  // ── tidningen ──
+  const GM = JSON.parse(JSON.stringify(G)); GM.games.length = 0;
+  GM.t = S.tOf(2001, 5, 0);
+  ok(S.magMonth({ ...GM, t: 20 }) === null, 'första numret kommer efter ett år');
+  const g1 = mk(9860, 9.1, 2);
+  GM.games.push(g1);
+  GM.market.releases.push({ id: 7001, t: GM.t - 1, comp: GM.comps[0].id, studio: GM.comps[0].name, color: '#fff', title: { sv: 'Rivalens Drake', en: "The Rival's Dragon" }, score: 8.9, total: 1e6, platform: 'pc', genre: 'rpg', topic: 'fantasy', scope: 'large', yours: false, price: 30, tail: 1 });
+  const GM2 = JSON.parse(JSON.stringify(GM));
+  const i1 = S.magMonth(GM);
+  ok(i1 && i1.n === 1 && GM.mag.issues.length === 1 && g1.magT === GM.t, 'ett nummer sparas och ditt spel markeras som recenserat');
+  ok(i1.reviews.some((r) => r.you && r.id === 9860 && r.score === 9.1 && r.outlets.length === 4 && Array.isArray(r.q)) && i1.reviews.some((r) => !r.you && r.score === 8.9), 'månadens tester har ditt spel med fyra recensenter och konkurrentens');
+  ok(i1.cover.k === 'youTop' && S.viralOf(GM, g1) && S.viralOf(GM, g1).k === 'cover' && S.viralOf(GM, g1).mult === S.VIRAL.cover.mult, 'ett toppbetyg hamnar på omslaget och lyfter försäljningen en stund');
+  ok(S.lifeLog(GM, 'press').some((b) => b.k === 'issue' && b.v === 0 && b.g === 'Testspelet 9860') && S.chronLog(GM, 'press', 5).length === 1, 'omslaget blir en rad i krönikan (område tidningen)');
+  ok(i1.chart.length >= 5 && i1.chart.length <= 6 && i1.chart.filter((r) => r.y).length === 1 && i1.chart[0].p === 1 && i1.chart.every((r) => r.n && r.s >= 0), 'topplistan har de fem största och din plats');
+  const i2 = (GM.t += 4, S.magMonth(GM));
+  ok(!i2.reviews.some((r) => r.id === 9860) && i2.n === 2 && i2.cover.k !== i1.cover.k, 'ett spel recenseras bara en gång, och omslaget byter sort');
+  ok(JSON.stringify(S.magMonth(GM2)) === JSON.stringify(i1), 'samma start ger samma nummer');
+  // skvaller ur krönikan, en gång vardera
+  const sA = GM.staff.filter((x) => !x.isFounder);
+  S.beat(GM, 'couple', { staff: sA[0], staff2: sA[1] });
+  GM.t += 4;
+  const i3 = S.magMonth(GM);
+  ok(i3.gossip.some((x) => x.k === 'couple' && x.who === sA[0].name.split(' ')[0] && x.who2 === sA[1].name.split(' ')[0]), 'skvallret hämtas ur krönikan');
+  GM.t += 4;
+  ok(!S.magMonth(GM).gossip.some((x) => x.k === 'couple'), 'samma skvaller kommer inte två gånger');
+  // flopp
+  const GF = JSON.parse(JSON.stringify(G)); GF.games.length = 0; GF.t = S.tOf(2003, 1, 0); GF.games.push(mk(9870, 3.9, 2, {}, GF.t));
+  ok(S.magMonth(GF).cover.k === 'youFlop', 'ett dåligt betyg sågas på omslaget');
+  // tak och en sparning från före tidningen
+  const GK = JSON.parse(JSON.stringify(G)); GK.games.length = 0; GK.t = S.tOf(1995, 0, 0); GK.games.push(mk(9871, 7, 40, {}, GK.t));
+  S.magMonth(GK);
+  ok(GK.games[0].magT === -1 && GK.mag.issues[0].reviews.every((r) => !r.you), 'ett gammalt spel recenseras inte i efterhand');
+  for (let i = 0; i < 30; i++) { GK.t += 4; S.magMonth(GK); }
+  ok(GK.mag.issues.length === S.MAG_KEEP && GK.mag.n === 31, 'bara de ' + S.MAG_KEEP + ' senaste numren sparas, numret räknas vidare');
+  // texter på båda språken
+  const bad = [];
+  for (const lg of ['sv', 'en']) {
+    setLang(lg);
+    for (const is of GK.mag.issues.concat([i1, i2, i3])) {
+      const txs = [S.coverText(is.cover), ...is.gossip.map(S.gossipText), ...(is.rumor ? [S.rumorText(is.rumor)] : []), ...is.reviews.map((r) => S.quoteText(r.q, lg))];
+      for (const x of txs) if (!x || /[{}]/.test(x) || /undefined/.test(x)) bad.push(lg + ': ' + x);
+    }
+  }
+  setLang('sv');
+  ok(bad.length === 0, 'tidningens texter är fullständiga på båda språken ' + bad.slice(0, 3).join(' | '));
+  const miss = [];
+  const need = [];
+  for (const [k, n] of [['thread', 8], ['meme', 3], ['fanart', 3], ['streamer', 3], ['viralUp', 3], ['viralDown', 3], ['issue', 12]]) for (let i = 0; i < n; i++) need.push(`life.${k}.${i}`);
+  for (const [k, n] of Object.entries({ youTop: 2, youGood: 2, youOk: 2, youFlop: 2, rivalHit: 2, rankUp: 2, rankDown: 2, trend: 2, folk: 3, quiet: 6, leader: 2, rumor: 2 })) for (let i = 0; i < n; i++) need.push(`mag.cover.${k}.${i}`);
+  for (const k of S.GOSSIP_KINDS) for (let i = 0; i < 2; i++) need.push(`mag.g.${k}.${i}`);
+  for (const k of ['up', 'down', 'streamer', 'cover']) need.push('lf.fans.v.' + k);
+  for (const k of ['thread', 'meme', 'fanart', 'streamer', 'viralUp', 'viralDown']) need.push('lf.fans.k.' + k);
+  need.push('ev.fx.viral.end', 'ev.fx.viral.soften', 'ev.fx.viralTip', 'ev.comm', 'news.viralUp', 'news.viralDown', 'mag.name', 'mag.rumor', 'lf.tab.fans', 'lf.tab.mag', 'lf.mag.help', 'lf.fans.help');
+  for (const k of need) {
+    const v = STRINGS[k];
+    if (!v || !v[0] || !v[1]) miss.push(k);
+  }
+  ok(miss.length === 0, 'texterna för fansen och tidningen finns på båda språken ' + miss.slice(0, 5).join());
+  const ms = S.lifeState(GM, 'press');
+  ok(ms.issue && ms.issue.n === GM.mag.n && ms.count === GM.mag.issues.length && ms.cover && Array.isArray(ms.reviews) && Array.isArray(ms.gossip) && Array.isArray(ms.chart) && ms.year >= 2001, 'lifeState press ger senaste numret');
+  ok(S.lifeState({ ...GM, mag: undefined }, 'press').issue === null, 'inget nummer än ger ett tomt läge');
+  // prestationerna på hyllan Studiolivet
+  const LIFE_ACH = ['fr_friends', 'fr_couple', 'fr_wedding', 'fr_dream', 'fr_viral', 'fr_cover'];
+  ok(LIFE_ACH.every((id) => ACHIEVEMENTS.some((a) => a.id === id) && ACH_CAT[id] === 'life') && ACH_CATS.find((c) => c.id === 'life').ids.length === 6, 'sex prestationer ligger på hyllan Studiolivet');
+  const GA = JSON.parse(JSON.stringify(G)); GA.ach = [];
+  S.checkAchievements(GA);
+  ok(!LIFE_ACH.some((id) => GA.ach.includes(id)), 'ingen av dem är klar från start');
+  Object.assign(GA.stats, { fr: 5, cp: 1, wed: 1, dreams: 1, viral: 1, covers: 1 });
+  S.checkAchievements(GA);
+  ok(LIFE_ACH.every((id) => GA.ach.includes(id)), 'de klaras när räknarna nått målen');
+  ok(achProgress({ ...GA, stats: { ...GA.stats, fr: 3 } }, 'fr_friends').cur === 3, 'vänskaperna har ett framsteg');
+  // räknarna går upp av sig själva
+  const GR = JSON.parse(JSON.stringify(G)); GR.pending = []; GR.t = S.tOf(2005, 0, 1);
+  for (const x of GR.staff) x.hired = 0;
+  for (let i = 0; i < 480; i++) { GR.t++; S.folkWeek(GR); if (GR.pending.length) GR.pending.length = 0; }
+  ok((GR.stats.fr || 0) >= 1 && (GR.stats.fr || 0) >= GR.folk.bonds.filter((b) => b.k === 'friend').length, 'vänskaper räknas i statistiken');
+  // en sparning från före fansen och tidningen fortsätter som vanligt
+  const GO = JSON.parse(JSON.stringify(G)); delete GO.mag; GO.games.push(mk(9880, 7.2, 3)); delete GO.games[0].viral; delete GO.games[0].comm;
+  for (let i = 0; i < 12; i++) { GO.t++; S.salesWeek(GO); S.communityWeek(GO); if (GO.t % 4 === 0) S.magMonth(GO); }
+  ok(Number.isFinite(GO.money) && GO.games[0].weekly.length > 2, 'en sparning från före fansen och tidningen fortsätter som vanligt');
+}
+
 console.log(fails ? `\n${fails} FEL` : '\nAlla tester gick bra');
 process.exit(fails ? 1 : 0);

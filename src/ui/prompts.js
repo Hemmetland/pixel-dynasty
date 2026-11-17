@@ -331,7 +331,7 @@ function eventPrompt(app, G, p, finish) {
   const vars = eventVars(G, p);
   const live = (ev.needs || []).includes('live');
   // rubriken: ikon, färg och undertext efter sort (rivalens drag och kriser har egna)
-  const hd = ev.kind === 'hwwar' ? { ic: 'factory', col: 'var(--tech)', sub: 'ev.hwwar' } : ev.kind === 'hunt' ? { ic: 'target', col: 'var(--hot)', sub: 'ev.hunt' } : ev.kind === 'crisis' ? { ic: 'fire', col: 'var(--bug)', sub: 'ev.crisis' } : ev.kind === 'folk' ? { ic: 'heart', col: 'var(--fans)', sub: 'ev.folk' } : { ic: ev.kind === 'dev' ? 'wrench' : live ? 'globe' : 'mail', col: live ? 'var(--good)' : 'var(--warn)', sub: ev.kind === 'dev' ? 'ev.dev' : live ? 'ev.live' : 'ev.studio' };
+  const hd = ev.kind === 'hwwar' ? { ic: 'factory', col: 'var(--tech)', sub: 'ev.hwwar' } : ev.kind === 'hunt' ? { ic: 'target', col: 'var(--hot)', sub: 'ev.hunt' } : ev.kind === 'crisis' ? { ic: 'fire', col: 'var(--bug)', sub: 'ev.crisis' } : ev.kind === 'comm' ? { ic: 'fire', col: 'var(--hot)', sub: 'ev.comm' } : ev.kind === 'folk' ? { ic: 'heart', col: 'var(--fans)', sub: 'ev.folk' } : { ic: ev.kind === 'dev' ? 'wrench' : live ? 'globe' : 'mail', col: live ? 'var(--good)' : 'var(--warn)', sub: ev.kind === 'dev' ? 'ev.dev' : live ? 'ev.live' : 'ev.studio' };
   const choices = ev.choices
     .map((c, i) => {
       const chips = previewChips(G, c.fx, p);
@@ -374,7 +374,7 @@ function eventPrompt(app, G, p, finish) {
 }
 const FX_TIP = { money: 'hud.money', rp: 'hud.rp', fans: 'hud.fans', hype: 'stat.hype', design: 'stat.design', tech: 'stat.tech', bugs: 'stat.bugs', mood: 'ev.fx.mood', sales: 'ev.fx.sales', staff: 'ev.fx.staff', raise: 'ev.fx.raiseTip', risk: 'ev.fx.riskTip', subs: 'ev.fx.subs', fresh: 'ev.fx.fresh', season: 'ev.fx.season', heat: 'ev.fx.heat', war: 'ev.fx.war', hwRep: 'ev.fx.hwRep', hwBase: 'ev.fx.hwBase' };
 function fxChip(o) {
-  const map = { money: ['money', 'var(--money)'], rp: ['flask', 'var(--rp)'], fans: ['heart', 'var(--fans)'], hype: ['fire', 'var(--hot)'], design: ['bulb', 'var(--design)'], tech: ['cpu', 'var(--tech)'], bugs: ['bug', 'var(--bug)'], mood: ['coffee', 'var(--warn)'], sales: ['chart', 'var(--accent)'], staff: ['team', 'var(--bug)'], raise: ['money', 'var(--warn)'], crunch: ['hourglass', 'var(--warn)'], season: ['calendar', 'var(--gold)'], risk: ['dice', 'var(--accent)'], subs: ['globe', 'var(--good)'], fresh: ['sparkle', 'var(--accent)'], heat: ['target', 'var(--good)'], war: ['target', 'var(--good)'], hwRep: ['star', 'var(--tech)'], hwBase: ['gamepad', 'var(--tech)'], hwCut: ['trend', 'var(--bug)'], hwShort: ['truck', 'var(--bug)'], hwLic: ['shield', 'var(--good)'], dream: ['bulb', 'var(--design)'] };
+  const map = { money: ['money', 'var(--money)'], rp: ['flask', 'var(--rp)'], fans: ['heart', 'var(--fans)'], hype: ['fire', 'var(--hot)'], design: ['bulb', 'var(--design)'], tech: ['cpu', 'var(--tech)'], bugs: ['bug', 'var(--bug)'], mood: ['coffee', 'var(--warn)'], sales: ['chart', 'var(--accent)'], staff: ['team', 'var(--bug)'], raise: ['money', 'var(--warn)'], crunch: ['hourglass', 'var(--warn)'], season: ['calendar', 'var(--gold)'], risk: ['dice', 'var(--accent)'], subs: ['globe', 'var(--good)'], fresh: ['sparkle', 'var(--accent)'], heat: ['target', 'var(--good)'], war: ['target', 'var(--good)'], hwRep: ['star', 'var(--tech)'], hwBase: ['gamepad', 'var(--tech)'], hwCut: ['trend', 'var(--bug)'], hwShort: ['truck', 'var(--bug)'], hwLic: ['shield', 'var(--good)'], dream: ['bulb', 'var(--design)'], viral: ['fire', 'var(--hot)'] };
   const [ic, col] = map[o.k] || ['info', 'var(--accent)'];
   let v = typeof o.v === 'number' ? (o.k === 'money' ? (o.v > 0 ? '+' : '') + money(o.v) : (o.v > 0 ? '+' : '') + fmtNum(o.v)) : o.v;
   let tip = FX_TIP[o.k] ? t(FX_TIP[o.k]) : '';
@@ -387,6 +387,9 @@ function fxChip(o) {
   else if (o.k === 'dream') {
     v = t('ev.fx.dream.' + o.v);
     tip = t('ev.fx.dreamTip');
+  } else if (o.k === 'viral') {
+    v = t('ev.fx.viral.' + o.v);
+    tip = t('ev.fx.viralTip');
   }
   else if (o.k === 'heat' || o.k === 'war') v = t(o.v < 0 ? 'ev.fx.heatDown' : 'ev.fx.heatUp');
   else if (o.k === 'hwBase') v = (o.v > 0 ? '+' : '') + o.v + ' %';

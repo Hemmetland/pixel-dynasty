@@ -23,6 +23,8 @@ export * from './builds.js';
 export * from './expdirs.js';
 export * from './expmeet.js';
 export * from './folk.js';
+export * from './community.js';
+export * from './mag.js';
 export * from './headlines.js';
 export * from './contracts.js';
 export * from './engines.js';
