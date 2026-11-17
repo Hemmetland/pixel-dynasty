@@ -38,7 +38,7 @@ on('life', (b) => {
   while (BEATS.length > 24) BEATS.shift();
 });
 const recent = (kinds, maxAge, tm) => BEATS.filter((e) => kinds.includes(e.b.k) && tm - e.t0 < maxAge && tm >= e.t0);
-const BIG = ['launch', 'done', 'sold', 'chart', 'disc', 'party', 'anniv', 'engine', 'fans', 'hwLaunch'];
+const BIG = ['launch', 'done', 'sold', 'chart', 'disc', 'party', 'anniv', 'engine', 'fans', 'hwLaunch', 'wedding', 'dreamDone'];
 
 // Bildens HTML. kind: 'studio' | 'factory'. Staben och läget hämtas ur G.
 export function sceneHTML(kind, G, extra = {}) {
@@ -159,7 +159,39 @@ function darken(ctx, W, a, col = '#05081a') {
 }
 
 // ── Studion ──
-const EMO = { idea: 'bulb', bug: 'exclam', fix: 'heart', tired: 'sweat', crunch: 'coffee', relax: 'heart', pizza: 'heart', phase: 'bulb', half: 'bulb', quarter: 'bulb', almost: 'exclam', launch: 'heart', hired: 'heart', visitor: 'question', contract: 'heart' };
+// Små figurer för personalens liv
+const heart = (ctx, x, y, c) => { R(ctx, x, y, 1, 1, c); R(ctx, x + 2, y, 1, 1, c); R(ctx, x, y + 1, 3, 1, c); R(ctx, x + 1, y + 2, 1, 1, c); };
+const brokenHeart = (ctx, x, y, c, dx) => { R(ctx, x - dx, y, 1, 1, c); R(ctx, x - dx, y + 1, 2, 1, c); R(ctx, x + 2 + dx, y, 1, 1, c); R(ctx, x + 1 + dx, y + 1, 2, 1, c); R(ctx, x + 1, y + 2, 1, 1, c); };
+const sparkle = (ctx, x, y, c) => { R(ctx, x, y - 1, 1, 3, c); R(ctx, x - 1, y, 3, 1, c); };
+function cake(ctx, x, y, tm) {
+  R(ctx, x - 1, y, 11, 1, '#e8ecf8');
+  R(ctx, x, y - 4, 9, 4, '#e86a9a');
+  R(ctx, x, y - 5, 9, 1, '#fff2f8');
+  R(ctx, x + 2, y - 3, 1, 1, '#fff2f8'); R(ctx, x + 6, y - 2, 1, 1, '#fff2f8');
+  for (const cx of [x + 2, x + 4, x + 6]) { R(ctx, cx, y - 7, 1, 2, '#6ad0ff'); R(ctx, cx, y - 8 - (Math.floor(tm * 6 + cx) % 2), 1, 1, '#ffd84a'); }
+}
+function balloons(ctx, x, y, tm, seed) {
+  const cols = ['#ff5a7a', '#ffd84a', '#4ab8ff', '#7adf8a'];
+  for (let i = 0; i < 3; i++) {
+    const bx = x + i * 5 - 4 + Math.round(Math.sin(tm * 1.3 + i + seed) * 1.2);
+    const by = y - 3 - (i % 2) * 4;
+    R(ctx, bx, by, 4, 5, cols[(i + seed) % 4]);
+    R(ctx, bx + 1, by - 1, 2, 1, cols[(i + seed) % 4]);
+    R(ctx, bx + 1, by + 1, 1, 1, '#ffffff');
+    R(ctx, bx + 2, by + 5, 1, 8, '#c8d0e0');
+  }
+}
+function garland(ctx, W, tm) {
+  const cols = ['#ff5a7a', '#ffd84a', '#4ab8ff', '#7adf8a', '#c08aff'];
+  for (let x = 0; x < W; x += 5) {
+    const sy = 1 + Math.round(Math.sin(x / 14) * 2 + 2);
+    R(ctx, x, sy, 5, 1, '#c8d0e0');
+    const c = cols[(x / 5) % cols.length];
+    R(ctx, x + 1, sy + 1, 3, 2, c);
+    R(ctx, x + 2, sy + 3, 1, 1, c);
+  }
+}
+const EMO = { idea: 'bulb', bug: 'exclam', fix: 'heart', tired: 'sweat', crunch: 'coffee', relax: 'heart', pizza: 'heart', phase: 'bulb', half: 'bulb', quarter: 'bulb', almost: 'exclam', launch: 'heart', hired: 'heart', visitor: 'question', contract: 'heart', birthday: 'heart', hangover: 'sweat', friends: 'heart', couple: 'heart', wedding: 'heart', breakup: 'sweat', miss: 'question', headhunt: 'exclam', dream: 'bulb', dreamGo: 'heart', dreamNo: 'sweat', dreamDone: 'heart', dreamQuit: 'sweat' };
 
 // ── Dag, natt och väder ──
 // Vädret räknas ut ur spelets datum (ingen slump i simen): årstiden följer veckan på året och dagens väder en hash av veckan. Dygnet är bara utseende och går
@@ -260,6 +292,24 @@ function drawStudio(ctx, W, tm, cfg) {
   const cheer = recent(['launch', 'done', 'sold', 'chart', 'disc', 'party', 'contract'], 3.4, tm).length > 0;
   const guestE = recent(['visitor'], 14, tm)[0];
   const pizzaE = recent(['pizza'], 13, tm)[0];
+  // personalens liv (händelser från folket): vem som är bakis, firas eller går ut med en kartong just nu
+  const hangE = recent(['hangover'], 12, tm)[0];
+  const bdE = recent(['birthday'], 9, tm)[0];
+  const dreamE = recent(['dream', 'dreamGo', 'dreamDone'], 8, tm)[0];
+  const hhE = recent(['headhunt'], 16, tm)[0];
+  const quitE = recent(['dreamQuit'], 14, tm)[0];
+  const poseFor = (id) => {
+    if (!id) return null;
+    if (hangE && (hangE.b.s === id || hangE.b.s2 === id)) return 'tired';
+    if (bdE && bdE.b.s === id && tm - bdE.t0 < 6) return 'cheer';
+    if (dreamE && dreamE.b.s === id && dreamE.b.k !== 'dream') return 'cheer';
+    return null;
+  };
+  const gone = (id) => {
+    if (!id) return false;
+    const x = (hhE && hhE.b.v === 2 && hhE.b.s === id && tm - hhE.t0 > 8) || (quitE && quitE.b.s === id && tm - quitE.t0 > 6);
+    return !!x;
+  };
   const seat = [];
   for (let i = 0; i < nd; i++) {
     const dx = x0 + i * pitch;
@@ -278,8 +328,8 @@ function drawStudio(ctx, W, tm, cfg) {
         R(ctx, sx, sy + r * 2, len, 1, ['#7cf2ff', '#ff7ab8', '#ffe27a', '#8aff9a'][(r + Math.floor(tm * 2) + i) % 4]);
       } else R(ctx, sx + (Math.floor(tm + r) % 3), sy + r * 2, 2, 1, '#4a5a8a');
     }
-    const pose = cheer ? 'cheer' : tired && st.active ? 'tired' : st.active ? (typing ? 'type' : 'think') : Math.floor((tm + i * 5) / 7) % 3 === 0 ? 'read' : 'sitIdle';
-    person(ctx, dx + 3 + 3, fy, look, pose, tm, 1, true, i * 0.37);
+    const pose = poseFor(c && c.id) || (cheer ? 'cheer' : tired && st.active ? 'tired' : st.active ? (typing ? 'type' : 'think') : Math.floor((tm + i * 5) / 7) % 3 === 0 ? 'read' : 'sitIdle');
+    if (!gone(c && c.id)) person(ctx, dx + 3 + 3, fy, look, pose, tm, 1, true, i * 0.37);
     // en kaffemugg på bordet när det är övertid
     if (crunch) {
       R(ctx, dx + 3 + 11, fy - 14, 3, 3, '#f4f4ff');
@@ -337,6 +387,84 @@ function drawStudio(ctx, W, tm, cfg) {
   if (hireE) {
     const age = tm - hireE.t0;
     person(ctx, lerp(-10, wxA - 30, age / 6), fy + 3, cfg.looks[Math.min(cfg.looks.length - 1, nd + 1)], age < 6 ? 'walk' : 'wave', tm, 1);
+  }
+  // personalens liv: fest, födelsedag, vänner, par, bröllop, bakis, rekryterare och drömmar
+  const seatOf = (id, n) => seat.find((q) => id && q.id === id) || seat[n % seat.length] || seat[0];
+  const partyE = recent(['party', 'wedding', 'anniv'], 12, tm)[0];
+  if (partyE) garland(ctx, W, tm);
+  if (bdE) {
+    const sp = seatOf(bdE.b.s, bdE.b.n);
+    cake(ctx, sp.x + 8, fy - 11, tm);
+    balloons(ctx, sp.x + 26, fy - 30, tm, bdE.b.n);
+  }
+  if (partyE && partyE.b.k === 'party') balloons(ctx, Math.round(W * 0.5), fy - 26, tm, 1);
+  const pairE = recent(['friends', 'couple', 'wedding', 'breakup', 'miss'], 7, tm)[0];
+  if (pairE && seat.length > 1) {
+    const age = tm - pairE.t0;
+    const sa = seatOf(pairE.b.s, 0);
+    let sb = seatOf(pairE.b.s2, 1);
+    if (sb === sa) sb = seat.find((q) => q !== sa) || sb;
+    const mx = Math.round((sa.x + sb.x) / 2);
+    const k = pairE.b.k;
+    if (k === 'friends') {
+      sparkle(ctx, mx, fy - 30 - Math.round(Math.sin(age * 4)), '#ffe27a');
+      bubble(ctx, sb.x, fy - 31, 'heart', age, 2.4, tm);
+    } else if (k === 'couple' || k === 'wedding') {
+      for (let i = 0; i < 5; i++) {
+        const ph = (age * 0.5 + i * 0.2) % 1;
+        heart(ctx, mx - 6 + Math.round(Math.sin(i * 2.1 + age * 2) * 6), Math.round(fy - 20 - ph * 22), i % 2 ? '#ff6a9a' : '#ff9ac0');
+      }
+      bubble(ctx, sb.x, fy - 31, 'heart', age, 2.4, tm);
+    } else if (k === 'breakup') {
+      brokenHeart(ctx, mx, fy - 32, '#ff5a7a', Math.min(3, Math.floor(age)));
+      bubble(ctx, sb.x, fy - 31, 'sweat', age, 2.4, tm);
+    } else if (k === 'miss') {
+      R(ctx, sa.x + 9, fy - 14, 4, 5, '#e8dcc0');
+      R(ctx, sa.x + 10, fy - 13, 2, 3, '#7a6a8a');
+    }
+  }
+  // en bakis efter releasefesten: en tom burk och lite ånga från krukan
+  if (hangE) for (const id of [hangE.b.s, hangE.b.s2]) {
+    const sp = seatOf(id, hangE.b.n);
+    R(ctx, sp.x + 6, fy - 14, 3, 3, '#7a8aa0');
+    steam(ctx, sp.x + 7, fy - 15, tm + id, 2, 0.4);
+  }
+  // drömmar: gnistor kring den som drömmer
+  if (dreamE) {
+    const sp = seatOf(dreamE.b.s, dreamE.b.n);
+    for (let i = 0; i < 4; i++) if (Math.floor(tm * 3 + i) % 3) sparkle(ctx, sp.x - 8 + i * 6, fy - 36 - (i % 2) * 5, i % 2 ? '#fff2a0' : '#7cf2ff');
+  }
+  // rivalens rekryterare på besök (v 0 ringer, 1 får nej, 2 får ja) och den som slutar med en kartong
+  if (hhE) {
+    const age = tm - hhE.t0;
+    const sp = seatOf(hhE.b.s, hhE.b.n);
+    const suit = { skin: 1, hair: 0, hairColor: 0, shirt: 14, pants: 0, acc: 0, body: 0 };
+    const tx = sp.x + 24;
+    if (hhE.b.v === 0) {
+      // telefonen ringer vid skrivbordet
+      R(ctx, sp.x + 8, fy - 14, 4, 2, '#222a3a');
+      if (Math.floor(tm * 6) % 2) { R(ctx, sp.x + 7, fy - 17, 1, 2, '#ffd84a'); R(ctx, sp.x + 13, fy - 17, 1, 2, '#ffd84a'); }
+    } else {
+      const inX = lerp(-10, tx, Math.min(1, age / 5));
+      if (age < 5) person(ctx, inX, fy + 3, suit, 'walk', tm, 1);
+      else if (age < 9) { person(ctx, tx, fy + 3, suit, 'talk', tm, 1); R(ctx, tx + 8, fy - 8 + (Math.floor(tm * 3) % 2), 3, 2, '#ffffff'); }
+      else if (hhE.b.v === 1) person(ctx, lerp(tx, -10, Math.min(1, (age - 9) / 5)), fy + 3, suit, 'walk', tm, -1);
+      else {
+        person(ctx, lerp(tx, -10, Math.min(1, (age - 9) / 5)), fy + 3, suit, 'walk', tm, -1);
+        const gl = (cfg.G.staff.find((q) => q.id === hhE.b.s) || {}).look || FALLBACK[0];
+        person(ctx, lerp(tx - 12, -4, Math.min(1, (age - 9) / 5)), fy + 3, gl, 'walkCup', tm, -1);
+      }
+    }
+  }
+  if (quitE) {
+    const age = tm - quitE.t0;
+    if (age > 6) {
+      const gl = (cfg.G.staff.find((q) => q.id === quitE.b.s) || {}).look || FALLBACK[1];
+      const sp = seatOf(quitE.b.s, quitE.b.n);
+      const bx = lerp(sp.x - 6, -10, Math.min(1, (age - 6) / 7));
+      person(ctx, bx, fy + 3, gl, 'walkCup', tm, -1);
+      R(ctx, Math.round(bx) + 2, fy - 9, 7, 5, '#c49a62');
+    }
   }
   // pratbubblor: händelserna först (över rätt person), annars då och då en av sig själv
   const ev = recent(Object.keys(EMO), 2.6, tm);
