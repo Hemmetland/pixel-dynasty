@@ -160,6 +160,56 @@ function darken(ctx, W, a, col = '#05081a') {
 
 // ── Studion ──
 const EMO = { idea: 'bulb', bug: 'exclam', fix: 'heart', tired: 'sweat', crunch: 'coffee', relax: 'heart', pizza: 'heart', phase: 'bulb', half: 'bulb', quarter: 'bulb', almost: 'exclam', launch: 'heart', hired: 'heart', visitor: 'question', contract: 'heart' };
+
+// ── Dag, natt och väder ──
+// Vädret räknas ut ur spelets datum (ingen slump i simen): årstiden följer veckan på året och dagens väder en hash av veckan. Dygnet är bara utseende och går
+// ett varv på ett par minuter. Övertid håller natten kvar i studions fönster.
+const SEASON_W = 12;
+export function skyOf(G, tm, night = false) {
+  const t0 = (G && G.t) || 0;
+  const season = Math.floor((((t0 % 48) + 48) % 48) / SEASON_W);
+  const r = V.hash(t0 * 7 + 3);
+  const kind =
+    season === 0 ? (r < 0.4 ? 'snow' : r < 0.55 ? 'fog' : 'clear')
+    : season === 1 ? (r < 0.35 ? 'rain' : r < 0.5 ? 'fog' : 'clear')
+    : season === 2 ? (r < 0.12 ? 'rain' : r < 0.17 ? 'storm' : 'clear')
+    : r < 0.4 ? 'rain' : r < 0.55 ? 'fog' : 'clear';
+  const phase = (tm / 80 + 0.3) % 1;
+  const light = night ? 0 : Math.max(0, Math.min(1, Math.sin(phase * Math.PI * 2 - Math.PI / 2) * 0.7 + 0.5));
+  return { season, kind, phase, light };
+}
+const mixc = (a, b, k) => {
+  const pa = parseInt(a.slice(1), 16), pb = parseInt(b.slice(1), 16);
+  const c = (sh) => Math.round(((pa >> sh) & 255) * (1 - k) + ((pb >> sh) & 255) * k);
+  return `rgb(${c(16)},${c(8)},${c(0)})`;
+};
+// Nederbörd i ett fönster eller över en utomhusbild (x0..x1, y0..y1)
+function precip(ctx, x0, y0, x1, y1, sky, tm, seed = 0) {
+  const w = x1 - x0, h = y1 - y0;
+  if (sky.kind === 'rain' || sky.kind === 'storm') {
+    ctx.globalAlpha = 0.7;
+    const n = Math.max(6, Math.round((w * h) / 90));
+    for (let i = 0; i < n; i++) {
+      const x = x0 + Math.floor(V.hash(i * 3 + seed) * w);
+      const y = y0 + Math.floor(((tm * 34 + V.hash(i * 7 + seed) * h) % h));
+      R(ctx, x, y, 1, 2, '#9ab4e8');
+    }
+    ctx.globalAlpha = 1;
+    if (sky.kind === 'storm' && Math.floor(tm * 1.7 + seed) % 7 === 0) { ctx.globalAlpha = 0.3; R(ctx, x0, y0, w, h, '#ffffff'); ctx.globalAlpha = 1; }
+  } else if (sky.kind === 'snow') {
+    const n = Math.max(6, Math.round((w * h) / 70));
+    for (let i = 0; i < n; i++) {
+      const x = x0 + Math.floor(((V.hash(i * 3 + seed) * w + Math.sin(tm * 0.8 + i) * 2 + w) % w));
+      const y = y0 + Math.floor(((tm * 7 + V.hash(i * 7 + seed) * h) % h));
+      R(ctx, x, y, 1, 1, '#ffffff');
+    }
+  } else if (sky.kind === 'fog') {
+    ctx.globalAlpha = 0.28;
+    R(ctx, x0, y0 + Math.floor(h * 0.45), w, Math.ceil(h * 0.55), '#c8d0e0');
+    ctx.globalAlpha = 1;
+  }
+}
+
 function drawStudio(ctx, W, tm, cfg) {
   const fy = H - 6;
   const st = cfg.st || { active: false, crunch: false, bugs: 0, crew: [] };
@@ -167,24 +217,30 @@ function drawStudio(ctx, W, tm, cfg) {
   R(ctx, 0, 0, W, H, '#1a2044');
   R(ctx, 0, 30, W, H - 40, '#212a58');
   R(ctx, 0, H - 13, W, 2, '#12172f');
-  // fönster med natthimmel
+  // fönster mot gatan: dygnet, årstiden och dagens väder (övertid håller natten kvar)
+  const sky = skyOf(cfg.G, tm, crunch);
+  const day = sky.light;
+  const skyTop = mixc('#0f1a42', sky.kind === 'clear' ? '#78b4f0' : '#8a98b8', day);
+  const skyLow = mixc('#15235a', day > 0.35 && day < 0.65 ? '#f0a860' : sky.kind === 'clear' ? '#b4d8f8' : '#a8b4c8', day);
   const nw = Math.max(2, Math.floor((W - 90) / 80));
   for (let i = 0; i < nw; i++) {
     const wx = Math.round(14 + ((W - 100) * (i + 0.5)) / nw) - 14;
     R(ctx, wx - 1, 4, 30, 24, '#0c1028');
-    R(ctx, wx, 5, 28, 22, '#0f1a42');
-    R(ctx, wx, 17, 28, 10, '#15235a');
-    for (let k = 0; k < 6; k++) {
+    R(ctx, wx, 5, 28, 22, skyTop);
+    R(ctx, wx, 17, 28, 10, skyLow);
+    if (day < 0.4) for (let k = 0; k < 6; k++) {
       const sx = wx + 2 + Math.floor(V.hash(i * 9 + k) * 24);
       const sy = 6 + Math.floor(V.hash(i * 5 + k + 3) * 10);
-      R(ctx, sx, sy, 1, 1, Math.floor(tm * 1.5 + k) % 3 ? '#ffffff' : '#7a88c8');
+      R(ctx, sx, sy, 1, 1, sky.kind === 'clear' ? (Math.floor(tm * 1.5 + k) % 3 ? '#ffffff' : '#7a88c8') : '#4a5278');
     }
     for (let k = 0; k < 7; k++) {
       const bh = 4 + Math.floor(V.hash(i * 11 + k) * 8);
-      R(ctx, wx + k * 4, 27 - bh, 4, bh, '#0a0f2a');
-      if (V.hash(i * 3 + k) > 0.45 && Math.floor(tm * 0.3 + k + i) % 5) R(ctx, wx + k * 4 + 1, 27 - bh + 2, 1, 1, '#ffd36a');
+      R(ctx, wx + k * 4, 27 - bh, 4, bh, day > 0.5 ? '#5a6a90' : '#0a0f2a');
+      if (day < 0.5 && V.hash(i * 3 + k) > 0.45 && Math.floor(tm * 0.3 + k + i) % 5) R(ctx, wx + k * 4 + 1, 27 - bh + 2, 1, 1, '#ffd36a');
     }
-    if (i === 0) R(ctx, wx + 20, 7, 3, 3, '#f6f2d8'); // månen
+    if (i === 0 && sky.kind === 'clear') { if (day > 0.5) R(ctx, wx + 6, 8, 4, 4, '#fff2a0'); else R(ctx, wx + 20, 7, 3, 3, '#f6f2d8'); }
+    precip(ctx, wx, 5, wx + 28, 27, sky, tm, i * 11);
+    if (sky.kind === 'snow') R(ctx, wx - 1, 27, 30, 2, '#e8f0ff');
     R(ctx, wx + 13, 5, 2, 22, '#2a3258');
     R(ctx, wx, 15, 28, 1, '#2a3258');
   }
@@ -1115,6 +1171,7 @@ function drawCrisis(ctx, W, tm, cfg) {
     for (let k = 0; k < 9; k++) { R(ctx, Math.round(bx), by + k * 3, 2, 3, '#fff2a0'); bx -= (rx - sx - sw) / 9 * (0.6 + V.hash(k + Math.floor(tm * 1.3)) * 0.8); }
   }
   if (war) for (let i = 0; i < 30; i++) R(ctx, Math.round((V.hash(i * 3) * W + tm * 20) % W), Math.round((tm * 40 + V.hash(i * 7) * 50) % gy), 1, 3, '#7a8aaa');
+  { const sk = skyOf(cfg.G, tm); if (!war) precip(ctx, 0, 0, W, gy, sk, tm, 5); }
   // folk: din personal vid dörren, strejkande med plakat vid kris
   const lk = (i) => (st.looks && st.looks[i]) || cfg.looks[i];
   if (strike) {
@@ -1341,6 +1398,7 @@ function drawGroup(ctx, W, tm, cfg) {
       R(ctx, Math.round(tx0 + hh * span), Math.round(4 + age * 12 * (0.5 + V.hash(i + 9)) % 34), 2, 2, i % 2 ? '#ffd36a' : '#fff2b0');
     }
   }
+  precip(ctx, 0, 0, W, 40, skyOf(cfg.G, tm, true), tm, 7);
   // helikopter över staden
   const hxx = Math.round(((tm * 10) % (W + 60)) - 30);
   R(ctx, hxx, 10, 8, 3, '#3a4258');
