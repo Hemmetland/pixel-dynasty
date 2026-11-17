@@ -41,6 +41,7 @@ import { missionWeek } from './autoteam.js';
 import { rentOf, facUpkeep, loanInterest, spend } from './studio.js';
 import { note } from './news.js';
 import { beat, lifeWeek } from './life.js';
+import { folkWeek, folkMonth } from './folk.js';
 import { bookMonth } from './book.js';
 import { crisisMonth } from './crisis.js';
 import { hwwarMonth } from './hwwar.js';
@@ -99,6 +100,7 @@ function weekly(G) {
   missionWeek(G); // sist: ett spel som släpps nu börjar sälja nästa vecka
   updateMood(G);
   lifeWeek(G);
+  folkWeek(G); // folket: födelsedagar, vänner och par (hash, aldrig G.rng)
   rollDevEvent(G);
   const d = dateOf(G.t);
   // plattformsnyheter, en gång: veckan då plattformen kommer ut (lanseringen ligger alltid på en hel vecka)
@@ -187,6 +189,7 @@ function monthly(G, d) {
   checkGoals(G);
   crisisMonth(G); // rivalens jakt och kriser (händelserutor med val)
   hwwarMonth(G); // hårdvarukriget: konkurrentens drag, patentstrider och komponentbrist
+  folkMonth(G); // folket: erbjudanden från konkurrenter, drömspel och det som följer av ett nej
   bookMonth(G); // historieboken: försäljning per år, rekord och nya årtionden (läser bara)
   emit('month', G);
 }

@@ -2,6 +2,7 @@
 import * as S from '../src/sim/index.js';
 import { RESEARCH } from '../src/data/research.js';
 import { EVENTS, EV } from '../src/data/events.js';
+import { QUIRKS, QUIRK_IDS } from '../src/data/folk.js';
 import { exportCode, importCode, recordRun, loadHall, saveGame, loadGame, deleteSave, slotList, latestSlot, freeSlot, activeSlot, useSlot, hasSave, saveMeta, SLOTS } from '../src/core/store.js';
 import { PLATFORM, PLATFORMS } from '../src/data/platforms.js';
 import { STRINGS } from '../src/data/strings.js';
@@ -4856,6 +4857,176 @@ ok(!bad.length, `äldre sparning utan ett av ${paths.length} fält går att spel
     if (!v || !v[0] || !v[1] || v[0] === v[1]) missC.push(k);
   }
   ok(missC.length === 0, 'texterna för möten om uppföljare och nya spel finns på båda språken ' + missC.join());
+}
+
+// ── Folket: vänner, par, födelsedagar, drömmar och krönikan v137 ──
+{
+  const G = S.newGame({ studio: 'Folket', seed: 71, difficulty: 'normal' });
+  S.makeCompetitors(G); S.initWorld(G);
+  G.pending = []; G.t = 48 * 6; G.money = 5e8; G.fans = 50000; G.office.tier = 4;
+  Object.assign(G.u.flags, { training: true, autoTeams: true });
+  for (let i = 0; i < 9; i++) { S.refreshCandidates(G); G.money += G.candidates[0].fee; S.hire(G, G.candidates[0].id); }
+  for (const x of G.staff) x.hired = 0;
+  const crew = G.staff.filter((x) => !x.isFounder);
+  const GOLD = JSON.parse(JSON.stringify(G)); delete GOLD.folk; delete GOLD.chron;
+  ok(!GOLD.folk && !GOLD.chron, 'en sparning från före folket saknar tillstånden');
+
+  // personligheter, födelsedagar och drömmar: alltid desamma
+  const P0 = crew.map((x) => S.persona(G, x));
+  ok(JSON.stringify(P0) === JSON.stringify(crew.map((x) => S.persona(G, x))), 'personligheten är alltid densamma för samma person');
+  ok(P0.every((p) => QUIRK_IDS.includes(p.quirk) && p.bday >= 0 && p.bday < 48 && G.u.genres.includes(p.dream.genre) && G.u.topics.includes(p.dream.topic)), 'varje person har en personlighet, en födelsedag och ett drömspel som studion kan göra');
+  ok(new Set(P0.map((p) => p.quirk)).size >= 3, 'personligheterna varierar');
+  ok(S.ageOf(G, crew[0]) >= 21 && S.bdayIn(G, crew[0]) >= 0 && S.bdayIn(G, crew[0]) < 48, 'ålder och veckor till födelsedagen');
+
+  // födelsedag: tårta den veckan (grundaren firas alltid)
+  const f0 = G.staff.find((x) => x.isFounder);
+  G.t = 48 * 6 + ((S.persona(G, f0).bday - ((48 * 6) % 48) + 48) % 48);
+  const nb = G.chron ? G.chron.items.length : 0;
+  S.folkWeek(G);
+  const bd = S.lifeLog(G, 'staff').filter((b) => b.k === 'birthday');
+  ok(bd.length >= 1 && bd.some((b) => b.s === f0.id && b.a === S.ageOf(G, f0)) && S.chronLog(G, 'folk', 20).some((b) => b.k === 'birthday') && G.chron.items.length > nb, 'en födelsedag blir en händelse i scenen och i krönikan');
+
+  // bakis efter releasefesten
+  const mkg = (id, score) => ({ id, title: 'Festspelet', platform: 'pc', genre: 'rpg', topic: 'fantasy', scope: 'large', score, total: 1e6, t: G.t - 3, tail: 1, priceAt: 30, weekly: [1], revenue: 1e6, units: 1e4, fansGained: 0, hype: 40 });
+  G.games.push(mkg(9701, 8.4));
+  S.folkWeek(G);
+  const hg = S.lifeLog(G, 'staff').filter((b) => b.k === 'hangover');
+  ok(hg.length === 1 && hg[0].who && hg[0].who2 && hg[0].who !== hg[0].who2 && hg[0].g === 'Festspelet', 'dagen efter en riktigt bra release är två personer bakis');
+  G.games.pop(); G.games.push(mkg(9702, 6.5));
+  const hn = S.lifeLog(G, 'staff').filter((b) => b.k === 'hangover').length;
+  S.folkWeek(G);
+  ok(S.lifeLog(G, 'staff').filter((b) => b.k === 'hangover').length === hn, 'ingen fest efter ett medelmåttigt spel');
+  G.games.pop();
+
+  // band: vänskaper och par växer fram av sig själva, med tak
+  const G2 = JSON.parse(JSON.stringify(G)); G2.pending = [];
+  for (let i = 0; i < 700; i++) { G2.t++; S.folkWeek(G2); G2.pending = G2.pending.filter((x) => x.ev !== 'folk_wedding' || true); if (G2.pending.length) G2.pending.length = 0; }
+  const F2 = G2.folk;
+  const frN = (id) => F2.bonds.filter((b) => b.k === 'friend' && (b.a === id || b.b === id)).length;
+  const cpN = (id) => F2.bonds.filter((b) => b.k === 'couple' && (b.a === id || b.b === id)).length;
+  ok(F2.bonds.length >= 3 && G2.staff.every((x) => frN(x.id) <= S.FR_CAP && cpN(x.id) <= 1), 'vänskaper uppstår, högst ' + S.FR_CAP + ' vänner och ett par per person');
+  ok(F2.bonds.every((b) => b.a < b.b && b.na && b.nb && G2.staff.some((x) => x.id === b.a) && G2.staff.some((x) => x.id === b.b)), 'varje band har två olika personer som finns kvar, med namn');
+  ok(new Set(F2.bonds.map((b) => b.a + '-' + b.b)).size === F2.bonds.length, 'ingen har två band med samma person');
+  ok(S.lifeLog(G2, 'staff').length > 0 && G2.chron.items.length <= S.CHRON_MAX && G2.chron.items.every((x) => S.CHRON_AREAS.includes(x.ch)), 'krönikan har ett område per händelse och en gräns');
+  const G2b = JSON.parse(JSON.stringify(G)); G2b.pending = [];
+  for (let i = 0; i < 700; i++) { G2b.t++; S.folkWeek(G2b); if (G2b.pending.length) G2b.pending.length = 0; }
+  ok(JSON.stringify(G2b.folk.bonds) === JSON.stringify(F2.bonds), 'samma start ger samma vänner varje gång (inget G.rng)');
+
+  // humöret: vänner och par lyfter, den som saknar någon sjunker en tid
+  const GB = JSON.parse(JSON.stringify(G));
+  const [a, b, c] = GB.staff.filter((x) => !x.isFounder);
+  GB.folk = { bonds: [{ a: Math.min(a.id, b.id), b: Math.max(a.id, b.id), k: 'friend', t0: 0, na: 'A', nb: 'B' }, { a: Math.min(b.id, c.id), b: Math.max(b.id, c.id), k: 'couple', t0: 0, na: 'B', nb: 'C' }], cool: {}, dreams: {}, last: {} };
+  let bb = S.bondBonus(GB);
+  ok(bb.get(a.id) === 1.5 && bb.get(c.id) === 3 && bb.get(b.id) === 4.5 && !bb.has(GB.staff[0].id), 'en vän ger 1,5, ett par 3 och båda tillsammans 4,5 i humör');
+  GB.staff = GB.staff.filter((x) => x.id !== c.id);
+  GB.t += 20; S.folkWeek(GB);
+  ok(!GB.folk.bonds.some((x) => x.k === 'couple') && GB.folk.cool[b.id] && GB.folk.cool[b.id].v === 12 && S.lifeLog(GB, 'staff').some((x) => x.k === 'miss' && x.s === b.id), 'när en partner slutar saknar den som blir kvar hen och humöret sjunker');
+  bb = S.bondBonus(GB);
+  ok(Math.abs(bb.get(b.id) - (1.5 - 12)) < 1e-9, 'saknaden drar ner humöret');
+  GB.t += 17;
+  ok(!S.bondBonus(GB).has(c.id) && (S.bondBonus(GB).get(b.id) || 0) === 1.5 && !GB.folk.cool[b.id], 'saknaden går över');
+
+  // erbjudande från en konkurrent
+  const GH = JSON.parse(JSON.stringify(G)); GH.pending = [];
+  GH.t = 48 * 8 + 1;
+  GH.folk = { bonds: [], cool: {}, dreams: {}, last: {}, dueHunt: true };
+  S.folkMonth(GH);
+  const ph = GH.pending.find((x) => x.type === 'event' && x.ev === 'folk_headhunt');
+  ok(ph && GH.staff.some((x) => x.id === ph.who && !x.isFounder) && S.lifeLog(GH, 'staff').some((x) => x.k === 'headhunt' && x.v === 0) && GH.folk.last.hunt === GH.t, 'en konkurrent hör av sig till en medarbetare');
+  const who = GH.staff.find((x) => x.id === ph.who);
+  const sal0 = who.salary;
+  ok(EV.folk_headhunt.choices.length === 3 && S.resolveEvent(GH, ph.id, 0) && GH.staff.some((x) => x.id === who.id) && who.salary > sal0 * 1.2, 'att höja lönen får hen att stanna, och lönen blir högre');
+  const GH2 = JSON.parse(JSON.stringify(GH)); GH2.pending.length = 0;
+  GH2.pending.push({ type: 'event', id: 9001, ev: 'folk_headhunt', who: who.id, name: 'X' });
+  S.resolveEvent(GH2, 9001, 2);
+  ok(!GH2.staff.some((x) => x.id === who.id) && S.lifeLog(GH2, 'staff').some((x) => x.k === 'headhunt' && x.v === 2) && GH2.news.some((n) => n.key === 'news.staffLeft'), 'att önska lycka till gör att hen går');
+  // ett par får erbjudandet tillsammans
+  const GP = JSON.parse(JSON.stringify(G)); GP.pending = [];
+  const [pa, pb] = GP.staff.filter((x) => !x.isFounder);
+  GP.folk = { bonds: [{ a: Math.min(pa.id, pb.id), b: Math.max(pa.id, pb.id), k: 'couple', t0: 0, na: 'A', nb: 'B' }], cool: {}, dreams: {}, last: {}, dueHunt: true };
+  GP.t = 48 * 8 + 1;
+  // gör paret till de skickligaste så att erbjudandet gäller dem
+  for (const x of [pa, pb]) { x.design = x.tech = x.speed = x.research = 40; }
+  S.folkMonth(GP);
+  const pp = GP.pending.find((x) => x.type === 'event' && x.ev === 'folk_headhunt_pair');
+  ok(pp && pp.who2 && pp.partner && [pa.id, pb.id].includes(pp.who) && [pa.id, pb.id].includes(pp.who2) && pp.who !== pp.who2, 'ett par får samma erbjudande och båda nämns');
+  S.resolveEvent(GP, pp.id, 2);
+  ok(!GP.staff.some((x) => x.id === pa.id) && !GP.staff.some((x) => x.id === pb.id), 'går de så går båda');
+
+  // drömspel: pengar eller hjärta
+  const GD = JSON.parse(JSON.stringify(G)); GD.pending = [];
+  GD.t = 48 * 9 + 1;
+  for (const x of GD.staff) x.games = 5;
+  GD.folk = { bonds: [], cool: {}, dreams: {}, last: {}, dueDream: true };
+  S.folkMonth(GD);
+  const pd = GD.pending.find((x) => x.type === 'event' && x.ev === 'folk_dream');
+  ok(pd && pd.dream && G.u.genres.includes(pd.dream.genre) && GD.staff.some((x) => x.id === pd.who && !x.isFounder) && S.lifeLog(GD, 'drama').some((x) => x.k === 'dream') && GD.folk.last.dream === GD.t && !GD.folk.dueDream, 'någon som varit med länge ber om sitt drömspel');
+  const dp = GD.staff.find((x) => x.id === pd.who);
+  const GD2 = JSON.parse(JSON.stringify(GD)), GD3 = JSON.parse(JSON.stringify(GD));
+  const m0 = GD.money, mood0 = dp.mood, d0 = dp.design, fans0 = GD.fans;
+  ok(S.resolveEvent(GD, pd.id, 0) && GD.money < m0 && GD.folk.dreams[dp.id].state === 'go' && dp.mood > mood0 && S.lifeLog(GD, 'drama').some((x) => x.k === 'dreamGo' && x.v === 0), 'grönt ljus kostar pengar och lyfter humöret');
+  GD.t = GD.folk.dreams[dp.id].until - 1; S.folkMonth(GD);
+  ok(GD.folk.dreams[dp.id].state === 'go', 'drömmen är inte klar före tiden');
+  GD.t = GD.folk.dreams[dp.id].until; S.folkMonth(GD);
+  ok(GD.folk.dreams[dp.id].state === 'done' && dp.design === Math.min(S.skillCap(GD), d0 + 2) && GD.fans > fans0 && (GD.flags.hypeNext || 0) >= 5 && dp.trait && S.lifeLog(GD, 'drama').some((x) => x.k === 'dreamDone' && x.v === 0) && GD.news.some((n) => n.key === 'news.dreamDone'), 'när drömspelet är klart växer hen, fansen får höra om det och nästa spel får snack');
+  // på fritiden: gratis och mindre
+  const dp2 = GD2.staff.find((x) => x.id === pd.who);
+  const m2 = GD2.money;
+  S.resolveEvent(GD2, pd.id, 1);
+  ok(GD2.money === m2 && GD2.folk.dreams[dp2.id].state === 'free' && GD2.folk.dreams[dp2.id].until - GD2.t === 36, 'på fritiden kostar inget och tar längre tid');
+  const dd2 = dp2.design, fn2 = GD2.fans;
+  GD2.t = GD2.folk.dreams[dp2.id].until; S.folkMonth(GD2);
+  ok(GD2.folk.dreams[dp2.id].state === 'done' && dp2.design === Math.min(S.skillCap(GD2), dd2 + 1) && GD2.fans - fn2 < GD.fans - fans0 + 1 && !(GD2.flags.hypeNext > 0), 'fritidsprojektet ger mindre');
+  // nej: hen blir besviken och kan gå
+  const dp3 = GD3.staff.find((x) => x.id === pd.who);
+  S.resolveEvent(GD3, pd.id, 2);
+  ok(GD3.folk.dreams[dp3.id].state === 'no' && S.lifeLog(GD3, 'drama').some((x) => x.k === 'dreamNo'), 'ett nej noteras');
+  let gone = false;
+  for (let i = 0; i < 40 && !gone; i++) { GD3.t += 4; dp3.mood = 40; S.folkMonth(GD3); gone = GD3.folk.dreams[dp3.id].state === 'quit'; }
+  ok(gone && !GD3.staff.some((x) => x.id === dp3.id) && GD3.news.some((n) => n.key === 'news.dreamQuit'), 'en besviken och missnöjd dröm kan sluta med att hen går för att göra sitt eget');
+  const GD4 = JSON.parse(JSON.stringify(GD)); const dq = GD4.staff.find((x) => x.id === pd.who);
+  GD4.folk.dreams[dq.id] = { state: 'no', t0: GD4.t, until: 0, dream: pd.dream }; dq.mood = 90;
+  GD4.t += 40; S.folkMonth(GD4);
+  ok(GD4.folk.dreams[dq.id].state === 'forgiven' && GD4.staff.some((x) => x.id === dq.id), 'ett nej förlåts med tiden');
+
+  // bröllop: ett par som varit ihop länge ställer frågan
+  const GW = JSON.parse(JSON.stringify(G)); GW.pending = [];
+  const [wa, wb] = GW.staff.filter((x) => !x.isFounder);
+  GW.folk = { bonds: [{ a: Math.min(wa.id, wb.id), b: Math.max(wa.id, wb.id), k: 'couple', t0: 0, na: 'A', nb: 'B' }], cool: {}, dreams: {}, last: {} };
+  let asked = null;
+  for (let i = 0; i < 4000 && !asked; i++) { GW.t++; S.folkWeek(GW); asked = GW.pending.find((x) => x.ev === 'folk_wedding'); if (!asked && GW.folk.bonds.length === 0) break; if (!asked) GW.pending.length = 0; }
+  ok(asked && asked.who2 && asked.partner, 'ett par som varit ihop länge ställer frågan om bröllop eller går isär (' + (asked ? 'bröllop' : 'uppbrott') + ')');
+  if (asked) {
+    const mw = GW.money;
+    S.resolveEvent(GW, asked.id, 0);
+    ok(GW.money < mw && GW.folk.bonds[0].wed > 0 && S.lifeLog(GW, 'staff').some((x) => x.k === 'wedding' && x.v === 0) && GW.news.some((n) => n.key === 'news.folkWedding'), 'festen kostar, paret är gift och det blir en nyhet');
+  }
+
+  // folkets händelser dras inte av månadsslumpen
+  ok(EVENTS.filter((e) => e.kind === 'folk').length === 4 && !EVENTS.some((e) => e.kind === 'studio' && e.id.startsWith('folk_')), 'folkets händelser ligger utanför den slumpade poolen');
+  ok(EVENTS.filter((e) => e.kind === 'folk').every((e) => e.choices.length >= 3 || e.id === 'folk_wedding'), 'varje händelse har val');
+
+  // en gammal sparning: ingen folk eller krönika, allt skapas vid behov
+  for (let i = 0; i < 60; i++) { GOLD.t++; S.folkWeek(GOLD); if (i % 4 === 0) S.folkMonth(GOLD); GOLD.pending.length = 0; }
+  ok(GOLD.folk && Array.isArray(GOLD.folk.bonds), 'en sparning från före folket fortsätter som vanligt');
+
+  // scenens form
+  const st = S.lifeState(G2, 'staff');
+  ok(st.n === G2.staff.length && st.mood > 0 && Array.isArray(st.couples) && Array.isArray(st.friends) && st.birthdays.length === 3 && st.birthdays.every((x) => x.name && x.in >= 0) && Array.isArray(st.dreams) && Array.isArray(st.recent), 'lifeState staff har humör, par, vänner, födelsedagar och drömmar');
+  ok(st.friends.every((x) => x.an && x.bn) && st.couples.every((x) => x.an && x.bn && typeof x.wed === 'boolean'), 'paren och vännerna har namn');
+
+  // texter
+  const miss = [];
+  for (const k of ['birthday', 'hangover', 'friends', 'couple', 'wedding', 'breakup', 'miss', 'headhunt', 'dream', 'dreamGo', 'dreamNo', 'dreamDone', 'dreamQuit']) {
+    ok(S.LIFE_KINDS[k] && S.LIFE_KINDS[k].ch, 'sorten ' + k + ' finns i krönikan');
+    for (let v = 0; v < S.LIFE_KINDS[k].v; v++) { const x = STRINGS['life.' + k + '.' + v]; if (!x || !x[0] || !x[1]) miss.push('life.' + k + '.' + v); }
+  }
+  for (const k of ['menu.life', 'menu.life.d', 'lf.title', 'lf.sub', 'lf.tab.chron', 'lf.tab.folk', 'lf.area.all', 'lf.area.folk', 'lf.area.fans', 'lf.area.press', 'lf.area.world', 'lf.area.drama', 'lf.area.studio', 'lf.chron.help', 'lf.chron.empty', 'lf.folk.help', 'lf.folk.friends', 'lf.folk.couples', 'lf.folk.bday', 'lf.folk.bdayNow', 'lf.p.age', 'lf.p.friend', 'lf.p.couple', 'lf.p.married', 'lf.p.sad', 'lf.p.sadTip', 'lf.p.moodTip', 'lf.p.bday', 'lf.p.bdayNow', 'lf.p.dream', 'lf.p.dreamGo', 'lf.p.dreamNo', 'lf.p.dreamDone', 'ev.folk', 'ev.fx.dream.go', 'ev.fx.dream.free', 'ev.fx.dream.no', 'ev.fx.dreamTip', 'news.dreamDone', 'news.dreamQuit', 'news.folkWedding']) {
+    const x = STRINGS[k];
+    if (!x || !x[0] || !x[1] || x[0] === x[1]) miss.push(k);
+  }
+  ok(miss.length === 0, 'texterna för folket och Studiolivet finns på båda språken ' + miss.join());
+  ok(QUIRK_IDS.length === 10 && QUIRK_IDS.every((q) => QUIRKS[q].name.sv && QUIRKS[q].name.en && QUIRKS[q].desc.sv && QUIRKS[q].desc.en && QUIRKS[q].fr > 0), 'tio personligheter med namn och beskrivning på båda språken');
 }
 
 console.log(fails ? `\n${fails} FEL` : '\nAlla tester gick bra');

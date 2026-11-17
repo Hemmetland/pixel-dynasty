@@ -1775,3 +1775,21 @@ button.pr-rec { width: 100%; }
 .chip.pick { cursor: pointer; }
 .chip.pick.on { color: var(--hot); border-color: color-mix(in srgb, var(--hot) 55%, transparent); background: color-mix(in srgb, var(--hot) 14%, transparent); }
 @media (max-width: 640px) { .bd-cols { grid-template-columns: 1fr; } }
+
+/* Studiolivet: krönikan (en tidslinje över allt som hänt) och Folket (personkort med vänner, personlighet och drömmar) */
+.lf-list { display: flex; flex-direction: column; border: 1px solid var(--line); border-radius: 12px; overflow: hidden; }
+.lf-row { display: grid; grid-template-columns: 26px 1fr auto; gap: 10px; align-items: center; padding: 8px 12px; font-size: 13px; border-top: 1px solid var(--line); }
+.lf-row:first-child { border-top: 0; }
+.lf-ic { display: grid; place-items: center; width: 24px; height: 24px; border-radius: 8px; color: var(--c); background: color-mix(in srgb, var(--c) 14%, transparent); }
+.lf-ic .ic { width: 14px; height: 14px; }
+.lf-when { white-space: nowrap; font-size: 11.5px; }
+.lf-chip { cursor: pointer; }
+.lf-chip.on { color: var(--fans); border-color: color-mix(in srgb, var(--fans) 55%, transparent); background: color-mix(in srgb, var(--fans) 14%, transparent); }
+.lf-grid { grid-template-columns: repeat(auto-fill, minmax(300px, 1fr)); gap: 12px; }
+.lf-p { padding: 12px; }
+.lf-mood { min-width: 34px; text-align: center; font: 700 14px var(--disp); color: var(--c); padding: 4px 6px; border-radius: 9px; border: 1px solid color-mix(in srgb, var(--c) 45%, transparent); background: color-mix(in srgb, var(--c) 10%, transparent); }
+.lf-dream { display: flex; align-items: center; gap: 7px; margin-top: 9px; font-size: 12.5px; color: var(--c); }
+.lf-dream .ic { width: 15px; height: 15px; flex: none; }
+.lf-dream.faint { color: var(--faint); }
+.lf-p .ell { display: block; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+@media (max-width: 560px) { .lf-grid { grid-template-columns: 1fr; } .lf-row { grid-template-columns: 24px 1fr; } .lf-when { grid-column: 2; } }

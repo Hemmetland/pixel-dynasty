@@ -15,6 +15,7 @@ import { resOpen, resInfo, canRes, assignRes, RES_FOCUS, RES_NEED, RES_RP } from
 import { shopOpen, shopInfo, assignShop, canShop } from '../sim/shopteam.js';
 import { engOpen, engInfo, assignEng, canEng, ENG_BONUS } from '../sim/engteam.js';
 import { showEngines } from './win-work.js';
+import { quirkChip, bondsLine } from './win-life.js';
 import { SHOP_LIFT, SHOP_FEE, SHOP_THEME } from '../sim/store.js';
 import { hrOpen, hrPlan, setHrPlan, setWant, hrOpenSeats, hrReserve, HR_MIN } from '../sim/hrdept.js';
 import { RCP_MAX, recipeKnow } from '../sim/score.js';
@@ -81,7 +82,7 @@ function teamCard(G, s, mentor) {
       <div class="sc-av">${avatarImg(s.look, 3, training ? 'stand' : 'stand')}</div>
       <div style="flex:1;min-width:0">
         <div class="row" style="gap:8px"><b class="h3" style="overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${esc(s.name)}</b>${s.isFounder ? `<span class="tag" style="--c:var(--gold)">${t('staff.founder')}</span>` : ''}</div>
-        <div class="row wrap" style="gap:6px;margin-top:5px"><span class="chip">${s.isFounder ? t('staff.founderRole') : L(spec.name)}</span>${trait}${grp ? `<span class="chip" data-tip="${esc(t('staff.inTeam', { team: L(teamName(grp)) }))}">${icon('team')}${esc(L(teamName(grp)))}</span>` : ''}${s.out ? `<span class="chip" data-tip="${esc(t('staff.outTip'))}">${icon('building')}${t('staff.out')}</span>` : ''}${grew}${training ? `<span class="chip c" style="--c:var(--rp)">${icon('book')}${t('staff.training')} · ${Math.max(1, s.trainUntil - G.t)}${t('ui.weeksShort')}</span>` : ''}</div>
+        <div class="row wrap" style="gap:6px;margin-top:5px"><span class="chip">${s.isFounder ? t('staff.founderRole') : L(spec.name)}</span>${trait}${quirkChip(G, s)}${bondsLine(G, s)}${grp ? `<span class="chip" data-tip="${esc(t('staff.inTeam', { team: L(teamName(grp)) }))}">${icon('team')}${esc(L(teamName(grp)))}</span>` : ''}${s.out ? `<span class="chip" data-tip="${esc(t('staff.outTip'))}">${icon('building')}${t('staff.out')}</span>` : ''}${grew}${training ? `<span class="chip c" style="--c:var(--rp)">${icon('book')}${t('staff.training')} · ${Math.max(1, s.trainUntil - G.t)}${t('ui.weeksShort')}</span>` : ''}</div>
       </div>
       <div class="sc-mood" style="--c:${mc}" data-tip="${t(mt)}"><span class="md"></span>${Math.round(s.mood)}</div>
     </div>
@@ -105,7 +106,7 @@ function candCard(G, c) {
   const trait = c.trait ? `<span class="chip" data-tip="${esc(L(TRAITS[c.trait].desc))}">${L(TRAITS[c.trait].name)}</span>` : '';
   return `<div class="scard card">
     <div class="sc-top"><div class="sc-av">${avatarImg(c.look, 3)}</div>
-      <div style="flex:1;min-width:0"><b class="h3">${esc(c.name)}</b><div class="row wrap" style="gap:6px;margin-top:5px"><span class="chip">${L(spec.name)}</span>${trait}</div></div></div>
+      <div style="flex:1;min-width:0"><b class="h3">${esc(c.name)}</b><div class="row wrap" style="gap:6px;margin-top:5px"><span class="chip">${L(spec.name)}</span>${trait}${quirkChip(G, c)}</div></div></div>
     ${skills(G, c)}
     <div class="row" style="margin-top:12px;gap:10px"><div><div class="num" style="font:700 20px var(--disp)">${money(c.salary)}<span class="muted" style="font:500 11px var(--font)">${t('ui.perMonth')}</span></div><div class="faint" style="font-size:11px">${t('staff.fee')} ${money(c.fee)}</div></div><span class="sp"></span>
       <button class="btn primary" data-act="s-hire" data-id="${c.id}" ${can && afford ? '' : 'disabled'} data-tip="${can ? (afford ? '' : t('err.money')) : t('err.capacity')}">${icon('plus')}${t('staff.hire')}</button></div>

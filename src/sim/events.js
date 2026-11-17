@@ -9,6 +9,7 @@ import { parPerTick } from './score.js';
 import { note } from './news.js';
 import { logBuild } from './builds.js';
 import { crisisOf, monthRev, crisisAfter } from './crisis.js';
+import { folkLeave, folkDream, folkAfter } from './folk.js';
 import { warOf, hwwarAfter } from './hwwar.js';
 import { warRep, warBase, warCut, warShort, warPay } from './hardware.js';
 import { payroll } from './people.js';
@@ -269,6 +270,29 @@ export function applyFx(G, fx, out = [], ctx = {}, dry = false) {
     }
     out.push({ k: 'raise', v: '+15%' });
   }
+  // personen händelsen gäller (ctx.who, och den andra i ett par: ctx.who2): humör, lön, att de slutar eller drömmen (folk.js)
+  const them = [ctx.who, ctx.who2].map((id) => (id ? G.staff.find((s) => s.id === id) : null)).filter(Boolean);
+  if (fx.whoMood && them.length) {
+    if (!dry) for (const s of them) s.mood = clamp(s.mood + fx.whoMood, 0, 100);
+    out.push({ k: 'mood', v: fx.whoMood });
+  }
+  if (fx.whoRaise && them.length) {
+    if (!dry) {
+      for (const s of them) {
+        s.salary = Math.round((s.salary * (1 + fx.whoRaise)) / 10) * 10;
+        s.mood = clamp(s.mood + 10, 0, 100);
+      }
+    }
+    out.push({ k: 'raise', v: '+' + Math.round(fx.whoRaise * 100) + '%' });
+  }
+  if (fx.whoLeave && them.length) {
+    if (!dry) for (const s of them) folkLeave(G, s);
+    out.push({ k: 'staff', v: -them.length });
+  }
+  if (fx.dream) {
+    if (!dry) folkDream(G, ctx.who, fx.dream);
+    out.push({ k: 'dream', v: fx.dream });
+  }
   if (fx.res) out.push({ k: 'text', v: fx.res });
   if (fx.rand && dry) out.push({ k: 'risk' });
   else if (fx.rand) {
@@ -291,8 +315,9 @@ export function resolveEvent(G, promptId, idx) {
   const ev = EV[pr.ev];
   const ch = ev.choices[idx];
   G.pending.splice(i, 1);
-  const out = applyFx(G, ch.fx, [], { who: pr.who, game: pr.game });
+  const out = applyFx(G, ch.fx, [], { who: pr.who, who2: pr.who2, game: pr.game });
   crisisAfter(G, pr, ev, idx, out);
+  folkAfter(G, pr, ev, idx);
   hwwarAfter(G, pr, ev, idx, out);
   G.stats.events++;
   emit('eventResolved', { ev, idx, out });

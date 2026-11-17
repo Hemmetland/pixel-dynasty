@@ -21,6 +21,7 @@ import { crisisState } from './crisis.js'; // bara i lifeState (vid anrop)
 import { buildsOf, buildInfo } from './builds.js'; // bara i lifeState (vid anrop)
 import { warState } from './hwwar.js';
 import { expoState } from './exposhow.js';
+import { folkState } from './folk.js'; // bara i lifeState (vid anrop)
 import { FACILITIES } from './studio.js'; // bara i lifeText (vid anrop), så importcykeln gör inget
 
 export const LIFE_MAX = 30; // så många händelser sparas
@@ -40,7 +41,7 @@ export const LIFE_KINDS = {
   crunch: { sc: 'dev', v: 2, gap: 0 }, // övertid på
   relax: { sc: 'dev', v: 2, gap: 0 }, // övertid av
   done: { sc: 'dev', v: 2, gap: 0 }, // utvecklingen klar (a = buggar kvar)
-  launch: { sc: 'dev', v: 3, gap: 0 }, // släpp (a = betyg)
+  launch: { sc: 'dev', v: 3, gap: 0, ch: 'studio' }, // släpp (a = betyg)
   chart: { sc: 'dev', v: 2, gap: 0 }, // ett spel i toppen av listan
   sold: { sc: 'dev', v: 3, gap: 0 }, // första försäljningsveckan är klar (a = sålda exemplar)
   disc: { sc: 'dev', v: 2, gap: 0 }, // guld- eller platinaskiva
@@ -76,7 +77,7 @@ export const LIFE_KINDS = {
   shopRecord: { sc: 'store', v: 2, gap: 0 }, // rekord (v 0 ett spel, 1 en vecka)
   shopTop: { sc: 'store', v: 2, gap: 0 }, // ett eget spel är etta i butiken
   // onlinespel
-  liveLaunch: { sc: 'live', v: 2, gap: 0 }, // ett onlinespel går live (g = spelet)
+  liveLaunch: { sc: 'live', v: 2, gap: 0, ch: 'world' }, // ett onlinespel går live (g = spelet)
   livePatch: { sc: 'live', v: 2, gap: 0 }, // en uppdatering är ute
   liveDown: { sc: 'live', v: 2, gap: 0 }, // avbrott (v 0 driftstopp, 1 överbelastning)
   liveSeason: { sc: 'live', v: 2, gap: 0 }, // en säsong börjar
@@ -85,20 +86,20 @@ export const LIFE_KINDS = {
   liveEvent: { sc: 'live', v: 2, gap: 0 }, // ett evenemang börjar
   liveRegion: { sc: 'live', v: 2, gap: 0 }, // en ny region öppnas
   // onlinevärlden (world.js): gillen på topplistan, fejder och sända finaler. gid = onlinespelets id
-  worldTier: { sc: 'live', v: 2, gap: 0 }, // världen växer ett steg (g = stegets namn, a = 1-5)
+  worldTier: { sc: 'live', v: 2, gap: 0, ch: 'world' }, // världen växer ett steg (g = stegets namn, a = 1-5)
   worldLead: { sc: 'live', v: 2, gap: 8 }, // ett gille tar ledningen på topplistan (g = gillet, a = veckor in i säsongen)
-  worldFeud: { sc: 'live', v: 2, gap: 0 }, // två gillen möts i final igen: en fejd (g = "A – B", a = antal finaler)
+  worldFeud: { sc: 'live', v: 2, gap: 0, ch: 'world' }, // två gillen möts i final igen: en fejd (g = "A – B", a = antal finaler)
   worldFinal: { sc: 'live', v: 2, gap: 0 }, // finalen börjar (g = spelet, a = sändningen -1 ingen, 0 egen kanal, 1 studio, 2 hela världen, v 0 sänds, 1 sänds inte)
-  worldChamp: { sc: 'live', v: 2, gap: 0 }, // mästaren kröns (g = gillet, a = tittare, v 0 sänds, 1 sänds inte)
+  worldChamp: { sc: 'live', v: 2, gap: 0, ch: 'world' }, // mästaren kröns (g = gillet, a = tittare, v 0 sänds, 1 sänds inte)
   // trofésalen (book.js): prestationer, pokaler, rekord och nya årtionden
-  hallAch: { sc: 'hall', v: 2, gap: 0 }, // en ny prestation (g = namnet, a = antal klara)
-  hallAward: { sc: 'hall', v: 2, gap: 0 }, // en ny pokal från galan (g = spelet, a = året)
-  hallRecord: { sc: 'hall', v: 4, gap: 0 }, // ett nytt rekord (v 0 betyg, 1 sålda exemplar, 2 första veckan, 3 veckor som etta; g = spelet, a = värdet)
-  hallEra: { sc: 'hall', v: 2, gap: 0 }, // ett nytt årtionde börjar (g = årtalet, a = årtalet)
+  hallAch: { sc: 'hall', v: 2, gap: 0, ch: 'studio' }, // en ny prestation (g = namnet, a = antal klara)
+  hallAward: { sc: 'hall', v: 2, gap: 0, ch: 'studio' }, // en ny pokal från galan (g = spelet, a = året)
+  hallRecord: { sc: 'hall', v: 4, gap: 0, ch: 'studio' }, // ett nytt rekord (v 0 betyg, 1 sålda exemplar, 2 första veckan, 3 veckor som etta; g = spelet, a = värdet)
+  hallEra: { sc: 'hall', v: 2, gap: 0, ch: 'studio' }, // ett nytt årtionde börjar (g = årtalet, a = årtalet)
   // rivaler och kriser (crisis.js)
-  huntMove: { sc: 'crisis', v: 5, gap: 0 }, // rivalen gör ett drag mot dig (g = rivalen, v 0 släpp på ditt släpp, 1 värvning, 2 rykten, 3 kopia, 4 rivalen floppar)
-  crisisHit: { sc: 'crisis', v: 3, gap: 0 }, // en kris (g = spelet, v 0 läcka, 1 strejk, 2 flopp)
-  crisisSolved: { sc: 'crisis', v: 2, gap: 0 }, // krisen eller draget är hanterat (g = rivalen eller spelet, a = vilket val, v 0 skonsamt, 1 dyrt eller illa)
+  huntMove: { sc: 'crisis', v: 5, gap: 0, ch: 'drama' }, // rivalen gör ett drag mot dig (g = rivalen, v 0 släpp på ditt släpp, 1 värvning, 2 rykten, 3 kopia, 4 rivalen floppar)
+  crisisHit: { sc: 'crisis', v: 3, gap: 0, ch: 'drama' }, // en kris (g = spelet, v 0 läcka, 1 strejk, 2 flopp)
+  crisisSolved: { sc: 'crisis', v: 2, gap: 0, ch: 'drama' }, // krisen eller draget är hanterat (g = rivalen eller spelet, a = vilket val, v 0 skonsamt, 1 dyrt eller illa)
   // hårdvarukriget (hwwar.js): scenen hw (fabriken)
   warMove: { sc: 'hw', v: 7, gap: 0 }, // en konkurrerande tillverkare går efter dig, eller komponentbrist (g = tillverkaren, v 0 prissänkning, 1 exklusivt spel, 2 fankrig, 3 patentstämning, 4 korslicens, 5 komponentbrist, 6 brand)
   warSolved: { sc: 'hw', v: 2, gap: 0 }, // draget är hanterat (g = tillverkaren, a = vilket val, v 0 skonsamt, 1 dyrt eller illa)
@@ -118,13 +119,27 @@ export const LIFE_KINDS = {
   resStart: { sc: 'lab', v: 2, gap: 0 }, // en forskning börjar (g = namnet)
   pizza: { sc: 'dev', v: 2, gap: 12 }, // pizza till teamet under övertid
   // studion
-  hired: { sc: 'studio', v: 3, gap: 0 },
-  anniv: { sc: 'studio', v: 2, gap: 0 }, // en medarbetare firar år i studion (a = antal år)
-  party: { sc: 'studio', v: 2, gap: 0 }, // fest efter ett riktigt bra släpp
-  visitor: { sc: 'studio', v: 2, gap: 0 }, // en journalist eller gäst hälsar på efter ett bra spel
-  fans: { sc: 'studio', v: 2, gap: 0 }, // fansen skickar brev när fansen nått en ny nivå (a = antal fans)
-  left: { sc: 'studio', v: 2, gap: 0 },
+  hired: { sc: 'studio', v: 3, gap: 0, ch: 'folk' },
+  anniv: { sc: 'studio', v: 2, gap: 0, ch: 'folk' }, // en medarbetare firar år i studion (a = antal år)
+  party: { sc: 'studio', v: 2, gap: 0, ch: 'folk' }, // fest efter ett riktigt bra släpp
+  visitor: { sc: 'studio', v: 2, gap: 0, ch: 'fans' }, // en journalist eller gäst hälsar på efter ett bra spel
+  fans: { sc: 'studio', v: 2, gap: 0, ch: 'fans' }, // fansen skickar brev när fansen nått en ny nivå (a = antal fans)
+  left: { sc: 'studio', v: 2, gap: 0, ch: 'folk' },
   built: { sc: 'studio', v: 2, gap: 0 },
+  // folket (folk.js): vänskap, kärlek, födelsedagar och drömmar. s = den ena, s2 = den andra, v = textvariant
+  birthday: { sc: 'staff', v: 3, gap: 0, ch: 'folk' }, // någon fyller år (a = ålder)
+  hangover: { sc: 'staff', v: 3, gap: 0, ch: 'folk' }, // bakis dagen efter releasefesten (g = spelet)
+  friends: { sc: 'staff', v: 3, gap: 0, ch: 'folk' }, // två blir vänner (who och who2)
+  couple: { sc: 'staff', v: 3, gap: 0, ch: 'folk' }, // två blir ett par
+  wedding: { sc: 'staff', v: 2, gap: 0, ch: 'folk' }, // bröllop (v 0 med fest på studion, 1 litet)
+  breakup: { sc: 'staff', v: 2, gap: 0, ch: 'folk' }, // ett par går isär
+  miss: { sc: 'staff', v: 3, gap: 0, ch: 'folk' }, // någon saknar den som gått (who = den som är kvar, who2 = den som gått)
+  headhunt: { sc: 'staff', v: 3, gap: 0, ch: 'folk' }, // rivalen försöker värva någon (g = rivalen, v 0 hör av sig, 1 stannar, 2 går)
+  dream: { sc: 'drama', v: 3, gap: 0, ch: 'drama' }, // någon vill göra sitt drömspel (g = spelet de drömmer om)
+  dreamGo: { sc: 'drama', v: 2, gap: 0, ch: 'drama' }, // drömmen får grönt ljus (v 0 på studions tid, 1 på fritiden)
+  dreamNo: { sc: 'drama', v: 2, gap: 0, ch: 'drama' }, // svaret blev inte nu
+  dreamDone: { sc: 'drama', v: 2, gap: 0, ch: 'drama' }, // drömspelet är klart (g = spelet)
+  dreamQuit: { sc: 'drama', v: 2, gap: 0, ch: 'drama' }, // någon tröttnar och går för att göra sitt eget
   // hårdvara
   hwStart: { sc: 'hw', v: 2, gap: 0 }, // en konstruktion påbörjas
   hwHalf: { sc: 'hw', v: 2, gap: 0 }, // ritningarna halvvägs
@@ -136,6 +151,24 @@ export const LIFE_KINDS = {
   hwLaunch: { sc: 'hw', v: 3, gap: 0 }, // produkten når butikerna (a = betyg)
   hwRev: { sc: 'hw', v: 2, gap: 0 }, // en starkare version klar
   hwEnd: { sc: 'hw', v: 2, gap: 0 }, // en produkt läggs ned
+};
+
+// Krönikan: studions gemensamma tidslinje. Varje händelse av en sort med ch (området) sparas också här, i större antal än i scenernas
+// flöde, så att fönstret Studiolivet kan visa vad som hänt med personalen, fansen, tidningen och världen (lifeText ger texten).
+export const CHRON_MAX = 160;
+export const CHRON_AREAS = ['folk', 'fans', 'press', 'world', 'drama', 'studio'];
+export const chronOf = (G) => G.chron || (G.chron = { items: [] });
+function chronAdd(G, item) {
+  const C = chronOf(G);
+  C.items.push({ ...item, ch: LIFE_KINDS[item.k].ch });
+  if (C.items.length > CHRON_MAX) C.items.shift();
+}
+// Krönikan nyast först. area utelämnad = alla områden.
+export const chronLog = (G, area, n = 40) => {
+  const out = [];
+  const items = chronOf(G).items;
+  for (let i = items.length - 1; i >= 0 && out.length < n; i--) if (!area || items[i].ch === area) out.push(items[i]);
+  return out;
 };
 
 export const lifeOf = (G) => G.life || (G.life = { n: 0, last: {}, items: [] });
@@ -158,9 +191,10 @@ export function beat(G, k, d = {}) {
   LF.last[k] = now;
   const n = ++LF.n;
   const s = d.staff || null;
-  const item = { n, t: G.t, k, sc: K.sc, gid: d.gid || 0, s: s ? s.id : 0, who: lifeName(s), g: d.g ? (typeof d.g === 'object' ? L(d.g) : String(d.g)) : '', a: d.a == null ? 0 : d.a, v: d.v != null ? Math.max(0, Math.min(K.v - 1, d.v)) : hashStr(`${G.seed || 0}:life:${k}:${n}`) % K.v };
+  const item = { n, t: G.t, k, sc: K.sc, gid: d.gid || 0, s: s ? s.id : 0, who: lifeName(s), s2: d.staff2 ? d.staff2.id : 0, who2: lifeName(d.staff2), g: d.g ? (typeof d.g === 'object' ? L(d.g) : String(d.g)) : '', a: d.a == null ? 0 : d.a, v: d.v != null ? Math.max(0, Math.min(K.v - 1, d.v)) : hashStr(`${G.seed || 0}:life:${k}:${n}`) % K.v };
   LF.items.push(item);
   if (LF.items.length > LIFE_MAX) LF.items.shift();
+  if (K.ch) chronAdd(G, item);
   emit('life', item);
   return item;
 }
@@ -173,7 +207,7 @@ export function lifeLog(G, sc, since = 0) {
 }
 // Färdig text på spelarens språk
 const NUM_KINDS = new Set(['sold', 'hwParts', 'fans', 'liveSeasonEnd', 'worldChamp', 'hallRecord', 'expoOpen', 'expoCrowd', 'expoClose']); // stora tal skrivs med tusentalsavgränsare
-export const lifeText = (b) => t(`life.${b.k}.${b.v}`, { who: b.who || t('life.someone'), g: b.k === 'built' && FACILITIES[b.g] ? L(FACILITIES[b.g].name) : b.g, a: NUM_KINDS.has(b.k) ? fmtFull(b.a) : b.a });
+export const lifeText = (b) => t(`life.${b.k}.${b.v}`, { who: b.who || t('life.someone'), who2: b.who2 || t('life.someone'), g: b.k === 'built' && FACILITIES[b.g] ? L(FACILITIES[b.g].name) : b.g, a: NUM_KINDS.has(b.k) ? fmtFull(b.a) : b.a });
 
 // Veckovis: den som är mest utsliten under ett pågående projekt. (De andra händelserna skapas där de sker: dev.js, hardware.js,
 // people.js, studio.js och charts.js.)
@@ -223,6 +257,7 @@ export function lifeState(G, sc) {
   if (sc === 'crisis') return crisisState(G);
   if (sc === 'war') return warState(G);
   if (sc === 'expo') return expoState(G);
+  if (sc === 'staff') return folkState(G);
   const J = G.job && G.job.kind === 'game' ? G.job : null;
   const crew = workers(G).map((w) => ({ id: w.id, name: lifeName(w), mood: Math.round(w.mood), fatigue: Math.round((w.fatigue || 0) * 10) / 10, trait: w.trait || null, away: !!w.away }));
   // alla bygge som pågår (spelarens och teamens): key 'p' är ordinarie teamets, 't<id>' ett teams uppdrag (builds.js)

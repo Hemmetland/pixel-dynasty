@@ -9,6 +9,7 @@ import { tr } from './tr.js';
 import { capacity, seated, facLevel, spend, campusOf } from './studio.js';
 import { note } from './news.js';
 import { beat } from './life.js';
+import { bondBonus } from './folk.js';
 
 export const SPECS = {
   designer: { d: 1.45, t: 0.75, s: 1, r: 0.9, name: { sv: 'Speldesigner', en: 'Game Designer' } },
@@ -305,8 +306,9 @@ export function updateMood(G) {
   const target = moodTarget(G);
   const crunching = crunchActive(G);
   const crunch = crunching ? 12 : 0;
+  const bonds = bondBonus(G); // vänner och par trivs bättre, den som saknar en vän sjunker (folk.js)
   for (const s of G.staff) {
-    const tr_ = s.trait === 'steady' ? 6 : 0;
+    const tr_ = (s.trait === 'steady' ? 6 : 0) + (bonds.get(s.id) || 0);
     const busy = crunching && s.trainUntil <= G.t && !s.away;
     if (busy || s.fatigue) s.fatigue = clamp((s.fatigue || 0) + (busy ? (s.trait === 'nightowl' ? 0.6 : 1) : -FATIGUE_REST), 0, FATIGUE_MAX);
     s.mood = clamp(s.mood + (target + tr_ - crunch - 2 * fatigueOver(s) - s.mood) * 0.12, 5, 100);
