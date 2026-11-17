@@ -233,7 +233,7 @@ regWin({
   size: 'xl',
   title: () => t('lf.title'),
   sub: (G) => t('lf.sub', { n: G.staff.length, m: G.staff.length ? Math.round(G.staff.reduce((a, s) => a + s.mood, 0) / G.staff.length) : 0 }),
-  headExtra: () => `<div class="tabs">${TABS.map(([id, key, ic]) => `<button class="tab ${LS.tab === id ? 'on' : ''}" data-act="lf-tab" data-id="${id}">${icon(ic)}${t(key)}</button>`).join('')}</div>`,
+  headExtra: () => `<div class="tabs lf-tabs">${TABS.map(([id, key, ic]) => `<button class="tab ${LS.tab === id ? 'on' : ''}" data-act="lf-tab" data-id="${id}" data-tip="${esc(t(key))}" aria-label="${esc(t(key))}">${icon(ic)}${t(key)}</button>`).join('')}</div>`,
   onOpen(G, arg) {
     if (arg && arg.tab && TABS.some((x) => x[0] === arg.tab)) LS.tab = arg.tab;
   },
