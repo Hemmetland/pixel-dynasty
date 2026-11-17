@@ -85,7 +85,7 @@ function folkTab(G) {
   const friends = F.bonds.filter((b) => b.k === 'friend').length;
   const people = G.staff.slice().sort((a, b) => (b.isFounder ? 1 : 0) - (a.isFounder ? 1 : 0) || a.id - b.id);
   const next = people.map((s) => ({ s, in: bdayIn(G, s) })).sort((a, b) => a.in - b.in || a.s.id - b.s.id).slice(0, 3);
-  return `<p class="hint" style="margin:0 0 10px">${icon('info')} ${t('lf.folk.help')}</p>
+  return `${sceneHTML('studio', G)}<p class="hint" style="margin:0 0 10px">${icon('info')} ${t('lf.folk.help')}</p>
     <div class="row wrap" style="gap:8px;margin-bottom:12px"><span class="chip c" style="--c:var(--good)">${icon('user')}${t('lf.folk.friends', { n: friends })}</span><span class="chip c" style="--c:var(--fans)">${icon('heart')}${t('lf.folk.couples', { n: couples })}</span>
       ${next.map((x) => `<span class="chip">${icon('calendar')}${t(x.in === 0 ? 'lf.folk.bdayNow' : 'lf.folk.bday', { name: esc(x.s.name.split(' ')[0]), n: x.in })}</span>`).join('')}</div>
     <div class="grid lf-grid">${people.map((s) => personCard(G, s)).join('')}</div>`;
