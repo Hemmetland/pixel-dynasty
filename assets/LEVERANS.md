@@ -1008,3 +1008,21 @@ Nya modeller och ikoner för spelarens egna speldatorer (Forge), i fyra generati
 
 - **Begränsningar:** Generation 3-ikonen är svagast: sidofönstret är en smal skjuvad remsa i 3/4-vyn och blir i 1x bara en blå fläck med en fläkt. Fönsterinnehållet i generation 2 och 3 är förenklat för läsbarhet och fläktarna är ritade upprätta, inte skjuvade med sidoplanet; fönsterramen i Grafit är lågkontrast mot skalet. Generation 4 är nästan lika bred som hög (33x30) och liknar lite en liten TV mer än ett torn. Nätet på framsidan i generation 2 är en mycket svag tvåtons-ruta. Utseende 2 i generation 1 är medvetet beige: byt namnet i gränssnittet om ni vill ha ”Ljus” bokstavligt.
 
+
+## Hårdvara: sammanfattning, val i spelet och ritkoden
+
+Sju produkttyper, 22 generationer, tre utseenden var: 66 modeller (64x64) och 66 ikoner (32x32) i `assets/hw/<typ>/`. Förhandsbilder: `/mnt/project-files/pixellab-preview/hardvara-oversikt.png` (före och efter, alla generationer) och `hardvara-utseenden.png` (de tre utseendena).
+
+| Typ (`<typ>`) | Generation efter lanseringsår (`yearOf(P.t ?? G.t)`) |
+| --- | --- |
+| `sound` Ljudkort | g1 till 1995, g2 1996 till 2002, g3 från 2003 |
+| `gpu` Grafikkort | g1 till 2000, g2 2001 till 2009, g3 2010 till 2018, g4 från 2019 |
+| `pc` Speldator | g1 till 2003, g2 2004 till 2011, g3 2012 till 2019, g4 från 2020 |
+| `cpu` Processor | g1 till 2004, g2 2005 till 2013, g3 2014 till 2021, g4 från 2022 |
+| `handheld` Bärbar konsol | g1 till 2009, g2 2010 till 2017, g3 från 2018 |
+| `console` Konsol | g1 till 2011, g2 2012 till 2019, g3 från 2020 |
+| `vr` VR-headset | g1 till 2019, g2 2020 till 2026, g3 från 2027 |
+
+- **Nycklar:** modell `hw.<typ>.g<N>#<S>`, ikon `ui.hw.<typ>.g<N>#<S>`, `S` = 1, 2 eller 3. En liten hjälpfunktion kan välja generationen ur tabellen och utseendet ur `P.id % 3 + 1` (stabilt per produkt). De äldre `ui.hw.<typ>` finns kvar som reserv.
+- **Placering:** modellerna är 64x64 med nedersta raden 58 till 60 och är centrerade i bredd; låga produkter (processor, bärbar, konsol) lämnar luft ovanför. Ikonerna är ritade för plattan på 38 px med accentfärgen.
+- **Kod:** `assets/hw/src/` (se `README.md` där) bygger alla bilder byte för byte likadant; ny generation eller nytt utseende läggs till där.
