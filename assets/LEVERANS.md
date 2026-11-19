@@ -1011,7 +1011,7 @@ Nya modeller och ikoner för spelarens egna speldatorer (Forge), i fyra generati
 
 ## Hårdvara: sammanfattning, val i spelet och ritkoden
 
-Sju produkttyper, 22 generationer, tre utseenden var: 66 modeller (64x64) och 66 ikoner (32x32) i `assets/hw/<typ>/`. Förhandsbilder: `/mnt/project-files/pixellab-preview/hardvara-oversikt.png` (före och efter, alla generationer) och `hardvara-utseenden.png` (de tre utseendena).
+Sju produkttyper, 24 generationer, tre utseenden var: 72 modeller (64x64) och 72 ikoner (32x32) i `assets/hw/<typ>/`. Förhandsbilder: `/mnt/project-files/pixellab-preview/hardvara-oversikt.png` (före och efter, alla generationer) och `hardvara-utseenden.png` (de tre utseendena).
 
 | Typ (`<typ>`) | Generation efter lanseringsår (`yearOf(P.t ?? G.t)`) |
 | --- | --- |
