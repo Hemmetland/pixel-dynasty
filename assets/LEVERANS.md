@@ -868,3 +868,45 @@ Nya modeller och ikoner för spelarens egna ljudkort (Sonora), i tre generatione
 
 - **Begränsningar:** Generation 1-ikonen är den plottrigaste: ISA-kortet är fullt av detaljer och volymhjulet läses som en grå stolpe mellan kretsarna, men det går att känna igen som ett kort i 1x. Utseende 2 (Natt) i generation 1 har lägst kontrast (grafitkretsar på svart kort), de bärnstensfärgade banorna räddar det. Tre ikonpar ligger nära varandra i färgavstånd (24 till 28 av önskade 30) eftersom den stora stålplåten och de mörka kretsarna delas, men kortets färg skiljer dem i 1x. Generation 3 är den minsta (45x42) med flit. Uttagsringarna är ritade som runda cirklar på den skjuvade plåten, inte som skjuvade ellipser, eftersom de annars läses som streck.
 
+
+## Hårdvara: VR-headset i 3 generationer och tre utseenden (handritat)
+
+Nya modeller och ikoner för spelarens eget VR-headset (Mirage), i tre generationer som följer tiden. Den äldre ikonen `ui.hw.vr` är första förslaget; de här ersätter den.
+
+| Generation | Lanseringsår | Utseende |
+| --- | --- | --- |
+| `g1` | till och med 2019 | Det sladdbundna headsetet: kantig visirlåda med tjock upphöjd frontplatta, näsurtag, spårningsprickar, ventiler, mörk vävd huvudrem i en båge med ratt bak och en sladd med kontakt som ligger framför. Två stående handkontroller med ring (ikonen har bara en och ingen sladd). |
+| `g2` | 2020 till 2026 | Det fristående headsetet: rundat, kompakt visir med stort blankt glas, fyra kameralinser i hörnen, en stel arm vid sidan som leder in i en låg, platt tygrem. Ingen sladd. Två rörelsekontroller med ring. |
+| `g3` | 2027 och senare | Glasögonen: bred svepande glasögonform med böjt glas, näsurtag, en tunn lysande linje längs undre kanten, ljusblå reflex och ett smalt skalm med öronhake. Två små öronsnäckor under (bara i modellen). |
+
+**Utseenden (`#1`, `#2`, `#3`):** `#1` Grafit (grafitskal, korallfärgad list och lampor, mörk rem); `#2` Ljus (vitt skal, korallfärgad list, grafitrem); `#3` Korall (skalet i accentens korall, mörkt glas, cyanblå lampor). Samma form i alla tre, så det är färgvarianter av samma design.
+
+- **Modell:** `assets/hw/vr/model-g<N>-s<S>.png`, 64x64, hård alfa, 3/4-vy snett uppifrån med ljus uppifrån vänster. Nyckel `hw.vr.g<N>#<S>`. Motivet är 56x52, 56x47 och 52x49 px.
+- **Ikon:** `assets/hw/vr/icon-g<N>-s<S>.png`, 32x32, samma design omritad för 32 px, för plattan med accentfärgen `#ff8a5c`. Nyckel `ui.hw.vr.g<N>#<S>`. Motivet är 27x28, 26x23 och 28x22 px.
+- **Val i spelet:** generation efter lanseringsåret (`yearOf(P.t ?? G.t)`): g1 till 2019, g2 2020 till 2026, g3 från 2027. Utseendet väljs fritt, förslag `P.id % 3 + 1`.
+- **Reserv:** den äldre ikonen `ui.hw.vr` (`assets/ui/hw-vr.png`) finns kvar.
+- **Färger:** En ny mörk rampfärg `fabric` (`#17172b #1f1e36 #2b2842 #3c3757 #524d70`) för den vävda remmen; resten ur den delade paletten. Max 25 färger per bild.
+
+```json
+"hw.vr.g1#1": { "file": "hw/vr/model-g1-s1.png", "fw": 64, "fh": 64, "note": "VR-headset, generation 1, Grafit (Kör)" },
+"ui.hw.vr.g1#1": { "file": "hw/vr/icon-g1-s1.png", "fw": 32, "fh": 32, "note": "VR-headset, ikon generation 1, Grafit (Kör)" },
+"hw.vr.g1#2": { "file": "hw/vr/model-g1-s2.png", "fw": 64, "fh": 64, "note": "VR-headset, generation 1, Ljus (Kör)" },
+"ui.hw.vr.g1#2": { "file": "hw/vr/icon-g1-s2.png", "fw": 32, "fh": 32, "note": "VR-headset, ikon generation 1, Ljus (Kör)" },
+"hw.vr.g1#3": { "file": "hw/vr/model-g1-s3.png", "fw": 64, "fh": 64, "note": "VR-headset, generation 1, Korall (Kör)" },
+"ui.hw.vr.g1#3": { "file": "hw/vr/icon-g1-s3.png", "fw": 32, "fh": 32, "note": "VR-headset, ikon generation 1, Korall (Kör)" },
+"hw.vr.g2#1": { "file": "hw/vr/model-g2-s1.png", "fw": 64, "fh": 64, "note": "VR-headset, generation 2, Grafit (Kör)" },
+"ui.hw.vr.g2#1": { "file": "hw/vr/icon-g2-s1.png", "fw": 32, "fh": 32, "note": "VR-headset, ikon generation 2, Grafit (Kör)" },
+"hw.vr.g2#2": { "file": "hw/vr/model-g2-s2.png", "fw": 64, "fh": 64, "note": "VR-headset, generation 2, Ljus (Kör)" },
+"ui.hw.vr.g2#2": { "file": "hw/vr/icon-g2-s2.png", "fw": 32, "fh": 32, "note": "VR-headset, ikon generation 2, Ljus (Kör)" },
+"hw.vr.g2#3": { "file": "hw/vr/model-g2-s3.png", "fw": 64, "fh": 64, "note": "VR-headset, generation 2, Korall (Kör)" },
+"ui.hw.vr.g2#3": { "file": "hw/vr/icon-g2-s3.png", "fw": 32, "fh": 32, "note": "VR-headset, ikon generation 2, Korall (Kör)" },
+"hw.vr.g3#1": { "file": "hw/vr/model-g3-s1.png", "fw": 64, "fh": 64, "note": "VR-headset, generation 3, Grafit (Kör)" },
+"ui.hw.vr.g3#1": { "file": "hw/vr/icon-g3-s1.png", "fw": 32, "fh": 32, "note": "VR-headset, ikon generation 3, Grafit (Kör)" },
+"hw.vr.g3#2": { "file": "hw/vr/model-g3-s2.png", "fw": 64, "fh": 64, "note": "VR-headset, generation 3, Ljus (Kör)" },
+"ui.hw.vr.g3#2": { "file": "hw/vr/icon-g3-s2.png", "fw": 32, "fh": 32, "note": "VR-headset, ikon generation 3, Ljus (Kör)" },
+"hw.vr.g3#3": { "file": "hw/vr/model-g3-s3.png", "fw": 64, "fh": 64, "note": "VR-headset, generation 3, Korall (Kör)" },
+"ui.hw.vr.g3#3": { "file": "hw/vr/icon-g3-s3.png", "fw": 32, "fh": 32, "note": "VR-headset, ikon generation 3, Korall (Kör)" }
+```
+
+- **Begränsningar:** Generation 1 är mest detaljrik och ser upptagen ut även i 8x: sladdslingan till vänster kan läsas som ett andra handtag och handkontrollerna är små mörka klumpar med en ring. I generation 2 är kontrollerna nästan likadana pinnar, och ikonen med grafit (utseende 1) är mörk och lite grumlig; handkontrollen läses som en stolpe och remmen är tung. Generation 3 är den renaste: i ikonen är öronkroken nästan borta och näsurtagets kontur bildar små ”tänder”; öronsnäckorna i modellen kan påminna om nycklar. Generation 1 och 2 i ikonen är båda ”låda, båge och kontroll” och skiljer sig mest på bågens höjd och ratten respektive de fyra kamerapunkterna.
+
