@@ -777,3 +777,52 @@ Nya modeller och ikoner för spelarens egen bärbara spelenhet (Nomad), i tre ge
 
 - **Begränsningar:** Generation 2 i ikonen: spakarna är 3x3 px och läses mer som högtalare än som runda knappar, det är den stora skärmen som bär igenkänningen. De fyra knapparna i modellen (2x2 px i en diamant) ser mer ut som glitter än som tydliga knappar. Generation 2 och 3 är breda och låga (33 till 36 px höga av 64) och lämnar luft ovanför, eftersom bredden redan är 56 px. Utseende 3 (Turkos) har magenta knappar som ekar den gamla Nomad-ikonen.
 
+
+## Hårdvara: Grafikkort i 4 generationer och tre utseenden (handritat)
+
+Nya modeller och ikoner för spelarens egna grafikkort (Spectra), i fyra generationer som följer tiden. Kortet ses från kylsidan med fästplåten åt vänster och guldkontakterna nedtill.
+
+| Generation | Lanseringsår | Utseende |
+| --- | --- | --- |
+| `g1` | till och med 2000 | 3D-acceleratorn: litet kort utan kåpa, kretskort med stålkylare och en liten fläkt, fem bara minneskretsar, klistermärke och en fästplåt med två VGA-uttag. |
+| `g2` | 2001 till 2009 | Den stora enkelfläkten: rundad plastkåpa med en 7-bladig fläkt med accentring, ventilspringor, två kopparfärgade värmerör, vit 4-polskontakt på toppen och tvåplatsplåt med DVI, S-video och VGA. |
+| `g3` | 2010 till 2018 | Dubbelfläkten: lång och låg avfasad kåpa med två 7-bladiga fläktar i en gemensam försänkning, accentrand på toppen, stålfärgade värmerör, två 8-polskontakter, baksida av metall och HDMI plus tre DisplayPort. |
+| `g4` | 2019 och senare | Trefläkts-kortet med ljus: störst och tjockast, kraftiga avfasningar, tre fläktar i en gemensam kapselformad försänkning, lysande skärlinje och lysande fas, ljusstrimma på toppen, kontakt med lysande lampa, stålbaksida och nätplåt. |
+
+**Utseenden (`#1`, `#2`, `#3`):** `#1` Grön (grafitkåpa med gröna accentringar, grönt eller svart kretskort); `#2` Ljus (vit kåpa, silverblå blad, grön accent); `#3` Mörk (matt svart kåpa, grönt bara på ljuslinjen, klistermärket och fläktnaven). Samma form i alla tre, så det är färgvarianter av samma design.
+
+- **Modell:** `assets/hw/gpu/model-g<N>-s<S>.png`, 64x64, hård alfa, 3/4-vy snett uppifrån med ljus uppifrån vänster. Nyckel `hw.gpu.g<N>#<S>`. Motivet är 45x34, 53x44, 56x39 och 55x47 px.
+- **Ikon:** `assets/hw/gpu/icon-g<N>-s<S>.png`, 32x32, samma design omritad för 32 px, för plattan med accentfärgen `#6ee76a`. Nyckel `ui.hw.gpu.g<N>#<S>`. Motivet är 26x24, 28x25, 28x24 och 28x28 px.
+- **Val i spelet:** generation efter lanseringsåret (`yearOf(P.t ?? G.t)`): g1 till 2000, g2 2001 till 2009, g3 2010 till 2018, g4 från 2019. Utseendet väljs fritt, förslag `P.id % 3 + 1`.
+- **Reserv:** den äldre ikonen `ui.hw.gpu` (`assets/ui/hw-gpu.png`) finns kvar.
+- **Färger:** Inga nya färger i den delade paletten; tre lokala rampfärger byggda av befintliga toner. Max 28 färger per bild.
+
+```json
+"hw.gpu.g1#1": { "file": "hw/gpu/model-g1-s1.png", "fw": 64, "fh": 64, "note": "Grafikkort, generation 1, Grön (Kör)" },
+"ui.hw.gpu.g1#1": { "file": "hw/gpu/icon-g1-s1.png", "fw": 32, "fh": 32, "note": "Grafikkort, ikon generation 1, Grön (Kör)" },
+"hw.gpu.g1#2": { "file": "hw/gpu/model-g1-s2.png", "fw": 64, "fh": 64, "note": "Grafikkort, generation 1, Ljus (Kör)" },
+"ui.hw.gpu.g1#2": { "file": "hw/gpu/icon-g1-s2.png", "fw": 32, "fh": 32, "note": "Grafikkort, ikon generation 1, Ljus (Kör)" },
+"hw.gpu.g1#3": { "file": "hw/gpu/model-g1-s3.png", "fw": 64, "fh": 64, "note": "Grafikkort, generation 1, Mörk (Kör)" },
+"ui.hw.gpu.g1#3": { "file": "hw/gpu/icon-g1-s3.png", "fw": 32, "fh": 32, "note": "Grafikkort, ikon generation 1, Mörk (Kör)" },
+"hw.gpu.g2#1": { "file": "hw/gpu/model-g2-s1.png", "fw": 64, "fh": 64, "note": "Grafikkort, generation 2, Grön (Kör)" },
+"ui.hw.gpu.g2#1": { "file": "hw/gpu/icon-g2-s1.png", "fw": 32, "fh": 32, "note": "Grafikkort, ikon generation 2, Grön (Kör)" },
+"hw.gpu.g2#2": { "file": "hw/gpu/model-g2-s2.png", "fw": 64, "fh": 64, "note": "Grafikkort, generation 2, Ljus (Kör)" },
+"ui.hw.gpu.g2#2": { "file": "hw/gpu/icon-g2-s2.png", "fw": 32, "fh": 32, "note": "Grafikkort, ikon generation 2, Ljus (Kör)" },
+"hw.gpu.g2#3": { "file": "hw/gpu/model-g2-s3.png", "fw": 64, "fh": 64, "note": "Grafikkort, generation 2, Mörk (Kör)" },
+"ui.hw.gpu.g2#3": { "file": "hw/gpu/icon-g2-s3.png", "fw": 32, "fh": 32, "note": "Grafikkort, ikon generation 2, Mörk (Kör)" },
+"hw.gpu.g3#1": { "file": "hw/gpu/model-g3-s1.png", "fw": 64, "fh": 64, "note": "Grafikkort, generation 3, Grön (Kör)" },
+"ui.hw.gpu.g3#1": { "file": "hw/gpu/icon-g3-s1.png", "fw": 32, "fh": 32, "note": "Grafikkort, ikon generation 3, Grön (Kör)" },
+"hw.gpu.g3#2": { "file": "hw/gpu/model-g3-s2.png", "fw": 64, "fh": 64, "note": "Grafikkort, generation 3, Ljus (Kör)" },
+"ui.hw.gpu.g3#2": { "file": "hw/gpu/icon-g3-s2.png", "fw": 32, "fh": 32, "note": "Grafikkort, ikon generation 3, Ljus (Kör)" },
+"hw.gpu.g3#3": { "file": "hw/gpu/model-g3-s3.png", "fw": 64, "fh": 64, "note": "Grafikkort, generation 3, Mörk (Kör)" },
+"ui.hw.gpu.g3#3": { "file": "hw/gpu/icon-g3-s3.png", "fw": 32, "fh": 32, "note": "Grafikkort, ikon generation 3, Mörk (Kör)" },
+"hw.gpu.g4#1": { "file": "hw/gpu/model-g4-s1.png", "fw": 64, "fh": 64, "note": "Grafikkort, generation 4, Grön (Kör)" },
+"ui.hw.gpu.g4#1": { "file": "hw/gpu/icon-g4-s1.png", "fw": 32, "fh": 32, "note": "Grafikkort, ikon generation 4, Grön (Kör)" },
+"hw.gpu.g4#2": { "file": "hw/gpu/model-g4-s2.png", "fw": 64, "fh": 64, "note": "Grafikkort, generation 4, Ljus (Kör)" },
+"ui.hw.gpu.g4#2": { "file": "hw/gpu/icon-g4-s2.png", "fw": 32, "fh": 32, "note": "Grafikkort, ikon generation 4, Ljus (Kör)" },
+"hw.gpu.g4#3": { "file": "hw/gpu/model-g4-s3.png", "fw": 64, "fh": 64, "note": "Grafikkort, generation 4, Mörk (Kör)" },
+"ui.hw.gpu.g4#3": { "file": "hw/gpu/icon-g4-s3.png", "fw": 32, "fh": 32, "note": "Grafikkort, ikon generation 4, Mörk (Kör)" }
+```
+
+- **Begränsningar:** Generation 4 är svagast: tre fläktar i rad kan läsas som ett ansikte, vilket bryts med den gemensamma kapselformen och en böjd ljuslinje. I 1x är generation 4-ikonen den minst tydliga (tre ringar i rad), och generation 3 och 4 skiljer sig mest på storlek, avfasningar och antal fläktar. Utseende 3 (Mörk) är mörkt överlag, fläktarna läses mest via den gröna mittpixeln. Fästplåten är ritad platt framifrån med synliga uttag som en medveten förenkling. Fläktar på 11 px eller mindre är regelstyrda blad som handjusterats.
+
