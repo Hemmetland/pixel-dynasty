@@ -826,3 +826,45 @@ Nya modeller och ikoner för spelarens egna grafikkort (Spectra), i fyra generat
 
 - **Begränsningar:** Generation 4 är svagast: tre fläktar i rad kan läsas som ett ansikte, vilket bryts med den gemensamma kapselformen och en böjd ljuslinje. I 1x är generation 4-ikonen den minst tydliga (tre ringar i rad), och generation 3 och 4 skiljer sig mest på storlek, avfasningar och antal fläktar. Utseende 3 (Mörk) är mörkt överlag, fläktarna läses mest via den gröna mittpixeln. Fästplåten är ritad platt framifrån med synliga uttag som en medveten förenkling. Fläktar på 11 px eller mindre är regelstyrda blad som handjusterats.
 
+
+## Hårdvara: Ljudkort i 3 generationer och tre utseenden (handritat)
+
+Nya modeller och ikoner för spelarens egna ljudkort (Sonora), i tre generationer som följer tiden. Kortet står upprätt med komponentsidan framåt, fästplåten med uttagen åt höger och guldkontakterna nedtill.
+
+| Generation | Lanseringsår | Utseende |
+| --- | --- | --- |
+| `g1` | till och med 1995 | ISA-kortet: långt, lågt kretskort med fem DIP-kretsar, en kvadratisk huvudkrets i sockel, ROM-krets med bärnstensfärgat klistermärke, två elektrolytkondensatorer, jumperblock, ett räfflat volymhjul som sticker upp i överkanten och en fästplåt med två 3,5 mm-uttag och en DB15-port. |
+| `g2` | 1996 till 2002 | PCI-kortet: kvadratisk kortform med en stor kvadratisk krets och klistermärke med en pale dubbelnot, två SOIC-kretsar, kristallburk, ett knippe små SMD-kondensatorer, en liten lampa och en fästplåt med färgkodade uttag (grönt, blått, rosa). |
+| `g3` | 2003 och senare | Premiumkortet (PCIe): kompakt, djupt kretskort med en kort kontakt, en metallskärm med ventilspår och ett märke med pale dubbelnot, ett litet förstärkarkort som står upp över överkanten, två bärnstensfärgade kondensatorer, ljusstrimma och en smal plåt med tre förgyllda uttag. |
+
+**Utseenden (`#1`, `#2`, `#3`):** `#1` Klassisk (grönt kretskort, bärnstensfärgade burkar och lampa, stålplåt); `#2` Natt (svart kretskort, grafitkretsar, bärnstensglödande banor); `#3` Blå (generation 1 valnötsbrunt med blå burkar, generation 2 och 3 blått kretskort med silverplåt). Samma form i alla tre, så det är färgvarianter av samma design.
+
+- **Modell:** `assets/hw/sound/model-g<N>-s<S>.png`, 64x64, hård alfa, 3/4-vy snett uppifrån med ljus uppifrån vänster. Nyckel `hw.sound.g<N>#<S>`. Motivet är 54x45, 47x47 och 45x42 px.
+- **Ikon:** `assets/hw/sound/icon-g<N>-s<S>.png`, 32x32, samma design omritad för 32 px, för plattan med accentfärgen `#f6b84a`. Nyckel `ui.hw.sound.g<N>#<S>`. Motivet är 27x24, 25x26 och 27x24 px.
+- **Val i spelet:** generation efter lanseringsåret (`yearOf(P.t ?? G.t)`): g1 till 1995, g2 1996 till 2002, g3 från 2003. Utseendet väljs fritt, förslag `P.id % 3 + 1`.
+- **Reserv:** den äldre ikonen `ui.hw.sound` (`assets/ui/hw-sound.png`) finns kvar.
+- **Färger:** En ny rampfärg `pcb_brown` (`#3a2418 #5e3b24 #8a5230 #b0713f #d99a5b`, de två sista fanns redan i guldrampen); resten ur den delade paletten. Bärnsten (`#f6b84a`) finns med i alla utseenden. Max 26 färger per bild.
+
+```json
+"hw.sound.g1#1": { "file": "hw/sound/model-g1-s1.png", "fw": 64, "fh": 64, "note": "Ljudkort, generation 1, Klassisk (Kör)" },
+"ui.hw.sound.g1#1": { "file": "hw/sound/icon-g1-s1.png", "fw": 32, "fh": 32, "note": "Ljudkort, ikon generation 1, Klassisk (Kör)" },
+"hw.sound.g1#2": { "file": "hw/sound/model-g1-s2.png", "fw": 64, "fh": 64, "note": "Ljudkort, generation 1, Natt (Kör)" },
+"ui.hw.sound.g1#2": { "file": "hw/sound/icon-g1-s2.png", "fw": 32, "fh": 32, "note": "Ljudkort, ikon generation 1, Natt (Kör)" },
+"hw.sound.g1#3": { "file": "hw/sound/model-g1-s3.png", "fw": 64, "fh": 64, "note": "Ljudkort, generation 1, Blå (Kör)" },
+"ui.hw.sound.g1#3": { "file": "hw/sound/icon-g1-s3.png", "fw": 32, "fh": 32, "note": "Ljudkort, ikon generation 1, Blå (Kör)" },
+"hw.sound.g2#1": { "file": "hw/sound/model-g2-s1.png", "fw": 64, "fh": 64, "note": "Ljudkort, generation 2, Klassisk (Kör)" },
+"ui.hw.sound.g2#1": { "file": "hw/sound/icon-g2-s1.png", "fw": 32, "fh": 32, "note": "Ljudkort, ikon generation 2, Klassisk (Kör)" },
+"hw.sound.g2#2": { "file": "hw/sound/model-g2-s2.png", "fw": 64, "fh": 64, "note": "Ljudkort, generation 2, Natt (Kör)" },
+"ui.hw.sound.g2#2": { "file": "hw/sound/icon-g2-s2.png", "fw": 32, "fh": 32, "note": "Ljudkort, ikon generation 2, Natt (Kör)" },
+"hw.sound.g2#3": { "file": "hw/sound/model-g2-s3.png", "fw": 64, "fh": 64, "note": "Ljudkort, generation 2, Blå (Kör)" },
+"ui.hw.sound.g2#3": { "file": "hw/sound/icon-g2-s3.png", "fw": 32, "fh": 32, "note": "Ljudkort, ikon generation 2, Blå (Kör)" },
+"hw.sound.g3#1": { "file": "hw/sound/model-g3-s1.png", "fw": 64, "fh": 64, "note": "Ljudkort, generation 3, Klassisk (Kör)" },
+"ui.hw.sound.g3#1": { "file": "hw/sound/icon-g3-s1.png", "fw": 32, "fh": 32, "note": "Ljudkort, ikon generation 3, Klassisk (Kör)" },
+"hw.sound.g3#2": { "file": "hw/sound/model-g3-s2.png", "fw": 64, "fh": 64, "note": "Ljudkort, generation 3, Natt (Kör)" },
+"ui.hw.sound.g3#2": { "file": "hw/sound/icon-g3-s2.png", "fw": 32, "fh": 32, "note": "Ljudkort, ikon generation 3, Natt (Kör)" },
+"hw.sound.g3#3": { "file": "hw/sound/model-g3-s3.png", "fw": 64, "fh": 64, "note": "Ljudkort, generation 3, Blå (Kör)" },
+"ui.hw.sound.g3#3": { "file": "hw/sound/icon-g3-s3.png", "fw": 32, "fh": 32, "note": "Ljudkort, ikon generation 3, Blå (Kör)" }
+```
+
+- **Begränsningar:** Generation 1-ikonen är den plottrigaste: ISA-kortet är fullt av detaljer och volymhjulet läses som en grå stolpe mellan kretsarna, men det går att känna igen som ett kort i 1x. Utseende 2 (Natt) i generation 1 har lägst kontrast (grafitkretsar på svart kort), de bärnstensfärgade banorna räddar det. Tre ikonpar ligger nära varandra i färgavstånd (24 till 28 av önskade 30) eftersom den stora stålplåten och de mörka kretsarna delas, men kortets färg skiljer dem i 1x. Generation 3 är den minsta (45x42) med flit. Uttagsringarna är ritade som runda cirklar på den skjuvade plåten, inte som skjuvade ellipser, eftersom de annars läses som streck.
+
