@@ -735,3 +735,45 @@ Nya modeller och ikoner för spelarens egna konsol (Paragon), i tre generationer
 
 - **Begränsningar:** I ikonerna (32 px) är handkontrollen bara cirka 11x6 px i nedre högra hörnet, så den läses som ”en kontroll” utan detaljer; generation 1 och 2 skiljer sig i 1x mest på kroppens volym respektive ljusstrimman. Sladden och kontakten i generation 1 finns bara i modellen. Kilen i generation 2 är subtil (fas och indragen sockel). Utseende 1 (Grafit) har fortfarande ganska låg kontrast i 1x, men skalet, panelerna och handkontrollen har tre olika grafittoner.
 
+
+## Hårdvara: Bärbar konsol i 3 generationer och tre utseenden (handritat)
+
+Nya modeller och ikoner för spelarens egen bärbara spelenhet (Nomad), i tre generationer som följer tiden. Alla ligger ned i liggande format med skärmen i mitten.
+
+| Generation | Lanseringsår | Utseende |
+| --- | --- | --- |
+| `g1` | till och med 2009 | Tegelstenen med liten skärm: tjockt skal med bred mörk ram, liten olivgrön LCD med ett litet spel, styrkors till vänster, två runda knappar till höger, start och select, högtalarspringor, axelknoppar. En spelkassett sticker upp ur facket i toppen. |
+| `g2` | 2010 till 2017 | Den stora blanka skärmen: bredare och tunnare platta med smal ram, skärm med sol, moln, kullar och en röd bil, kameraprick, spak och styrkors till vänster, fyra knappar och spak till höger, axelplattor och minneskortsfack med guldkontakter. |
+| `g3` | 2018 och senare | Helskärmen med grepp: mycket tunn platta med kant-till-kant-glas och rundade hörn, ljus startskärm med appplattor, två greppulor som sticker ned under plattan, spakar och knappar, ljusstrimma under skärmen och ventilspår. |
+
+**Utseenden (`#1`, `#2`, `#3`):** `#1` Grafit (grafitskal, turkosa knappar och lampa); `#2` Ljus (vitt skal, mörka grepp, djupturkosa knappar); `#3` Turkos (skalet i accentens turkos, mörk ram, magenta knappar). Samma form i alla tre, så det är färgvarianter av samma design.
+
+- **Modell:** `assets/hw/handheld/model-g<N>-s<S>.png`, 64x64, hård alfa, 3/4-vy snett uppifrån med ljus uppifrån vänster. Nyckel `hw.handheld.g<N>#<S>`. Motivet är 56x43, 56x33 och 56x36 px.
+- **Ikon:** `assets/hw/handheld/icon-g<N>-s<S>.png`, 32x32, samma design omritad för 32 px, för plattan med accentfärgen `#7be0c8`. Nyckel `ui.hw.handheld.g<N>#<S>`. Motivet är 28x25, 28x20 och 28x23 px.
+- **Val i spelet:** generation efter lanseringsåret (`yearOf(P.t ?? G.t)`): g1 till 2009, g2 2010 till 2017, g3 från 2018. Utseendet väljs fritt, förslag `P.id % 3 + 1`.
+- **Reserv:** den äldre ikonen `ui.hw.handheld` (`assets/ui/hw-handheld.png`) finns kvar.
+- **Färger:** Ny rampfärg för LCD-skärmen i generation 1 (`#24352f #4a6a52 #8fb07a #c2d9a0 #e8f2c4`) och en lampfärg i turkos; resten ur den delade paletten. Max 28 färger per bild.
+
+```json
+"hw.handheld.g1#1": { "file": "hw/handheld/model-g1-s1.png", "fw": 64, "fh": 64, "note": "Bärbar konsol, generation 1, Grafit (Kör)" },
+"ui.hw.handheld.g1#1": { "file": "hw/handheld/icon-g1-s1.png", "fw": 32, "fh": 32, "note": "Bärbar konsol, ikon generation 1, Grafit (Kör)" },
+"hw.handheld.g1#2": { "file": "hw/handheld/model-g1-s2.png", "fw": 64, "fh": 64, "note": "Bärbar konsol, generation 1, Ljus (Kör)" },
+"ui.hw.handheld.g1#2": { "file": "hw/handheld/icon-g1-s2.png", "fw": 32, "fh": 32, "note": "Bärbar konsol, ikon generation 1, Ljus (Kör)" },
+"hw.handheld.g1#3": { "file": "hw/handheld/model-g1-s3.png", "fw": 64, "fh": 64, "note": "Bärbar konsol, generation 1, Turkos (Kör)" },
+"ui.hw.handheld.g1#3": { "file": "hw/handheld/icon-g1-s3.png", "fw": 32, "fh": 32, "note": "Bärbar konsol, ikon generation 1, Turkos (Kör)" },
+"hw.handheld.g2#1": { "file": "hw/handheld/model-g2-s1.png", "fw": 64, "fh": 64, "note": "Bärbar konsol, generation 2, Grafit (Kör)" },
+"ui.hw.handheld.g2#1": { "file": "hw/handheld/icon-g2-s1.png", "fw": 32, "fh": 32, "note": "Bärbar konsol, ikon generation 2, Grafit (Kör)" },
+"hw.handheld.g2#2": { "file": "hw/handheld/model-g2-s2.png", "fw": 64, "fh": 64, "note": "Bärbar konsol, generation 2, Ljus (Kör)" },
+"ui.hw.handheld.g2#2": { "file": "hw/handheld/icon-g2-s2.png", "fw": 32, "fh": 32, "note": "Bärbar konsol, ikon generation 2, Ljus (Kör)" },
+"hw.handheld.g2#3": { "file": "hw/handheld/model-g2-s3.png", "fw": 64, "fh": 64, "note": "Bärbar konsol, generation 2, Turkos (Kör)" },
+"ui.hw.handheld.g2#3": { "file": "hw/handheld/icon-g2-s3.png", "fw": 32, "fh": 32, "note": "Bärbar konsol, ikon generation 2, Turkos (Kör)" },
+"hw.handheld.g3#1": { "file": "hw/handheld/model-g3-s1.png", "fw": 64, "fh": 64, "note": "Bärbar konsol, generation 3, Grafit (Kör)" },
+"ui.hw.handheld.g3#1": { "file": "hw/handheld/icon-g3-s1.png", "fw": 32, "fh": 32, "note": "Bärbar konsol, ikon generation 3, Grafit (Kör)" },
+"hw.handheld.g3#2": { "file": "hw/handheld/model-g3-s2.png", "fw": 64, "fh": 64, "note": "Bärbar konsol, generation 3, Ljus (Kör)" },
+"ui.hw.handheld.g3#2": { "file": "hw/handheld/icon-g3-s2.png", "fw": 32, "fh": 32, "note": "Bärbar konsol, ikon generation 3, Ljus (Kör)" },
+"hw.handheld.g3#3": { "file": "hw/handheld/model-g3-s3.png", "fw": 64, "fh": 64, "note": "Bärbar konsol, generation 3, Turkos (Kör)" },
+"ui.hw.handheld.g3#3": { "file": "hw/handheld/icon-g3-s3.png", "fw": 32, "fh": 32, "note": "Bärbar konsol, ikon generation 3, Turkos (Kör)" }
+```
+
+- **Begränsningar:** Generation 2 i ikonen: spakarna är 3x3 px och läses mer som högtalare än som runda knappar, det är den stora skärmen som bär igenkänningen. De fyra knapparna i modellen (2x2 px i en diamant) ser mer ut som glitter än som tydliga knappar. Generation 2 och 3 är breda och låga (33 till 36 px höga av 64) och lämnar luft ovanför, eftersom bredden redan är 56 px. Utseende 3 (Turkos) har magenta knappar som ekar den gamla Nomad-ikonen.
+
