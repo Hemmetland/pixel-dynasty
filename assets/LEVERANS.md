@@ -693,3 +693,45 @@ Sju ikoner i samma stil som dockikonerna: 32x32, hård alfa (0 eller 255), mörk
 ```
 
 - **Begränsningar:** fronten är lite rödare än `#ff8a5c` eftersom paletten saknar exakt den korallen; på plattan syns det knappt. Det är den enda ikonen i setet som inte är rakt framifrån, men ljuset kommer från samma håll. I 1x kan remmens båge läsas som ett handtag; näsurtaget och den mörka fronten håller kvar läsningen som VR-glasögon. Dockknappen Hårdvara, ljudkortet och VR-headsetet är alla orangetoner men har tydligt olika former.
+
+## Hårdvara: Konsol i 3 generationer och tre utseenden (handritat)
+
+Nya modeller och ikoner för spelarens egna konsol (Paragon), i tre generationer som följer tiden. Alla tre visas med en handkontroll bredvid.
+
+| Generation | Lanseringsår | Utseende |
+| --- | --- | --- |
+| `g1` | till och med 2011 | Den tjocka skivkonsolen: rundad, bullrig låda med blank ovansida, insugsstation för skivor, rund strömknapp med ljusring, USB-lucka och ventilspringor. Trådbunden handkontroll med sladd och kontakt. |
+| `g2` | 2012 till 2019 | Den eleganta mediaboxen: bred, låg platta på en indragen sockel, matt skal med blank insats, lysande ljusstrimma längs främre kanten, dold skivlucka, två pekknappar. Trådlös handkontroll med ljusstrimma ligger framför. |
+| `g3` | 2020 och senare | Monoliten: hög, avrundad skiva på en sockel, mörk panel med vågig ljus ”fena”, ljusspår i sidan och ett böjt ventilspår i toppen. Liten modern handkontroll står vid sidan. |
+
+**Utseenden (`#1`, `#2`, `#3`):** `#1` Grafit (mörkt grafitskal, violett accent); `#2` Ljus (vitt skal, grafitpaneler, violett accent); `#3` Violett (skalet i accentens violett, grafitpaneler). Samma form i alla tre, så det är färgvarianter av samma design.
+
+- **Modell:** `assets/hw/console/model-g<N>-s<S>.png`, 64x64, hård alfa, 3/4-vy snett uppifrån med ljus uppifrån vänster. Nyckel `hw.console.g<N>#<S>`. Motivet är 55x50, 56x48 och 54x50 px.
+- **Ikon:** `assets/hw/console/icon-g<N>-s<S>.png`, 32x32, samma design omritad för 32 px, för plattan med accentfärgen `#b98cff`. Nyckel `ui.hw.console.g<N>#<S>`. Motivet är 26x25, 28x25 och 27x27 px.
+- **Val i spelet:** generation efter lanseringsåret (`yearOf(P.t ?? G.t)`): g1 till 2011, g2 2012 till 2019, g3 från 2020. Utseendet väljs fritt, förslag `P.id % 3 + 1`.
+- **Reserv:** den äldre ikonen `ui.hw.console` (`assets/ui/hw-console.png`) finns kvar.
+- **Färger:** Konsolens violetta rampfärger (`#5236b0 #8b62e8 #b98cff #d8bcff #f2e8ff`), tre ljusare grafitnyanser för handkontrollerna och lite stål, glas och guld. Max 28 färger per bild. Nya färger i den delade paletten: `#22203a` och `#e4e2f0`.
+
+```json
+"hw.console.g1#1": { "file": "hw/console/model-g1-s1.png", "fw": 64, "fh": 64, "note": "Konsol, generation 1, Grafit (Kör)" },
+"ui.hw.console.g1#1": { "file": "hw/console/icon-g1-s1.png", "fw": 32, "fh": 32, "note": "Konsol, ikon generation 1, Grafit (Kör)" },
+"hw.console.g1#2": { "file": "hw/console/model-g1-s2.png", "fw": 64, "fh": 64, "note": "Konsol, generation 1, Ljus (Kör)" },
+"ui.hw.console.g1#2": { "file": "hw/console/icon-g1-s2.png", "fw": 32, "fh": 32, "note": "Konsol, ikon generation 1, Ljus (Kör)" },
+"hw.console.g1#3": { "file": "hw/console/model-g1-s3.png", "fw": 64, "fh": 64, "note": "Konsol, generation 1, Violett (Kör)" },
+"ui.hw.console.g1#3": { "file": "hw/console/icon-g1-s3.png", "fw": 32, "fh": 32, "note": "Konsol, ikon generation 1, Violett (Kör)" },
+"hw.console.g2#1": { "file": "hw/console/model-g2-s1.png", "fw": 64, "fh": 64, "note": "Konsol, generation 2, Grafit (Kör)" },
+"ui.hw.console.g2#1": { "file": "hw/console/icon-g2-s1.png", "fw": 32, "fh": 32, "note": "Konsol, ikon generation 2, Grafit (Kör)" },
+"hw.console.g2#2": { "file": "hw/console/model-g2-s2.png", "fw": 64, "fh": 64, "note": "Konsol, generation 2, Ljus (Kör)" },
+"ui.hw.console.g2#2": { "file": "hw/console/icon-g2-s2.png", "fw": 32, "fh": 32, "note": "Konsol, ikon generation 2, Ljus (Kör)" },
+"hw.console.g2#3": { "file": "hw/console/model-g2-s3.png", "fw": 64, "fh": 64, "note": "Konsol, generation 2, Violett (Kör)" },
+"ui.hw.console.g2#3": { "file": "hw/console/icon-g2-s3.png", "fw": 32, "fh": 32, "note": "Konsol, ikon generation 2, Violett (Kör)" },
+"hw.console.g3#1": { "file": "hw/console/model-g3-s1.png", "fw": 64, "fh": 64, "note": "Konsol, generation 3, Grafit (Kör)" },
+"ui.hw.console.g3#1": { "file": "hw/console/icon-g3-s1.png", "fw": 32, "fh": 32, "note": "Konsol, ikon generation 3, Grafit (Kör)" },
+"hw.console.g3#2": { "file": "hw/console/model-g3-s2.png", "fw": 64, "fh": 64, "note": "Konsol, generation 3, Ljus (Kör)" },
+"ui.hw.console.g3#2": { "file": "hw/console/icon-g3-s2.png", "fw": 32, "fh": 32, "note": "Konsol, ikon generation 3, Ljus (Kör)" },
+"hw.console.g3#3": { "file": "hw/console/model-g3-s3.png", "fw": 64, "fh": 64, "note": "Konsol, generation 3, Violett (Kör)" },
+"ui.hw.console.g3#3": { "file": "hw/console/icon-g3-s3.png", "fw": 32, "fh": 32, "note": "Konsol, ikon generation 3, Violett (Kör)" }
+```
+
+- **Begränsningar:** I ikonerna (32 px) är handkontrollen bara cirka 11x6 px i nedre högra hörnet, så den läses som ”en kontroll” utan detaljer; generation 1 och 2 skiljer sig i 1x mest på kroppens volym respektive ljusstrimman. Sladden och kontakten i generation 1 finns bara i modellen. Kilen i generation 2 är subtil (fas och indragen sockel). Utseende 1 (Grafit) har fortfarande ganska låg kontrast i 1x, men skalet, panelerna och handkontrollen har tre olika grafittoner.
+
