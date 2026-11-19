@@ -6,6 +6,9 @@
 // En enda timer ritar alla synliga scenbilder och den står still när fönstret är dolt.
 import { t } from './core.js';
 import { drawText } from '../render/font.js';
+import { getSprite } from '../render/sprites.js';
+import { hwArtKey } from '../render/hwart.js';
+import { yearOf } from '../sim/const.js';
 import { on } from '../core/bus.js';
 import { drawPoseSprite } from '../render/charsprite.js';
 import { drawPerson, POSE_FRAMES } from '../render/people.js';
@@ -505,7 +508,7 @@ function drawStudio(ctx, W, tm, cfg) {
 }
 
 // ── Labbet och fabriken ──
-function drawBoxedItem(ctx, x, ty, p, col, bad) {
+function drawBoxedItem(ctx, x, ty, p, col, bad, art = null) {
   if (p < 0.34) { // kretskort
     R(ctx, x, ty - 2, 11, 2, '#2f9a5a');
     R(ctx, x, ty - 2, 11, 1, '#4fd080');
@@ -517,6 +520,11 @@ function drawBoxedItem(ctx, x, ty, p, col, bad) {
     R(ctx, x + 1, ty - 6, 7, 4, '#0e1a30');
     R(ctx, x + 2, ty - 5, 5, 1, col);
     R(ctx, x + 2, ty - 3, 3, 1, '#7cf2ff');
+  } else if (art && !bad) { // färdig produkt: modellen (64 px halverad)
+    const was = ctx.imageSmoothingEnabled;
+    ctx.imageSmoothingEnabled = false;
+    ctx.drawImage(art.c, 0, 0, art.fw, art.fh, x - 10, ty - 32, 32, 32);
+    ctx.imageSmoothingEnabled = was;
   } else { // färdig i kartong
     R(ctx, x, ty - 9, 12, 9, bad ? '#8a4a4a' : '#c49a62');
     R(ctx, x, ty - 9, 12, 1, bad ? '#b86a6a' : '#dcb680');
@@ -616,12 +624,13 @@ function drawFactory(ctx, W, tm, cfg) {
   R(ctx, bx0 - 3, ty, bw + 6, 1, '#4a5268');
   for (let x = bx0; x < bx0 + bw; x++) if (((x + Math.floor(phase)) % 6) < 3) R(ctx, x, ty + 1, 1, 2, '#3a4258');
   for (let x = bx0 + 4; x < bx0 + bw; x += 12) { R(ctx, x, ty + 4, 2, 5, '#4a5268'); R(ctx, x - 1, fy - 1, 4, 1, '#1c212c'); }
+  const art = type0 && HW_TYPES[type0.type] ? getSprite(hwArtKey(type0.type, yearOf(type0.t ?? cfg.G.t), type0.id)) : null;
   const gap = 32;
   const off = short ? 0 : phase % gap;
   for (let kx = -gap; kx < bw + gap; kx += gap) {
     const ix = bx0 + kx + off;
     if (ix < bx0 - 1 || ix > bx0 + bw - 10) continue;
-    drawBoxedItem(ctx, Math.round(ix), ty, (ix - bx0) / bw, col, batch);
+    drawBoxedItem(ctx, Math.round(ix), ty, (ix - bx0) / bw, col, batch, art);
   }
   // robotarmar: fler med en större fabrik
   const arms = Math.min(3, 1 + (st.fab >> 1));

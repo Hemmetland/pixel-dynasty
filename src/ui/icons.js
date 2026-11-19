@@ -1,4 +1,5 @@
 import { spriteSrc } from '../render/sprites.js';
+import { hwArtKey } from '../render/hwart.js';
 
 // Enkla linjeikoner (24×24, currentColor).
 const P = (d) => `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">${d}</svg>`;
@@ -106,3 +107,12 @@ export const pixIcon = (key, name, box, cls = '') => {
   const img = pixImg(key, box);
   return img ? `<span class="ic px ${cls}" aria-hidden="true">${img}</span>` : icon(name, cls);
 };
+
+// Hårdvarans ikon (32 px, generation efter lanseringsåret): ny pixelkonst om den finns, annars den äldre ui.hw.<typ>, annars linjeikonen
+export const hwPixIcon = (type, year, id, name, box = 32) => {
+  const key = hwArtKey(type, year, id, true);
+  const img = pixImg(key, box);
+  return img ? `<span class="ic px" aria-hidden="true">${img}</span>` : pixIcon(`ui.hw.${type}`, name, box);
+};
+// Modellen som större bild (64 px) eller '' om den saknas
+export const hwModelImg = (type, year, id, box = 64) => pixImg(hwArtKey(type, year, id), box);

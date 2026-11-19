@@ -2,7 +2,7 @@ import { $, esc, icon, t, tn, L, UI, act, regWin, bar, money, errToast } from '.
 import { sceneHTML } from './livescene.js';
 import { GENRE } from '../data/genres.js';
 import { TOPIC } from '../data/topics.js';
-import { pixIcon } from './icons.js';
+import { hwPixIcon, hwModelImg } from './icons.js';
 import { sfx } from '../audio/sfx.js';
 import { fmtNum } from '../core/util.js';
 import { lang } from '../core/i18n.js';
@@ -30,7 +30,7 @@ const scoreTone = (s) => (s >= 7.5 ? 'var(--good)' : s >= 6 ? 'var(--gold)' : 'v
 const G_ = () => UI.app.G;
 const tyIcon = (type) => icon(HW_TYPES[type].ic);
 // produktens ikon i kortens huvud: pixelkonst 'ui.hw.<typ>' om den finns, annars linjeikonen
-const tyPix = (type) => pixIcon(`ui.hw.${type}`, HW_TYPES[type].ic, 32);
+const tyPix = (P) => hwPixIcon(P.type, yearOf(P.t ?? G_().t), P.id, HW_TYPES[P.type].ic, 32);
 // tillverkarens namn (den egna fabriken heter olika på olika språk)
 const pName = (id) => (id === FAB ? t('hw.fabName') : HW_PARTNER[id].name);
 // tillverkarna som kan ta produkttypen; de som är låsta av en annan partners ensamrätt visas avstängda
@@ -62,13 +62,14 @@ function specTags(P) {
   return tags.join('');
 }
 // Namnet kan bytas: en egen plattform får det nya namnet överallt i spelet
-const head = (P, right = '') => {
+const head = (P, right = '', model = false) => {
+  const mdl = model ? hwModelImg(P.type, yearOf(P.t ?? G_().t), P.id, 64) : '';
   const editing = HS.rename === P.id;
   const btn = editing ? '' : `<button class="hw-pen" data-act="hw-rn" data-id="${P.id}" data-tip="${esc(t(isPlat(P.type) ? 'hw.renameTip' : 'hw.rename'))}" aria-label="${t('hw.rename')}">${icon('pen')}</button>`;
   const edit = editing
     ? `<div class="row" style="gap:6px;margin-top:6px"><input class="input" id="hw-rn" maxlength="${NAME_MAX}" value="${esc(HS.rnv)}" aria-label="${t('hw.name')}" style="flex:1;min-width:0;height:32px"><button class="btn sm primary" data-act="hw-rns">${t('hw.renameSave')}</button><button class="btn sm ghost" data-act="hw-rnx" aria-label="${t('ui.close')}">${icon('x')}</button></div>`
     : '';
-  return `<div class="row" style="gap:10px;min-width:0"><span class="hw-ic" style="--c:${HW_TYPES[P.type].color}">${tyPix(P.type)}</span><div style="flex:1;min-width:0"><div class="row" style="gap:4px;min-width:0"><b class="h3 ell">${esc(P.name)}</b>${btn}</div><div class="row wrap" style="gap:5px;margin-top:3px"><span class="faint" style="font-size:12px">${t('hw.type.' + P.type)}</span>${specTags(P)}</div>${edit}</div>${right}</div>`;
+  return `<div class="row" style="gap:10px;min-width:0"><span class="hw-ic" style="--c:${HW_TYPES[P.type].color}">${tyPix(P)}</span><div style="flex:1;min-width:0"><div class="row" style="gap:4px;min-width:0"><b class="h3 ell">${esc(P.name)}</b>${btn}</div><div class="row wrap" style="gap:5px;margin-top:3px"><span class="faint" style="font-size:12px">${t('hw.type.' + P.type)}</span>${specTags(P)}</div>${edit}</div>${mdl ? `<span class="hw-model" style="--c:${HW_TYPES[P.type].color}">${mdl}</span>` : ''}${right}</div>`;
 };
 
 // ── Inuti: processor, grafik, minne och annat som följer sin tid ──
@@ -160,7 +161,7 @@ function launchCard(G, J) {
   const units = opts.map((v) => ({ v, label: fmtNum(v) }));
   const weeks = d > 0 ? Math.round(L.units / d) : 0;
   const right = `<div style="text-align:right;flex:none"><div class="disp" style="font-size:26px;color:${scoreTone(s)}">${dec(s)}</div><div class="faint" style="font-size:11px">${t('hw.expScore')}</div></div>`;
-  return `<div class="card hw-card hw-ready" style="--c:var(--good)">${head(J, right)}
+  return `<div class="card hw-card hw-ready" style="--c:var(--good)">${head(J, right, true)}
     <p class="hint" style="margin:8px 0 10px">${icon('check')} ${t(J.bad ? 'hw.readyBad' : 'hw.ready')}${isPlat(J.type) ? ' ' + t('hw.platReady') : ''}${J.leak ? ' ' + t('hw.leakReady') : ''}</p>
     <div style="margin-bottom:10px">${specLine(G, D)}</div>
     <div class="hw-ctl">
@@ -335,7 +336,7 @@ function productCard(G, P) {
   const stop = HS.confirm === `end:${P.id}`;
   const partners = fitPartners(G, P.type);
   const so = market && P.stock < 1 && P.dem > 1;
-  return `<div class="card hw-card" style="--c:${HW_TYPES[P.type].color}">${head(P, right)}
+  return `<div class="card hw-card" style="--c:${HW_TYPES[P.type].color}">${head(P, right, true)}
     <div class="row wrap" style="gap:6px;margin-top:8px">${state}${so ? tag(t('hw.soldOut'), 'var(--bug)') : ''}${P.cheat > G.t ? tag(t('hw.cheating'), 'var(--warn)') : ''}${P.leakT > G.t ? tag(t('hw.leakTag'), 'var(--warn)') : ''}${P.te > 0 ? tag(t('hw.tmOn', { n: Math.round(P.te * 100) }), 'var(--good)') : ''}<span class="sp"></span>${market ? spark(P.hist, HW_TYPES[P.type].color) : ''}</div>
     ${issueRow(G, P)}
     <div style="margin-top:10px">${specLine(G, P)}</div>

@@ -11,10 +11,13 @@ import { dropChance, EXPO_NO_PLAN } from '../sim/exposhow.js';
 import { SCOPES } from '../sim/const.js';
 import { yearOf } from '../sim/const.js';
 import { HW_TYPES } from '../data/hardware.js';
+import { hwPixIcon } from './icons.js';
 import { LOGOS } from './hud.js';
 import { talkText } from './hypeui.js';
 import { buildById } from '../sim/builds.js';
 
+// hårdvarans ikon i monterlistan: pixelkonst efter produktens år, annars linjeikonen
+const hwIc = (G, x) => hwPixIcon(x.type, yearOf(((G.hw && G.hw.products) || []).find((p) => p.id === x.id)?.t ?? G.t), x.id, (HW_TYPES[x.type] && HW_TYPES[x.type].ic) || 'cpu', 32);
 const ICON = { dev: 'hammer', game: 'gamepad', hw: 'cpu', live: 'globe' };
 const COL = { dev: 'var(--hot)', game: 'var(--accent)', hw: 'var(--tech)', live: 'var(--good)' };
 
@@ -57,7 +60,7 @@ export function expoPrompt(app, G, p) {
     const B = BOOTHS[st.level];
     const full = !on && (!B || st.picks.length >= B.slots);
     const desc = x.k === 'game' ? t('expo.i.game.d', { score: (G.games.find((g) => g.id === x.id)?.score ?? 0).toFixed(1), n: EXPO_LIFT_WEEKS }) : t('expo.i.' + x.k + '.d');
-    const thumb = x.k === 'hw' ? `<span class="exi-ic" style="--c:${HW_TYPES[x.type]?.color || '#4aa8ff'}">${icon(HW_TYPES[x.type]?.ic || 'cpu')}</span>` : `<img class="cover" src="${coverURL(coverSpec(G, x), 1)}" width="36" height="48" alt="" draggable="false">`;
+    const thumb = x.k === 'hw' ? `<span class="exi-ic" style="--c:${HW_TYPES[x.type]?.color || '#4aa8ff'}">${hwIc(G, x)}</span>` : `<img class="cover" src="${coverURL(coverSpec(G, x), 1)}" width="36" height="48" alt="" draggable="false">`;
     return `<button class="choice exi${on ? ' sel' : ''}" data-act="ex-item" data-key="${itemKey(x)}" ${full ? 'disabled' : ''}>
       <span class="row" style="gap:10px;width:100%">${thumb}<span style="flex:1;min-width:0"><b>${icon(ICON[x.k])} ${t('expo.i.' + x.k, { name: esc(L(x.name)) })}</b>${x.team ? `<span class="chip" style="margin-left:6px">${icon('team')}${esc(x.team)}</span>` : ''}<span class="muted" style="display:block;font-size:12.5px;font-weight:500">${desc}</span>
         <span class="row" style="gap:8px;margin-top:5px"><span class="faint" style="font-size:11px">${t('expo.strength')}</span><span style="flex:1;max-width:120px">${bar(Math.round(x.q * 100), COL[x.k], 'thin')}</span></span></span>
