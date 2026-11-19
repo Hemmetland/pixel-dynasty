@@ -959,3 +959,52 @@ Nya modeller och ikoner för spelarens egna processorer (Quark), i fyra generati
 
 - **Begränsningar:** Generation 4-ikonen är svagast: fönstret med de fyra chipsen blir bara en mörk glasfläck med en rosa linje och läses som ”chip med fönster” först från 4x. Generation 3 är den enklaste, det blanka bandet och loggan syns knappt i 2x. Utseende 2 (Mörk) i generation 3 och 4 har låg kontrast mot det mörka navyt, och rimljuset och den rosa stripen eller kontaktytorna bär dem. Hacken och kondensatorerna i generation 2 syns bara från 4x. Kontaktytorna i generation 2 ritas som guldstreck på kantväggarna i stället för sanna ytor på undersidan, så att de syns framifrån. Chippen är platta plattor i den delade vyn och fyller bredden men bara 24 till 34 av 64 rader.
 
+
+## Hårdvara: Speldator i 4 generationer och tre utseenden (handritat)
+
+Nya modeller och ikoner för spelarens egna speldatorer (Forge), i fyra generationer som följer tiden. Tornet står upprätt med framsidan rakt fram och högersidan synlig, där fönstret sitter.
+
+| Generation | Lanseringsår | Utseende |
+| --- | --- | --- |
+| `g1` | till och med 2003 | Det beigea tornet: lågt och brett med plastbeslag, cd-rom med lucka och grön lampa, flipp-lucka, diskettfack, röd ”33”-turboskärm, ström- och reset-knapp, ventilgaller, två gummifötter. Inget fönster. |
+| `g2` | 2004 till 2011 | Det svarta tornet med fönster: smalt och högt med upphöjt bärhandtag som bryter siluetten, optisk enhet i stål, nätfront med fläkt med blå lysring, kantig accentkil. Stort fönster på högersidan med blått lysande fläkt och grafikkort med undersken. |
+| `g3` | 2012 till 2019 | Glaskåpan: rent matt chassi med tunn lodrät lysstrimma, strömknapp, luftspringor, loggaplatta, ventilspår i toppen och sockelfötter. Stort glasfönster med moderkort, RAM-moduler med RGB-spetsar, kylblock och ett grafikkort med två lysande RGB-fläktar. |
+| `g4` | 2020 och senare | Utställningsskåpet: bredaste tornet med dubbla glaskammare, smala fötter och lysande kant. Främre glaset visar kylare med tre RGB-fläktar, rör i accentfärgen, pumpblock med lysande ring och ett lodrätt grafikkort. Höger glas visar behållare, flödeslinje och nätaggregatskammaren. |
+
+**Utseenden (`#1`, `#2`, `#3`):** `#1` Grafit (mörkt grafitchassi, blå accentlampor och sken); `#2` Ljus (vitt chassi med blå accent; generation 1 är ett beige retroplast, inte vitt); `#3` Blå (chassit i accentens blå, mörka listar, cyanblått sken och RGB i bärnsten, cyan och vitt). Samma form i alla tre, så det är färgvarianter av samma design.
+
+- **Modell:** `assets/hw/pc/model-g<N>-s<S>.png`, 64x64, hård alfa, 3/4-vy snett uppifrån med ljus uppifrån vänster. Nyckel `hw.pc.g<N>#<S>`. Motivet är 39x50, 35x52, 40x52 och 49x49 px.
+- **Ikon:** `assets/hw/pc/icon-g<N>-s<S>.png`, 32x32, samma design omritad för 32 px, för plattan med accentfärgen `#4aa8ff`. Nyckel `ui.hw.pc.g<N>#<S>`. Motivet är 23x27, 22x28, 25x27 och 28x24 px.
+- **Val i spelet:** generation efter lanseringsåret (`yearOf(P.t ?? G.t)`): g1 till 2003, g2 2004 till 2011, g3 2012 till 2019, g4 från 2020. Utseendet väljs fritt, förslag `P.id % 3 + 1`.
+- **Reserv:** den äldre ikonen `ui.hw.pc` (`assets/ui/hw-pc.png`) finns kvar.
+- **Färger:** En ny rampfärg `beige` (`#8c7e62 #b8aa8a #d9ceb0 #efe6cc #fcf8e8`), som bara används av utseende 2 i generation 1 (och av processorernas keramik); resten ur den delade paletten. 19 till 24 färger per modell och 11 till 15 per ikon.
+
+```json
+"hw.pc.g1#1": { "file": "hw/pc/model-g1-s1.png", "fw": 64, "fh": 64, "note": "Speldator, generation 1, Grafit (Kör)" },
+"ui.hw.pc.g1#1": { "file": "hw/pc/icon-g1-s1.png", "fw": 32, "fh": 32, "note": "Speldator, ikon generation 1, Grafit (Kör)" },
+"hw.pc.g1#2": { "file": "hw/pc/model-g1-s2.png", "fw": 64, "fh": 64, "note": "Speldator, generation 1, Ljus (Kör)" },
+"ui.hw.pc.g1#2": { "file": "hw/pc/icon-g1-s2.png", "fw": 32, "fh": 32, "note": "Speldator, ikon generation 1, Ljus (Kör)" },
+"hw.pc.g1#3": { "file": "hw/pc/model-g1-s3.png", "fw": 64, "fh": 64, "note": "Speldator, generation 1, Blå (Kör)" },
+"ui.hw.pc.g1#3": { "file": "hw/pc/icon-g1-s3.png", "fw": 32, "fh": 32, "note": "Speldator, ikon generation 1, Blå (Kör)" },
+"hw.pc.g2#1": { "file": "hw/pc/model-g2-s1.png", "fw": 64, "fh": 64, "note": "Speldator, generation 2, Grafit (Kör)" },
+"ui.hw.pc.g2#1": { "file": "hw/pc/icon-g2-s1.png", "fw": 32, "fh": 32, "note": "Speldator, ikon generation 2, Grafit (Kör)" },
+"hw.pc.g2#2": { "file": "hw/pc/model-g2-s2.png", "fw": 64, "fh": 64, "note": "Speldator, generation 2, Ljus (Kör)" },
+"ui.hw.pc.g2#2": { "file": "hw/pc/icon-g2-s2.png", "fw": 32, "fh": 32, "note": "Speldator, ikon generation 2, Ljus (Kör)" },
+"hw.pc.g2#3": { "file": "hw/pc/model-g2-s3.png", "fw": 64, "fh": 64, "note": "Speldator, generation 2, Blå (Kör)" },
+"ui.hw.pc.g2#3": { "file": "hw/pc/icon-g2-s3.png", "fw": 32, "fh": 32, "note": "Speldator, ikon generation 2, Blå (Kör)" },
+"hw.pc.g3#1": { "file": "hw/pc/model-g3-s1.png", "fw": 64, "fh": 64, "note": "Speldator, generation 3, Grafit (Kör)" },
+"ui.hw.pc.g3#1": { "file": "hw/pc/icon-g3-s1.png", "fw": 32, "fh": 32, "note": "Speldator, ikon generation 3, Grafit (Kör)" },
+"hw.pc.g3#2": { "file": "hw/pc/model-g3-s2.png", "fw": 64, "fh": 64, "note": "Speldator, generation 3, Ljus (Kör)" },
+"ui.hw.pc.g3#2": { "file": "hw/pc/icon-g3-s2.png", "fw": 32, "fh": 32, "note": "Speldator, ikon generation 3, Ljus (Kör)" },
+"hw.pc.g3#3": { "file": "hw/pc/model-g3-s3.png", "fw": 64, "fh": 64, "note": "Speldator, generation 3, Blå (Kör)" },
+"ui.hw.pc.g3#3": { "file": "hw/pc/icon-g3-s3.png", "fw": 32, "fh": 32, "note": "Speldator, ikon generation 3, Blå (Kör)" },
+"hw.pc.g4#1": { "file": "hw/pc/model-g4-s1.png", "fw": 64, "fh": 64, "note": "Speldator, generation 4, Grafit (Kör)" },
+"ui.hw.pc.g4#1": { "file": "hw/pc/icon-g4-s1.png", "fw": 32, "fh": 32, "note": "Speldator, ikon generation 4, Grafit (Kör)" },
+"hw.pc.g4#2": { "file": "hw/pc/model-g4-s2.png", "fw": 64, "fh": 64, "note": "Speldator, generation 4, Ljus (Kör)" },
+"ui.hw.pc.g4#2": { "file": "hw/pc/icon-g4-s2.png", "fw": 32, "fh": 32, "note": "Speldator, ikon generation 4, Ljus (Kör)" },
+"hw.pc.g4#3": { "file": "hw/pc/model-g4-s3.png", "fw": 64, "fh": 64, "note": "Speldator, generation 4, Blå (Kör)" },
+"ui.hw.pc.g4#3": { "file": "hw/pc/icon-g4-s3.png", "fw": 32, "fh": 32, "note": "Speldator, ikon generation 4, Blå (Kör)" }
+```
+
+- **Begränsningar:** Generation 3-ikonen är svagast: sidofönstret är en smal skjuvad remsa i 3/4-vyn och blir i 1x bara en blå fläck med en fläkt. Fönsterinnehållet i generation 2 och 3 är förenklat för läsbarhet och fläktarna är ritade upprätta, inte skjuvade med sidoplanet; fönsterramen i Grafit är lågkontrast mot skalet. Generation 4 är nästan lika bred som hög (33x30) och liknar lite en liten TV mer än ett torn. Nätet på framsidan i generation 2 är en mycket svag tvåtons-ruta. Utseende 2 i generation 1 är medvetet beige: byt namnet i gränssnittet om ni vill ha ”Ljus” bokstavligt.
+
