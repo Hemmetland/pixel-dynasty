@@ -910,3 +910,52 @@ Nya modeller och ikoner för spelarens eget VR-headset (Mirage), i tre generatio
 
 - **Begränsningar:** Generation 1 är mest detaljrik och ser upptagen ut även i 8x: sladdslingan till vänster kan läsas som ett andra handtag och handkontrollerna är små mörka klumpar med en ring. I generation 2 är kontrollerna nästan likadana pinnar, och ikonen med grafit (utseende 1) är mörk och lite grumlig; handkontrollen läses som en stolpe och remmen är tung. Generation 3 är den renaste: i ikonen är öronkroken nästan borta och näsurtagets kontur bildar små ”tänder”; öronsnäckorna i modellen kan påminna om nycklar. Generation 1 och 2 i ikonen är båda ”låda, båge och kontroll” och skiljer sig mest på bågens höjd och ratten respektive de fyra kamerapunkterna.
 
+
+## Hårdvara: Processor i 4 generationer och tre utseenden (handritat)
+
+Nya modeller och ikoner för spelarens egna processorer (Quark), i fyra generationer som följer tiden. Chippet ses snett uppifrån och ligger lågt i bilden: modellens nedersta rad är 59 till 60, så övre halvan av ramen är tom. Placera den därefter.
+
+| Generation | Lanseringsår | Utseende |
+| --- | --- | --- |
+| `g1` | till och med 2004 | Keramikchippet (PGA): trappstegsformat keramikhus med metalllock, graverade textstreck, avfasat hörn med guldtriangel för stift 1 och en tät kam av guldstift under fram- och högerkanten. |
+| `g2` | 2005 till 2013 | Värmespridaren: nästan kvadratiskt grönt substrat med en upphöjd värmespridare med hack i hörnen, små SMD-kondensatorer, guldfärgade kontaktytor längs kanterna, fyra graverade rader och en ringlogga. |
+| `g3` | 2014 till 2021 | Den stora spridaren: djupare mörkare substrat med en större och högre spridare med rundade hörn, ett diagonalt blankt ljusband, graverad text och rosa ringlogga, rosa stripe på substratet och två kondensatorgrupper. |
+| `g4` | 2022 och senare | Chiplet-chippet: bredast och plattast, lågt lock med ett infällt glasfönster över fyra chiplets (2x2) med rosa kopplingar, ett guldfärgat rutmönster av kontaktytor längs fram- och högerkanten, rosa banor på vänsterkanten och ett präglat ”47” (bara i modellen). |
+
+**Utseenden (`#1`, `#2`, `#3`):** `#1` Silver (silverfärgad spridare på grönt substrat, beige keramik i generation 1, rosa märkning); `#2` Mörk (svart substrat, grafitspridare, rosa glödande märkning); `#3` Rosa (rosa spridare på rosa substrat, djuprosa keramik i generation 1, grafitdetaljer). Samma form i alla tre, så det är färgvarianter av samma design.
+
+- **Modell:** `assets/hw/cpu/model-g<N>-s<S>.png`, 64x64, hård alfa, 3/4-vy snett uppifrån med ljus uppifrån vänster. Nyckel `hw.cpu.g<N>#<S>`. Motivet är 55 till 56 px breda och 24 till 34 px höga px.
+- **Ikon:** `assets/hw/cpu/icon-g<N>-s<S>.png`, 32x32, samma design omritad för 32 px, för plattan med accentfärgen `#ff8fd2`. Nyckel `ui.hw.cpu.g<N>#<S>`. Motivet är 27 till 28 px breda och 15 till 21 px höga px.
+- **Val i spelet:** generation efter lanseringsåret (`yearOf(P.t ?? G.t)`): g1 till 2004, g2 2005 till 2013, g3 2014 till 2021, g4 från 2022. Utseendet väljs fritt, förslag `P.id % 3 + 1`.
+- **Reserv:** den äldre ikonen `ui.hw.cpu` (`assets/ui/hw-cpu.png`) finns kvar.
+- **Färger:** Nya rampfärger `sub_green`, `sub_deep` och `rose` för substraten (sex nya toner: `#0e3a30 #0a2224 #14573f #4e1a46 #74225c #b83e8c`) och `beige` för keramiken i generation 1 (delad med dator-setet). Max 19 färger per bild.
+
+```json
+"hw.cpu.g1#1": { "file": "hw/cpu/model-g1-s1.png", "fw": 64, "fh": 64, "note": "Processor, generation 1, Silver (Kör)" },
+"ui.hw.cpu.g1#1": { "file": "hw/cpu/icon-g1-s1.png", "fw": 32, "fh": 32, "note": "Processor, ikon generation 1, Silver (Kör)" },
+"hw.cpu.g1#2": { "file": "hw/cpu/model-g1-s2.png", "fw": 64, "fh": 64, "note": "Processor, generation 1, Mörk (Kör)" },
+"ui.hw.cpu.g1#2": { "file": "hw/cpu/icon-g1-s2.png", "fw": 32, "fh": 32, "note": "Processor, ikon generation 1, Mörk (Kör)" },
+"hw.cpu.g1#3": { "file": "hw/cpu/model-g1-s3.png", "fw": 64, "fh": 64, "note": "Processor, generation 1, Rosa (Kör)" },
+"ui.hw.cpu.g1#3": { "file": "hw/cpu/icon-g1-s3.png", "fw": 32, "fh": 32, "note": "Processor, ikon generation 1, Rosa (Kör)" },
+"hw.cpu.g2#1": { "file": "hw/cpu/model-g2-s1.png", "fw": 64, "fh": 64, "note": "Processor, generation 2, Silver (Kör)" },
+"ui.hw.cpu.g2#1": { "file": "hw/cpu/icon-g2-s1.png", "fw": 32, "fh": 32, "note": "Processor, ikon generation 2, Silver (Kör)" },
+"hw.cpu.g2#2": { "file": "hw/cpu/model-g2-s2.png", "fw": 64, "fh": 64, "note": "Processor, generation 2, Mörk (Kör)" },
+"ui.hw.cpu.g2#2": { "file": "hw/cpu/icon-g2-s2.png", "fw": 32, "fh": 32, "note": "Processor, ikon generation 2, Mörk (Kör)" },
+"hw.cpu.g2#3": { "file": "hw/cpu/model-g2-s3.png", "fw": 64, "fh": 64, "note": "Processor, generation 2, Rosa (Kör)" },
+"ui.hw.cpu.g2#3": { "file": "hw/cpu/icon-g2-s3.png", "fw": 32, "fh": 32, "note": "Processor, ikon generation 2, Rosa (Kör)" },
+"hw.cpu.g3#1": { "file": "hw/cpu/model-g3-s1.png", "fw": 64, "fh": 64, "note": "Processor, generation 3, Silver (Kör)" },
+"ui.hw.cpu.g3#1": { "file": "hw/cpu/icon-g3-s1.png", "fw": 32, "fh": 32, "note": "Processor, ikon generation 3, Silver (Kör)" },
+"hw.cpu.g3#2": { "file": "hw/cpu/model-g3-s2.png", "fw": 64, "fh": 64, "note": "Processor, generation 3, Mörk (Kör)" },
+"ui.hw.cpu.g3#2": { "file": "hw/cpu/icon-g3-s2.png", "fw": 32, "fh": 32, "note": "Processor, ikon generation 3, Mörk (Kör)" },
+"hw.cpu.g3#3": { "file": "hw/cpu/model-g3-s3.png", "fw": 64, "fh": 64, "note": "Processor, generation 3, Rosa (Kör)" },
+"ui.hw.cpu.g3#3": { "file": "hw/cpu/icon-g3-s3.png", "fw": 32, "fh": 32, "note": "Processor, ikon generation 3, Rosa (Kör)" },
+"hw.cpu.g4#1": { "file": "hw/cpu/model-g4-s1.png", "fw": 64, "fh": 64, "note": "Processor, generation 4, Silver (Kör)" },
+"ui.hw.cpu.g4#1": { "file": "hw/cpu/icon-g4-s1.png", "fw": 32, "fh": 32, "note": "Processor, ikon generation 4, Silver (Kör)" },
+"hw.cpu.g4#2": { "file": "hw/cpu/model-g4-s2.png", "fw": 64, "fh": 64, "note": "Processor, generation 4, Mörk (Kör)" },
+"ui.hw.cpu.g4#2": { "file": "hw/cpu/icon-g4-s2.png", "fw": 32, "fh": 32, "note": "Processor, ikon generation 4, Mörk (Kör)" },
+"hw.cpu.g4#3": { "file": "hw/cpu/model-g4-s3.png", "fw": 64, "fh": 64, "note": "Processor, generation 4, Rosa (Kör)" },
+"ui.hw.cpu.g4#3": { "file": "hw/cpu/icon-g4-s3.png", "fw": 32, "fh": 32, "note": "Processor, ikon generation 4, Rosa (Kör)" }
+```
+
+- **Begränsningar:** Generation 4-ikonen är svagast: fönstret med de fyra chipsen blir bara en mörk glasfläck med en rosa linje och läses som ”chip med fönster” först från 4x. Generation 3 är den enklaste, det blanka bandet och loggan syns knappt i 2x. Utseende 2 (Mörk) i generation 3 och 4 har låg kontrast mot det mörka navyt, och rimljuset och den rosa stripen eller kontaktytorna bär dem. Hacken och kondensatorerna i generation 2 syns bara från 4x. Kontaktytorna i generation 2 ritas som guldstreck på kantväggarna i stället för sanna ytor på undersidan, så att de syns framifrån. Chippen är platta plattor i den delade vyn och fyller bredden men bara 24 till 34 av 64 rader.
+
