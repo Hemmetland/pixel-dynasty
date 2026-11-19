@@ -735,3 +735,294 @@ Nya modeller och ikoner för spelarens egna konsol (Paragon), i tre generationer
 
 - **Begränsningar:** I ikonerna (32 px) är handkontrollen bara cirka 11x6 px i nedre högra hörnet, så den läses som ”en kontroll” utan detaljer; generation 1 och 2 skiljer sig i 1x mest på kroppens volym respektive ljusstrimman. Sladden och kontakten i generation 1 finns bara i modellen. Kilen i generation 2 är subtil (fas och indragen sockel). Utseende 1 (Grafit) har fortfarande ganska låg kontrast i 1x, men skalet, panelerna och handkontrollen har tre olika grafittoner.
 
+
+## Hårdvara: Bärbar konsol i 3 generationer och tre utseenden (handritat)
+
+Nya modeller och ikoner för spelarens egen bärbara spelenhet (Nomad), i tre generationer som följer tiden. Alla ligger ned i liggande format med skärmen i mitten.
+
+| Generation | Lanseringsår | Utseende |
+| --- | --- | --- |
+| `g1` | till och med 2009 | Tegelstenen med liten skärm: tjockt skal med bred mörk ram, liten olivgrön LCD med ett litet spel, styrkors till vänster, två runda knappar till höger, start och select, högtalarspringor, axelknoppar. En spelkassett sticker upp ur facket i toppen. |
+| `g2` | 2010 till 2017 | Den stora blanka skärmen: bredare och tunnare platta med smal ram, skärm med sol, moln, kullar och en röd bil, kameraprick, spak och styrkors till vänster, fyra knappar och spak till höger, axelplattor och minneskortsfack med guldkontakter. |
+| `g3` | 2018 och senare | Helskärmen med grepp: mycket tunn platta med kant-till-kant-glas och rundade hörn, ljus startskärm med appplattor, två greppulor som sticker ned under plattan, spakar och knappar, ljusstrimma under skärmen och ventilspår. |
+
+**Utseenden (`#1`, `#2`, `#3`):** `#1` Grafit (grafitskal, turkosa knappar och lampa); `#2` Ljus (vitt skal, mörka grepp, djupturkosa knappar); `#3` Turkos (skalet i accentens turkos, mörk ram, magenta knappar). Samma form i alla tre, så det är färgvarianter av samma design.
+
+- **Modell:** `assets/hw/handheld/model-g<N>-s<S>.png`, 64x64, hård alfa, 3/4-vy snett uppifrån med ljus uppifrån vänster. Nyckel `hw.handheld.g<N>#<S>`. Motivet är 56x43, 56x33 och 56x36 px.
+- **Ikon:** `assets/hw/handheld/icon-g<N>-s<S>.png`, 32x32, samma design omritad för 32 px, för plattan med accentfärgen `#7be0c8`. Nyckel `ui.hw.handheld.g<N>#<S>`. Motivet är 28x25, 28x20 och 28x23 px.
+- **Val i spelet:** generation efter lanseringsåret (`yearOf(P.t ?? G.t)`): g1 till 2009, g2 2010 till 2017, g3 från 2018. Utseendet väljs fritt, förslag `P.id % 3 + 1`.
+- **Reserv:** den äldre ikonen `ui.hw.handheld` (`assets/ui/hw-handheld.png`) finns kvar.
+- **Färger:** Ny rampfärg för LCD-skärmen i generation 1 (`#24352f #4a6a52 #8fb07a #c2d9a0 #e8f2c4`) och en lampfärg i turkos; resten ur den delade paletten. Max 28 färger per bild.
+
+```json
+"hw.handheld.g1#1": { "file": "hw/handheld/model-g1-s1.png", "fw": 64, "fh": 64, "note": "Bärbar konsol, generation 1, Grafit (Kör)" },
+"ui.hw.handheld.g1#1": { "file": "hw/handheld/icon-g1-s1.png", "fw": 32, "fh": 32, "note": "Bärbar konsol, ikon generation 1, Grafit (Kör)" },
+"hw.handheld.g1#2": { "file": "hw/handheld/model-g1-s2.png", "fw": 64, "fh": 64, "note": "Bärbar konsol, generation 1, Ljus (Kör)" },
+"ui.hw.handheld.g1#2": { "file": "hw/handheld/icon-g1-s2.png", "fw": 32, "fh": 32, "note": "Bärbar konsol, ikon generation 1, Ljus (Kör)" },
+"hw.handheld.g1#3": { "file": "hw/handheld/model-g1-s3.png", "fw": 64, "fh": 64, "note": "Bärbar konsol, generation 1, Turkos (Kör)" },
+"ui.hw.handheld.g1#3": { "file": "hw/handheld/icon-g1-s3.png", "fw": 32, "fh": 32, "note": "Bärbar konsol, ikon generation 1, Turkos (Kör)" },
+"hw.handheld.g2#1": { "file": "hw/handheld/model-g2-s1.png", "fw": 64, "fh": 64, "note": "Bärbar konsol, generation 2, Grafit (Kör)" },
+"ui.hw.handheld.g2#1": { "file": "hw/handheld/icon-g2-s1.png", "fw": 32, "fh": 32, "note": "Bärbar konsol, ikon generation 2, Grafit (Kör)" },
+"hw.handheld.g2#2": { "file": "hw/handheld/model-g2-s2.png", "fw": 64, "fh": 64, "note": "Bärbar konsol, generation 2, Ljus (Kör)" },
+"ui.hw.handheld.g2#2": { "file": "hw/handheld/icon-g2-s2.png", "fw": 32, "fh": 32, "note": "Bärbar konsol, ikon generation 2, Ljus (Kör)" },
+"hw.handheld.g2#3": { "file": "hw/handheld/model-g2-s3.png", "fw": 64, "fh": 64, "note": "Bärbar konsol, generation 2, Turkos (Kör)" },
+"ui.hw.handheld.g2#3": { "file": "hw/handheld/icon-g2-s3.png", "fw": 32, "fh": 32, "note": "Bärbar konsol, ikon generation 2, Turkos (Kör)" },
+"hw.handheld.g3#1": { "file": "hw/handheld/model-g3-s1.png", "fw": 64, "fh": 64, "note": "Bärbar konsol, generation 3, Grafit (Kör)" },
+"ui.hw.handheld.g3#1": { "file": "hw/handheld/icon-g3-s1.png", "fw": 32, "fh": 32, "note": "Bärbar konsol, ikon generation 3, Grafit (Kör)" },
+"hw.handheld.g3#2": { "file": "hw/handheld/model-g3-s2.png", "fw": 64, "fh": 64, "note": "Bärbar konsol, generation 3, Ljus (Kör)" },
+"ui.hw.handheld.g3#2": { "file": "hw/handheld/icon-g3-s2.png", "fw": 32, "fh": 32, "note": "Bärbar konsol, ikon generation 3, Ljus (Kör)" },
+"hw.handheld.g3#3": { "file": "hw/handheld/model-g3-s3.png", "fw": 64, "fh": 64, "note": "Bärbar konsol, generation 3, Turkos (Kör)" },
+"ui.hw.handheld.g3#3": { "file": "hw/handheld/icon-g3-s3.png", "fw": 32, "fh": 32, "note": "Bärbar konsol, ikon generation 3, Turkos (Kör)" }
+```
+
+- **Begränsningar:** Generation 2 i ikonen: spakarna är 3x3 px och läses mer som högtalare än som runda knappar, det är den stora skärmen som bär igenkänningen. De fyra knapparna i modellen (2x2 px i en diamant) ser mer ut som glitter än som tydliga knappar. Generation 2 och 3 är breda och låga (33 till 36 px höga av 64) och lämnar luft ovanför, eftersom bredden redan är 56 px. Utseende 3 (Turkos) har magenta knappar som ekar den gamla Nomad-ikonen.
+
+
+## Hårdvara: Grafikkort i 4 generationer och tre utseenden (handritat)
+
+Nya modeller och ikoner för spelarens egna grafikkort (Spectra), i fyra generationer som följer tiden. Kortet ses från kylsidan med fästplåten åt vänster och guldkontakterna nedtill.
+
+| Generation | Lanseringsår | Utseende |
+| --- | --- | --- |
+| `g1` | till och med 2000 | 3D-acceleratorn: litet kort utan kåpa, kretskort med stålkylare och en liten fläkt, fem bara minneskretsar, klistermärke och en fästplåt med två VGA-uttag. |
+| `g2` | 2001 till 2009 | Den stora enkelfläkten: rundad plastkåpa med en 7-bladig fläkt med accentring, ventilspringor, två kopparfärgade värmerör, vit 4-polskontakt på toppen och tvåplatsplåt med DVI, S-video och VGA. |
+| `g3` | 2010 till 2018 | Dubbelfläkten: lång och låg avfasad kåpa med två 7-bladiga fläktar i en gemensam försänkning, accentrand på toppen, stålfärgade värmerör, två 8-polskontakter, baksida av metall och HDMI plus tre DisplayPort. |
+| `g4` | 2019 och senare | Trefläkts-kortet med ljus: störst och tjockast, kraftiga avfasningar, tre fläktar i en gemensam kapselformad försänkning, lysande skärlinje och lysande fas, ljusstrimma på toppen, kontakt med lysande lampa, stålbaksida och nätplåt. |
+
+**Utseenden (`#1`, `#2`, `#3`):** `#1` Grön (grafitkåpa med gröna accentringar, grönt eller svart kretskort); `#2` Ljus (vit kåpa, silverblå blad, grön accent); `#3` Mörk (matt svart kåpa, grönt bara på ljuslinjen, klistermärket och fläktnaven). Samma form i alla tre, så det är färgvarianter av samma design.
+
+- **Modell:** `assets/hw/gpu/model-g<N>-s<S>.png`, 64x64, hård alfa, 3/4-vy snett uppifrån med ljus uppifrån vänster. Nyckel `hw.gpu.g<N>#<S>`. Motivet är 45x34, 53x44, 56x39 och 55x47 px.
+- **Ikon:** `assets/hw/gpu/icon-g<N>-s<S>.png`, 32x32, samma design omritad för 32 px, för plattan med accentfärgen `#6ee76a`. Nyckel `ui.hw.gpu.g<N>#<S>`. Motivet är 26x24, 28x25, 28x24 och 28x28 px.
+- **Val i spelet:** generation efter lanseringsåret (`yearOf(P.t ?? G.t)`): g1 till 2000, g2 2001 till 2009, g3 2010 till 2018, g4 från 2019. Utseendet väljs fritt, förslag `P.id % 3 + 1`.
+- **Reserv:** den äldre ikonen `ui.hw.gpu` (`assets/ui/hw-gpu.png`) finns kvar.
+- **Färger:** Inga nya färger i den delade paletten; tre lokala rampfärger byggda av befintliga toner. Max 28 färger per bild.
+
+```json
+"hw.gpu.g1#1": { "file": "hw/gpu/model-g1-s1.png", "fw": 64, "fh": 64, "note": "Grafikkort, generation 1, Grön (Kör)" },
+"ui.hw.gpu.g1#1": { "file": "hw/gpu/icon-g1-s1.png", "fw": 32, "fh": 32, "note": "Grafikkort, ikon generation 1, Grön (Kör)" },
+"hw.gpu.g1#2": { "file": "hw/gpu/model-g1-s2.png", "fw": 64, "fh": 64, "note": "Grafikkort, generation 1, Ljus (Kör)" },
+"ui.hw.gpu.g1#2": { "file": "hw/gpu/icon-g1-s2.png", "fw": 32, "fh": 32, "note": "Grafikkort, ikon generation 1, Ljus (Kör)" },
+"hw.gpu.g1#3": { "file": "hw/gpu/model-g1-s3.png", "fw": 64, "fh": 64, "note": "Grafikkort, generation 1, Mörk (Kör)" },
+"ui.hw.gpu.g1#3": { "file": "hw/gpu/icon-g1-s3.png", "fw": 32, "fh": 32, "note": "Grafikkort, ikon generation 1, Mörk (Kör)" },
+"hw.gpu.g2#1": { "file": "hw/gpu/model-g2-s1.png", "fw": 64, "fh": 64, "note": "Grafikkort, generation 2, Grön (Kör)" },
+"ui.hw.gpu.g2#1": { "file": "hw/gpu/icon-g2-s1.png", "fw": 32, "fh": 32, "note": "Grafikkort, ikon generation 2, Grön (Kör)" },
+"hw.gpu.g2#2": { "file": "hw/gpu/model-g2-s2.png", "fw": 64, "fh": 64, "note": "Grafikkort, generation 2, Ljus (Kör)" },
+"ui.hw.gpu.g2#2": { "file": "hw/gpu/icon-g2-s2.png", "fw": 32, "fh": 32, "note": "Grafikkort, ikon generation 2, Ljus (Kör)" },
+"hw.gpu.g2#3": { "file": "hw/gpu/model-g2-s3.png", "fw": 64, "fh": 64, "note": "Grafikkort, generation 2, Mörk (Kör)" },
+"ui.hw.gpu.g2#3": { "file": "hw/gpu/icon-g2-s3.png", "fw": 32, "fh": 32, "note": "Grafikkort, ikon generation 2, Mörk (Kör)" },
+"hw.gpu.g3#1": { "file": "hw/gpu/model-g3-s1.png", "fw": 64, "fh": 64, "note": "Grafikkort, generation 3, Grön (Kör)" },
+"ui.hw.gpu.g3#1": { "file": "hw/gpu/icon-g3-s1.png", "fw": 32, "fh": 32, "note": "Grafikkort, ikon generation 3, Grön (Kör)" },
+"hw.gpu.g3#2": { "file": "hw/gpu/model-g3-s2.png", "fw": 64, "fh": 64, "note": "Grafikkort, generation 3, Ljus (Kör)" },
+"ui.hw.gpu.g3#2": { "file": "hw/gpu/icon-g3-s2.png", "fw": 32, "fh": 32, "note": "Grafikkort, ikon generation 3, Ljus (Kör)" },
+"hw.gpu.g3#3": { "file": "hw/gpu/model-g3-s3.png", "fw": 64, "fh": 64, "note": "Grafikkort, generation 3, Mörk (Kör)" },
+"ui.hw.gpu.g3#3": { "file": "hw/gpu/icon-g3-s3.png", "fw": 32, "fh": 32, "note": "Grafikkort, ikon generation 3, Mörk (Kör)" },
+"hw.gpu.g4#1": { "file": "hw/gpu/model-g4-s1.png", "fw": 64, "fh": 64, "note": "Grafikkort, generation 4, Grön (Kör)" },
+"ui.hw.gpu.g4#1": { "file": "hw/gpu/icon-g4-s1.png", "fw": 32, "fh": 32, "note": "Grafikkort, ikon generation 4, Grön (Kör)" },
+"hw.gpu.g4#2": { "file": "hw/gpu/model-g4-s2.png", "fw": 64, "fh": 64, "note": "Grafikkort, generation 4, Ljus (Kör)" },
+"ui.hw.gpu.g4#2": { "file": "hw/gpu/icon-g4-s2.png", "fw": 32, "fh": 32, "note": "Grafikkort, ikon generation 4, Ljus (Kör)" },
+"hw.gpu.g4#3": { "file": "hw/gpu/model-g4-s3.png", "fw": 64, "fh": 64, "note": "Grafikkort, generation 4, Mörk (Kör)" },
+"ui.hw.gpu.g4#3": { "file": "hw/gpu/icon-g4-s3.png", "fw": 32, "fh": 32, "note": "Grafikkort, ikon generation 4, Mörk (Kör)" }
+```
+
+- **Begränsningar:** Generation 4 är svagast: tre fläktar i rad kan läsas som ett ansikte, vilket bryts med den gemensamma kapselformen och en böjd ljuslinje. I 1x är generation 4-ikonen den minst tydliga (tre ringar i rad), och generation 3 och 4 skiljer sig mest på storlek, avfasningar och antal fläktar. Utseende 3 (Mörk) är mörkt överlag, fläktarna läses mest via den gröna mittpixeln. Fästplåten är ritad platt framifrån med synliga uttag som en medveten förenkling. Fläktar på 11 px eller mindre är regelstyrda blad som handjusterats.
+
+
+## Hårdvara: Ljudkort i 3 generationer och tre utseenden (handritat)
+
+Nya modeller och ikoner för spelarens egna ljudkort (Sonora), i tre generationer som följer tiden. Kortet står upprätt med komponentsidan framåt, fästplåten med uttagen åt höger och guldkontakterna nedtill.
+
+| Generation | Lanseringsår | Utseende |
+| --- | --- | --- |
+| `g1` | till och med 1995 | ISA-kortet: långt, lågt kretskort med fem DIP-kretsar, en kvadratisk huvudkrets i sockel, ROM-krets med bärnstensfärgat klistermärke, två elektrolytkondensatorer, jumperblock, ett räfflat volymhjul som sticker upp i överkanten och en fästplåt med två 3,5 mm-uttag och en DB15-port. |
+| `g2` | 1996 till 2002 | PCI-kortet: kvadratisk kortform med en stor kvadratisk krets och klistermärke med en pale dubbelnot, två SOIC-kretsar, kristallburk, ett knippe små SMD-kondensatorer, en liten lampa och en fästplåt med färgkodade uttag (grönt, blått, rosa). |
+| `g3` | 2003 och senare | Premiumkortet (PCIe): kompakt, djupt kretskort med en kort kontakt, en metallskärm med ventilspår och ett märke med pale dubbelnot, ett litet förstärkarkort som står upp över överkanten, två bärnstensfärgade kondensatorer, ljusstrimma och en smal plåt med tre förgyllda uttag. |
+
+**Utseenden (`#1`, `#2`, `#3`):** `#1` Klassisk (grönt kretskort, bärnstensfärgade burkar och lampa, stålplåt); `#2` Natt (svart kretskort, grafitkretsar, bärnstensglödande banor); `#3` Blå (generation 1 valnötsbrunt med blå burkar, generation 2 och 3 blått kretskort med silverplåt). Samma form i alla tre, så det är färgvarianter av samma design.
+
+- **Modell:** `assets/hw/sound/model-g<N>-s<S>.png`, 64x64, hård alfa, 3/4-vy snett uppifrån med ljus uppifrån vänster. Nyckel `hw.sound.g<N>#<S>`. Motivet är 54x45, 47x47 och 45x42 px.
+- **Ikon:** `assets/hw/sound/icon-g<N>-s<S>.png`, 32x32, samma design omritad för 32 px, för plattan med accentfärgen `#f6b84a`. Nyckel `ui.hw.sound.g<N>#<S>`. Motivet är 27x24, 25x26 och 27x24 px.
+- **Val i spelet:** generation efter lanseringsåret (`yearOf(P.t ?? G.t)`): g1 till 1995, g2 1996 till 2002, g3 från 2003. Utseendet väljs fritt, förslag `P.id % 3 + 1`.
+- **Reserv:** den äldre ikonen `ui.hw.sound` (`assets/ui/hw-sound.png`) finns kvar.
+- **Färger:** En ny rampfärg `pcb_brown` (`#3a2418 #5e3b24 #8a5230 #b0713f #d99a5b`, de två sista fanns redan i guldrampen); resten ur den delade paletten. Bärnsten (`#f6b84a`) finns med i alla utseenden. Max 26 färger per bild.
+
+```json
+"hw.sound.g1#1": { "file": "hw/sound/model-g1-s1.png", "fw": 64, "fh": 64, "note": "Ljudkort, generation 1, Klassisk (Kör)" },
+"ui.hw.sound.g1#1": { "file": "hw/sound/icon-g1-s1.png", "fw": 32, "fh": 32, "note": "Ljudkort, ikon generation 1, Klassisk (Kör)" },
+"hw.sound.g1#2": { "file": "hw/sound/model-g1-s2.png", "fw": 64, "fh": 64, "note": "Ljudkort, generation 1, Natt (Kör)" },
+"ui.hw.sound.g1#2": { "file": "hw/sound/icon-g1-s2.png", "fw": 32, "fh": 32, "note": "Ljudkort, ikon generation 1, Natt (Kör)" },
+"hw.sound.g1#3": { "file": "hw/sound/model-g1-s3.png", "fw": 64, "fh": 64, "note": "Ljudkort, generation 1, Blå (Kör)" },
+"ui.hw.sound.g1#3": { "file": "hw/sound/icon-g1-s3.png", "fw": 32, "fh": 32, "note": "Ljudkort, ikon generation 1, Blå (Kör)" },
+"hw.sound.g2#1": { "file": "hw/sound/model-g2-s1.png", "fw": 64, "fh": 64, "note": "Ljudkort, generation 2, Klassisk (Kör)" },
+"ui.hw.sound.g2#1": { "file": "hw/sound/icon-g2-s1.png", "fw": 32, "fh": 32, "note": "Ljudkort, ikon generation 2, Klassisk (Kör)" },
+"hw.sound.g2#2": { "file": "hw/sound/model-g2-s2.png", "fw": 64, "fh": 64, "note": "Ljudkort, generation 2, Natt (Kör)" },
+"ui.hw.sound.g2#2": { "file": "hw/sound/icon-g2-s2.png", "fw": 32, "fh": 32, "note": "Ljudkort, ikon generation 2, Natt (Kör)" },
+"hw.sound.g2#3": { "file": "hw/sound/model-g2-s3.png", "fw": 64, "fh": 64, "note": "Ljudkort, generation 2, Blå (Kör)" },
+"ui.hw.sound.g2#3": { "file": "hw/sound/icon-g2-s3.png", "fw": 32, "fh": 32, "note": "Ljudkort, ikon generation 2, Blå (Kör)" },
+"hw.sound.g3#1": { "file": "hw/sound/model-g3-s1.png", "fw": 64, "fh": 64, "note": "Ljudkort, generation 3, Klassisk (Kör)" },
+"ui.hw.sound.g3#1": { "file": "hw/sound/icon-g3-s1.png", "fw": 32, "fh": 32, "note": "Ljudkort, ikon generation 3, Klassisk (Kör)" },
+"hw.sound.g3#2": { "file": "hw/sound/model-g3-s2.png", "fw": 64, "fh": 64, "note": "Ljudkort, generation 3, Natt (Kör)" },
+"ui.hw.sound.g3#2": { "file": "hw/sound/icon-g3-s2.png", "fw": 32, "fh": 32, "note": "Ljudkort, ikon generation 3, Natt (Kör)" },
+"hw.sound.g3#3": { "file": "hw/sound/model-g3-s3.png", "fw": 64, "fh": 64, "note": "Ljudkort, generation 3, Blå (Kör)" },
+"ui.hw.sound.g3#3": { "file": "hw/sound/icon-g3-s3.png", "fw": 32, "fh": 32, "note": "Ljudkort, ikon generation 3, Blå (Kör)" }
+```
+
+- **Begränsningar:** Generation 1-ikonen är den plottrigaste: ISA-kortet är fullt av detaljer och volymhjulet läses som en grå stolpe mellan kretsarna, men det går att känna igen som ett kort i 1x. Utseende 2 (Natt) i generation 1 har lägst kontrast (grafitkretsar på svart kort), de bärnstensfärgade banorna räddar det. Tre ikonpar ligger nära varandra i färgavstånd (24 till 28 av önskade 30) eftersom den stora stålplåten och de mörka kretsarna delas, men kortets färg skiljer dem i 1x. Generation 3 är den minsta (45x42) med flit. Uttagsringarna är ritade som runda cirklar på den skjuvade plåten, inte som skjuvade ellipser, eftersom de annars läses som streck.
+
+
+## Hårdvara: VR-headset i 3 generationer och tre utseenden (handritat)
+
+Nya modeller och ikoner för spelarens eget VR-headset (Mirage), i tre generationer som följer tiden. Den äldre ikonen `ui.hw.vr` är första förslaget; de här ersätter den.
+
+| Generation | Lanseringsår | Utseende |
+| --- | --- | --- |
+| `g1` | till och med 2019 | Det sladdbundna headsetet: kantig visirlåda med tjock upphöjd frontplatta, näsurtag, spårningsprickar, ventiler, mörk vävd huvudrem i en båge med ratt bak och en sladd med kontakt som ligger framför. Två stående handkontroller med ring (ikonen har bara en och ingen sladd). |
+| `g2` | 2020 till 2026 | Det fristående headsetet: rundat, kompakt visir med stort blankt glas, fyra kameralinser i hörnen, en stel arm vid sidan som leder in i en låg, platt tygrem. Ingen sladd. Två rörelsekontroller med ring. |
+| `g3` | 2027 och senare | Glasögonen: bred svepande glasögonform med böjt glas, näsurtag, en tunn lysande linje längs undre kanten, ljusblå reflex och ett smalt skalm med öronhake. Två små öronsnäckor under (bara i modellen). |
+
+**Utseenden (`#1`, `#2`, `#3`):** `#1` Grafit (grafitskal, korallfärgad list och lampor, mörk rem); `#2` Ljus (vitt skal, korallfärgad list, grafitrem); `#3` Korall (skalet i accentens korall, mörkt glas, cyanblå lampor). Samma form i alla tre, så det är färgvarianter av samma design.
+
+- **Modell:** `assets/hw/vr/model-g<N>-s<S>.png`, 64x64, hård alfa, 3/4-vy snett uppifrån med ljus uppifrån vänster. Nyckel `hw.vr.g<N>#<S>`. Motivet är 56x52, 56x47 och 52x49 px.
+- **Ikon:** `assets/hw/vr/icon-g<N>-s<S>.png`, 32x32, samma design omritad för 32 px, för plattan med accentfärgen `#ff8a5c`. Nyckel `ui.hw.vr.g<N>#<S>`. Motivet är 27x28, 26x23 och 28x22 px.
+- **Val i spelet:** generation efter lanseringsåret (`yearOf(P.t ?? G.t)`): g1 till 2019, g2 2020 till 2026, g3 från 2027. Utseendet väljs fritt, förslag `P.id % 3 + 1`.
+- **Reserv:** den äldre ikonen `ui.hw.vr` (`assets/ui/hw-vr.png`) finns kvar.
+- **Färger:** En ny mörk rampfärg `fabric` (`#17172b #1f1e36 #2b2842 #3c3757 #524d70`) för den vävda remmen; resten ur den delade paletten. Max 25 färger per bild.
+
+```json
+"hw.vr.g1#1": { "file": "hw/vr/model-g1-s1.png", "fw": 64, "fh": 64, "note": "VR-headset, generation 1, Grafit (Kör)" },
+"ui.hw.vr.g1#1": { "file": "hw/vr/icon-g1-s1.png", "fw": 32, "fh": 32, "note": "VR-headset, ikon generation 1, Grafit (Kör)" },
+"hw.vr.g1#2": { "file": "hw/vr/model-g1-s2.png", "fw": 64, "fh": 64, "note": "VR-headset, generation 1, Ljus (Kör)" },
+"ui.hw.vr.g1#2": { "file": "hw/vr/icon-g1-s2.png", "fw": 32, "fh": 32, "note": "VR-headset, ikon generation 1, Ljus (Kör)" },
+"hw.vr.g1#3": { "file": "hw/vr/model-g1-s3.png", "fw": 64, "fh": 64, "note": "VR-headset, generation 1, Korall (Kör)" },
+"ui.hw.vr.g1#3": { "file": "hw/vr/icon-g1-s3.png", "fw": 32, "fh": 32, "note": "VR-headset, ikon generation 1, Korall (Kör)" },
+"hw.vr.g2#1": { "file": "hw/vr/model-g2-s1.png", "fw": 64, "fh": 64, "note": "VR-headset, generation 2, Grafit (Kör)" },
+"ui.hw.vr.g2#1": { "file": "hw/vr/icon-g2-s1.png", "fw": 32, "fh": 32, "note": "VR-headset, ikon generation 2, Grafit (Kör)" },
+"hw.vr.g2#2": { "file": "hw/vr/model-g2-s2.png", "fw": 64, "fh": 64, "note": "VR-headset, generation 2, Ljus (Kör)" },
+"ui.hw.vr.g2#2": { "file": "hw/vr/icon-g2-s2.png", "fw": 32, "fh": 32, "note": "VR-headset, ikon generation 2, Ljus (Kör)" },
+"hw.vr.g2#3": { "file": "hw/vr/model-g2-s3.png", "fw": 64, "fh": 64, "note": "VR-headset, generation 2, Korall (Kör)" },
+"ui.hw.vr.g2#3": { "file": "hw/vr/icon-g2-s3.png", "fw": 32, "fh": 32, "note": "VR-headset, ikon generation 2, Korall (Kör)" },
+"hw.vr.g3#1": { "file": "hw/vr/model-g3-s1.png", "fw": 64, "fh": 64, "note": "VR-headset, generation 3, Grafit (Kör)" },
+"ui.hw.vr.g3#1": { "file": "hw/vr/icon-g3-s1.png", "fw": 32, "fh": 32, "note": "VR-headset, ikon generation 3, Grafit (Kör)" },
+"hw.vr.g3#2": { "file": "hw/vr/model-g3-s2.png", "fw": 64, "fh": 64, "note": "VR-headset, generation 3, Ljus (Kör)" },
+"ui.hw.vr.g3#2": { "file": "hw/vr/icon-g3-s2.png", "fw": 32, "fh": 32, "note": "VR-headset, ikon generation 3, Ljus (Kör)" },
+"hw.vr.g3#3": { "file": "hw/vr/model-g3-s3.png", "fw": 64, "fh": 64, "note": "VR-headset, generation 3, Korall (Kör)" },
+"ui.hw.vr.g3#3": { "file": "hw/vr/icon-g3-s3.png", "fw": 32, "fh": 32, "note": "VR-headset, ikon generation 3, Korall (Kör)" }
+```
+
+- **Begränsningar:** Generation 1 är mest detaljrik och ser upptagen ut även i 8x: sladdslingan till vänster kan läsas som ett andra handtag och handkontrollerna är små mörka klumpar med en ring. I generation 2 är kontrollerna nästan likadana pinnar, och ikonen med grafit (utseende 1) är mörk och lite grumlig; handkontrollen läses som en stolpe och remmen är tung. Generation 3 är den renaste: i ikonen är öronkroken nästan borta och näsurtagets kontur bildar små ”tänder”; öronsnäckorna i modellen kan påminna om nycklar. Generation 1 och 2 i ikonen är båda ”låda, båge och kontroll” och skiljer sig mest på bågens höjd och ratten respektive de fyra kamerapunkterna.
+
+
+## Hårdvara: Processor i 4 generationer och tre utseenden (handritat)
+
+Nya modeller och ikoner för spelarens egna processorer (Quark), i fyra generationer som följer tiden. Chippet ses snett uppifrån och ligger lågt i bilden: modellens nedersta rad är 59 till 60, så övre halvan av ramen är tom. Placera den därefter.
+
+| Generation | Lanseringsår | Utseende |
+| --- | --- | --- |
+| `g1` | till och med 2004 | Keramikchippet (PGA): trappstegsformat keramikhus med metalllock, graverade textstreck, avfasat hörn med guldtriangel för stift 1 och en tät kam av guldstift under fram- och högerkanten. |
+| `g2` | 2005 till 2013 | Värmespridaren: nästan kvadratiskt grönt substrat med en upphöjd värmespridare med hack i hörnen, små SMD-kondensatorer, guldfärgade kontaktytor längs kanterna, fyra graverade rader och en ringlogga. |
+| `g3` | 2014 till 2021 | Den stora spridaren: djupare mörkare substrat med en större och högre spridare med rundade hörn, ett diagonalt blankt ljusband, graverad text och rosa ringlogga, rosa stripe på substratet och två kondensatorgrupper. |
+| `g4` | 2022 och senare | Chiplet-chippet: bredast och plattast, lågt lock med ett infällt glasfönster över fyra chiplets (2x2) med rosa kopplingar, ett guldfärgat rutmönster av kontaktytor längs fram- och högerkanten, rosa banor på vänsterkanten och ett präglat ”47” (bara i modellen). |
+
+**Utseenden (`#1`, `#2`, `#3`):** `#1` Silver (silverfärgad spridare på grönt substrat, beige keramik i generation 1, rosa märkning); `#2` Mörk (svart substrat, grafitspridare, rosa glödande märkning); `#3` Rosa (rosa spridare på rosa substrat, djuprosa keramik i generation 1, grafitdetaljer). Samma form i alla tre, så det är färgvarianter av samma design.
+
+- **Modell:** `assets/hw/cpu/model-g<N>-s<S>.png`, 64x64, hård alfa, 3/4-vy snett uppifrån med ljus uppifrån vänster. Nyckel `hw.cpu.g<N>#<S>`. Motivet är 55 till 56 px breda och 24 till 34 px höga px.
+- **Ikon:** `assets/hw/cpu/icon-g<N>-s<S>.png`, 32x32, samma design omritad för 32 px, för plattan med accentfärgen `#ff8fd2`. Nyckel `ui.hw.cpu.g<N>#<S>`. Motivet är 27 till 28 px breda och 15 till 21 px höga px.
+- **Val i spelet:** generation efter lanseringsåret (`yearOf(P.t ?? G.t)`): g1 till 2004, g2 2005 till 2013, g3 2014 till 2021, g4 från 2022. Utseendet väljs fritt, förslag `P.id % 3 + 1`.
+- **Reserv:** den äldre ikonen `ui.hw.cpu` (`assets/ui/hw-cpu.png`) finns kvar.
+- **Färger:** Nya rampfärger `sub_green`, `sub_deep` och `rose` för substraten (sex nya toner: `#0e3a30 #0a2224 #14573f #4e1a46 #74225c #b83e8c`) och `beige` för keramiken i generation 1 (delad med dator-setet). Max 19 färger per bild.
+
+```json
+"hw.cpu.g1#1": { "file": "hw/cpu/model-g1-s1.png", "fw": 64, "fh": 64, "note": "Processor, generation 1, Silver (Kör)" },
+"ui.hw.cpu.g1#1": { "file": "hw/cpu/icon-g1-s1.png", "fw": 32, "fh": 32, "note": "Processor, ikon generation 1, Silver (Kör)" },
+"hw.cpu.g1#2": { "file": "hw/cpu/model-g1-s2.png", "fw": 64, "fh": 64, "note": "Processor, generation 1, Mörk (Kör)" },
+"ui.hw.cpu.g1#2": { "file": "hw/cpu/icon-g1-s2.png", "fw": 32, "fh": 32, "note": "Processor, ikon generation 1, Mörk (Kör)" },
+"hw.cpu.g1#3": { "file": "hw/cpu/model-g1-s3.png", "fw": 64, "fh": 64, "note": "Processor, generation 1, Rosa (Kör)" },
+"ui.hw.cpu.g1#3": { "file": "hw/cpu/icon-g1-s3.png", "fw": 32, "fh": 32, "note": "Processor, ikon generation 1, Rosa (Kör)" },
+"hw.cpu.g2#1": { "file": "hw/cpu/model-g2-s1.png", "fw": 64, "fh": 64, "note": "Processor, generation 2, Silver (Kör)" },
+"ui.hw.cpu.g2#1": { "file": "hw/cpu/icon-g2-s1.png", "fw": 32, "fh": 32, "note": "Processor, ikon generation 2, Silver (Kör)" },
+"hw.cpu.g2#2": { "file": "hw/cpu/model-g2-s2.png", "fw": 64, "fh": 64, "note": "Processor, generation 2, Mörk (Kör)" },
+"ui.hw.cpu.g2#2": { "file": "hw/cpu/icon-g2-s2.png", "fw": 32, "fh": 32, "note": "Processor, ikon generation 2, Mörk (Kör)" },
+"hw.cpu.g2#3": { "file": "hw/cpu/model-g2-s3.png", "fw": 64, "fh": 64, "note": "Processor, generation 2, Rosa (Kör)" },
+"ui.hw.cpu.g2#3": { "file": "hw/cpu/icon-g2-s3.png", "fw": 32, "fh": 32, "note": "Processor, ikon generation 2, Rosa (Kör)" },
+"hw.cpu.g3#1": { "file": "hw/cpu/model-g3-s1.png", "fw": 64, "fh": 64, "note": "Processor, generation 3, Silver (Kör)" },
+"ui.hw.cpu.g3#1": { "file": "hw/cpu/icon-g3-s1.png", "fw": 32, "fh": 32, "note": "Processor, ikon generation 3, Silver (Kör)" },
+"hw.cpu.g3#2": { "file": "hw/cpu/model-g3-s2.png", "fw": 64, "fh": 64, "note": "Processor, generation 3, Mörk (Kör)" },
+"ui.hw.cpu.g3#2": { "file": "hw/cpu/icon-g3-s2.png", "fw": 32, "fh": 32, "note": "Processor, ikon generation 3, Mörk (Kör)" },
+"hw.cpu.g3#3": { "file": "hw/cpu/model-g3-s3.png", "fw": 64, "fh": 64, "note": "Processor, generation 3, Rosa (Kör)" },
+"ui.hw.cpu.g3#3": { "file": "hw/cpu/icon-g3-s3.png", "fw": 32, "fh": 32, "note": "Processor, ikon generation 3, Rosa (Kör)" },
+"hw.cpu.g4#1": { "file": "hw/cpu/model-g4-s1.png", "fw": 64, "fh": 64, "note": "Processor, generation 4, Silver (Kör)" },
+"ui.hw.cpu.g4#1": { "file": "hw/cpu/icon-g4-s1.png", "fw": 32, "fh": 32, "note": "Processor, ikon generation 4, Silver (Kör)" },
+"hw.cpu.g4#2": { "file": "hw/cpu/model-g4-s2.png", "fw": 64, "fh": 64, "note": "Processor, generation 4, Mörk (Kör)" },
+"ui.hw.cpu.g4#2": { "file": "hw/cpu/icon-g4-s2.png", "fw": 32, "fh": 32, "note": "Processor, ikon generation 4, Mörk (Kör)" },
+"hw.cpu.g4#3": { "file": "hw/cpu/model-g4-s3.png", "fw": 64, "fh": 64, "note": "Processor, generation 4, Rosa (Kör)" },
+"ui.hw.cpu.g4#3": { "file": "hw/cpu/icon-g4-s3.png", "fw": 32, "fh": 32, "note": "Processor, ikon generation 4, Rosa (Kör)" }
+```
+
+- **Begränsningar:** Generation 4-ikonen är svagast: fönstret med de fyra chipsen blir bara en mörk glasfläck med en rosa linje och läses som ”chip med fönster” först från 4x. Generation 3 är den enklaste, det blanka bandet och loggan syns knappt i 2x. Utseende 2 (Mörk) i generation 3 och 4 har låg kontrast mot det mörka navyt, och rimljuset och den rosa stripen eller kontaktytorna bär dem. Hacken och kondensatorerna i generation 2 syns bara från 4x. Kontaktytorna i generation 2 ritas som guldstreck på kantväggarna i stället för sanna ytor på undersidan, så att de syns framifrån. Chippen är platta plattor i den delade vyn och fyller bredden men bara 24 till 34 av 64 rader.
+
+
+## Hårdvara: Speldator i 4 generationer och tre utseenden (handritat)
+
+Nya modeller och ikoner för spelarens egna speldatorer (Forge), i fyra generationer som följer tiden. Tornet står upprätt med framsidan rakt fram och högersidan synlig, där fönstret sitter.
+
+| Generation | Lanseringsår | Utseende |
+| --- | --- | --- |
+| `g1` | till och med 2003 | Det beigea tornet: lågt och brett med plastbeslag, cd-rom med lucka och grön lampa, flipp-lucka, diskettfack, röd ”33”-turboskärm, ström- och reset-knapp, ventilgaller, två gummifötter. Inget fönster. |
+| `g2` | 2004 till 2011 | Det svarta tornet med fönster: smalt och högt med upphöjt bärhandtag som bryter siluetten, optisk enhet i stål, nätfront med fläkt med blå lysring, kantig accentkil. Stort fönster på högersidan med blått lysande fläkt och grafikkort med undersken. |
+| `g3` | 2012 till 2019 | Glaskåpan: rent matt chassi med tunn lodrät lysstrimma, strömknapp, luftspringor, loggaplatta, ventilspår i toppen och sockelfötter. Stort glasfönster med moderkort, RAM-moduler med RGB-spetsar, kylblock och ett grafikkort med två lysande RGB-fläktar. |
+| `g4` | 2020 och senare | Utställningsskåpet: bredaste tornet med dubbla glaskammare, smala fötter och lysande kant. Främre glaset visar kylare med tre RGB-fläktar, rör i accentfärgen, pumpblock med lysande ring och ett lodrätt grafikkort. Höger glas visar behållare, flödeslinje och nätaggregatskammaren. |
+
+**Utseenden (`#1`, `#2`, `#3`):** `#1` Grafit (mörkt grafitchassi, blå accentlampor och sken); `#2` Ljus (vitt chassi med blå accent; generation 1 är ett beige retroplast, inte vitt); `#3` Blå (chassit i accentens blå, mörka listar, cyanblått sken och RGB i bärnsten, cyan och vitt). Samma form i alla tre, så det är färgvarianter av samma design.
+
+- **Modell:** `assets/hw/pc/model-g<N>-s<S>.png`, 64x64, hård alfa, 3/4-vy snett uppifrån med ljus uppifrån vänster. Nyckel `hw.pc.g<N>#<S>`. Motivet är 39x50, 35x52, 40x52 och 49x49 px.
+- **Ikon:** `assets/hw/pc/icon-g<N>-s<S>.png`, 32x32, samma design omritad för 32 px, för plattan med accentfärgen `#4aa8ff`. Nyckel `ui.hw.pc.g<N>#<S>`. Motivet är 23x27, 22x28, 25x27 och 28x24 px.
+- **Val i spelet:** generation efter lanseringsåret (`yearOf(P.t ?? G.t)`): g1 till 2003, g2 2004 till 2011, g3 2012 till 2019, g4 från 2020. Utseendet väljs fritt, förslag `P.id % 3 + 1`.
+- **Reserv:** den äldre ikonen `ui.hw.pc` (`assets/ui/hw-pc.png`) finns kvar.
+- **Färger:** En ny rampfärg `beige` (`#8c7e62 #b8aa8a #d9ceb0 #efe6cc #fcf8e8`), som bara används av utseende 2 i generation 1 (och av processorernas keramik); resten ur den delade paletten. 19 till 24 färger per modell och 11 till 15 per ikon.
+
+```json
+"hw.pc.g1#1": { "file": "hw/pc/model-g1-s1.png", "fw": 64, "fh": 64, "note": "Speldator, generation 1, Grafit (Kör)" },
+"ui.hw.pc.g1#1": { "file": "hw/pc/icon-g1-s1.png", "fw": 32, "fh": 32, "note": "Speldator, ikon generation 1, Grafit (Kör)" },
+"hw.pc.g1#2": { "file": "hw/pc/model-g1-s2.png", "fw": 64, "fh": 64, "note": "Speldator, generation 1, Ljus (Kör)" },
+"ui.hw.pc.g1#2": { "file": "hw/pc/icon-g1-s2.png", "fw": 32, "fh": 32, "note": "Speldator, ikon generation 1, Ljus (Kör)" },
+"hw.pc.g1#3": { "file": "hw/pc/model-g1-s3.png", "fw": 64, "fh": 64, "note": "Speldator, generation 1, Blå (Kör)" },
+"ui.hw.pc.g1#3": { "file": "hw/pc/icon-g1-s3.png", "fw": 32, "fh": 32, "note": "Speldator, ikon generation 1, Blå (Kör)" },
+"hw.pc.g2#1": { "file": "hw/pc/model-g2-s1.png", "fw": 64, "fh": 64, "note": "Speldator, generation 2, Grafit (Kör)" },
+"ui.hw.pc.g2#1": { "file": "hw/pc/icon-g2-s1.png", "fw": 32, "fh": 32, "note": "Speldator, ikon generation 2, Grafit (Kör)" },
+"hw.pc.g2#2": { "file": "hw/pc/model-g2-s2.png", "fw": 64, "fh": 64, "note": "Speldator, generation 2, Ljus (Kör)" },
+"ui.hw.pc.g2#2": { "file": "hw/pc/icon-g2-s2.png", "fw": 32, "fh": 32, "note": "Speldator, ikon generation 2, Ljus (Kör)" },
+"hw.pc.g2#3": { "file": "hw/pc/model-g2-s3.png", "fw": 64, "fh": 64, "note": "Speldator, generation 2, Blå (Kör)" },
+"ui.hw.pc.g2#3": { "file": "hw/pc/icon-g2-s3.png", "fw": 32, "fh": 32, "note": "Speldator, ikon generation 2, Blå (Kör)" },
+"hw.pc.g3#1": { "file": "hw/pc/model-g3-s1.png", "fw": 64, "fh": 64, "note": "Speldator, generation 3, Grafit (Kör)" },
+"ui.hw.pc.g3#1": { "file": "hw/pc/icon-g3-s1.png", "fw": 32, "fh": 32, "note": "Speldator, ikon generation 3, Grafit (Kör)" },
+"hw.pc.g3#2": { "file": "hw/pc/model-g3-s2.png", "fw": 64, "fh": 64, "note": "Speldator, generation 3, Ljus (Kör)" },
+"ui.hw.pc.g3#2": { "file": "hw/pc/icon-g3-s2.png", "fw": 32, "fh": 32, "note": "Speldator, ikon generation 3, Ljus (Kör)" },
+"hw.pc.g3#3": { "file": "hw/pc/model-g3-s3.png", "fw": 64, "fh": 64, "note": "Speldator, generation 3, Blå (Kör)" },
+"ui.hw.pc.g3#3": { "file": "hw/pc/icon-g3-s3.png", "fw": 32, "fh": 32, "note": "Speldator, ikon generation 3, Blå (Kör)" },
+"hw.pc.g4#1": { "file": "hw/pc/model-g4-s1.png", "fw": 64, "fh": 64, "note": "Speldator, generation 4, Grafit (Kör)" },
+"ui.hw.pc.g4#1": { "file": "hw/pc/icon-g4-s1.png", "fw": 32, "fh": 32, "note": "Speldator, ikon generation 4, Grafit (Kör)" },
+"hw.pc.g4#2": { "file": "hw/pc/model-g4-s2.png", "fw": 64, "fh": 64, "note": "Speldator, generation 4, Ljus (Kör)" },
+"ui.hw.pc.g4#2": { "file": "hw/pc/icon-g4-s2.png", "fw": 32, "fh": 32, "note": "Speldator, ikon generation 4, Ljus (Kör)" },
+"hw.pc.g4#3": { "file": "hw/pc/model-g4-s3.png", "fw": 64, "fh": 64, "note": "Speldator, generation 4, Blå (Kör)" },
+"ui.hw.pc.g4#3": { "file": "hw/pc/icon-g4-s3.png", "fw": 32, "fh": 32, "note": "Speldator, ikon generation 4, Blå (Kör)" }
+```
+
+- **Begränsningar:** Generation 3-ikonen är svagast: sidofönstret är en smal skjuvad remsa i 3/4-vyn och blir i 1x bara en blå fläck med en fläkt. Fönsterinnehållet i generation 2 och 3 är förenklat för läsbarhet och fläktarna är ritade upprätta, inte skjuvade med sidoplanet; fönsterramen i Grafit är lågkontrast mot skalet. Generation 4 är nästan lika bred som hög (33x30) och liknar lite en liten TV mer än ett torn. Nätet på framsidan i generation 2 är en mycket svag tvåtons-ruta. Utseende 2 i generation 1 är medvetet beige: byt namnet i gränssnittet om ni vill ha ”Ljus” bokstavligt.
+
+
+## Hårdvara: sammanfattning, val i spelet och ritkoden
+
+Sju produkttyper, 24 generationer, tre utseenden var: 72 modeller (64x64) och 72 ikoner (32x32) i `assets/hw/<typ>/`. Förhandsbilder: `/mnt/project-files/pixellab-preview/hardvara-oversikt.png` (före och efter, alla generationer) och `hardvara-utseenden.png` (de tre utseendena).
+
+| Typ (`<typ>`) | Generation efter lanseringsår (`yearOf(P.t ?? G.t)`) |
+| --- | --- |
+| `sound` Ljudkort | g1 till 1995, g2 1996 till 2002, g3 från 2003 |
+| `gpu` Grafikkort | g1 till 2000, g2 2001 till 2009, g3 2010 till 2018, g4 från 2019 |
+| `pc` Speldator | g1 till 2003, g2 2004 till 2011, g3 2012 till 2019, g4 från 2020 |
+| `cpu` Processor | g1 till 2004, g2 2005 till 2013, g3 2014 till 2021, g4 från 2022 |
+| `handheld` Bärbar konsol | g1 till 2009, g2 2010 till 2017, g3 från 2018 |
+| `console` Konsol | g1 till 2011, g2 2012 till 2019, g3 från 2020 |
+| `vr` VR-headset | g1 till 2019, g2 2020 till 2026, g3 från 2027 |
+
+- **Nycklar:** modell `hw.<typ>.g<N>#<S>`, ikon `ui.hw.<typ>.g<N>#<S>`, `S` = 1, 2 eller 3. En liten hjälpfunktion kan välja generationen ur tabellen och utseendet ur `P.id % 3 + 1` (stabilt per produkt). De äldre `ui.hw.<typ>` finns kvar som reserv.
+- **Placering:** modellerna är 64x64 med nedersta raden 58 till 60 och är centrerade i bredd; låga produkter (processor, bärbar, konsol) lämnar luft ovanför. Ikonerna är ritade för plattan på 38 px med accentfärgen.
+- **Kod:** `assets/hw/src/` (se `README.md` där) bygger alla bilder byte för byte likadant; ny generation eller nytt utseende läggs till där.
